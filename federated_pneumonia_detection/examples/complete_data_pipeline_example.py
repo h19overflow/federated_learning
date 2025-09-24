@@ -152,27 +152,7 @@ def main():
 
     except Exception as e:
         print(f"   ❌ Error creating data loaders: {e}")
-    print()
 
-    # Step 7: Show the complete workflow summary
-    print("7. 🎉 Pipeline Summary")
-    print("   ┌─────────────────────────────────────────┐")
-    print("   │              NEW WORKFLOW               │")
-    print("   ├─────────────────────────────────────────┤")
-    print("   │ 1. CSV → load_and_split_data()         │")
-    print("   │ 2. train_df, val_df                    │")
-    print("   │ 3. XRayDataModule(train_df, val_df)    │")
-    print("   │ 4. CustomImageDataset (auto-created)   │")
-    print("   │ 5. DataLoader with transforms           │")
-    print("   └─────────────────────────────────────────┘")
-    print()
-    print("✨ Benefits of the new approach:")
-    print("   • Cleaner separation of concerns")
-    print("   • More configurable and extensible")
-    print("   • Better error handling and validation")
-    print("   • Integrated with PyTorch Lightning")
-    print("   • Advanced image preprocessing options")
-    print()
 
     return data_module
 
