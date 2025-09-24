@@ -19,7 +19,9 @@ src/
 │   └── resnet_with_custom_head.py
 ├── control/           # Business logic and orchestration
 │   ├── xray_data_module.py
-│   └── lit_resnet.py
+│   ├── lit_resnet.py
+│   ├── training_callbacks.py       # NEW: Training callbacks and utilities
+│   └── centralized_trainer.py      # NEW: Complete training orchestrator
 ├── boundary/          # External interfaces (planned for future phases)
 └── utils/             # Support functions and utilities
     ├── data_processing.py
@@ -154,6 +156,58 @@ experiment:
   freeze_backbone: true
 ```
 
+### 7. Training Callbacks & Monitoring
+
+**Files**: `control/training_callbacks.py`
+
+**Key Components**:
+- **ModelCheckpoint**: Saves best models based on validation recall
+- **EarlyStopping**: Prevents overfitting with configurable patience
+- **LearningRateMonitor**: Tracks learning rate changes throughout training
+- **HighestValRecallCallback**: Custom callback for medical classification tracking
+- **Class Weight Computation**: Automatic handling of imbalanced datasets
+
+**Features**:
+- Medical-focused metrics (prioritizes recall for pneumonia detection)
+- Comprehensive checkpoint management (saves top 3 + backup)
+- GPU/CPU auto-detection with mixed precision
+- Deterministic training with seed management
+
+### 8. Centralized Training Orchestrator
+
+**Files**: `control/centralized_trainer.py`
+
+**CentralizedTrainer Features**:
+- **Zip File Processing**: Accepts datasets in zip format
+- **Automatic Dataset Discovery**: Finds CSV and images automatically
+- **Complete Pipeline Orchestration**: From zip file to trained model
+- **Temporary File Management**: Safe extraction and cleanup
+- **Comprehensive Logging**: TensorBoard integration and detailed progress tracking
+
+**Key Capabilities**:
+```python
+# Simple usage
+trainer = CentralizedTrainer()
+results = trainer.train_from_zip("pneumonia_dataset.zip")
+
+# Advanced usage with custom configuration
+trainer = CentralizedTrainer(
+    config_path="custom_config.yaml",
+    checkpoint_dir="my_checkpoints",
+    logs_dir="my_logs"
+)
+```
+
+**Input Requirements**:
+- Zip file containing CSV metadata and image files
+- CSV with columns: `patientId`, `Target`
+- Images named as: `{patientId}.png/.jpg`
+
+**Output Structure**:
+- Trained models in checkpoint directory
+- TensorBoard logs for monitoring
+- Comprehensive training metrics and results
+
 ## Configuration Management
 
 ### YAML Configuration Structure
@@ -187,12 +241,50 @@ export FPD_BATCH_SIZE=64
 
 ## Usage Examples
 
-### Complete Pipeline Example
+### Centralized Training from Zip File (Recommended)
+
+```python
+from src.control import CentralizedTrainer
+
+# Simple training from zip file
+trainer = CentralizedTrainer(
+    checkpoint_dir="experiments/checkpoints",
+    logs_dir="experiments/logs"
+)
+
+# Train directly from zip file
+results = trainer.train_from_zip(
+    zip_path="pneumonia_dataset.zip",
+    experiment_name="my_pneumonia_experiment"
+)
+
+# Access results
+print(f"Best model: {results['best_model_path']}")
+print(f"Best validation recall: {results['best_model_score']:.4f}")
+```
+
+### Command Line Usage
+
+```bash
+# Basic training
+python federated_pneumonia_detection/train_centralized.py dataset.zip
+
+# With custom settings
+python federated_pneumonia_detection/train_centralized.py dataset.zip \
+    --experiment-name my_experiment \
+    --checkpoint-dir ./checkpoints \
+    --logs-dir ./logs
+
+# Validate dataset only
+python federated_pneumonia_detection/train_centralized.py dataset.zip --validate-only
+```
+
+### Manual Pipeline Setup (Advanced)
 
 ```python
 from src.entities import SystemConstants, ExperimentConfig
 from src.utils import load_and_split_data, get_image_directory_path
-from src.control import XRayDataModule, LitResNet
+from src.control import XRayDataModule, LitResNet, prepare_trainer_and_callbacks_pl
 
 # Load configuration
 constants = SystemConstants()
@@ -211,10 +303,17 @@ data_module = XRayDataModule(
     image_dir=image_dir
 )
 
-# Create model
-model = LitResNet(
+# Setup callbacks and model
+callback_config = prepare_trainer_and_callbacks_pl(
+    train_df_for_weights=train_df,
     constants=constants,
     config=config
+)
+
+model = LitResNet(
+    constants=constants,
+    config=config,
+    class_weights_tensor=callback_config['class_weights']
 )
 
 # Ready for training with PyTorch Lightning Trainer
@@ -324,24 +423,50 @@ tests/
 - [x] Comprehensive metrics tracking
 - [x] Training optimization setup
 
+### Training System (NEW)
+- [x] **Training callbacks system** with medical-focused metrics
+- [x] **Centralized training orchestrator** with zip file processing
+- [x] **Complete training pipeline** from data to trained model
+- [x] **Command line interface** for easy deployment
+- [x] **Comprehensive example system** with documentation
+
 ### Quality Assurance
 - [x] Error handling and validation
 - [x] Test infrastructure preparation
 - [x] Performance optimizations
 - [x] Documentation and examples
+- [x] **Production-ready entry points** for training workflows
 
-## Next Steps (Phase 2 Preparation)
+## Phase 1+ Enhancement: Complete Training System
 
-Phase 1 provides a solid foundation for Phase 2 (Core ML Components):
-- **Training Infrastructure**: Ready for centralized trainer implementation
-- **Model Evaluation**: Framework prepared for comprehensive evaluation
-- **Metrics & Reporting**: System ready for result generation and visualization
+**What's Been Added Beyond Original Phase 1 Scope:**
 
-The architecture is designed to seamlessly support the addition of:
-- Centralized training orchestration
-- Model evaluation and metrics calculation
-- Visualization and reporting components
-- Advanced training strategies and callbacks
+### Advanced Training Infrastructure
+- **CentralizedTrainer**: Complete orchestration from zip file to trained model
+- **TrainingCallbacks**: Medical-focused callback system with recall prioritization
+- **Entry Points**: Both programmatic API and command-line interfaces
+- **Example System**: Comprehensive documentation and usage examples
+
+### Key Enhancements
+```python
+# Now possible in a single call:
+trainer = CentralizedTrainer()
+results = trainer.train_from_zip("pneumonia_dataset.zip")
+```
+
+This advancement effectively **bridges Phase 1 foundation with early Phase 2 capabilities**, providing:
+- Complete centralized training workflow
+- Production-ready training entry points
+- Medical domain-specific optimizations (recall-focused callbacks)
+- Comprehensive zip-based dataset processing
+
+## Next Steps (Adjusted for Enhanced Phase 1)
+
+With the enhanced training system, Phase 2 can now focus on:
+- **Model Evaluation & Metrics**: Comprehensive post-training analysis
+- **Visualization & Reporting**: Training results visualization
+- **Advanced Training Strategies**: Hyperparameter tuning, cross-validation
+- **Performance Benchmarking**: Systematic model comparison
 
 ---
 
