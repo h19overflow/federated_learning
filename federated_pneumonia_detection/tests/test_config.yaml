@@ -1,0 +1,66 @@
+# Test configuration for federated pneumonia detection system
+# Optimized settings for fast test execution
+
+# System Constants (optimized for testing)
+system:
+  img_size: [64, 64]  # Smaller images for faster processing
+  image_extension: ".png"
+  batch_size: 8  # Small batches for testing
+  sample_fraction: 0.1  # Use only 10% of data for tests
+  validation_split: 0.2
+  seed: 42  # Fixed seed for reproducible tests
+
+# File Paths
+paths:
+  base_path: "test_data"
+  main_images_folder: "TestImages"
+  images_subfolder: "XRays"
+  metadata_filename: "test_metadata.csv"
+
+# Data Column Names
+columns:
+  patient_id: "patientId"
+  target: "Target"
+  filename: "filename"
+
+# Experiment Configuration (minimal for testing)
+experiment:
+  # Model parameters
+  learning_rate: 0.01  # Higher LR for faster convergence in tests
+  epochs: 2  # Minimal epochs for testing
+  weight_decay: 0.001
+  freeze_backbone: true
+
+  # Training parameters
+  early_stopping_patience: 2
+  reduce_lr_patience: 1
+  reduce_lr_factor: 0.5
+  min_lr: 0.001
+
+  # Federated Learning parameters (minimal)
+  num_rounds: 2  # Minimal rounds for testing
+  num_clients: 2  # Minimal clients
+  clients_per_round: 2
+  local_epochs: 1
+
+  # System parameters
+  device: "cpu"  # Force CPU for consistent testing
+  num_workers: 0  # No multiprocessing for simpler debugging
+
+# Output Directories
+output:
+  checkpoint_dir: "test_models/checkpoints"
+  results_dir: "test_results"
+  log_dir: "test_logs"
+
+# Logging Configuration
+logging:
+  level: "WARNING"  # Reduce log noise during testing
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_logging: false  # Disable file logging for tests
+
+# Test-specific settings
+testing:
+  mock_training: true  # Skip actual model training
+  fast_mode: true      # Enable all speed optimizations
+  timeout_seconds: 30  # Timeout for long-running tests

@@ -1,0 +1,83 @@
+# Default configuration for federated pneumonia detection system
+# All values can be overridden in environment-specific config files
+
+# System Constants
+system:
+  img_size: [224, 224]
+  image_extension: ".png"
+  batch_size: 128
+  sample_fraction: 0.10
+  validation_split: 0.20
+  seed: 42
+
+# File Paths
+paths:
+  base_path: "."
+  main_images_folder: "Images"
+  images_subfolder: "Images"
+  metadata_filename: "Train_metadata.csv"
+
+# Data Column Names
+columns:
+  patient_id: "patientId"
+  target: "Target"
+  filename: "filename"
+
+# Experiment Configuration
+experiment:
+  # Model parameters
+  learning_rate: 0.001
+  epochs: 10
+  weight_decay: 0.0001
+  freeze_backbone: true
+  dropout_rate: 0.5
+  fine_tune_layers_count: 0  # 0 = freeze all, negative = unfreeze last N layers
+  num_classes: 1  # 1 for binary classification
+  monitor_metric: "val_loss"  # val_loss, val_acc, val_f1, val_auroc
+
+  # Training parameters
+  early_stopping_patience: 5
+  reduce_lr_patience: 3
+  reduce_lr_factor: 0.5
+  min_lr: 0.0000001
+
+  # Federated Learning parameters
+  num_rounds: 10
+  num_clients: 5
+  clients_per_round: 3
+  local_epochs: 1
+
+  # System parameters
+  device: "auto"  # auto, cpu, cuda, mps
+  num_workers: 4
+
+  # Image processing parameters
+  color_mode: "RGB"  # RGB or L
+  use_imagenet_norm: true
+  augmentation_strength: 1.0  # 0.0 to 2.0
+  use_custom_preprocessing: false
+  validate_images_on_init: true
+  pin_memory: true
+  persistent_workers: false
+  prefetch_factor: 2
+
+  # Custom preprocessing parameters
+  contrast_stretch: true
+  adaptive_histogram: false
+  edge_enhancement: false
+  lower_percentile: 5.0
+  upper_percentile: 95.0
+  clip_limit: 2.0
+  edge_strength: 1.0
+
+# Output Directories
+output:
+  checkpoint_dir: "models/checkpoints"
+  results_dir: "results"
+  log_dir: "logs"
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_logging: true
