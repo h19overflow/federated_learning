@@ -13,10 +13,10 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 import numpy as np
 
-from ..entities.system_constants import SystemConstants
-from ..entities.experiment_config import ExperimentConfig
-from ..entities.custom_image_dataset import CustomImageDataset
-from ..utils.image_transforms import TransformBuilder, get_transforms
+from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
+from federated_pneumonia_detection.src.entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.src.entities.custom_image_dataset import CustomImageDataset
+from federated_pneumonia_detection.src.utils.image_transforms import TransformBuilder, get_transforms
 
 
 class XRayDataModule(pl.LightningDataModule):

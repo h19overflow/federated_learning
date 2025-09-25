@@ -11,7 +11,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from federated_pneumonia_detection.src.control.centralized_trainer import CentralizedTrainer
+from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import CentralizedTrainer
 
 
 def main():

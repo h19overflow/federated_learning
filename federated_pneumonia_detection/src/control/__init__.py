@@ -3,8 +3,8 @@ Control layer for the federated pneumonia detection system.
 Contains business logic and workflow orchestration classes.
 """
 
-from .xray_data_module import XRayDataModule
-from .lit_resnet import LitResNet
+from federated_pneumonia_detection.src.control.dl_model.xray_data_module import XRayDataModule
+from federated_pneumonia_detection.src.control.dl_model.lit_resnet import LitResNet
 
 __all__ = [
     'XRayDataModule',

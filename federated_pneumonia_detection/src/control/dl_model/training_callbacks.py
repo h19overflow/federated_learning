@@ -12,8 +12,8 @@ import torch
 import numpy as np
 from sklearn.utils import class_weight
 
-from ..entities.system_constants import SystemConstants
-from ..entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
+from federated_pneumonia_detection.src.entities.experiment_config import ExperimentConfig
 
 
 class HighestValRecallCallback(pl.Callback):

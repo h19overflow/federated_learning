@@ -30,8 +30,9 @@ patient003,0
 ### 2. Run Training
 
 #### Simple Usage
+
 ```python
-from federated_pneumonia_detection.src.control.centralized_trainer import CentralizedTrainer
+from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import CentralizedTrainer
 
 # Initialize trainer
 trainer = CentralizedTrainer(
@@ -150,9 +151,10 @@ custom_checkpoint = ModelCheckpoint(
 ```
 
 ### Model Evaluation
+
 ```python
 # Load best model for evaluation
-from federated_pneumonia_detection.src.control.lit_resnet import LitResNet
+from federated_pneumonia_detection.src.control.dl_model.lit_resnet import LitResNet
 
 model = LitResNet.load_from_checkpoint(results['best_model_path'])
 model.eval()

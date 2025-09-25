@@ -4,16 +4,13 @@ Provides detailed post-training analysis with medical domain-specific metrics.
 """
 
 import os
-import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict, List, Tuple, Optional, Any
 from pathlib import Path
-from dataclasses import dataclass, asdict
 import torch
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
@@ -23,8 +20,8 @@ from sklearn.metrics import (
 from sklearn.calibration import calibration_curve
 import pytorch_lightning as pl
 
-from ..entities.system_constants import SystemConstants
-from ..utils.config_loader import ConfigLoader
+from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
+from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 from federated_pneumonia_detection.models.evaluation_metrics import  EvaluationMetrics
 
 class ModelEvaluator:

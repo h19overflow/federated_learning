@@ -18,8 +18,8 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import plotly.offline as pyo
 
-from ..entities.system_constants import SystemConstants
-from ..utils.config_loader import ConfigLoader
+from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
+from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 
 
 class TrainingVisualizer:

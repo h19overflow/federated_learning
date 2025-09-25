@@ -14,13 +14,12 @@ import pandas as pd
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from ..entities.system_constants import SystemConstants
-from ..entities.experiment_config import ExperimentConfig
-from ..entities.config_loader import ConfigLoader
-from ..utils.data_processing import load_metadata, create_train_val_split, sample_dataframe
-from .xray_data_module import XRayDataModule
+from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
+from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
+from federated_pneumonia_detection.src.utils.data_processing import load_metadata, create_train_val_split, sample_dataframe
+from federated_pneumonia_detection.src.control.dl_model.xray_data_module import XRayDataModule
 from .lit_resnet import LitResNet
-from .training_callbacks import prepare_trainer_and_callbacks_pl, create_trainer_from_config
+from federated_pneumonia_detection.src.control.dl_model.training_callbacks import prepare_trainer_and_callbacks_pl, create_trainer_from_config
 
 
 class CentralizedTrainer:
