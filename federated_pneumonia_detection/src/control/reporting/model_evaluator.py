@@ -139,11 +139,11 @@ class ModelEvaluator:
         avg_precision = average_precision_score(y_true, y_prob) if len(np.unique(y_true)) > 1 else 0.0
 
         # Confidence metrics
-        mean_confidence = np.mean(y_prob)
-        confidence_std = np.std(y_prob)
+        mean_confidence = float(np.mean(y_prob))
+        confidence_std = float(np.std(y_prob))
 
         # Calibration error (Brier score approximation)
-        calibration_error = np.mean((y_prob - y_true) ** 2)
+        calibration_error = float(np.mean((y_prob - y_true) ** 2))
 
         # Sample information
         total_samples = len(y_true)
