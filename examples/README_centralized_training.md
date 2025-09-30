@@ -154,7 +154,7 @@ custom_checkpoint = ModelCheckpoint(
 
 ```python
 # Load best model for evaluation
-from federated_pneumonia_detection.src.control.dl_model.utils.lit_resnet import LitResNet
+from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import LitResNet
 
 model = LitResNet.load_from_checkpoint(results['best_model_path'])
 model.eval()
