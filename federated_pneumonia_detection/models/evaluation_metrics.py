@@ -1,4 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+from typing import Any , Dict
+import json
 @dataclass
 class EvaluationMetrics:
     """Comprehensive metrics for binary classification with medical focus."""

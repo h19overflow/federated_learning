@@ -1,6 +1,7 @@
 @startuml
 skinparam linetype ortho
-package "Deep Learning Model Components" {
+
+package "Data Management Components" {
 
   class CustomImageDataset {
     -logger: Logger
@@ -23,34 +24,6 @@ package "Deep Learning Model Components" {
     -_validate_inputs()
     -_validate_image_files(): np.ndarray
     -_load_image(filename): Image
-  }
-
-  class ResNetWithCustomHead {
-    -constants: SystemConstants
-    -config: ExperimentConfig
-    -logger: Logger
-    -num_classes: int
-    -dropout_rate: float
-    -fine_tune_layers_count: int
-    -base_model_weights: ResNet50_Weights
-    -features: Sequential
-    -classifier: Sequential
-    -backbone_layers: list
-    --
-    +__init__(constants, config, base_model_weights, num_classes, dropout_rate, fine_tune_layers_count, custom_head_sizes)
-    +forward(x): Tensor
-    +get_model_info(): dict
-    +freeze_backbone()
-    +unfreeze_backbone()
-    +set_dropout_rate(new_rate)
-    +get_feature_maps(x, layer_name): Tensor
-    --
-    -_validate_parameters()
-    -_create_backbone()
-    -_create_classifier_head(custom_head_sizes)
-    -_configure_fine_tuning()
-    -_unfreeze_last_n_layers(n_layers)
-    -_unfreeze_first_n_layers(n_layers)
   }
 
   class XRayDataModule {
@@ -89,6 +62,38 @@ package "Deep Learning Model Components" {
     -_create_training_transforms()
     -_create_validation_transforms()
     -_worker_init_fn(worker_id)
+  }
+
+}
+
+package "Deep Learning Model Components" {
+
+  class ResNetWithCustomHead {
+    -constants: SystemConstants
+    -config: ExperimentConfig
+    -logger: Logger
+    -num_classes: int
+    -dropout_rate: float
+    -fine_tune_layers_count: int
+    -base_model_weights: ResNet50_Weights
+    -features: Sequential
+    -classifier: Sequential
+    -backbone_layers: list
+    --
+    +__init__(constants, config, base_model_weights, num_classes, dropout_rate, fine_tune_layers_count, custom_head_sizes)
+    +forward(x): Tensor
+    +get_model_info(): dict
+    +freeze_backbone()
+    +unfreeze_backbone()
+    +set_dropout_rate(new_rate)
+    +get_feature_maps(x, layer_name): Tensor
+    --
+    -_validate_parameters()
+    -_create_backbone()
+    -_create_classifier_head(custom_head_sizes)
+    -_configure_fine_tuning()
+    -_unfreeze_last_n_layers(n_layers)
+    -_unfreeze_first_n_layers(n_layers)
   }
 
   class LitResNet {
@@ -138,24 +143,59 @@ package "Deep Learning Model Components" {
 
 }
 
-' Inheritance relationships
-CustomImageDataset --|> Dataset : extends
-XRayDataModule --|> LightningDataModule : extends
-LitResNet --|> LightningModule : extends
+package "Training Orchestration Components" {
+
+  class CentralizedTrainer {
+    -checkpoint_dir: str
+    -logs_dir: str
+    -temp_extract_dir: Optional[str]
+    -logger: Logger
+    -constants: SystemConstants
+    -config: ExperimentConfig
+    --
+    +__init__(config_path, checkpoint_dir, logs_dir)
+    +train_from_zip(zip_path, experiment_name, csv_filename): Dict[str, Any]
+    +validate_zip_contents(zip_path): Dict[str, Any]
+    +get_training_status(): Dict[str, Any]
+    --
+    -_extract_and_validate_zip(zip_path, csv_filename): Tuple[str, str]
+    -_prepare_dataset(csv_path, image_dir): Tuple[DataFrame, DataFrame]
+    -_setup_data_module(train_df, val_df, image_dir): XRayDataModule
+    -_setup_model_and_callbacks(train_df): Tuple[LitResNet, list]
+    -_setup_trainer(callbacks, experiment_name): pl.Trainer
+    -_collect_training_results(trainer, model): Dict[str, Any]
+    -_setup_logging(): Logger
+    -_cleanup_temp_directory(): void
+  }
+
+}
+
 
 ' Composition relationships
 XRayDataModule *-- CustomImageDataset : creates/manages
 LitResNet *-- ResNetWithCustomHead : contains
-XRayDataModule *-- TransformBuilder : uses
+CentralizedTrainer *-- XRayDataModule : creates
+CentralizedTrainer *-- LitResNet : creates
 
 
+
+' Dependencies
+CentralizedTrainer ..> SystemConstants : uses
+CentralizedTrainer ..> ExperimentConfig : uses
 
 ' Data flow
 XRayDataModule --> LitResNet : provides DataLoaders
+CentralizedTrainer --> XRayDataModule : orchestrates
+CentralizedTrainer --> LitResNet : trains
 
 note top of CustomImageDataset : Handles X-ray image loading\nwith robust error handling\nand memory estimation
-note top of ResNetWithCustomHead : ResNet50 V2 backbone\nwith configurable custom head\nand fine-tuning capabilities
+
 note top of XRayDataModule : PyTorch Lightning DataModule\nfor comprehensive data management\nand preprocessing
+
+note top of ResNetWithCustomHead : ResNet50 V2 backbone\nwith configurable custom head\nand fine-tuning capabilities
+
 note top of LitResNet : Lightning module with comprehensive\nmetrics tracking and optimization\nfor pneumonia classification
+
+note top of CentralizedTrainer : Complete training orchestrator\nfrom zip file to trained model\nwith comprehensive workflow management
 
 @enduml
