@@ -8,7 +8,7 @@ import logging
 from typing import Optional, Dict, Any
 
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
-from .utils import ZipHandler, DatasetPreparer, TrainerBuilder
+from .utils import ZipHandler, DirectoryHandler, DatasetPreparer, TrainerBuilder
 
 
 class CentralizedTrainer:
@@ -50,6 +50,7 @@ class CentralizedTrainer:
 
         # Initialize utilities
         self.zip_handler = ZipHandler(self.logger)
+        self.directory_handler = DirectoryHandler(self.logger)
         self.dataset_preparer = DatasetPreparer(self.constants, self.config, self.logger)
         self.trainer_builder = TrainerBuilder(
             self.constants, self.config, self.checkpoint_dir, self.logs_dir, self.logger
@@ -59,28 +60,35 @@ class CentralizedTrainer:
         self.logger.info(f"Checkpoint directory: {self.checkpoint_dir}")
         self.logger.info(f"Logs directory: {self.logs_dir}")
 
-    def train_from_zip(
+    def train(
         self,
-        zip_path: str,
+        source_path: str,
         experiment_name: str = "pneumonia_detection",
         csv_filename: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Complete training workflow from zip file.
+        Complete training workflow from zip file or directory.
 
         Args:
-            zip_path: Path to zip file containing dataset
+            source_path: Path to zip file or directory containing dataset
             experiment_name: Name for this training experiment
             csv_filename: Optional specific CSV filename to look for
 
         Returns:
             Dictionary with training results and paths
         """
-        self.logger.info(f"Starting training from zip: {zip_path}")
+        self.logger.info(f"Starting training from: {source_path}")
 
         try:
-            # Extract and validate zip file
-            image_dir, csv_path = self.zip_handler.extract_and_validate(zip_path, csv_filename)
+            # Detect source type and extract/find data
+            if os.path.isfile(source_path):
+                self.logger.info("Detected zip file")
+                image_dir, csv_path = self.zip_handler.extract_and_validate(source_path, csv_filename)
+            elif os.path.isdir(source_path):
+                self.logger.info("Detected directory")
+                image_dir, csv_path = self.directory_handler.find_data(source_path, csv_filename)
+            else:
+                raise ValueError(f"Invalid source path: {source_path}. Must be a zip file or directory.")
 
             # Load and process data
             train_df, val_df = self.dataset_preparer.prepare_dataset(csv_path, image_dir)
@@ -110,17 +118,41 @@ class CentralizedTrainer:
         finally:
             self.zip_handler.cleanup()
 
-    def validate_zip_contents(self, zip_path: str) -> Dict[str, Any]:
+    def train_from_zip(
+        self,
+        zip_path: str,
+        experiment_name: str = "pneumonia_detection",
+        csv_filename: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Validate zip file contents without extraction.
+        Backward compatibility wrapper for train().
 
         Args:
-            zip_path: Path to zip file
+            zip_path: Path to zip file containing dataset
+            experiment_name: Name for this training experiment
+            csv_filename: Optional specific CSV filename to look for
+
+        Returns:
+            Dictionary with training results and paths
+        """
+        return self.train(zip_path, experiment_name, csv_filename)
+
+    def validate_source(self, source_path: str) -> Dict[str, Any]:
+        """
+        Validate source contents without processing.
+
+        Args:
+            source_path: Path to zip file or directory
 
         Returns:
             Dictionary with validation results
         """
-        return self.zip_handler.validate_contents(zip_path)
+        if os.path.isfile(source_path):
+            return self.zip_handler.validate_contents(source_path)
+        elif os.path.isdir(source_path):
+            return self.directory_handler.validate_contents(source_path)
+        else:
+            return {'valid': False, 'error': 'Path is neither a file nor a directory'}
 
     def get_training_status(self) -> Dict[str, Any]:
         """Get current training status and configuration."""

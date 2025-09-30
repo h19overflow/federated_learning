@@ -225,3 +225,7 @@ class ConfigLoader:
             config.update(env_overrides)
 
         return config
+
+if __name__ == '__main__':
+    loader = ConfigLoader(config_dir=r'C:\Users\User\Projects\FYP2\federated_pneumonia_detection\config')
+    print(loader.create_experiment_config(loader.load_config()))
