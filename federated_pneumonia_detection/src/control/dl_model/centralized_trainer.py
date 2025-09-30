@@ -1,6 +1,6 @@
 """
 Centralized training orchestrator for pneumonia detection system.
-Orchestrates complete training workflow from zip file to trained model with comprehensive logging.
+Orchestrates complete training workflow from zip file or directory to trained model with comprehensive logging.
 """
 
 import os
@@ -14,7 +14,7 @@ from .utils import ZipHandler, DirectoryHandler, DatasetPreparer, TrainerBuilder
 class CentralizedTrainer:
     """
     Centralized training orchestrator that handles complete training workflow.
-    Accepts zip files containing dataset and orchestrates all training components.
+    Accepts zip files or directories containing dataset and orchestrates all training components.
     """
 
     def __init__(
@@ -153,6 +153,18 @@ class CentralizedTrainer:
             return self.directory_handler.validate_contents(source_path)
         else:
             return {'valid': False, 'error': 'Path is neither a file nor a directory'}
+
+    def validate_zip_contents(self, zip_path: str) -> Dict[str, Any]:
+        """
+        Backward compatibility wrapper for validate_source().
+
+        Args:
+            zip_path: Path to zip file
+
+        Returns:
+            Dictionary with validation results
+        """
+        return self.validate_source(zip_path)
 
     def get_training_status(self) -> Dict[str, Any]:
         """Get current training status and configuration."""
