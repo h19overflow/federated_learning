@@ -37,10 +37,18 @@ class CentralizedTrainer:
 
         # Load configuration
         config_loader = ConfigLoader()
-        if config_path:
-            self.constants = config_loader.create_system_constants(config_path)
-            self.config = config_loader.create_experiment_config(config_path)
-        else:
+        try:
+            if config_path:
+                # Load config as dictionary first
+                config_dict = config_loader.load_config(config_path)
+                self.constants = config_loader.create_system_constants(config_dict)
+                self.config = config_loader.create_experiment_config(config_dict)
+            else:
+                self.constants = config_loader.create_system_constants()
+                self.config = config_loader.create_experiment_config()
+        except Exception as e:
+            self.logger.warning(f"Configuration loading failed: {e}. Using defaults.")
+            # Fallback to default configuration
             self.constants = config_loader.create_system_constants()
             self.config = config_loader.create_experiment_config()
 
@@ -48,13 +56,17 @@ class CentralizedTrainer:
         os.makedirs(self.checkpoint_dir, exist_ok=True)
         os.makedirs(self.logs_dir, exist_ok=True)
 
-        # Initialize utilities
-        self.zip_handler = ZipHandler(self.logger)
-        self.directory_handler = DirectoryHandler(self.logger)
-        self.dataset_preparer = DatasetPreparer(self.constants, self.config, self.logger)
-        self.trainer_builder = TrainerBuilder(
-            self.constants, self.config, self.checkpoint_dir, self.logs_dir, self.logger
-        )
+        # Initialize utilities with error handling
+        try:
+            self.zip_handler = ZipHandler(self.logger)
+            self.directory_handler = DirectoryHandler(self.logger)
+            self.dataset_preparer = DatasetPreparer(self.constants, self.config, self.logger)
+            self.trainer_builder = TrainerBuilder(
+                self.constants, self.config, self.checkpoint_dir, self.logs_dir, self.logger
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to initialize utilities: {e}")
+            raise
 
         self.logger.info(f"CentralizedTrainer initialized")
         self.logger.info(f"Checkpoint directory: {self.checkpoint_dir}")

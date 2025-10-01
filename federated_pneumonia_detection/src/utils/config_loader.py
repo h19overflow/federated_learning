@@ -34,7 +34,7 @@ class ConfigLoader:
         Load configuration from YAML file.
 
         Args:
-            config_file: Name of configuration file to load
+            config_file: Name of configuration file to load, or full path
 
         Returns:
             Dictionary containing configuration values
@@ -43,7 +43,13 @@ class ConfigLoader:
             FileNotFoundError: If configuration file doesn't exist
             yaml.YAMLError: If YAML parsing fails
         """
-        config_path = os.path.join(self.config_dir, config_file)
+        # Handle both relative names and full paths
+        if os.path.isabs(config_file) or "\\" in config_file or "/" in config_file:
+            # It's a path (absolute or relative with separators)
+            config_path = config_file
+        else:
+            # It's just a filename, use config_dir
+            config_path = os.path.join(self.config_dir, config_file)
 
         if not os.path.exists(config_path):
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
