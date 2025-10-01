@@ -164,7 +164,7 @@ def prepare_trainer_and_callbacks_pl(
         'enable_checkpointing': True,
         'enable_progress_bar': True,
         'enable_model_summary': True,
-        'deterministic': True if constants and constants.random_seed is not None else False
+        'deterministic': True if constants and constants.SEED is not None else False
     }
 
     logger.info(f"Prepared trainer with {len(callbacks)} callbacks")

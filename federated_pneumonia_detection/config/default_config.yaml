@@ -3,9 +3,9 @@
 
 # System Constants
 system:
-  img_size: [224, 224]
+  img_size: [256, 256]  # Increased for better feature extraction with available VRAM
   image_extension: ".png"
-  batch_size: 128
+  batch_size: 512  # Doubled to leverage 16GB VRAM efficiently
   sample_fraction: 0.10
   validation_split: 0.20
   seed: 42
@@ -26,30 +26,30 @@ columns:
 # Experiment Configuration
 experiment:
   # Model parameters
-  learning_rate: 0.001
-  epochs: 10
+  learning_rate: 0.0015  # Slightly increased for faster convergence with larger batch size
+  epochs: 15  # Increased to allow more training iterations
   weight_decay: 0.0001
   freeze_backbone: true
-  dropout_rate: 0.5
+  dropout_rate: 0.3  # Reduced since larger batch size provides regularization
   fine_tune_layers_count: 0  # 0 = freeze all, negative = unfreeze last N layers
   num_classes: 1  # 1 for binary classification
   monitor_metric: "val_loss"  # val_loss, val_acc, val_f1, val_auroc
 
   # Training parameters
-  early_stopping_patience: 5
+  early_stopping_patience: 7  # Increased patience for longer training
   reduce_lr_patience: 3
   reduce_lr_factor: 0.5
   min_lr: 0.0000001
 
   # Federated Learning parameters
-  num_rounds: 10
+  num_rounds: 15  # Increased for better model convergence
   num_clients: 5
   clients_per_round: 3
-  local_epochs: 1
+  local_epochs: 2  # Increased to 2 for better local learning per round
 
   # System parameters
-  device: "auto"  # auto, cpu, cuda, mps
-  num_workers: 4
+  device: "cuda"  # auto, cpu, cuda, mps
+  num_workers: 10  # Increased for better data loading parallelism with powerful GPU
 
   # Image processing parameters
   color_mode: "RGB"  # RGB or L
@@ -57,9 +57,9 @@ experiment:
   augmentation_strength: 1.0  # 0.0 to 2.0
   use_custom_preprocessing: false
   validate_images_on_init: true
-  pin_memory: true
-  persistent_workers: false
-  prefetch_factor: 2
+  pin_memory: true  # Essential for GPU performance
+  persistent_workers: true  # Enabled to reduce worker startup overhead
+  prefetch_factor: 4  # Increased for better pipeline throughput
 
   # Custom preprocessing parameters
   contrast_stretch: true

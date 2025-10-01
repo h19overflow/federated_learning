@@ -261,7 +261,6 @@ class LitResNet(pl.LightningModule):
             factor=self.config.reduce_lr_factor,
             patience=self.config.reduce_lr_patience,
             min_lr=self.config.min_lr,
-            verbose=True
         )
 
         return {

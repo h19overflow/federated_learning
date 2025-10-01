@@ -36,7 +36,6 @@ def simple_training_example():
     )
     logger = logging.getLogger(__name__)
 
-    print("🏥 Simple Federated Pneumonia Detection Training")
     print("=" * 50)
 
     # Define paths
@@ -112,8 +111,6 @@ def simple_training_example():
 if __name__ == "__main__":
     try:
         results = simple_training_example()
-        print("\n🎉 Training pipeline completed!")
-
     except KeyboardInterrupt:
         print("\n⏹️  Training interrupted by user")
         sys.exit(1)
