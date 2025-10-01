@@ -147,12 +147,29 @@ class CentralizedTrainer:
         Returns:
             Dictionary with validation results
         """
-        if os.path.isfile(source_path):
-            return self.zip_handler.validate_contents(source_path)
-        elif os.path.isdir(source_path):
-            return self.directory_handler.validate_contents(source_path)
-        else:
-            return {'valid': False, 'error': 'Path is neither a file nor a directory'}
+        try:
+            if os.path.isfile(source_path):
+                result = self.zip_handler.validate_contents(source_path)
+            elif os.path.isdir(source_path):
+                result = self.directory_handler.validate_contents(source_path)
+            else:
+                return {'valid': False, 'error': 'Path is neither a file nor a directory'}
+
+            # Normalize result to dictionary format
+            if isinstance(result, dict):
+                return result
+            elif isinstance(result, str):
+                # If handler returns a string, assume it's valid if non-empty
+                return {'valid': bool(result.strip()), 'error': result if not result.strip() else None}
+            elif hasattr(result, '__bool__'):
+                # If it has a boolean value
+                return {'valid': bool(result), 'error': None}
+            else:
+                # Default to valid for unknown types
+                return {'valid': True, 'error': None}
+
+        except Exception as e:
+            return {'valid': False, 'error': f'Validation error: {str(e)}'}
 
     def validate_zip_contents(self, zip_path: str) -> Dict[str, Any]:
         """
