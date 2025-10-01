@@ -10,8 +10,8 @@ import os
 from pathlib import Path
 from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
-from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
-from federated_pneumonia_detection.src.entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 
 
 class TestEndToEndDataFlow:

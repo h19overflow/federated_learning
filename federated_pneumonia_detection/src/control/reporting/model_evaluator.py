@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import Dict, List, Tuple, Optional, Any
+from typing import List, Optional
 from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
@@ -20,7 +20,7 @@ from sklearn.metrics import (
 from sklearn.calibration import calibration_curve
 import pytorch_lightning as pl
 
-from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
+from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 from federated_pneumonia_detection.models.evaluation_metrics import  EvaluationMetrics
 

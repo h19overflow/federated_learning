@@ -12,8 +12,8 @@ import pytorch_lightning as pl
 import torchmetrics
 from torchvision.models import ResNet50_Weights
 
-from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
-from federated_pneumonia_detection.src.entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.src.entities.resnet_with_custom_head import ResNetWithCustomHead
 
 

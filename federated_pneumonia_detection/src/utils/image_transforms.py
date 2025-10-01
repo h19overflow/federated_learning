@@ -4,14 +4,13 @@ Provides configurable transform pipelines and custom preprocessing functions.
 """
 
 import logging
-from typing import Tuple, Optional, Union, Callable
+from typing import Optional, Callable
 import numpy as np
 from PIL import Image
-import torch
 import torchvision.transforms as transforms
 
-from ..entities.system_constants import SystemConstants
-from ..entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 
 
 class XRayPreprocessor:
@@ -117,7 +116,7 @@ class XRayPreprocessor:
         Returns:
             Edge-enhanced PIL image
         """
-        from PIL import ImageFilter, ImageEnhance
+        from PIL import ImageFilter
 
         # Apply unsharp mask filter
         enhanced = image.filter(ImageFilter.UnsharpMask(

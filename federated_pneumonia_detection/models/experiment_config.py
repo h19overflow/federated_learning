@@ -3,9 +3,9 @@ Experiment configuration for storing all experiment parameters.
 Contains learning rate, epochs, FL settings, and other hyperparameters.
 """
 
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from dataclasses import dataclass, field
-from .system_constants import SystemConstants
+from federated_pneumonia_detection.models.system_constants import SystemConstants
 
 
 @dataclass
@@ -68,7 +68,7 @@ class ExperimentConfig:
     edge_strength: float = 1.0
 
     # Paths and file settings
-    base_path: str = '.'
+    base_path: str = '../src/entities'
     checkpoint_dir: str = 'models/checkpoints'
     results_dir: str = 'results'
     log_dir: str = 'logs'

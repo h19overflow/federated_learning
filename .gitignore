@@ -9,5 +9,28 @@ wheels/
 # Virtual environments
 .venv
 .env
-.Test
-.Training
+
+# Dataset directories (contain large image files)
+Test/
+Training/
+data/
+*.png
+*.jpg
+*.jpeg
+*.dcm
+*.zip
+
+# Model checkpoints and outputs
+models/checkpoints/
+results/
+logs/*.log
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db

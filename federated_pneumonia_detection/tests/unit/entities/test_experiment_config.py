@@ -4,8 +4,8 @@ Tests configuration validation, parameter handling, and serialization.
 """
 
 import pytest
-from federated_pneumonia_detection.src.entities.experiment_config import ExperimentConfig
-from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
 
 
 class TestExperimentConfig:

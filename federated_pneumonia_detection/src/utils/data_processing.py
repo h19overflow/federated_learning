@@ -10,8 +10,8 @@ from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from ..entities.system_constants import SystemConstants
-from ..entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 
 
 def load_metadata(

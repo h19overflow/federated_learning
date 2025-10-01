@@ -4,7 +4,7 @@ Tests configuration values, validation, and custom creation methods.
 """
 
 import pytest
-from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
+from federated_pneumonia_detection.models.system_constants import SystemConstants
 
 
 class TestSystemConstants:

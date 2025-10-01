@@ -4,14 +4,14 @@ Provides configurable backbone freezing and fine-tuning capabilities.
 """
 
 import logging
-from typing import Optional, Union
+from typing import Optional
 import torch
 import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import ResNet50_Weights
 
-from .system_constants import SystemConstants
-from .experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 
 
 class ResNetWithCustomHead(nn.Module):
@@ -124,7 +124,7 @@ class ResNetWithCustomHead(nn.Module):
             head_sizes = custom_head_sizes
 
         # Build classifier layers
-        classifier_layers = [
+        classifier_layers: list[nn.Module] = [
             nn.AdaptiveAvgPool2d((1, 1)),  # Global average pooling
             nn.Flatten()
         ]

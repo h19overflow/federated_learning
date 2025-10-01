@@ -12,8 +12,8 @@ import torch
 import numpy as np
 from sklearn.utils import class_weight
 
-from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
-from federated_pneumonia_detection.src.entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 
 
 class HighestValRecallCallback(pl.Callback):
@@ -97,7 +97,7 @@ def prepare_trainer_and_callbacks_pl(
     patience = config.early_stopping_patience if config else 7
     min_delta = getattr(config, 'early_stopping_min_delta', 0.001)
     reduce_lr_patience = config.reduce_lr_patience if config else 3
-    max_epochs = config.max_epochs if config else 50
+    max_epochs = config.epochs if config else 50
 
     # Compute class weights
     class_weights = compute_class_weights_for_pl(train_df_for_weights, class_column)
@@ -197,12 +197,12 @@ def create_trainer_from_config(
         Configured PyTorch Lightning trainer
     """
     # Set deterministic training if seed is provided
-    if constants.random_seed is not None:
-        pl.seed_everything(constants.random_seed, workers=True)
+    if constants.SEED is not None:
+        pl.seed_everything(constants.SEED, workers=True)
 
     trainer = pl.Trainer(
         callbacks=callbacks,
-        max_epochs=config.max_epochs,
+        max_epochs=config.epochs,
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
         devices=1 if torch.cuda.is_available() else 'auto',
         precision='16-mixed' if torch.cuda.is_available() else 32,
@@ -210,7 +210,7 @@ def create_trainer_from_config(
         enable_checkpointing=True,
         enable_progress_bar=True,
         enable_model_summary=True,
-        deterministic=constants.random_seed is not None,
+        deterministic=constants.SEED is not None,
         gradient_clip_val=getattr(config, 'gradient_clip_val', 1.0),
         accumulate_grad_batches=getattr(config, 'accumulate_grad_batches', 1)
     )

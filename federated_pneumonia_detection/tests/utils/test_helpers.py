@@ -3,16 +3,15 @@ Test helper utilities and common testing functions.
 Provides reusable utilities for testing across all test modules.
 """
 
-import os
 import tempfile
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional, Union
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
-from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
-from federated_pneumonia_detection.src.entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 
 
 class TestHelpers:

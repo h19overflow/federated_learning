@@ -5,10 +5,10 @@ Tests data loading, sampling, splitting, and validation functionality.
 
 import pytest
 import pandas as pd
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
-from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
-from federated_pneumonia_detection.src.entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 
 
 class TestDataProcessor:

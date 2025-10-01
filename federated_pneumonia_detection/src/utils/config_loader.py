@@ -8,8 +8,8 @@ import logging
 from typing import Dict, Any, Optional
 import yaml
 
-from ..entities.system_constants import SystemConstants
-from ..entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 
 
 class ConfigLoader:

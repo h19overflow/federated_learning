@@ -3,7 +3,6 @@ Custom PyTorch Dataset for X-ray image loading and processing.
 Handles image file loading, transformations, and label management with comprehensive error handling.
 """
 
-import os
 import logging
 from typing import Tuple, Optional, Union, Callable
 from pathlib import Path
@@ -14,7 +13,7 @@ import pandas as pd
 from PIL import Image
 import numpy as np
 
-from .system_constants import SystemConstants
+from federated_pneumonia_detection.models.system_constants import SystemConstants
 
 
 class CustomImageDataset(Dataset):
