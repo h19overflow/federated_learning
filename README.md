@@ -24,27 +24,45 @@ This Final Year Project (FYP) implements a federated learning framework specific
 ```
 federated_pneumonia_detection/
 ├── src/
-│   ├── boundary/           # External interfaces and APIs
-│   ├── control/            # Business logic and orchestration
-│   │   ├── dl_model/       # Deep learning model management
-│   │   └── reporting/      # Evaluation and visualization
-│   ├── entities/           # Core domain objects
-│   └── utils/              # Shared utilities
-├── models/                 # Configuration and constants
-├── config/                 # Configuration files
-├── data/                   # Dataset management
-├── examples/               # Usage examples
-├── tests/                  # Test suites
-└── logs/                   # Training and execution logs
+│   ├── boundary/                    # External interfaces and APIs
+│   ├── control/                     # Business logic and orchestration
+│   │   ├── dl_model/                # Centralized training system
+│   │   │   ├── centralized_trainer.py
+│   │   │   └── utils/               # Training utilities
+│   │   ├── federated_learning/      # Federated learning system
+│   │   │   ├── client_app.py        # Flower FL client
+│   │   │   ├── server_app.py        # Flower FL server
+│   │   │   ├── federated_trainer.py # FL orchestrator
+│   │   │   ├── data_partitioner.py  # Client data splitting
+│   │   │   └── training_functions.py # Pure PyTorch training
+│   │   └── comparison/              # Experiment comparison system
+│   │       └── experiment_orchestrator.py
+│   ├── entities/                    # Core domain objects
+│   │   ├── resnet_with_custom_head.py
+│   │   └── custom_image_dataset.py
+│   └── utils/                       # Shared utilities
+│       ├── config_loader.py         # YAML configuration
+│       ├── data_processing.py       # Data utilities
+│       └── image_transforms.py      # Preprocessing
+├── models/                          # Configuration classes
+├── config/                          # YAML configuration files
+│   └── default_config.yaml          # Main configuration
+├── data/                            # Dataset management
+├── examples/                        # Usage examples
+├── tests/                           # Test suites
+└── logs/                            # Training and execution logs
 ```
 
 ### Core Components
 
-1. **Federated Learning Engine**: Implements FedAvg and advanced FL strategies
-2. **Data Pipeline**: Efficient image processing with custom transformations
-3. **Model Architecture**: ResNet-based architecture with custom heads
-4. **Evaluation System**: Comprehensive metrics including AUC, F1, sensitivity
-5. **Visualization Tools**: Training curves, confusion matrices, and model analysis
+1. **Dual Training Modes**: Centralized and federated learning with unified API
+2. **Federated Learning Engine**: Flower-based FL with FedAvg strategy
+3. **Data Partitioning**: IID, non-IID (patient-based), and stratified strategies
+4. **Model Architecture**: ResNet50 V2 backbone with custom classification head
+5. **Configuration System**: Single YAML file drives both training modes
+6. **Comparison Framework**: Side-by-side evaluation of both approaches
+7. **Data Pipeline**: Efficient preprocessing with custom X-ray transformations
+8. **Evaluation System**: Comprehensive metrics including AUC, F1, sensitivity
 
 ## 🚀 Quick Start
 
@@ -97,110 +115,229 @@ federated_pneumonia_detection/
 
 ## 💡 Usage Examples
 
-### Basic Data Pipeline
+### Quick Comparison (Centralized vs Federated)
+
+Compare both training approaches with a single command:
 
 ```python
-from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
-from federated_pneumonia_detection.src.utils.data_processing import load_and_split_data
-from federated_pneumonia_detection.src.control.dl_model.utils.model import XRayDataModule
+from federated_pneumonia_detection.src.control.comparison import run_quick_comparison
 
-# Load configuration
-config_loader = ConfigLoader()
-constants = config_loader.create_system_constants()
-config = config_loader.create_experiment_config()
-
-# Prepare data
-train_df, val_df = load_and_split_data(constants, config)
-
-# Create data module
-data_module = XRayDataModule(
-    train_df=train_df,
-    val_df=val_df,
-    constants=constants,
-    config=config,
-    image_dir="path/to/images"
+# Run both centralized and federated training, then compare
+results = run_quick_comparison(
+    source_path="path/to/dataset.zip",  # or directory path
+    config_path="federated_pneumonia_detection/config/default_config.yaml",
+    partition_strategy="non-iid"  # Options: 'iid', 'non-iid', 'stratified'
 )
+
+print(f"Results saved to: {results['experiment_dir']}")
+print(f"Centralized status: {results['centralized']['status']}")
+print(f"Federated status: {results['federated']['status']}")
 ```
 
 ### Centralized Training
 
 ```python
-from federated_pneumonia_detection.src.control.dl_model import CentralizedTrainer
+from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import CentralizedTrainer
 
 # Initialize trainer
 trainer = CentralizedTrainer(
-    constants=constants,
-    config=config,
-    logger=logger
+    config_path="federated_pneumonia_detection/config/default_config.yaml",
+    checkpoint_dir="centralized_checkpoints",
+    logs_dir="centralized_logs"
 )
 
-# Train model
-results = trainer.train_from_csv(
-    csv_path="metadata.csv",
-    image_dir="images/"
+# Train model from zip file or directory
+results = trainer.train(
+    source_path="dataset.zip",
+    experiment_name="pneumonia_centralized"
 )
 
-print(f"Training complete! Best validation accuracy: {results['best_val_acc']:.3f}")
+print(f"Best model: {results['best_model_path']}")
+print(f"Best score: {results['best_model_score']:.4f}")
+print(f"Final metrics: {results['final_metrics']}")
 ```
 
-### Model Evaluation
+### Federated Learning
 
 ```python
-from federated_pneumonia_detection.src.control.reporting import ModelEvaluator
+from federated_pneumonia_detection.src.control.federated_learning.federated_trainer import FederatedTrainer
 
-# Evaluate model
-evaluator = ModelEvaluator(constants, config)
-metrics = evaluator.evaluate_model(
-    model=trained_model,
-    test_loader=test_dataloader
+# Initialize federated trainer
+trainer = FederatedTrainer(
+    config_path="federated_pneumonia_detection/config/default_config.yaml",
+    checkpoint_dir="federated_checkpoints",
+    logs_dir="federated_logs",
+    partition_strategy="non-iid"  # Patient-based partitioning
 )
 
-print(f"Test Metrics:")
-print(f"  AUC: {metrics['auc']:.3f}")
-print(f"  F1 Score: {metrics['f1']:.3f}")
-print(f"  Sensitivity: {metrics['sensitivity']:.3f}")
-print(f"  Specificity: {metrics['specificity']:.3f}")
+# Run federated training
+results = trainer.train(
+    source_path="dataset.zip",
+    experiment_name="pneumonia_federated"
+)
+
+print(f"Federated training completed")
+print(f"Number of clients: {results['num_clients']}")
+print(f"Number of rounds: {results['num_rounds']}")
+print(f"Final model: {results['checkpoint_dir']}")
 ```
 
-### Complete Pipeline Example
+### Advanced Orchestration
 
-Run the complete pipeline demonstration:
+For full control over experiments:
+
+```python
+from federated_pneumonia_detection.src.control.comparison import ExperimentOrchestrator
+
+# Create orchestrator
+orchestrator = ExperimentOrchestrator(
+    config_path="federated_pneumonia_detection/config/default_config.yaml",
+    base_output_dir="experiments",
+    partition_strategy="stratified"
+)
+
+# Run individual experiments
+centralized_results = orchestrator.run_centralized("dataset.zip")
+federated_results = orchestrator.run_federated("dataset.zip")
+
+# Or run full comparison
+comparison = orchestrator.run_comparison("dataset.zip")
+
+print(f"Experiment directory: {orchestrator.experiment_dir}")
+```
+
+### Configuration Loading
+
+```python
+from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
+
+# Load configuration from YAML
+config_loader = ConfigLoader(config_dir="federated_pneumonia_detection/config")
+constants = config_loader.create_system_constants()
+config = config_loader.create_experiment_config()
+
+print(f"Image size: {constants.IMG_SIZE}")
+print(f"Batch size: {config.batch_size}")
+print(f"Learning rate: {config.learning_rate}")
+print(f"FL rounds: {config.num_rounds}")
+print(f"FL clients: {config.num_clients}")
+```
+
+### Complete Examples
+
+See detailed usage examples:
 
 ```bash
-python federated_pneumonia_detection/examples/complete_data_pipeline_example.py
+# View usage examples
+cat USAGE_EXAMPLE.md
+
+# View implementation summary
+cat FEDERATED_INTEGRATION_SUMMARY.md
 ```
 
 ## ⚙️ Configuration
 
-### System Constants
+All configuration is centralized in `config/default_config.yaml`. Both centralized and federated training use the same configuration file.
 
-Configure dataset paths and processing parameters in `SystemConstants`:
+### Configuration File Structure
 
-```python
-class SystemConstants:
-    BASE_PATH: str = "data/"
-    METADATA_FILENAME: str = "train_metadata.csv"
-    IMG_SIZE: Tuple[int, int] = (224, 224)
-    PATIENT_ID_COLUMN: str = "patient_id"
-    TARGET_COLUMN: str = "label"
-    FILENAME_COLUMN: str = "filename"
+```yaml
+# System Constants
+system:
+  img_size: [256, 256]
+  image_extension: ".png"
+  batch_size: 512
+  sample_fraction: 0.10
+  validation_split: 0.20
+  seed: 42
+
+# File Paths
+paths:
+  base_path: "."
+  main_images_folder: "Images"
+  images_subfolder: "Images"
+  metadata_filename: "Train_metadata.csv"
+
+# Data Column Names
+columns:
+  patient_id: "patientId"
+  target: "Target"
+  filename: "filename"
+
+# Experiment Configuration
+experiment:
+  # Model parameters (shared by both centralized and federated)
+  learning_rate: 0.0015
+  epochs: 15              # For centralized training
+  weight_decay: 0.0001
+  freeze_backbone: true
+  dropout_rate: 0.3
+  num_classes: 1
+
+  # Training parameters
+  early_stopping_patience: 7
+  reduce_lr_patience: 3
+  reduce_lr_factor: 0.5
+
+  # Federated Learning parameters
+  num_rounds: 15          # Number of FL communication rounds
+  num_clients: 5          # Total number of simulated clients
+  clients_per_round: 3    # Clients participating per round
+  local_epochs: 2         # Epochs each client trains locally
+
+  # System parameters
+  device: "cuda"
+  num_workers: 10
+
+  # Image processing
+  color_mode: "RGB"
+  use_imagenet_norm: true
+  augmentation_strength: 1.0
+  validate_images_on_init: true
+
+# Output Directories
+output:
+  checkpoint_dir: "models/checkpoints"
+  results_dir: "results"
+  log_dir: "logs"
 ```
 
-### Experiment Configuration
+### Programmatic Configuration
 
-Customize training parameters in `ExperimentConfig`:
+Load configuration using `ConfigLoader`:
 
 ```python
-config = ExperimentConfig(
-    learning_rate=0.001,
-    epochs=50,
-    batch_size=32,
-    num_clients=5,          # For federated learning
-    num_rounds=10,          # FL communication rounds
-    validation_split=0.2,
-    augmentation_strength=1.0
-)
+from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
+
+# Load from default config
+config_loader = ConfigLoader(config_dir="federated_pneumonia_detection/config")
+constants = config_loader.create_system_constants()
+config = config_loader.create_experiment_config()
+
+# Or load custom config
+custom_config = config_loader.load_config("custom_config.yaml")
+constants = config_loader.create_system_constants(custom_config)
+config = config_loader.create_experiment_config(custom_config)
 ```
+
+### Data Partitioning Strategies
+
+Configure how data is split across federated clients:
+
+- **IID (Independent and Identically Distributed)**: Random distribution
+  ```python
+  trainer = FederatedTrainer(partition_strategy="iid")
+  ```
+
+- **Non-IID (Patient-based)**: Each client gets distinct patients (realistic for medical scenarios)
+  ```python
+  trainer = FederatedTrainer(partition_strategy="non-iid")
+  ```
+
+- **Stratified**: Maintains class balance across clients
+  ```python
+  trainer = FederatedTrainer(partition_strategy="stratified")
+  ```
 
 ## 🧪 Testing
 
@@ -245,28 +382,101 @@ The system includes comprehensive visualization capabilities:
 
 ## 🔮 Federated Learning Features
 
-### Supported Strategies
+### Flower Integration
 
-- **FedAvg**: Standard federated averaging
-- **Advanced Strategies**: Custom aggregation methods
-- **Client Selection**: Smart client sampling
-- **Privacy Mechanisms**: Differential privacy support
+Built on [Flower](https://flower.dev/) framework for production-ready federated learning:
+
+- **FedAvg Strategy**: Standard federated averaging algorithm
+- **Configurable Clients**: Simulate multiple medical institutions
+- **Privacy-Preserving**: Data never leaves client devices
+- **Scalable Architecture**: Ready for real-world deployment
+
+### Key Features
+
+1. **Unified Model Architecture**: Same `ResNetWithCustomHead` used in both centralized and federated modes
+2. **Flexible Data Partitioning**: IID, non-IID (patient-based), and stratified strategies
+3. **Configuration-Driven**: All FL parameters in `default_config.yaml`
+4. **Easy Comparison**: Side-by-side evaluation with centralized training
+
+### Data Partitioning
+
+The system supports three partitioning strategies optimized for medical data:
+
+#### IID (Independent and Identically Distributed)
+```python
+from federated_pneumonia_detection.src.control.federated_learning.data_partitioner import partition_data_iid
+
+partitions = partition_data_iid(df, num_clients=5, seed=42)
+```
+- Random distribution of samples across clients
+- Each client gets similar data distribution
+- Good baseline for FL experiments
+
+#### Non-IID (Patient-based)
+```python
+from federated_pneumonia_detection.src.control.federated_learning.data_partitioner import partition_data_by_patient
+
+partitions = partition_data_by_patient(
+    df,
+    num_clients=5,
+    patient_column="patientId",
+    seed=42
+)
+```
+- Each client gets data from distinct patients
+- More realistic for medical scenarios
+- Simulates real hospital data distribution
+
+#### Stratified
+```python
+from federated_pneumonia_detection.src.control.federated_learning.data_partitioner import partition_data_stratified
+
+partitions = partition_data_stratified(
+    df,
+    num_clients=5,
+    target_column="Target",
+    seed=42
+)
+```
+- Maintains class balance across all clients
+- Good for imbalanced datasets
+- Ensures fair performance evaluation
 
 ### Multi-Institution Simulation
 
 ```python
-# Simulate multiple medical institutions
-from federated_pneumonia_detection.src.control import AdvancedTrainingStrategies
+from federated_pneumonia_detection.src.control.federated_learning.federated_trainer import FederatedTrainer
 
-fl_trainer = AdvancedTrainingStrategies(
-    num_clients=5,
-    num_rounds=20,
-    client_fraction=0.6
+# Simulate 5 hospitals collaborating
+trainer = FederatedTrainer(
+    config_path="config/default_config.yaml",
+    partition_strategy="non-iid"  # Patient-based partitioning
 )
 
-results = fl_trainer.federated_training(
-    client_datasets=client_data
+# Run federated training
+results = trainer.train(
+    source_path="hospital_dataset.zip",
+    experiment_name="multi_hospital_fl"
 )
+
+print(f"Trained across {results['num_clients']} institutions")
+print(f"Completed {results['num_rounds']} communication rounds")
+```
+
+### Comparison with Centralized
+
+The system makes it easy to compare federated and centralized approaches:
+
+```python
+from federated_pneumonia_detection.src.control.comparison import ExperimentOrchestrator
+
+orchestrator = ExperimentOrchestrator(partition_strategy="non-iid")
+
+# Run both and compare
+comparison = orchestrator.run_comparison("dataset.zip")
+
+# Results automatically saved with metrics comparison
+print(f"Results: {orchestrator.experiment_dir}/comparison_report.json")
 ```
 
 ## 🛠️ Development
