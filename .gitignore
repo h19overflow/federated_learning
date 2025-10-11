@@ -20,10 +20,13 @@ data/
 *.dcm
 *.zip
 
+
 # Model checkpoints and outputs
 models/checkpoints/
 results/
 logs/*.log
+/simple_logs/
+/simple_checkpoints/
 
 # IDE files
 .idea/
