@@ -479,31 +479,66 @@ comparison = orchestrator.run_comparison("dataset.zip")
 print(f"Results: {orchestrator.experiment_dir}/comparison_report.json")
 ```
 
+## 📚 Additional Documentation
+
+### Detailed Guides
+
+- **[USAGE_EXAMPLE.md](USAGE_EXAMPLE.md)** - Comprehensive usage examples for all features
+- **[FEDERATED_INTEGRATION_SUMMARY.md](FEDERATED_INTEGRATION_SUMMARY.md)** - Complete implementation overview
+- **[documentation/guidelines.md](documentation/guidelines.md)** - Development guidelines and project phases
+
+### Key Features Summary
+
+✅ **Dual Training Modes**: Run centralized or federated learning with identical API
+✅ **Configuration-Driven**: Single YAML file controls all parameters
+✅ **Model Consistency**: Same ResNet50 V2 architecture for fair comparison
+✅ **Flexible Partitioning**: IID, non-IID (patient-based), and stratified strategies
+✅ **Easy Comparison**: Built-in orchestrator for side-by-side evaluation
+✅ **Component Reuse**: Maximum code reuse between approaches
+✅ **Production-Ready**: Built on Flower framework for real-world deployment
+
+### Recent Updates
+
+#### Federated Learning Integration (Latest)
+- Implemented Flower-based federated learning system
+- Added three data partitioning strategies (IID, non-IID, stratified)
+- Created unified API for both centralized and federated training
+- Built comparison framework for easy evaluation
+- Maintained 100% component reuse from existing system
+- Added comprehensive documentation and examples
+
 ## 🛠️ Development
 
 ### Project Structure Philosophy
 
-This project follows **Clean Architecture** principles:
+This project follows **Clean Architecture** principles with **Entity-Control-Boundary (ECB)** pattern:
 
-- **Entities**: Core business logic and domain models
-- **Use Cases**: Application-specific business rules
-- **Interface Adapters**: Controllers, presenters, and gateways
-- **Frameworks & Drivers**: External concerns (PyTorch, file I/O)
+- **Entities** (`src/entities/`): Core domain objects and data structures
+- **Control** (`src/control/`): Business logic and orchestration
+  - `dl_model/`: Centralized training system
+  - `federated_learning/`: Federated learning system
+  - `comparison/`: Experiment orchestration
+- **Boundary** (`src/boundary/`): External interfaces and APIs
+- **Utils** (`src/utils/`): Shared utilities and helpers
 
 ### Adding New Features
 
-1. **Models**: Add new configurations to `models/`
-2. **Data Processing**: Extend utilities in `src/utils/`
-3. **Training Logic**: Implement in `src/control/`
-4. **Tests**: Always add corresponding tests
-5. **Documentation**: Update README and docstrings
+1. **Configuration**: Add parameters to `config/default_config.yaml`
+2. **Models**: Create/extend entities in `src/entities/`
+3. **Data Processing**: Extend utilities in `src/utils/`
+4. **Training Logic**: Implement in `src/control/`
+5. **Tests**: Add unit and integration tests
+6. **Documentation**: Update README and add docstrings
 
-### Code Quality
+### Code Quality Standards
 
 - **Type Hints**: Full type annotation coverage
-- **Docstrings**: Comprehensive documentation
+- **Docstrings**: Comprehensive documentation for all public methods
 - **Testing**: >90% code coverage target
 - **Linting**: Follow PEP 8 standards
+- **SOLID Principles**: Single Responsibility, Dependency Injection
+- **File Size**: Maximum 150 lines per file
+- **Error Handling**: Comprehensive try-catch with logging
 
 ## 🤝 Contributing
 
