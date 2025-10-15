@@ -30,8 +30,8 @@ class FederatedTrainer:
     def __init__(
         self,
         config_path: Optional[str] = None,
-        checkpoint_dir: str = "federated_checkpoints",
-        logs_dir: str = "federated_logs",
+        checkpoint_dir: str = "fed_results/federated_checkpoints",
+        logs_dir: str = "fed_results/federated_logs",
         partition_strategy: str = "iid"
     ):
         """
@@ -43,6 +43,10 @@ class FederatedTrainer:
             logs_dir: Directory to save training logs
             partition_strategy: Data partitioning strategy ('iid', 'non-iid', 'stratified')
         """
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
+        if not os.path.exists(logs_dir):
+            os.makedirs(logs_dir)
         self.checkpoint_dir = checkpoint_dir
         self.logs_dir = logs_dir
         self.partition_strategy = partition_strategy
@@ -66,6 +70,8 @@ class FederatedTrainer:
         # Update config checkpoint_dir if not set
         if not hasattr(self.config, 'checkpoint_dir'):
             self.config.checkpoint_dir = self.checkpoint_dir
+        if not hasattr(self.config, 'logs_dir'):
+            self.config.logs_dir = self.logs_dir
 
         # Create directories
         os.makedirs(self.checkpoint_dir, exist_ok=True)
