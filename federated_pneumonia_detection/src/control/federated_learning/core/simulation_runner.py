@@ -15,8 +15,8 @@ from flwr.server import ServerApp, ServerConfig
 from flwr.server.strategy import FedAvg
 from flwr.simulation import run_simulation
 
-from federated_pneumonia_detection.src.entities.system_constants import SystemConstants
-from federated_pneumonia_detection.src.entities.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.src.entities.resnet_with_custom_head import ResNetWithCustomHead
 from federated_pneumonia_detection.src.control.federated_learning.data.client_data import ClientDataManager
 from federated_pneumonia_detection.src.control.federated_learning.training.functions import (

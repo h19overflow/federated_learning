@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import torch
 
-from federated_pneumonia_detection.src.control.federated_learning import server_app, client_app
+from federated_pneumonia_detection.src.control.federated_learning._old_reference import server_app, client_app
 
 
 @pytest.mark.unit

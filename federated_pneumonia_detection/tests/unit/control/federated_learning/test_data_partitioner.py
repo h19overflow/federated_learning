@@ -6,7 +6,7 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from federated_pneumonia_detection.src.control.federated_learning.data_partitioner import (
+from federated_pneumonia_detection.src.control.federated_learning.data.partitioner import (
     partition_data_iid,
     partition_data_by_patient,
     partition_data_stratified

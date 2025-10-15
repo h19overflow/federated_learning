@@ -6,16 +6,13 @@ import pytest
 import torch
 import torch.nn as nn
 import numpy as np
-from unittest.mock import Mock, patch, MagicMock
 
-from federated_pneumonia_detection.src.control.federated_learning.training_functions import (
+from federated_pneumonia_detection.src.control.federated_learning.training.functions import (
     train_one_epoch,
     evaluate_model,
     get_model_parameters,
     set_model_parameters,
     create_optimizer,
-    get_model_state_dict,
-    load_model_state_dict,
     train_multiple_epochs
 )
 

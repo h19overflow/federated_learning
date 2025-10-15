@@ -10,7 +10,7 @@ import yaml
 
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
-
+from pathlib import Path
 
 class ConfigLoader:
     """
@@ -29,7 +29,7 @@ class ConfigLoader:
         self.config_dir = config_dir
         self.logger = logging.getLogger(__name__)
 
-    def load_config(self, config_file: str = "default_config.yaml") -> Dict[str, Any]:
+    def load_config(self, config_file: str = "federated_pneumonia_detection/config/default_config.yaml") -> Dict[str, Any]:
         """
         Load configuration from YAML file.
 
