@@ -65,7 +65,7 @@ def compute_class_weights_for_pl(train_df, class_column: str = 'Target') -> Opti
         logging.getLogger(__name__).error(f"Failed to compute class weights: {e}")
         return None
 
-
+# TODO , add actual reduce lr on pl trainer 
 def prepare_trainer_and_callbacks_pl(
     train_df_for_weights,
     class_column: str = 'Target',
@@ -111,7 +111,8 @@ def prepare_trainer_and_callbacks_pl(
         save_top_k=3,
         save_last=True,
         auto_insert_metric_name=False,
-        verbose=True
+        verbose=True,
+        
     )
 
     # Additional checkpoint for validation loss (backup metric)
@@ -132,13 +133,15 @@ def prepare_trainer_and_callbacks_pl(
         patience=patience,
         min_delta=min_delta,
         verbose=True,
-        strict=True
+        strict=True,
+        
     )
 
     # Learning rate monitor
     lr_monitor = LearningRateMonitor(
         logging_interval='epoch',
-        log_momentum=True
+        log_momentum=True,
+        
     )
 
     # Custom highest recall tracker
