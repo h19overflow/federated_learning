@@ -19,7 +19,7 @@ from sklearn.metrics import (
 )
 from sklearn.calibration import calibration_curve
 import pytorch_lightning as pl
-
+from federated_pneumonia_detection.src.utils.logger import get_logger
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 from federated_pneumonia_detection.models.evaluation_metrics import  EvaluationMetrics
@@ -43,6 +43,7 @@ class ModelEvaluator:
         Args:
             config_path: Path to configuration file
         """
+        self.logger = get_logger(__name__)
         self.config = ConfigLoader.load_config(config_path) if config_path else {}
         self.constants = SystemConstants()
 
@@ -66,12 +67,15 @@ class ModelEvaluator:
             EvaluationMetrics: Comprehensive evaluation metrics
         """
         # Ensure output directory exists
+        self.logger.info(f"Creating output directory: {output_dir}")
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
         # Set model to evaluation mode
+        self.logger.info(f"Setting model to evaluation mode")
         model.eval()
 
         # Collect predictions and ground truth
+        self.logger.info(f"Collecting predictions and ground truth")
         all_predictions = []
         all_probabilities = []
         all_labels = []
@@ -79,33 +83,41 @@ class ModelEvaluator:
         with torch.no_grad():
             for batch in dataloader:
                 images, labels = batch
+                self.logger.info(f"Processing batch: {images.shape}, {labels.shape}")
                 if torch.cuda.is_available():
                     images, labels = images.cuda(), labels.cuda()
 
                 # Get model outputs
+                self.logger.info(f"Getting model outputs")
                 logits = model(images)
                 probabilities = torch.softmax(logits, dim=1)[:, 1]  # Probability of positive class
                 predictions = (probabilities > 0.5).int()
 
+                self.logger.info(f"Predictions: {predictions.shape}, Probabilities: {probabilities.shape}")
                 all_predictions.extend(predictions.cpu().numpy())
                 all_probabilities.extend(probabilities.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
 
         # Convert to numpy arrays
+        self.logger.info(f"Converting to numpy arrays")
         y_true = np.array(all_labels)
         y_pred = np.array(all_predictions)
         y_prob = np.array(all_probabilities)
 
         # Calculate comprehensive metrics
+        self.logger.info(f"Calculating comprehensive metrics")
         metrics = self._calculate_metrics(y_true, y_pred, y_prob)
 
         # Generate visualizations
+        self.logger.info(f"Generating visualizations")
         self._create_visualizations(y_true, y_pred, y_prob, output_dir, model_name)
 
         # Save detailed report
+        self.logger.info(f"Saving detailed report")
         self._save_detailed_report(metrics, y_true, y_pred, output_dir, model_name)
 
         # Save metrics
+        self.logger.info(f"Saving metrics")
         metrics.to_json(os.path.join(output_dir, f"{model_name}_metrics.json"))
 
         return metrics
@@ -119,33 +131,40 @@ class ModelEvaluator:
         """Calculate comprehensive evaluation metrics."""
 
         # Confusion matrix components
+        self.logger.info(f"Calculating confusion matrix components")
         tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
 
         # Basic metrics
+        self.logger.info(f"Calculating basic metrics")
         accuracy = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred, zero_division=0)
         recall = recall_score(y_true, y_pred, zero_division=0)
         f1 = f1_score(y_true, y_pred, zero_division=0)
 
         # Medical domain metrics
+        self.logger.info(f"Calculating medical domain metrics")
         sensitivity = recall  # Same as recall
         specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
         ppv = precision  # Same as precision
         npv = tn / (tn + fn) if (tn + fn) > 0 else 0.0
 
         # Advanced metrics
+        self.logger.info(f"Calculating advanced metrics")
         roc_auc = roc_auc_score(y_true, y_prob) if len(np.unique(y_true)) > 1 else 0.0
         pr_auc = average_precision_score(y_true, y_prob) if len(np.unique(y_true)) > 1 else 0.0
         avg_precision = average_precision_score(y_true, y_prob) if len(np.unique(y_true)) > 1 else 0.0
 
         # Confidence metrics
+        self.logger.info(f"Calculating confidence metrics")
         mean_confidence = float(np.mean(y_prob))
         confidence_std = float(np.std(y_prob))
 
         # Calibration error (Brier score approximation)
+        self.logger.info(f"Calculating calibration error")
         calibration_error = float(np.mean((y_prob - y_true) ** 2))
 
         # Sample information
+        self.logger.info(f"Calculating sample information")
         total_samples = len(y_true)
         positive_samples = np.sum(y_true)
         negative_samples = total_samples - positive_samples
@@ -185,6 +204,7 @@ class ModelEvaluator:
         """Create comprehensive visualization plots."""
 
         # Set style
+        self.logger.info(f"Setting style")
         plt.style.use('default')
         sns.set_palette("husl")
 

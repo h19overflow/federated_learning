@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split
 
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.src.utils.logger import get_logger
 
 
 def load_metadata(
@@ -35,24 +36,28 @@ def load_metadata(
         ValueError: If required columns are missing or data is invalid
     """
     if logger is None:
-        logger = logging.getLogger(__name__)
+        logger = get_logger(__name__)
 
     metadata_path = Path(metadata_path)
 
     if not metadata_path.exists():
+        logger.error(f"Metadata file not found: {metadata_path}")
         raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
 
     try:
         df = pd.read_csv(metadata_path)
         logger.info(f"Loaded metadata: {len(df)} samples from {metadata_path}")
     except Exception as e:
+        logger.error(f"Failed to load metadata file: {e}")
         raise ValueError(f"Failed to load metadata file: {e}")
 
     # Validate required columns
     if constants.PATIENT_ID_COLUMN not in df.columns:
+        logger.error(f"Missing column: {constants.PATIENT_ID_COLUMN}")
         raise ValueError(f"Missing column: {constants.PATIENT_ID_COLUMN}")
 
     if constants.TARGET_COLUMN not in df.columns:
+        logger.error(f"Missing column: {constants.TARGET_COLUMN}")
         raise ValueError(f"Missing column: {constants.TARGET_COLUMN}")
 
     # Prepare filename column
@@ -66,6 +71,7 @@ def load_metadata(
 
     # Basic validation
     if df.empty:
+        logger.error("DataFrame is empty")
         raise ValueError("DataFrame is empty")
 
     # Check for missing values in critical columns
@@ -77,6 +83,7 @@ def load_metadata(
 
     for col in required_columns:
         if df[col].isna().any():
+            logger.error(f"Missing values found in column: {col}")
             raise ValueError(f"Missing values found in column: {col}")
 
     logger.info(f"Metadata prepared successfully: {len(df)} samples")
@@ -107,10 +114,11 @@ def sample_dataframe(
         ValueError: If sampling fails or parameters are invalid
     """
     if logger is None:
-        logger = logging.getLogger(__name__)
+        logger = get_logger(__name__)
 
     if not 0.0 < sample_fraction <= 1.0:
-        raise ValueError("sample_fraction must be between 0.0 and 1.0")
+        logger.error("sample_fraction must be between 0.0 and 1.0")
+        raise ValueError("sample_fraction must be between 0.0 and 1.0") from ValueError
 
     if sample_fraction >= 1.0:
         logger.info("Using full dataset (sample_fraction >= 1.0)")
@@ -135,6 +143,7 @@ def sample_dataframe(
         return df_sample
 
     except Exception as e:
+        logger.error(f"Data sampling failed: {e}")
         raise ValueError(f"Data sampling failed: {e}")
 
 
@@ -162,9 +171,10 @@ def create_train_val_split(
         ValueError: If split fails or parameters are invalid
     """
     if logger is None:
-        logger = logging.getLogger(__name__)
+        logger = get_logger(__name__)
 
     if not 0.0 < validation_split < 1.0:
+        logger.error("validation_split must be between 0.0 and 1.0")
         raise ValueError("validation_split must be between 0.0 and 1.0")
 
     try:
@@ -184,6 +194,7 @@ def create_train_val_split(
         return train_df, val_df
 
     except Exception as e:
+        logger.error(f"Train/validation split failed: {e}")
         raise ValueError(f"Train/validation split failed: {e}")
 
 
@@ -232,7 +243,7 @@ def load_and_split_data(
 
     except Exception as e:
         logger.error(f"Data processing pipeline failed: {e}")
-        raise
+        raise ValueError(f"Data processing pipeline failed: {e}") from e
 
 
 def validate_image_paths(
@@ -250,7 +261,7 @@ def validate_image_paths(
         True if paths exist, False otherwise
     """
     if logger is None:
-        logger = logging.getLogger(__name__)
+        logger = get_logger(__name__)
 
     main_images_path = os.path.join(constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER)
     image_dir_path = os.path.join(main_images_path, constants.IMAGES_SUBFOLDER)
@@ -277,6 +288,7 @@ def get_image_directory_path(constants: SystemConstants) -> str:
     Returns:
         Full path to image directory
     """
+    logger = get_logger(__name__)
     main_images_path = os.path.join(constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER)
     return os.path.join(main_images_path, constants.IMAGES_SUBFOLDER)
 
@@ -292,6 +304,7 @@ def get_data_statistics(df: pd.DataFrame, target_column: str) -> dict:
     Returns:
         Dictionary with statistics
     """
+    logger = get_logger(__name__)
     stats = {
         'total_samples': len(df),
         'class_distribution': df[target_column].value_counts().to_dict(),
@@ -317,7 +330,7 @@ class DataProcessor:
     def __init__(self, constants: SystemConstants):
         """Initialize with system constants."""
         self.constants = constants
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
         self.logger.warning(
             "DataProcessor class is deprecated. "
             "Use load_and_split_data() function instead."
@@ -357,6 +370,7 @@ class DataProcessor:
     def _validate_data(self, df: pd.DataFrame) -> None:
         """Validate data (backward compatibility wrapper)."""
         if df.empty:
+            self.logger.error("DataFrame is empty")
             raise ValueError("DataFrame is empty")
 
         required_columns = [
@@ -367,10 +381,12 @@ class DataProcessor:
 
         missing_cols = [col for col in required_columns if col not in df.columns]
         if missing_cols:
+            self.logger.error(f"Missing required columns: {missing_cols}")
             raise ValueError(f"Missing required columns: {missing_cols}")
 
         for col in required_columns:
             if df[col].isna().any():
+                self.logger.error(f"Missing values found in column: {col}")
                 raise ValueError(f"Missing values found in column: {col}")
 
     def _sample_data(self, df: pd.DataFrame, sample_fraction: float, seed: int) -> pd.DataFrame:

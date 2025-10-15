@@ -11,6 +11,7 @@ import torchvision.transforms as transforms
 
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.src.utils.logger import get_logger
 
 
 class XRayPreprocessor:
@@ -27,7 +28,7 @@ class XRayPreprocessor:
         Args:
             logger: Optional logger instance
         """
-        self.logger = logger or logging.getLogger(__name__)
+        self.logger = logger or get_logger(__name__)
 
     @staticmethod
     def contrast_stretch_percentile(
@@ -82,7 +83,7 @@ class XRayPreprocessor:
         try:
             import cv2
         except ImportError:
-            logging.warning("OpenCV not available, skipping adaptive histogram equalization")
+            self.logger.warning("OpenCV not available, skipping adaptive histogram equalization")
             return image
 
         # Convert PIL to OpenCV format
@@ -196,7 +197,7 @@ class TransformBuilder:
         self.constants = constants
         self.config = config
         self.preprocessor = XRayPreprocessor()
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
 
     def build_training_transforms(
         self,
@@ -338,6 +339,7 @@ class TransformBuilder:
             List of normalization transforms
         """
         # Check if ImageNet normalization should be used
+        self.logger.info(f"use_imagenet_norm: {getattr(self.config, 'use_imagenet_norm', True)}")
         use_imagenet_norm = getattr(self.config, 'use_imagenet_norm', True)
 
         if use_imagenet_norm:

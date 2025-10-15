@@ -17,6 +17,7 @@ import plotly.offline as pyo
 
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
+from federated_pneumonia_detection.src.utils.logger import get_logger
 
 
 class TrainingVisualizer:
@@ -35,7 +36,7 @@ class TrainingVisualizer:
         """Initialize visualizer with configuration."""
         self.config = ConfigLoader.load_config(config_path) if config_path else {}
         self.constants = SystemConstants()
-
+        self.logger = get_logger(__name__)
         # Set plotting style
         plt.style.use('seaborn-v0_8')
         sns.set_palette("husl")
@@ -58,22 +59,25 @@ class TrainingVisualizer:
             Dictionary with training statistics and analysis
         """
         # Ensure output directory exists
+        self.logger.info(f"Creating output directory: {output_dir}")
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
         # Parse TensorBoard logs
         training_data = self._parse_tensorboard_logs(log_dir)
 
         if not training_data:
-            print(f"Warning: No training data found in {log_dir}")
+            self.logger.warning(f"No training data found in {log_dir}")
             return {}
 
         # Create visualizations
+        self.logger.info(f"Creating visualizations")
         self._create_loss_curves(training_data, output_dir, experiment_name)
         self._create_metrics_dashboard(training_data, output_dir, experiment_name)
         self._create_learning_rate_plot(training_data, output_dir, experiment_name)
         self._create_interactive_dashboard(training_data, output_dir, experiment_name)
 
         # Generate training statistics
+        self.logger.info(f"Generating training statistics")
         stats = self._calculate_training_statistics(training_data)
 
         # Save training report

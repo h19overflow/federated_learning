@@ -4,14 +4,13 @@ Handles loading from YAML files and environment variables with validation.
 """
 
 import os
-import logging
 from typing import Dict, Any, Optional
 import yaml
 
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from pathlib import Path
-
+from federated_pneumonia_detection.src.utils.logger import get_logger
 class ConfigLoader:
     """
     Load and manage configuration from YAML files and environment variables.
@@ -27,7 +26,7 @@ class ConfigLoader:
             config_dir: Directory containing configuration files
         """
         self.config_dir = config_dir
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
 
     def load_config(self, config_file: str = "federated_pneumonia_detection/config/default_config.yaml") -> Dict[str, Any]:
         """
@@ -52,6 +51,7 @@ class ConfigLoader:
             config_path = os.path.join(self.config_dir, config_file)
 
         if not os.path.exists(config_path):
+            self.logger.error(f"Configuration file not found: {config_path}")
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
         try:
@@ -63,10 +63,10 @@ class ConfigLoader:
 
         except yaml.YAMLError as e:
             self.logger.error(f"Error parsing YAML config: {e}")
-            raise
+            raise yaml.YAMLError(f"Error parsing YAML config: {e}")
         except Exception as e:
             self.logger.error(f"Error loading configuration: {e}")
-            raise
+            raise Exception(f"Error loading configuration: {e}") from e
 
     def create_system_constants(self, config: Optional[Dict[str, Any]] = None) -> SystemConstants:
         """
@@ -195,7 +195,7 @@ class ConfigLoader:
 
         except Exception as e:
             self.logger.error(f"Failed to save configuration: {e}")
-            raise
+            raise Exception(f"Failed to save configuration: {e}") from e
 
     def override_from_env(self, config: Dict[str, Any], prefix: str = "FPD_") -> Dict[str, Any]:
         """
@@ -228,6 +228,7 @@ class ConfigLoader:
         if env_overrides:
             self.logger.info(f"Applied environment overrides: {list(env_overrides.keys())}")
             # Simple merge - could be enhanced for nested dictionaries
+            self.logger.info(f"Environment overrides: {env_overrides}")
             config.update(env_overrides)
 
         return config

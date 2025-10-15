@@ -3,7 +3,6 @@ ResNet50 V2 with custom classification head for pneumonia detection.
 Provides configurable backbone freezing and fine-tuning capabilities.
 """
 
-import logging
 from typing import Optional
 import torch
 import torch.nn as nn
@@ -12,6 +11,7 @@ from torchvision.models import ResNet50_Weights
 
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.src.utils.logger import get_logger
 
 
 class ResNetWithCustomHead(nn.Module):
@@ -51,7 +51,7 @@ class ResNetWithCustomHead(nn.Module):
 
         self.constants = constants
         self.config = config
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
 
         # Set parameters from config with overrides
         self.num_classes = num_classes
@@ -88,12 +88,15 @@ class ResNetWithCustomHead(nn.Module):
     def _validate_parameters(self) -> None:
         """Validate initialization parameters."""
         if self.num_classes <= 0:
+            self.logger.error("num_classes must be positive")
             raise ValueError("num_classes must be positive")
 
         if not 0.0 <= self.dropout_rate <= 1.0:
+            self.logger.error("dropout_rate must be between 0.0 and 1.0")
             raise ValueError("dropout_rate must be between 0.0 and 1.0")
 
         if not isinstance(self.fine_tune_layers_count, int):
+            self.logger.error("fine_tune_layers_count must be an integer")
             raise ValueError("fine_tune_layers_count must be an integer")
 
     def _create_backbone(self) -> None:
@@ -111,6 +114,7 @@ class ResNetWithCustomHead(nn.Module):
             self.logger.info(f"ResNet50 backbone created with {len(self.backbone_layers)} layers")
 
         except Exception as e:
+            self.logger.error(f"Failed to create ResNet50 backbone: {e}")
             raise RuntimeError(f"Failed to create ResNet50 backbone: {e}")
 
     def _create_classifier_head(self, custom_head_sizes: Optional[list] = None) -> None:
@@ -120,6 +124,7 @@ class ResNetWithCustomHead(nn.Module):
             head_sizes = [2048, 256, 64, self.num_classes]
         else:
             if len(custom_head_sizes) < 2:
+                self.logger.error("custom_head_sizes must have at least 2 elements")
                 raise ValueError("custom_head_sizes must have at least 2 elements")
             head_sizes = custom_head_sizes
 
@@ -223,6 +228,7 @@ class ResNetWithCustomHead(nn.Module):
             return output
 
         except Exception as e:
+            self.logger.error(f"Forward pass failed: {e}")
             raise RuntimeError(f"Forward pass failed: {e}")
 
     def get_model_info(self) -> dict:
@@ -275,6 +281,7 @@ class ResNetWithCustomHead(nn.Module):
             new_rate: New dropout rate (0.0 to 1.0)
         """
         if not 0.0 <= new_rate <= 1.0:
+            self.logger.error("Dropout rate must be between 0.0 and 1.0")
             raise ValueError("Dropout rate must be between 0.0 and 1.0")
 
         for module in self.classifier.modules():
@@ -312,6 +319,7 @@ class ResNetWithCustomHead(nn.Module):
                 handle = module.register_forward_hook(hook_fn(name))
                 break
         else:
+            self.logger.error(f"Layer '{layer_name}' not found")
             raise ValueError(f"Layer '{layer_name}' not found")
 
         # Forward pass
@@ -321,6 +329,7 @@ class ResNetWithCustomHead(nn.Module):
         handle.remove()
 
         if layer_name not in features:
+            self.logger.error(f"Failed to extract features from layer '{layer_name}'")
             raise RuntimeError(f"Failed to extract features from layer '{layer_name}'")
 
         return features[layer_name]

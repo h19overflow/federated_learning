@@ -3,10 +3,10 @@ Custom PyTorch Dataset for X-ray image loading and processing.
 Handles image file loading, transformations, and label management with comprehensive error handling.
 """
 
-import logging
+
 from typing import Tuple, Optional, Union, Callable
 from pathlib import Path
-
+from federated_pneumonia_detection.src.utils.logger import get_logger
 import torch
 from torch.utils.data import Dataset
 import pandas as pd
@@ -48,7 +48,7 @@ class CustomImageDataset(Dataset):
             ValueError: If dataframe is invalid or required columns missing
             FileNotFoundError: If image directory doesn't exist
         """
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
         self.constants = constants
         self.transform = transform
         self.color_mode = color_mode.upper()
@@ -59,7 +59,7 @@ class CustomImageDataset(Dataset):
 
         # Handle empty dataframes gracefully
         if dataframe.empty:
-            self.logger.warning("Empty dataframe provided to dataset")
+            self.logger.info("Empty dataframe provided to dataset")
             self.filenames = np.array([])
             self.labels = np.array([])
             self.valid_indices = np.array([])
@@ -81,12 +81,15 @@ class CustomImageDataset(Dataset):
             raise ValueError("dataframe must be a pandas DataFrame")
 
         if not self.image_dir.exists():
+            self.logger.error(f"Image directory not found: {image_dir}")
             raise FileNotFoundError(f"Image directory not found: {image_dir}")
 
         if not self.image_dir.is_dir():
+            self.logger.error(f"Image directory path is not a directory: {image_dir}")
             raise ValueError(f"Image directory path is not a directory: {image_dir}")
 
         if self.color_mode not in ['RGB', 'L']:
+            self.logger.error(f"Color mode must be 'RGB' or 'L'")
             raise ValueError("color_mode must be 'RGB' or 'L'")
 
         # Check required columns if dataframe is not empty
@@ -94,6 +97,7 @@ class CustomImageDataset(Dataset):
             required_columns = [self.constants.FILENAME_COLUMN, self.constants.TARGET_COLUMN]
             missing_columns = [col for col in required_columns if col not in dataframe.columns]
             if missing_columns:
+                self.logger.error(f"Missing required columns: {missing_columns}")
                 raise ValueError(f"Missing required columns: {missing_columns}")
 
     def _validate_image_files(self) -> np.ndarray:
@@ -111,7 +115,7 @@ class CustomImageDataset(Dataset):
 
             try:
                 if not image_path.exists():
-                    self.logger.warning(f"Image file not found: {image_path}")
+                    self.logger.info(f"Image file not found: {image_path}")
                     invalid_count += 1
                     continue
 
@@ -123,11 +127,11 @@ class CustomImageDataset(Dataset):
                 valid_indices.append(idx)
 
             except Exception as e:
-                self.logger.warning(f"Invalid image file {image_path}: {e}")
+                self.logger.info(f"Invalid image file {image_path}: {e}")
                 invalid_count += 1
 
         if invalid_count > 0:
-            self.logger.warning(f"Found {invalid_count} invalid image files out of {len(self.filenames)}")
+            self.logger.info(f"Found {invalid_count} invalid image files out of {len(self.filenames)}")
 
         return np.array(valid_indices)
 
@@ -150,6 +154,7 @@ class CustomImageDataset(Dataset):
             RuntimeError: If image loading fails
         """
         if idx >= len(self.valid_indices) or idx < 0:
+            self.logger.error(f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}")
             raise IndexError(f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}")
 
         # Get the actual index from valid indices
@@ -170,7 +175,7 @@ class CustomImageDataset(Dataset):
 
         except Exception as e:
             self.logger.error(f"Error loading sample {idx} (file: {filename}): {e}")
-            raise RuntimeError(f"Failed to load sample {idx}: {e}")
+            raise RuntimeError(f"Failed to load sample {idx}: {e}") from e
 
     def _load_image(self, filename: str) -> Image.Image:
         """
@@ -199,7 +204,8 @@ class CustomImageDataset(Dataset):
                     return img_rgb
 
         except Exception as e:
-            raise RuntimeError(f"Failed to load image {image_path}: {e}")
+            self.logger.error(f"Failed to load image {image_path}: {e}")
+            raise RuntimeError(f"Failed to load image {image_path}: {e}") from e
 
     def get_class_distribution(self) -> dict:
         """
@@ -226,6 +232,7 @@ class CustomImageDataset(Dataset):
             Dictionary with sample information
         """
         if idx >= len(self.valid_indices) or idx < 0:
+            self.logger.error(f"Index {idx} out of bounds")
             raise IndexError(f"Index {idx} out of bounds")
 
         actual_idx = self.valid_indices[idx]
@@ -282,7 +289,7 @@ class CustomImageDataset(Dataset):
 
             except Exception as e:
                 invalid_files.append((filename, str(e)))
-
+                self.logger.error(f"Error validating image {image_path}: {e}")
         invalid_count = len(invalid_files)
         return valid_count, invalid_count, invalid_files
 
@@ -294,6 +301,7 @@ class CustomImageDataset(Dataset):
             Dictionary with memory usage estimates
         """
         if len(self.valid_indices) == 0:
+            self.logger.info("No valid indices in dataset")
             return {'total_samples': 0, 'estimated_memory_mb': 0}
 
         # Sample a few images to estimate average size
@@ -310,6 +318,7 @@ class CustomImageDataset(Dataset):
                     total_pixels += img.size[0] * img.size[1]
 
             except Exception:
+                self.logger.error(f"Error validating image {image_path}")
                 continue
 
         if sample_size > 0:
@@ -320,6 +329,7 @@ class CustomImageDataset(Dataset):
             estimated_mb_per_image = (avg_pixels * channels * bytes_per_pixel) / (1024 * 1024)
             total_estimated_mb = estimated_mb_per_image * len(self.valid_indices)
         else:
+            self.logger.info("No valid indices in dataset")
             estimated_mb_per_image = 0
             total_estimated_mb = 0
 

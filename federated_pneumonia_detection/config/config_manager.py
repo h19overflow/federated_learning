@@ -25,7 +25,7 @@ import yaml
 from typing import Any, Dict, List, Union
 from pathlib import Path
 import copy
-
+from federated_pneumonia_detection.src.utils.logger import get_logger
 
 class ConfigManager:
     """Centralized configuration manager for YAML configuration files."""
@@ -42,7 +42,7 @@ class ConfigManager:
             # Default to the config file in the same directory
             config_dir = Path(__file__).parent
             config_path = config_dir / "default_config.yaml"
-        
+        self.logger = get_logger(__name__)
         self.config_path = Path(config_path)
         if not self.config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
@@ -79,6 +79,7 @@ class ConfigManager:
         
         for key in keys:
             if not isinstance(value, dict) or key not in value:
+                self.logger.error(f"Key path '{key_path}' not found in configuration")
                 raise KeyError(f"Key path '{key_path}' not found in configuration")
             value = value[key]
         
@@ -101,6 +102,7 @@ class ConfigManager:
             if key not in current:
                 current[key] = {}
             elif not isinstance(current[key], dict):
+                self.logger.error(f"Cannot set nested value: '{key}' is not a dictionary")
                 raise ValueError(f"Cannot set nested value: '{key}' is not a dictionary")
             current = current[key]
         
@@ -127,7 +129,8 @@ class ConfigManager:
         except KeyError:
             if default is not None:
                 return default
-            raise
+            self.logger.error(f"Key path '{key_path}' not found in configuration")
+            raise KeyError(f"Key path '{key_path}' not found in configuration") 
     
     def set(self, key_path: str, value: Any) -> None:
         """
@@ -206,6 +209,8 @@ class ConfigManager:
             self._get_nested_value(self.config, key_path)
             return True
         except KeyError:
+            self.logger.error(f"Key path '{key_path}' not found in configuration")
+            raise KeyError(f"Key path '{key_path}' not found in configuration")
             return False
     
     def list_keys(self, section: str = None) -> List[str]:
@@ -226,6 +231,8 @@ class ConfigManager:
                     keys.append(current_path)
                     if isinstance(value, dict):
                         keys.extend(_collect_keys(value, current_path))
+            self.logger.error(f"Error collecting keys: {keys}")
+            raise ValueError(f"Error collecting keys: {keys}")
             return keys
         
         if section:
@@ -242,12 +249,14 @@ class ConfigManager:
             config.set('experiment.learning_rate', 0.002)
             config.save()
         """
+        self.logger.info(f"Saving configuration to {self.config_path}")
         self._save_config()
     
     def reset(self) -> None:
         """
         Reset configuration to the original state when the manager was created.
         """
+        self.logger.info(f"Resetting configuration to original state")
         self.config = copy.deepcopy(self._original_config)
     
     def reload(self) -> None:
@@ -268,6 +277,7 @@ class ConfigManager:
             Path to the backup file
         """
         if backup_path is None:
+            self.logger.info(f"Creating backup of configuration")
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = self.config_path.with_suffix(f'.backup_{timestamp}.yaml')
