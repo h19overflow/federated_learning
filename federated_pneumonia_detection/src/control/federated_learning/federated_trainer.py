@@ -11,10 +11,13 @@ from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 from federated_pneumonia_detection.src.control.dl_model.utils.data import (
     ZipHandler, DirectoryHandler, DatasetPreparer
 )
-from federated_pneumonia_detection.src.control.federated_learning.data_partitioner import (
+from federated_pneumonia_detection.src.control.federated_learning.data.partitioner import (
     partition_data_iid,
     partition_data_by_patient,
     partition_data_stratified
+)
+from federated_pneumonia_detection.src.control.federated_learning.core.simulation_runner import (
+    SimulationRunner
 )
 
 
@@ -60,6 +63,10 @@ class FederatedTrainer:
             self.constants = config_loader.create_system_constants()
             self.config = config_loader.create_experiment_config()
 
+        # Update config checkpoint_dir if not set
+        if not hasattr(self.config, 'checkpoint_dir'):
+            self.config.checkpoint_dir = self.checkpoint_dir
+
         # Create directories
         os.makedirs(self.checkpoint_dir, exist_ok=True)
         os.makedirs(self.logs_dir, exist_ok=True)
@@ -72,6 +79,13 @@ class FederatedTrainer:
         except Exception as e:
             self.logger.error(f"Failed to initialize utilities: {e}")
             raise
+
+        # Initialize simulation runner
+        self.simulation_runner = SimulationRunner(
+            constants=self.constants,
+            config=self.config,
+            logger=self.logger
+        )
 
         self.logger.info("FederatedTrainer initialized")
         self.logger.info(f"Partition strategy: {self.partition_strategy}")
@@ -188,7 +202,7 @@ class FederatedTrainer:
         experiment_name: str
     ) -> Dict[str, Any]:
         """
-        Run Flower federated learning simulation.
+        Run Flower federated learning simulation using SimulationRunner.
 
         Args:
             client_partitions: List of client data partitions
@@ -198,36 +212,26 @@ class FederatedTrainer:
         Returns:
             Dictionary with simulation results
         """
-        self.logger.info("Preparing federated learning simulation...")
+        self.logger.info("Starting Flower federated learning simulation...")
 
-        # This is a placeholder for actual Flower simulation
-        # In production, you would:
-        # 1. Create DataLoaders for each client using create_client_dataloaders()
-        # 2. Set up Flower simulation with flwr.simulation.start_simulation()
-        # 3. Pass client_fn that loads the appropriate partition
-        # 4. Run the simulation for config.num_rounds
-
-        self.logger.warning(
-            "Federated simulation not yet fully implemented. "
-            "This requires Flower simulation setup with client functions."
-        )
-
-        # Placeholder results
-        results = {
-            'experiment_name': experiment_name,
-            'num_clients': self.config.num_clients,
-            'num_rounds': self.config.num_rounds,
-            'partition_strategy': self.partition_strategy,
-            'checkpoint_dir': self.checkpoint_dir,
-            'logs_dir': self.logs_dir,
-            'status': 'template_implementation',
-            'message': (
-                'FederatedTrainer structure is ready. '
-                'Full Flower simulation will be implemented with data loading and client functions.'
+        try:
+            # Run simulation using SimulationRunner
+            results = self.simulation_runner.run_simulation(
+                client_partitions=client_partitions,
+                image_dir=image_dir,
+                experiment_name=experiment_name
             )
-        }
 
-        return results
+            # Add additional metadata
+            results['partition_strategy'] = self.partition_strategy
+            results['checkpoint_dir'] = self.checkpoint_dir
+            results['logs_dir'] = self.logs_dir
+
+            return results
+
+        except Exception as e:
+            self.logger.error(f"Federated simulation failed: {e}")
+            raise
 
     def train_from_zip(
         self,
