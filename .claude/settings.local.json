@@ -11,7 +11,10 @@
       "Bash(move server_app.py _old_referenceserver_app.py)",
       "Bash(move data_partitioner.py _old_referencedata_partitioner.py)",
       "Bash(move training_functions.py _old_referencetraining_functions.py)",
-      "Bash(python -m federated_pneumonia_detection.src.control.federated_learning.test_fl_structure:*)"
+      "Bash(python -m federated_pneumonia_detection.src.control.federated_learning.test_fl_structure:*)",
+      "Bash(python:*)",
+      "Bash(py validate_setup.py)",
+      "Bash(uv run:*)"
     ],
     "deny": [],
     "ask": []
