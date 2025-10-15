@@ -41,11 +41,15 @@ def simple_training_example():
     # Define paths
     training_data_path = project_root / "Training"
     config_path = project_root / "federated_pneumonia_detection" / "config" / "default_config.yaml"
-
-    # Basic configuration
-    checkpoint_dir = "simple_checkpoints"
-    logs_dir = "simple_logs"
-    experiment_name = "simple_pneumonia_training"
+    if not Path.exists('results'):
+        Path.mkdir('results')
+    checkpoint_dir = "results/simple_checkpoints"
+    logs_dir = "results/simple_logs"
+    experiment_name = "resuls/simple_pneumonia_training"
+    if not Path.exists(checkpoint_dir):
+        Path.mkdir(checkpoint_dir)
+    if not Path.exists(logs_dir):
+        Path.mkdir(logs_dir)
 
     logger.info(f"Training data: {training_data_path}")
     logger.info(f"Config: {config_path}")

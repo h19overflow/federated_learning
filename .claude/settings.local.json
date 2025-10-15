@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\Users\\User\\Projects\\FYP2\\federated_pneumonia_detection\\tests\" -Directory -Recurse)",
+      "Bash(Select-Object FullName)",
+      "Bash(powershell:*)",
+      "Bash(pytest:*)",
+      "Bash(python -m pytest --collect-only -q)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

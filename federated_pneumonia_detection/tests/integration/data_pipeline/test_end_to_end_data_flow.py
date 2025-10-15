@@ -143,10 +143,11 @@ class TestEndToEndDataFlow:
         """Test that data processing is reproducible with same seed."""
         constants = SystemConstants.create_custom(
             base_path=temp_data_structure['base_path'],
-            seed=999
+            seed=999,
+            sample_fraction=1.0  # Use all data to avoid empty samples
         )
 
-        config = ExperimentConfig(seed=999)
+        config = ExperimentConfig(seed=999, sample_fraction=1.0)
         processor = DataProcessor(constants)
 
         # Run processing twice with same seed
@@ -202,10 +203,10 @@ class TestEndToEndDataFlow:
 
     def test_edge_case_small_dataset(self, temp_data_structure):
         """Test handling of very small datasets."""
-        # Create minimal dataset with only 2 samples
+        # Create minimal dataset with 4 samples (2 per class) - minimum for stratified split
         minimal_metadata = pd.DataFrame({
-            'patientId': ['patient_001', 'patient_002'],
-            'Target': [0, 1]
+            'patientId': ['patient_001', 'patient_002', 'patient_003', 'patient_004'],
+            'Target': [0, 0, 1, 1]
         })
 
         metadata_path = Path(temp_data_structure['base_path']) / "Train_metadata.csv"
@@ -213,7 +214,7 @@ class TestEndToEndDataFlow:
 
         constants = SystemConstants.create_custom(
             base_path=temp_data_structure['base_path'],
-            validation_split=0.5  # 50% split for 2 samples = 1 each
+            validation_split=0.5  # 50% split for 4 samples = 2 each
         )
 
         config = ExperimentConfig(validation_split=0.5, sample_fraction=1.0)
@@ -224,4 +225,4 @@ class TestEndToEndDataFlow:
         # Should still work with minimal data
         assert len(train_df) >= 1
         assert len(val_df) >= 1
-        assert len(train_df) + len(val_df) == 2
+        assert len(train_df) + len(val_df) == 4

@@ -26,7 +26,7 @@ class SystemConstants:
     SEED: int = 42
 
     # File paths (relative to project root)
-    BASE_PATH: str = '../src/entities'
+    BASE_PATH: str = '.'
     MAIN_IMAGES_FOLDER: str = 'Images'
     IMAGES_SUBFOLDER: str = 'Images'
     METADATA_FILENAME: str = 'Train_metadata.csv'

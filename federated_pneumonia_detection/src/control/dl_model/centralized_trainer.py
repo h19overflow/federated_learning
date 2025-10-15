@@ -20,8 +20,8 @@ class CentralizedTrainer:
     def __init__(
         self,
         config_path: Optional[str] = None,
-        checkpoint_dir: str = "checkpoints",
-        logs_dir: str = "training_logs"
+        checkpoint_dir: str = "results/checkpoints",
+        logs_dir: str = "results/training_logs"
     ):
         """
         Initialize centralized trainer.

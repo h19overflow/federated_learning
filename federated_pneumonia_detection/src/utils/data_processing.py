@@ -336,3 +336,47 @@ class DataProcessor:
         main_images_path = os.path.join(self.constants.BASE_PATH, self.constants.MAIN_IMAGES_FOLDER)
         image_dir_path = get_image_directory_path(self.constants)
         return main_images_path, image_dir_path
+
+    # Private methods for backward compatibility with tests
+    def _load_metadata(self) -> pd.DataFrame:
+        """Load metadata (backward compatibility wrapper)."""
+        metadata_path = os.path.join(self.constants.BASE_PATH, self.constants.METADATA_FILENAME)
+        return load_metadata(metadata_path, self.constants, self.logger)
+
+    def _prepare_filenames(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Prepare filenames (backward compatibility wrapper)."""
+        df = df.copy()
+        if self.constants.PATIENT_ID_COLUMN not in df.columns:
+            raise ValueError(f"Missing column: {self.constants.PATIENT_ID_COLUMN}")
+        df[self.constants.FILENAME_COLUMN] = (
+            df[self.constants.PATIENT_ID_COLUMN].astype(str) + self.constants.IMAGE_EXTENSION
+        )
+        df[self.constants.TARGET_COLUMN] = df[self.constants.TARGET_COLUMN].astype(int).astype(str)
+        return df
+
+    def _validate_data(self, df: pd.DataFrame) -> None:
+        """Validate data (backward compatibility wrapper)."""
+        if df.empty:
+            raise ValueError("DataFrame is empty")
+
+        required_columns = [
+            self.constants.PATIENT_ID_COLUMN,
+            self.constants.TARGET_COLUMN,
+            self.constants.FILENAME_COLUMN
+        ]
+
+        missing_cols = [col for col in required_columns if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f"Missing required columns: {missing_cols}")
+
+        for col in required_columns:
+            if df[col].isna().any():
+                raise ValueError(f"Missing values found in column: {col}")
+
+    def _sample_data(self, df: pd.DataFrame, sample_fraction: float, seed: int) -> pd.DataFrame:
+        """Sample data (backward compatibility wrapper)."""
+        return sample_dataframe(df, sample_fraction, self.constants.TARGET_COLUMN, seed, self.logger)
+
+    def _create_train_val_split(self, df: pd.DataFrame, validation_split: float, seed: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Create train/val split (backward compatibility wrapper)."""
+        return create_train_val_split(df, validation_split, self.constants.TARGET_COLUMN, seed, self.logger)
