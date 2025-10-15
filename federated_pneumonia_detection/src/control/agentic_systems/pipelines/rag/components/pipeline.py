@@ -49,3 +49,6 @@ def pipeline(postgres_url: str, file_path: str):
         print(f"Error in pipeline: {e}")
         return False
     
+    
+if __name__ == "__main__":
+    
