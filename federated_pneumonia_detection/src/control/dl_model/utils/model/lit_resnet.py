@@ -244,7 +244,6 @@ class LitResNet(pl.LightningModule):
         logits = self(x)
         predictions = self._get_predictions(logits)
         return predictions
-    # TODO Double check this function 
     def configure_optimizers(self) -> Dict[str, Any]:
         """Configure optimizer and learning rate scheduler."""
         # Setup optimizer
