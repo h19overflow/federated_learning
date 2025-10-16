@@ -20,11 +20,8 @@ from federated_pneumonia_detection.models.experiment_config import ExperimentCon
 from federated_pneumonia_detection.src.entities.resnet_with_custom_head import ResNetWithCustomHead
 from federated_pneumonia_detection.src.control.federated_learning.data.client_data import ClientDataManager
 from federated_pneumonia_detection.src.control.federated_learning.training.functions import (
-    train_one_epoch,
-    evaluate_model,
     get_model_parameters,
     set_model_parameters,
-    create_optimizer
 )
 from federated_pneumonia_detection.src.control.federated_learning.core.fed_client import FlowerClient
 

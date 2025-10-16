@@ -31,7 +31,7 @@ def simple_training_example():
     """
     # Setup logging
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.WARNING,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     logger = logging.getLogger(__name__)
@@ -41,15 +41,15 @@ def simple_training_example():
     # Define paths
     training_data_path = project_root / "Training"
     config_path = project_root / "federated_pneumonia_detection" / "config" / "default_config.yaml"
-    if not Path.exists('results'):
-        Path.mkdir('results')
+    if not Path('results').exists():
+        Path('results').mkdir()
     checkpoint_dir = "results/simple_checkpoints"
     logs_dir = "results/simple_logs"
-    experiment_name = "resuls/simple_pneumonia_training"
-    if not Path.exists(checkpoint_dir):
-        Path.mkdir(checkpoint_dir)
-    if not Path.exists(logs_dir):
-        Path.mkdir(logs_dir)
+    experiment_name = "results/simple_pneumonia_training"
+    if not Path(checkpoint_dir).exists():
+        Path(checkpoint_dir).mkdir()
+    if not Path(logs_dir).exists():
+        Path(logs_dir).mkdir()
 
     logger.info(f"Training data: {training_data_path}")
     logger.info(f"Config: {config_path}")

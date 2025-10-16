@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 from federated_pneumonia_detection.src.control.dl_model.utils.data import (
-    ZipHandler, DirectoryHandler, DatasetPreparer
+    DataSourceExtractor, DatasetPreparer
 )
 from federated_pneumonia_detection.src.control.federated_learning.data.partitioner import (
     partition_data_iid,
@@ -79,8 +79,7 @@ class FederatedTrainer:
 
         # Initialize utilities (reuse from centralized trainer)
         try:
-            self.zip_handler = ZipHandler(self.logger)
-            self.directory_handler = DirectoryHandler(self.logger)
+            self.handler    = DataSourceExtractor(self.logger)
             self.dataset_preparer = DatasetPreparer(self.constants, self.config, self.logger)
         except Exception as e:
             self.logger.error(f"Failed to initialize utilities: {e}")
@@ -122,10 +121,10 @@ class FederatedTrainer:
             # Detect source type and extract/find data (reuse from centralized)
             if os.path.isfile(source_path):
                 self.logger.info("Detected zip file")
-                image_dir, csv_path = self.zip_handler.extract_and_validate(source_path, csv_filename)
+                image_dir, csv_path = self.handler.extract_and_validate(source_path, csv_filename)
             elif os.path.isdir(source_path):
                 self.logger.info("Detected directory")
-                image_dir, csv_path = self.directory_handler.find_data(source_path, csv_filename)
+                image_dir, csv_path = self.handler.extract_and_validate(source_path, csv_filename)
             else:
                 raise ValueError(f"Invalid source path: {source_path}")
 
@@ -155,7 +154,7 @@ class FederatedTrainer:
             self.logger.error(f"Federated training failed: {e}")
             raise
         finally:
-            self.zip_handler.cleanup()
+            self.handler.cleanup()
 
     def _partition_data_for_clients(self, df) -> list:
         """
@@ -270,9 +269,9 @@ class FederatedTrainer:
         """
         try:
             if os.path.isfile(source_path):
-                result = self.zip_handler.validate_contents(source_path)
+                result = self.handler.validate_contents(source_path)
             elif os.path.isdir(source_path):
-                result = self.directory_handler.validate_contents(source_path)
+                result = self.handler.validate_contents(source_path)
             else:
                 return {'valid': False, 'error': 'Path is neither a file nor a directory'}
 
@@ -303,7 +302,7 @@ class FederatedTrainer:
                 'learning_rate': self.config.learning_rate,
                 'batch_size': self.config.batch_size
             },
-            'temp_dir_active': self.zip_handler.temp_extract_dir is not None
+            'temp_dir_active': self.handler.temp_extract_dir is not None
         }
 
     def _setup_logging(self) -> logging.Logger:
