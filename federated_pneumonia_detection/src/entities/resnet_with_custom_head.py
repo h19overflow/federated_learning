@@ -163,9 +163,6 @@ class ResNetWithCustomHead(nn.Module):
         if self.fine_tune_layers_count < 0:
             # Unfreeze the last N layers
             self._unfreeze_last_n_layers(abs(self.fine_tune_layers_count))
-        elif self.fine_tune_layers_count > 0:
-            # Unfreeze the first N layers (less common)
-            self._unfreeze_first_n_layers(self.fine_tune_layers_count)
 
         # Count unfrozen parameters
         total_unfrozen = sum(1 for param in self.features.parameters() if param.requires_grad)
@@ -189,12 +186,6 @@ class ResNetWithCustomHead(nn.Module):
 
         self.logger.info(f"Unfroze last {layers_to_unfreeze} parameter-containing layers")
 
-    def _unfreeze_first_n_layers(self, n_layers: int) -> None:
-        """Unfreeze the first n layers of the backbone."""
-        param_layers = []
-        for module in self.features.modules():
-            if any(param.numel() > 0 for param in module.parameters(recurse=False)):
-                param_layers.append(module)
 
         # Unfreeze the first n layers
         layers_to_unfreeze = min(n_layers, len(param_layers))

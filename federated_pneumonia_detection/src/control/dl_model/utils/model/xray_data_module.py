@@ -10,6 +10,7 @@ from pathlib import Path
 import torch
 import pandas as pd
 import pytorch_lightning as pl
+from numpy import ndarray, dtype
 from torch.utils.data import DataLoader
 import numpy as np
 
@@ -368,7 +369,8 @@ class XRayDataModule(pl.LightningDataModule):
 
         return results
 
-    def get_sample_batch(self, dataset_type: str = 'train', batch_size: Optional[int] = None) -> Dict[str, torch.Tensor]:
+    def get_sample_batch(self, dataset_type: str = 'train', batch_size: Optional[int] = None) -> dict[
+        str, ndarray[tuple[Any, ...], dtype[Any]] | Any]:
         """
         Get a sample batch for inspection or debugging.
 

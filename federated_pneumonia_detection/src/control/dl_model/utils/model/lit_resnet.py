@@ -98,8 +98,8 @@ class LitResNet(pl.LightningModule):
 
     def _setup_metrics(self) -> None:
         """Initialize torchmetrics for tracking performance."""
-        task_type = "binary" if self.num_classes == 1 else "multiclass"
         num_classes = 2 if self.num_classes == 1 else self.num_classes
+        task_type = "binary" if self.num_classes == 1 else "multiclass"
 
         # Training metrics
         self.train_accuracy = torchmetrics.Accuracy(task=task_type, num_classes=num_classes)
@@ -244,13 +244,16 @@ class LitResNet(pl.LightningModule):
         logits = self(x)
         predictions = self._get_predictions(logits)
         return predictions
+
+
     def configure_optimizers(self) -> Dict[str, Any]:
         """Configure optimizer and learning rate scheduler."""
         # Setup optimizer
         optimizer = optim.AdamW(
             self.parameters(),
             lr=self.config.learning_rate,
-            weight_decay=self.config.weight_decay
+            weight_decay=self.config.weight_decay,
+
         )
 
         # Setup learning rate scheduler

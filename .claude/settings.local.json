@@ -16,7 +16,11 @@
       "Bash(py validate_setup.py)",
       "Bash(uv run:*)",
       "Bash(Get-ChildItem -Path \"federated_pneumonia_detection/src/control/dl_model\" -File)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "WebSearch",
+      "WebFetch(domain:flower.ai)",
+      "Bash(.venvScriptsactivate)",
+      "Bash(pip show:*)"
     ],
     "deny": [],
     "ask": []

@@ -83,7 +83,7 @@ class XRayPreprocessor:
         try:
             import cv2
         except ImportError:
-            self.logger.warning("OpenCV not available, skipping adaptive histogram equalization")
+            logging.warning("cv2 not installed, skipping adaptive histogram equalization")
             return image
 
         # Convert PIL to OpenCV format

@@ -12,8 +12,6 @@ from federated_pneumonia_detection.src.control.dl_model.utils.data import (
     DataSourceExtractor, DatasetPreparer
 )
 from federated_pneumonia_detection.src.control.federated_learning.data.partitioner import (
-    partition_data_iid,
-    partition_data_by_patient,
     partition_data_stratified
 )
 from federated_pneumonia_detection.src.control.federated_learning.core.simulation_runner import (
@@ -32,7 +30,7 @@ class FederatedTrainer:
         config_path: Optional[str] = None,
         checkpoint_dir: str = "fed_results/federated_checkpoints",
         logs_dir: str = "fed_results/federated_logs",
-        partition_strategy: str = "iid"
+        partition_strategy: str = "stratified"
     ):
         """
         Initialize federated trainer.
@@ -77,9 +75,8 @@ class FederatedTrainer:
         os.makedirs(self.checkpoint_dir, exist_ok=True)
         os.makedirs(self.logs_dir, exist_ok=True)
 
-        # Initialize utilities (reuse from centralized trainer)
         try:
-            self.handler    = DataSourceExtractor(self.logger)
+            self.handler = DataSourceExtractor(self.logger)
             self.dataset_preparer = DatasetPreparer(self.constants, self.config, self.logger)
         except Exception as e:
             self.logger.error(f"Failed to initialize utilities: {e}")
@@ -170,28 +167,13 @@ class FederatedTrainer:
 
         self.logger.info(f"Partitioning data for {num_clients} clients using '{self.partition_strategy}' strategy")
 
-        if self.partition_strategy == "iid":
-            partitions = partition_data_iid(
-                df, num_clients, self.config.seed, self.logger
-            )
-        elif self.partition_strategy == "non-iid":
-            partitions = partition_data_by_patient(
-                df,
-                num_clients,
-                self.constants.PATIENT_ID_COLUMN,
-                self.config.seed,
-                self.logger
-            )
-        elif self.partition_strategy == "stratified":
-            partitions = partition_data_stratified(
+        partitions = partition_data_stratified(
                 df,
                 num_clients,
                 self.constants.TARGET_COLUMN,
                 self.config.seed,
                 self.logger
             )
-        else:
-            raise ValueError(f"Unknown partition strategy: {self.partition_strategy}")
 
         # Log partition statistics
         for i, partition in enumerate(partitions):
