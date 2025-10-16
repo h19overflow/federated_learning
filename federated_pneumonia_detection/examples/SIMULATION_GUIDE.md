@@ -8,37 +8,36 @@ This guide explains how to use the updated `SimulationRunner` for federated lear
 
 ## What Changed?
 
-### API Migration
+### API Choice: `start_simulation` (Returns History)
 
-The `SimulationRunner` has been migrated from the **old Flower API** to the **new Message API**:
+The `SimulationRunner` uses Flower's **`start_simulation`** function because it **returns a `History` object** with training metrics, losses, and evaluation results.
 
-**Old API (Pre-1.13):**
+**Why `start_simulation` instead of `run_simulation`?**
+- `run_simulation` (v1.13+) returns `None` - no way to access metrics programmatically
+- `start_simulation` returns `History` object with all metrics and losses
+- `History` object contains: `losses_distributed`, `metrics_distributed`, `losses_centralized`, `metrics_centralized`
+
+**Current Implementation:**
 ```python
-run_simulation(
-    client_fn=client_fn,
-    num_clients=10,
-    config=ServerConfig(...),
-    strategy=FedAvg(...),
-    client_resources={...}
+history = start_simulation(
+    client_fn=client_fn,              # Function that creates Client instances
+    num_clients=10,                   # Number of federated clients
+    client_resources={"num_cpus": 1}, # Resource allocation per client
+    config=ServerConfig(num_rounds=5),# Server configuration
+    strategy=FedAvg(...)              # Federated averaging strategy
 )
+
+# Access results
+final_loss = history.losses_distributed[-1][1]
+metrics = history.metrics_distributed
 ```
 
-**New API (1.13+):**
-```python
-run_simulation(
-    server_app=ServerApp(...),
-    client_app=ClientApp(...),
-    num_supernodes=10,
-    backend_config={...}
-)
-```
+### Key Implementation Details
 
-### Key Updates
-
-1. **ClientApp Wrapper**: `FlowerClient` (NumPyClient) is now wrapped in `ClientApp` using `.to_client()`
-2. **ServerApp Components**: Strategy and config are wrapped in `ServerAppComponents`
-3. **Context Objects**: Client and server functions now receive `Context` parameters
-4. **Parameter Names**: `num_clients` → `num_supernodes`, `client_resources` → `backend_config`
+1. **Client Function**: Returns `Client` (using `.to_client()` on `NumPyClient`)
+2. **Context Object**: Client function receives `Context` with `node_id` for client identification
+3. **Strategy**: Direct `FedAvg` instance with initial parameters
+4. **History Return**: Full training history accessible after simulation completes
 
 ---
 
@@ -233,21 +232,33 @@ for round_metrics in results['metrics']['metrics_distributed']:
 
 ## Troubleshooting
 
+### Issue: "history is None" or "AttributeError: 'NoneType' object has no attribute 'losses_distributed'"
+
+**Cause**: Using `run_simulation` instead of `start_simulation`. `run_simulation` returns `None` in Flower 1.13+.
+
+**Solution**: Use `start_simulation` which returns a `History` object:
+
+```python
+from flwr.simulation import start_simulation  # Correct
+
+history = start_simulation(...)  # Returns History object
+print(history.losses_distributed)  # Works!
+```
+
+Not this:
+```python
+from flwr.simulation import run_simulation  # Wrong for getting results
+
+history = run_simulation(...)  # Returns None
+print(history.losses_distributed)  # AttributeError!
+```
+
 ### Issue: "Context has no attribute 'node_id'"
 
 **Solution**: Ensure you're using Flower >= 1.13. The `Context` API changed in this version.
 
 ```bash
 pip install --upgrade "flwr[simulation]>=1.13.0"
-```
-
-### Issue: "No module named 'flwr.client.app'"
-
-**Solution**: Update import paths:
-
-```python
-from flwr.client.app import ClientApp  # Correct
-from flwr.client import ClientApp      # May not work in older versions
 ```
 
 ### Issue: Images not found during training

@@ -1,26 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Get-ChildItem -Path \"C:\\Users\\User\\Projects\\FYP2\\federated_pneumonia_detection\\tests\" -Directory -Recurse)",
-      "Bash(Select-Object FullName)",
-      "Bash(powershell:*)",
-      "Bash(pytest:*)",
-      "Bash(python -m pytest --collect-only -q)",
-      "Bash(mkdir:*)",
-      "Bash(move client_app.py _old_referenceclient_app.py)",
-      "Bash(move server_app.py _old_referenceserver_app.py)",
-      "Bash(move data_partitioner.py _old_referencedata_partitioner.py)",
-      "Bash(move training_functions.py _old_referencetraining_functions.py)",
-      "Bash(python -m federated_pneumonia_detection.src.control.federated_learning.test_fl_structure:*)",
-      "Bash(python:*)",
-      "Bash(py validate_setup.py)",
-      "Bash(uv run:*)",
-      "Bash(Get-ChildItem -Path \"federated_pneumonia_detection/src/control/dl_model\" -File)",
-      "Bash(Select-Object Name)",
-      "WebSearch",
-      "WebFetch(domain:flower.ai)",
-      "Bash(.venvScriptsactivate)",
-      "Bash(pip show:*)"
+      "Bash(Get-ChildItem -Path . -Filter \"*Training*\" -Directory -Recurse -Depth 2)"
     ],
     "deny": [],
     "ask": []

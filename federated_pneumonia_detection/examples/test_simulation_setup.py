@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.src.control.federated_learning.core.simulation_runner import SimulationRunner
-from federated_pneumonia_detection.src.control.federated_learning.data.partitioner import partition_data_iid
+from federated_pneumonia_detection.src.control.federated_learning.data.partitioner import partition_data_stratified
 import pandas as pd
 import numpy as np
 
@@ -52,7 +52,13 @@ def test_simulation_setup():
 
     # Partition data
     print("\n[3/5] Partitioning data...")
-    partitions = partition_data_iid(df, config.num_clients, config.seed, logger)
+    partitions = partition_data_stratified(
+        df,
+        config.num_clients,
+        constants.TARGET_COLUMN,
+        config.seed,
+        logger
+    )
     print(f"✓ Created {len(partitions)} partitions")
     for i, p in enumerate(partitions):
         print(f"  Client {i}: {len(p)} samples")

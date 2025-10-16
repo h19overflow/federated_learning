@@ -1,0 +1,101 @@
+"""
+Script to run centralized training on the pneumonia dataset.
+Uses the Training folder containing images and metadata CSV.
+"""
+
+import os
+import sys
+import logging
+from pathlib import Path
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent))
+
+from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import CentralizedTrainer
+
+
+def main():
+    """Run centralized training on the Training dataset."""
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger(__name__)
+
+    logger.info("="*80)
+    logger.info("CENTRALIZED TRAINING - Pneumonia Detection")
+    logger.info("="*80)
+
+    # Define paths
+    source_path = "Training"  # Directory containing Images/ and CSV files
+    config_path = None  # Use default configuration
+    experiment_name = "pneumonia_centralized"
+
+    # Output directories
+    checkpoint_dir = "results/centralized/checkpoints"
+    logs_dir = "results/centralized/logs"
+
+    logger.info(f"Source path: {source_path}")
+    logger.info(f"Checkpoint directory: {checkpoint_dir}")
+    logger.info(f"Logs directory: {logs_dir}")
+
+    # Create trainer
+    logger.info("\nInitializing CentralizedTrainer...")
+    trainer = CentralizedTrainer(
+        config_path=config_path,
+        checkpoint_dir=checkpoint_dir,
+        logs_dir=logs_dir
+    )
+
+    # Display training status
+    status = trainer.get_training_status()
+    logger.info("\nTrainer Configuration:")
+    logger.info(f"  Epochs: {status['config']['epochs']}")
+    logger.info(f"  Learning Rate: {status['config']['learning_rate']}")
+    logger.info(f"  Batch Size: {status['config']['batch_size']}")
+    logger.info(f"  Validation Split: {status['config']['validation_split']}")
+
+    # Run training
+    try:
+        logger.info("\nStarting training...")
+        logger.info("-"*80)
+
+        results = trainer.train(
+            source_path=source_path,
+            experiment_name=experiment_name,
+            csv_filename="stage2_train_metadata.csv"
+        )
+
+        logger.info("\n" + "="*80)
+        logger.info("TRAINING COMPLETED SUCCESSFULLY!")
+        logger.info("="*80)
+        logger.info("\nResults Summary:")
+        logger.info(f"  Status: {results.get('status', 'completed')}")
+        logger.info(f"  Best model: {results.get('best_checkpoint_path', 'N/A')}")
+        logger.info(f"  Checkpoint directory: {checkpoint_dir}")
+        logger.info(f"  Logs directory: {logs_dir}")
+
+        if 'final_metrics' in results:
+            logger.info("\nFinal Metrics:")
+            for key, value in results['final_metrics'].items():
+                logger.info(f"  {key}: {value}")
+
+        return 0
+
+    except Exception as e:
+        logger.error("\n" + "="*80)
+        logger.error("TRAINING FAILED!")
+        logger.error("="*80)
+        logger.error(f"Error: {type(e).__name__}: {str(e)}")
+
+        import traceback
+        logger.error("\nFull traceback:")
+        logger.error(traceback.format_exc())
+
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

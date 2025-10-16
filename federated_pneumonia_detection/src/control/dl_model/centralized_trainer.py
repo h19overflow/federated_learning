@@ -59,7 +59,7 @@ class CentralizedTrainer:
         # Initialize utilities with error handling
         try:
             self.data_source_extractor = DataSourceExtractor(self.logger)
-            self.dataset_preparer = DatasetPreparer(self.constants, self.config, self.logger)
+            self.dataset_preparer = DatasetPreparer(self.constants, self.config)
             self.trainer_builder = TrainerBuilder(
                 self.constants, self.config, self.checkpoint_dir, self.logs_dir, self.logger
             )

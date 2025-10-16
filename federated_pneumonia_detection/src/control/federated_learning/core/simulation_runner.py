@@ -5,21 +5,15 @@ This is the bridge between data partitions and Flower's federated training.
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 import pandas as pd
 import torch
-from collections import OrderedDict
 
-from flwr.client import NumPyClient, ClientApp
-from flwr.server import ServerApp, ServerConfig
+from flwr.client import NumPyClient, Client
+from flwr.server import ServerConfig
 from flwr.server.strategy import FedAvg
-from flwr.simulation import run_simulation
+from flwr.simulation import start_simulation
 from flwr.common import Context
-
-try:
-    from flwr.server.app_components import ServerAppComponents
-except ImportError:
-    from flwr.server import ServerAppComponents
 
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
@@ -114,10 +108,11 @@ class SimulationRunner:
         if len(client_dataloaders) == 0:
             raise ValueError("No valid client dataloaders created")
 
-        # Create client function factory for ClientApp
-        def client_fn(context: Context) -> NumPyClient:
+        # Create client function factory
+        def client_fn(context: Context) -> Client:
             """Create a Flower client for the given context."""
-            # Get client ID from context
+            # Get client ID from context (for start_simulation, use node_id or cid)
+            # Context.node_id contains the client ID as string
             client_id = int(context.node_id)
             train_loader, val_loader = client_dataloaders[client_id]
 
@@ -129,9 +124,6 @@ class SimulationRunner:
                 config=self.config,
                 logger=self.logger
             ).to_client()
-
-        # Create ClientApp
-        client_app = ClientApp(client_fn=client_fn)
 
         # Create initial global model
         self.logger.info("Initializing global model...")
@@ -145,47 +137,33 @@ class SimulationRunner:
 
         initial_parameters = get_model_parameters(global_model)
 
-        # Create server function for ServerApp
-        def server_fn(context: Context) -> ServerAppComponents:
-            """Create server components."""
-            # Create FedAvg strategy
-            fraction_fit = float(self.config.clients_per_round) / num_clients
-            strategy = FedAvg(
-                fraction_fit=fraction_fit,
-                fraction_evaluate=1.0,  # Evaluate on all clients
-                min_fit_clients=min(self.config.clients_per_round, num_clients),
-                min_evaluate_clients=num_clients,
-                min_available_clients=num_clients,
-                initial_parameters=initial_parameters
-            )
+        # Create FedAvg strategy
+        fraction_fit = float(self.config.clients_per_round) / num_clients
+        strategy = FedAvg(
+            fraction_fit=fraction_fit,
+            fraction_evaluate=1.0,  # Evaluate on all clients
+            min_fit_clients=min(self.config.clients_per_round, num_clients),
+            min_evaluate_clients=num_clients,
+            min_available_clients=num_clients,
+            initial_parameters=initial_parameters
+        )
 
-            server_config = ServerConfig(num_rounds=self.config.num_rounds)
-
-            return ServerAppComponents(
-                strategy=strategy,
-                config=server_config
-            )
-
-        # Create ServerApp
-        server_app = ServerApp(server_fn=server_fn)
-
-        # Configure simulation backend
-        backend_config = {
-            "client_resources": {
-                "num_cpus": 1,
-                "num_gpus": 0.0  # Adjust based on available GPUs
-            }
+        # Configure client resources
+        client_resources = {
+            "num_cpus": 1,
+            "num_gpus": 0.0  # Adjust based on available GPUs
         }
 
         # Run simulation
         self.logger.info(f"Starting simulation: {self.config.num_rounds} rounds")
 
         try:
-            history = run_simulation(
-                server_app=server_app,
-                client_app=client_app,
-                num_supernodes=len(client_dataloaders),
-                backend_config=backend_config
+            history = start_simulation(
+                client_fn=client_fn,
+                num_clients=len(client_dataloaders),
+                client_resources=client_resources,
+                config=ServerConfig(num_rounds=self.config.num_rounds),
+                strategy=strategy
             )
 
             self.logger.info("Simulation completed successfully!")

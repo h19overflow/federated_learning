@@ -77,7 +77,7 @@ class FederatedTrainer:
 
         try:
             self.handler = DataSourceExtractor(self.logger)
-            self.dataset_preparer = DatasetPreparer(self.constants, self.config, self.logger)
+            self.dataset_preparer = DatasetPreparer(self.constants, self.config)
         except Exception as e:
             self.logger.error(f"Failed to initialize utilities: {e}")
             raise
