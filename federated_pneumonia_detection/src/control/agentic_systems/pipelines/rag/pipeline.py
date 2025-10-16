@@ -2,7 +2,7 @@ import os
 from langchain_community.document_loaders import PyPDFium2Loader
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import PGVector
+from langchain_postgres import PGVector
 from langchain_core.documents import Document
 
 from federated_pneumonia_detection.config.settings import Settings
@@ -32,13 +32,13 @@ def insert_documents_to_postgres(postgres_url: str, documents: list[Document]):
     Insert documents into Postgres database.
     """
     try:
-        vectorstore = PGVector(connection_string=postgres_url
-                           , collection_name='research_papers', embedding=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2"))
-        vectorstore.add_documents(documents)
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        vectorstore = PGVector(connection=postgres_url
+                           , collection_name='research_papers',embeddings=embeddings)
+        vectorstore.add_documents(documents=documents)
         return True
-
     except Exception as e:
-        print(f"Error inserting documents into Postgres: {e}")
+        get_logger(__name__).error(f"Error inserting documents into Postgres: {e}")
         return False
 def pipeline(postgres_url: str, file_path: str):
     """
@@ -60,4 +60,4 @@ if __name__ == "__main__":
     for file in os.listdir(directory_path):   
         get_logger(__name__).info(f"Processing file: {file}")
         if file.endswith(".pdf"):
-            pipeline(Settings().get_postgres_url, os.path.join(directory_path, file))
+            pipeline(Settings().get_postgres_db_uri(), os.path.join(directory_path, file))

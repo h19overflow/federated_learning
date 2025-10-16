@@ -13,4 +13,11 @@ class ChatAgent:
             deps_type=ChatDeps,
         )
         
-        
+    async def answer_question(self, question: str, context: str) -> ChatResponse:
+        return await self.agent.run(
+            deps=ChatDeps(
+                query=question,
+                ctx=context
+            ),
+            prompt=ANSWERING_PROMPT
+        )

@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     restart: always
     environment:
       POSTGRES_DB: federated_pneumonia_detection
@@ -11,15 +9,15 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - "5123:5123"
+      - "5123:5432"  # Expose container port 5432 at host port 5123
 
   postgrest:
     image: postgrest/postgrest
     restart: always
     environment:
-      PGRST_DB_URI: "postgres://postgres:postgres@db:5123/federated_pneumonia_detection"
-      PGRST_DB_SCHEMA: "public" # Or your specific schema
-      PGRST_DB_ANON_ROLE: "postgres" # A role for anonymous users
+      PGRST_DB_URI: "postgresql://postgres:postgres@db:5432/federated_pneumonia_detection"
+      PGRST_DB_SCHEMA: "public"
+      PGRST_DB_ANON_ROLE: "postgres"
     ports:
       - "3000:3000"
     depends_on:

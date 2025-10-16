@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Get-ChildItem -Path . -Filter \"*Training*\" -Directory -Recurse -Depth 2)"
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose up:*)"
     ],
     "deny": [],
     "ask": []
