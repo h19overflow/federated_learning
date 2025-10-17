@@ -2,12 +2,8 @@
 Top-level pytest configuration.
 Defines custom markers and plugins for the entire test suite.
 """
-
 import pytest
-
-# Pytest plugins configuration
 pytest_plugins = []
-
 
 def pytest_configure(config):
     """Configure custom pytest markers."""
