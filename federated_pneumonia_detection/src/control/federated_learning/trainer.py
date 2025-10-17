@@ -80,10 +80,10 @@ class FederatedTrainer:
         """Create a ResNetWithCustomHead model instance."""
         model = ResNetWithCustomHead(
             num_classes=self.config.num_classes,
-            pretrained=True,
-            freeze_backbone=self.config.freeze_backbone,
             dropout_rate=self.config.dropout_rate,
             fine_tune_layers_count=self.config.fine_tune_layers_count,
+            constants=self.constants,
+            config=self.config,
         )
         return model.to(self.device)
 
@@ -129,7 +129,7 @@ class FederatedTrainer:
             valloader=val_loader,
             config=self.config,
             device=self.device,
-        )
+        ).to_client()
 
     def _create_evaluate_fn(
         self, val_loader

@@ -30,6 +30,81 @@ from federated_pneumonia_detection.src.entities.resnet_with_custom_head import (
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 
 
+class FlowerClient(NumPyClient):
+    """Flower NumPy client for federated learning."""
+
+    def __init__(
+        self,
+        net: ResNetWithCustomHead,
+        trainloader: DataLoader,
+        valloader: DataLoader,
+        config: ExperimentConfig,
+        device: torch.device,
+    ) -> None:
+        """Initialize Flower client with dependencies."""
+        if net is None:
+            raise ValueError("net cannot be None")
+        if trainloader is None:
+            raise ValueError("trainloader cannot be None")
+        if valloader is None:
+            raise ValueError("valloader cannot be None")
+
+        self.net = net
+        self.trainloader = trainloader
+        self.valloader = valloader
+        self.config = config
+        self.device = device
+
+    def get_parameters(self, config: Dict[str, Any]) -> List:
+        """Extract model parameters as numpy arrays."""
+        return get_weights(self.net)
+
+    def set_parameters(self, parameters: List) -> None:
+        """Load parameters from server into model."""
+        set_weights(self.net, parameters)
+
+    def fit(
+        self, parameters: List, config: Dict[str, Any]
+    ) -> Tuple[List, int, Dict[str, Any]]:
+        """Train model on local data."""
+        self.set_parameters(parameters)
+
+        local_epochs = config.get("local_epochs", self.config.local_epochs)
+        learning_rate = config.get("lr", self.config.learning_rate)
+
+        train_loss = train(
+            self.net,
+            self.trainloader,
+            local_epochs,
+            self.device,
+            learning_rate,
+            self.config.weight_decay,
+            self.config.num_classes,
+        )
+
+        return (
+            get_weights(self.net),
+            len(self.trainloader.dataset),
+            {"train_loss": train_loss},
+        )
+
+    def evaluate(
+        self, parameters: List, config: Dict[str, Any]
+    ) -> Tuple[float, int, Dict[str, Any]]:
+        """Evaluate model on local validation data."""
+        self.set_parameters(parameters)
+
+        loss, accuracy = evaluate(
+            self.net,
+            self.valloader,
+            self.device,
+            self.config.num_classes,
+        )
+
+        return loss, len(self.valloader.dataset), {"accuracy": accuracy}
+
+# Helper functions
+
 def get_weights(net: ResNetWithCustomHead) -> List:
     """Extract model weights as numpy arrays."""
     return [val.cpu().numpy() for val in net.state_dict().values()]
@@ -119,76 +194,3 @@ def evaluate(
     loss = loss / len(valloader)
     return loss, accuracy
 
-
-class FlowerClient(NumPyClient):
-    """Flower NumPy client for federated learning."""
-
-    def __init__(
-        self,
-        net: ResNetWithCustomHead,
-        trainloader: DataLoader,
-        valloader: DataLoader,
-        config: ExperimentConfig,
-        device: torch.device,
-    ) -> None:
-        """Initialize Flower client with dependencies."""
-        if net is None:
-            raise ValueError("net cannot be None")
-        if trainloader is None:
-            raise ValueError("trainloader cannot be None")
-        if valloader is None:
-            raise ValueError("valloader cannot be None")
-
-        self.net = net
-        self.trainloader = trainloader
-        self.valloader = valloader
-        self.config = config
-        self.device = device
-
-    def get_parameters(self, config: Dict[str, Any]) -> List:
-        """Extract model parameters as numpy arrays."""
-        return get_weights(self.net)
-
-    def set_parameters(self, parameters: List) -> None:
-        """Load parameters from server into model."""
-        set_weights(self.net, parameters)
-
-    def fit(
-        self, parameters: List, config: Dict[str, Any]
-    ) -> Tuple[List, int, Dict[str, Any]]:
-        """Train model on local data."""
-        self.set_parameters(parameters)
-
-        local_epochs = config.get("local_epochs", self.config.local_epochs)
-        learning_rate = config.get("lr", self.config.learning_rate)
-
-        train_loss = train(
-            self.net,
-            self.trainloader,
-            local_epochs,
-            self.device,
-            learning_rate,
-            self.config.weight_decay,
-            self.config.num_classes,
-        )
-
-        return (
-            get_weights(self.net),
-            len(self.trainloader.dataset),
-            {"train_loss": train_loss},
-        )
-
-    def evaluate(
-        self, parameters: List, config: Dict[str, Any]
-    ) -> Tuple[float, int, Dict[str, Any]]:
-        """Evaluate model on local validation data."""
-        self.set_parameters(parameters)
-
-        loss, accuracy = evaluate(
-            self.net,
-            self.valloader,
-            self.device,
-            self.config.num_classes,
-        )
-
-        return loss, len(self.valloader.dataset), {"accuracy": accuracy}
