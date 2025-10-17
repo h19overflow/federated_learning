@@ -10,7 +10,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from federated_pneumonia_detection.src.control.federated_learning.federated_trainer import FederatedTrainer
+from federated_pneumonia_detection.src.control.federated_learning import FederatedTrainer
 
 
 def main():
@@ -47,21 +47,8 @@ def main():
     trainer = FederatedTrainer(
         config_path=config_path,
         checkpoint_dir=checkpoint_dir,
-        logs_dir=logs_dir,
-        partition_strategy=partition_strategy
+        logs_dir=logs_dir
     )
-
-    # Display training status
-    status = trainer.get_training_status()
-    logger.info("\nTrainer Configuration:")
-    logger.info(f"  Num Rounds: {status['config']['num_rounds']}")
-    logger.info(f"  Num Clients: {status['config']['num_clients']}")
-    logger.info(f"  Clients per Round: {status['config']['clients_per_round']}")
-    logger.info(f"  Local Epochs: {status['config']['local_epochs']}")
-    logger.info(f"  Learning Rate: {status['config']['learning_rate']}")
-    logger.info(f"  Batch Size: {status['config']['batch_size']}")
-    logger.info(f"  Partition Strategy: {status['partition_strategy']}")
-
     # Run training
     try:
         logger.info("\nStarting federated learning simulation...")

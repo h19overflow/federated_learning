@@ -1,8 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(docker-compose down:*)",
-      "Bash(docker-compose up:*)"
+      "Bash(uv run python:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(uv run:*)"
     ],
     "deny": [],
     "ask": []
