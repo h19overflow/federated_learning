@@ -28,7 +28,7 @@ class XRayPreprocessor:
         Args:
             logger: Optional logger instance
         """
-        self.logger = logger or get_logger(__name__)
+        self.logger = logger or get_logger(__name__, level=logging.warning)
 
     @staticmethod
     def contrast_stretch_percentile(
@@ -197,7 +197,7 @@ class TransformBuilder:
         self.constants = constants
         self.config = config
         self.preprocessor = XRayPreprocessor()
-        self.logger = get_logger(__name__)
+        self.logger = get_logger(__name__, level=logging.warning)
 
     def build_training_transforms(
         self,

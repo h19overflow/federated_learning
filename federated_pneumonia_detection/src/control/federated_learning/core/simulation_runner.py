@@ -2,6 +2,14 @@
 Federated learning simulation runner.
 Orchestrates Flower simulation with client functions and data partitions.
 This is the bridge between data partitions and Flower's federated training.
+
+Note: This implementation uses start_simulation() with a client_fn factory.
+The client_fn creates FlowerClient (NumPyClient) instances and converts them
+to Client objects using .to_client(), which is compatible with the modern
+Flower API (1.0+).
+
+For deployment scenarios (non-simulation), consider using the ClientApp pattern
+defined in client_app.py and server_app.py instead.
 """
 
 import logging
@@ -31,6 +39,25 @@ class SimulationRunner:
     """
     Orchestrates Flower federated learning simulation.
     Connects data partitions with Flower clients and runs training.
+    
+    This class uses Flower's start_simulation() API, which is designed for
+    simulating federated learning locally. It creates a client_fn factory that:
+    
+    1. Takes a Context object with node_id
+    2. Creates a FlowerClient (NumPyClient subclass) instance
+    3. Converts it to a Client using .to_client()
+    4. Returns the Client for Flower's simulation engine
+    
+    The FlowerClient class (in fed_client.py) is a NumPyClient that implements:
+    - get_parameters(): Returns model parameters as numpy arrays
+    - set_parameters(): Sets model parameters from numpy arrays  
+    - fit(): Trains model locally and returns updated parameters
+    - evaluate(): Evaluates model and returns metrics
+    
+    This approach is compatible with both Flower's simulation API and the
+    modern ClientApp deployment pattern. The same FlowerClient can be used in:
+    - Simulation: via start_simulation() (this file)
+    - Deployment: via ClientApp with client_fn (client_app.py)
     """
 
     def __init__(
@@ -49,7 +76,7 @@ class SimulationRunner:
         """
         self.constants = constants
         self.config = config
-        self.logger = logger or logging.getLogger(__name__)
+        self.logger = logger or logging.getLogger(__name__, level=logging.warning)
 
         self.logger.info("SimulationRunner initialized")
 
@@ -111,34 +138,66 @@ class SimulationRunner:
         # Create client function factory
         def client_fn(context: Context) -> Client:
             """Create a Flower client for the given context."""
-            # Get client ID from context (for start_simulation, use node_id or cid)
-            # Context.node_id contains the client ID as string
-            client_id = int(context.node_id)
-            train_loader, val_loader = client_dataloaders[client_id]
+            try:
+                # Get client ID from context (for start_simulation, use node_id or cid)
+                # Context.node_id contains the client ID as string
+                client_id = int(context.node_id)
+                self.logger.debug(f"Creating client for node_id={context.node_id} (client_id={client_id})")
+                
+                if client_id >= len(client_dataloaders):
+                    self.logger.error(f"Client ID {client_id} out of range (max: {len(client_dataloaders)-1})")
+                    raise ValueError(f"Client ID {client_id} exceeds available dataloaders")
+                
+                train_loader, val_loader = client_dataloaders[client_id]
+                self.logger.debug(
+                    f"Client {client_id} dataloaders: "
+                    f"train={len(train_loader.dataset)} samples, "
+                    f"val={len(val_loader.dataset)} samples"
+                )
 
-            return FlowerClient(
-                client_id=client_id,
-                train_loader=train_loader,
-                val_loader=val_loader,
-                constants=self.constants,
-                config=self.config,
-                logger=self.logger
-            ).to_client()
+                flower_client = FlowerClient(
+                    client_id=client_id,
+                    train_loader=train_loader,
+                    val_loader=val_loader,
+                    constants=self.constants,
+                    config=self.config,
+                    logger=self.logger
+                )
+                
+                self.logger.debug(f"FlowerClient {client_id} created successfully")
+                return flower_client.to_client()
+                
+            except Exception as e:
+                self.logger.error(f"CRITICAL ERROR in client_fn for context {context.node_id}: {type(e).__name__}: {str(e)}")
+                import traceback
+                self.logger.error(f"Traceback:\n{traceback.format_exc()}")
+                raise
 
         # Create initial global model
         self.logger.info("Initializing global model...")
-        global_model = ResNetWithCustomHead(
-            constants=self.constants,
-            config=self.config,
-            num_classes=self.config.num_classes,
-            dropout_rate=self.config.dropout_rate,
-            fine_tune_layers_count=self.config.fine_tune_layers_count
-        )
-
-        initial_parameters = get_model_parameters(global_model)
+        try:
+            global_model = ResNetWithCustomHead(
+                constants=self.constants,
+                config=self.config,
+                num_classes=self.config.num_classes,
+                dropout_rate=self.config.dropout_rate,
+                fine_tune_layers_count=self.config.fine_tune_layers_count
+            )
+            self.logger.info("Global model created successfully")
+            
+            self.logger.debug("Extracting initial model parameters...")
+            initial_parameters = get_model_parameters(global_model)
+            self.logger.info(f"Initial parameters extracted: {len(initial_parameters)} arrays")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to initialize global model: {type(e).__name__}: {str(e)}")
+            import traceback
+            self.logger.error(f"Traceback:\n{traceback.format_exc()}")
+            raise
 
         # Create FedAvg strategy
         fraction_fit = float(self.config.clients_per_round) / num_clients
+        self.logger.info(f"Creating FedAvg strategy with fraction_fit={fraction_fit:.2f}")
         strategy = FedAvg(
             fraction_fit=fraction_fit,
             fraction_evaluate=1.0,  # Evaluate on all clients
@@ -147,6 +206,7 @@ class SimulationRunner:
             min_available_clients=num_clients,
             initial_parameters=initial_parameters
         )
+        self.logger.info("FedAvg strategy created successfully")
 
         # Configure client resources
         client_resources = {
@@ -155,7 +215,10 @@ class SimulationRunner:
         }
 
         # Run simulation
-        self.logger.info(f"Starting simulation: {self.config.num_rounds} rounds")
+        self.logger.info("="*80)
+        self.logger.info(f"Starting Flower simulation: {self.config.num_rounds} rounds with {len(client_dataloaders)} clients")
+        self.logger.info(f"Client resources: {client_resources}")
+        self.logger.info("="*80)
 
         try:
             history = start_simulation(
@@ -166,20 +229,39 @@ class SimulationRunner:
                 strategy=strategy
             )
 
+            self.logger.info("="*80)
             self.logger.info("Simulation completed successfully!")
+            self.logger.info("="*80)
+            
+            # Log history attributes for debugging
+            self.logger.debug(f"History object type: {type(history)}")
+            self.logger.debug(f"History attributes: {dir(history)}")
 
             # Extract results
             results = self._process_simulation_results(history, experiment_name, num_clients)
 
-            # Save final model
-            if history.parameters_distributed:
+            # Save final model - handle different Flower versions
+            # Check if history has parameters_distributed (older Flower) or parameters (newer Flower)
+            if hasattr(history, 'parameters_distributed') and history.parameters_distributed:
+                self.logger.info("Saving final model using parameters_distributed...")
                 final_parameters = history.parameters_distributed[-1][0]
                 self._save_final_model(final_parameters, experiment_name)
+            elif hasattr(history, 'parameters') and history.parameters:
+                self.logger.info("Saving final model using parameters...")
+                final_parameters = history.parameters[-1]
+                self._save_final_model(final_parameters, experiment_name)
+            else:
+                self.logger.warning("No parameters found in history - skipping model save")
+                self.logger.debug(f"History has: {[attr for attr in dir(history) if not attr.startswith('_')]}")
 
             return results
 
         except Exception as e:
-            self.logger.error(f"Simulation failed: {e}")
+            self.logger.error("="*80)
+            self.logger.error(f"Simulation failed: {type(e).__name__}: {str(e)}")
+            self.logger.error("="*80)
+            import traceback
+            self.logger.error(f"Full traceback:\n{traceback.format_exc()}")
             raise
 
     def _process_simulation_results(
@@ -213,7 +295,7 @@ class SimulationRunner:
         }
 
         # Log summary
-        if history.losses_distributed:
+        if hasattr(history, 'losses_distributed') and history.losses_distributed:
             final_loss = history.losses_distributed[-1][1]
             self.logger.info(f"Final distributed loss: {final_loss:.4f}")
 

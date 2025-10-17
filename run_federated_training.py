@@ -16,9 +16,9 @@ from federated_pneumonia_detection.src.control.federated_learning.federated_trai
 def main():
     """Run federated learning training on the Training dataset."""
 
-    # Configure logging
+    # Configure logging - enable DEBUG for detailed output
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,  # Changed to DEBUG for comprehensive logging
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     logger = logging.getLogger(__name__)

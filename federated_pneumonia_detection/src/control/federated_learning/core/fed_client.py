@@ -79,52 +79,63 @@ class FlowerClient(NumPyClient):
         Returns:
             Tuple of (updated_parameters, num_examples, metrics)
         """
-        # Set parameters from server
-        self.set_parameters(parameters)
+        try:
+            self.logger.info(f"[Client {self.client_id}] fit() called - Starting training")
+            
+            # Set parameters from server
+            self.logger.debug(f"[Client {self.client_id}] Setting parameters from server...")
+            self.set_parameters(parameters)
 
-        # Get training parameters
-        local_epochs = config.get("local_epochs", self.config.local_epochs)
-        learning_rate = config.get("lr", self.config.learning_rate)
+            # Get training parameters
+            local_epochs = config.get("local_epochs", self.config.local_epochs)
+            learning_rate = config.get("lr", self.config.learning_rate)
 
-        self.logger.info(
-            f"Client {self.client_id} training for {local_epochs} epochs "
-            f"with lr={learning_rate}"
-        )
+            # Create optimizer
+            optimizer = create_optimizer(self.model, learning_rate, self.config.weight_decay)
 
-        # Create optimizer
-        optimizer = create_optimizer(self.model, learning_rate, self.config.weight_decay)
+            # Training loop
+            total_loss = 0.0
+            for epoch in range(local_epochs):
+                self.logger.debug(f"[Client {self.client_id}] Starting epoch {epoch+1}/{local_epochs}")
+                
+                epoch_loss = train_one_epoch(
+                    model=self.model,
+                    dataloader=self.train_loader,
+                    optimizer=optimizer,
+                    device=self.device,
+                    num_classes=self.config.num_classes,
+                    logger=self.logger
+                )
+                total_loss += epoch_loss
+                self.logger.debug(f"[Client {self.client_id}] Epoch {epoch+1} loss: {epoch_loss:.4f}")
 
-        # Training loop
-        total_loss = 0.0
-        for epoch in range(local_epochs):
-            epoch_loss = train_one_epoch(
-                model=self.model,
-                dataloader=self.train_loader,
-                optimizer=optimizer,
-                device=self.device,
-                num_classes=self.config.num_classes,
-                logger=self.logger
+            avg_loss = total_loss / local_epochs
+            self.logger.info(f"[Client {self.client_id}] Training complete - avg_loss={avg_loss:.4f}")
+
+            # Get updated parameters
+            self.logger.debug(f"[Client {self.client_id}] Extracting updated parameters...")
+            updated_parameters = self.get_parameters(config={})
+            self.logger.debug(f"[Client {self.client_id}] Extracted {len(updated_parameters)} parameter arrays")
+
+            # Return results
+            num_examples = len(self.train_loader.dataset)
+            metrics = {
+                "train_loss": avg_loss,
+                "client_id": self.client_id
+            }
+
+            self.logger.info(
+                f"[Client {self.client_id}] fit() completed successfully: "
+                f"loss={avg_loss:.4f}, samples={num_examples}"
             )
-            total_loss += epoch_loss
 
-        avg_loss = total_loss / local_epochs
-
-        # Get updated parameters
-        updated_parameters = self.get_parameters(config={})
-
-        # Return results
-        num_examples = len(self.train_loader.dataset)
-        metrics = {
-            "train_loss": avg_loss,
-            "client_id": self.client_id
-        }
-
-        self.logger.info(
-            f"Client {self.client_id} training complete: "
-            f"loss={avg_loss:.4f}, samples={num_examples}"
-        )
-
-        return updated_parameters, num_examples, metrics
+            return updated_parameters, num_examples, metrics
+            
+        except Exception as e:
+            self.logger.error(f"[Client {self.client_id}] CRITICAL ERROR in fit(): {type(e).__name__}: {str(e)}")
+            import traceback
+            self.logger.error(f"[Client {self.client_id}] Traceback:\n{traceback.format_exc()}")
+            raise
 
     def evaluate(self, parameters: List, config: Dict[str, Any]) -> Tuple[float, int, Dict]:
         """
@@ -137,27 +148,37 @@ class FlowerClient(NumPyClient):
         Returns:
             Tuple of (loss, num_examples, metrics)
         """
-        # Set parameters from server
-        self.set_parameters(parameters)
+        try:
+            self.logger.info(f"[Client {self.client_id}] evaluate() called - Starting evaluation")
+            
+            # Set parameters from server
+            self.logger.debug(f"[Client {self.client_id}] Setting parameters from server...")
+            self.set_parameters(parameters)
 
-        # Evaluate
-        loss, accuracy, metrics = evaluate_model(
-            model=self.model,
-            dataloader=self.val_loader,
-            device=self.device,
-            num_classes=self.config.num_classes,
-            logger=self.logger
-        )
+            # Evaluate
+            loss, accuracy, metrics = evaluate_model(
+                model=self.model,
+                dataloader=self.val_loader,
+                device=self.device,
+                num_classes=self.config.num_classes,
+                logger=self.logger
+            )
 
-        num_examples = len(self.val_loader.dataset)
-        metrics_out = {
-            "accuracy": accuracy,
-            "client_id": self.client_id
-        }
+            num_examples = len(self.val_loader.dataset)
+            metrics_out = {
+                "accuracy": accuracy,
+                "client_id": self.client_id
+            }
 
-        self.logger.info(
-            f"Client {self.client_id} evaluation: "
-            f"loss={loss:.4f}, acc={accuracy:.4f}, samples={num_examples}"
-        )
+            self.logger.info(
+                f"[Client {self.client_id}] evaluate() completed successfully: "
+                f"loss={loss:.4f}, acc={accuracy:.4f}, samples={num_examples}"
+            )
 
-        return loss, num_examples, metrics_out
+            return loss, num_examples, metrics_out
+            
+        except Exception as e:
+            self.logger.error(f"[Client {self.client_id}] CRITICAL ERROR in evaluate(): {type(e).__name__}: {str(e)}")
+            import traceback
+            self.logger.error(f"[Client {self.client_id}] Traceback:\n{traceback.format_exc()}")
+            raise
