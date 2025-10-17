@@ -3,7 +3,6 @@ Script to run federated learning training on the pneumonia dataset.
 Uses the Training folder containing images and metadata CSV.
 """
 
-import os
 import sys
 import logging
 from pathlib import Path
