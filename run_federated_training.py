@@ -7,95 +7,118 @@ import sys
 import logging
 from pathlib import Path
 
+import torch
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from federated_pneumonia_detection.src.control.federated_learning import FederatedTrainer
+from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.src.control.federated_learning import (
+    FederatedTrainer,
+)
+from federated_pneumonia_detection.src.utils.data_processing import load_metadata
 
 
 def main():
     """Run federated learning training on the Training dataset."""
 
-    # Configure logging - enable DEBUG for detailed output
+    # Configure logging
     logging.basicConfig(
-        level=logging.DEBUG,  # Changed to DEBUG for comprehensive logging
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     logger = logging.getLogger(__name__)
 
-    logger.info("="*80)
+    logger.info("=" * 80)
     logger.info("FEDERATED LEARNING TRAINING - Pneumonia Detection")
-    logger.info("="*80)
+    logger.info("=" * 80)
 
-    # Define paths
-    source_path = "Training"  # Directory containing Images/ and CSV files
-    config_path = None  # Use default configuration
-    experiment_name = "pneumonia_federated"
-    partition_strategy = "stratified"  # Options: 'iid', 'stratified', 'by_patient'
-
-    # Output directories
-    checkpoint_dir = "results/federated/checkpoints"
-    logs_dir = "results/federated/logs"
-
-    logger.info(f"Source path: {source_path}")
-    logger.info(f"Partition strategy: {partition_strategy}")
-    logger.info(f"Checkpoint directory: {checkpoint_dir}")
-    logger.info(f"Logs directory: {logs_dir}")
-
-    # Create trainer
-    logger.info("\nInitializing FederatedTrainer...")
-    trainer = FederatedTrainer(
-        config_path=config_path,
-        checkpoint_dir=checkpoint_dir,
-        logs_dir=logs_dir
-    )
-    # Run training
     try:
-        logger.info("\nStarting federated learning simulation...")
-        logger.info("-"*80)
+        # Define paths and configuration
+        source_path = Path("Training")
+        image_dir = source_path / "Images"
+        csv_filename = "stage2_train_metadata.csv"
+        metadata_path = source_path / csv_filename
 
-        results = trainer.train(
-            source_path=source_path,
-            experiment_name=experiment_name,
-            csv_filename="stage2_train_metadata.csv"
+        logger.info(f"\nData paths:")
+        logger.info(f"  Source: {source_path}")
+        logger.info(f"  Images: {image_dir}")
+        logger.info(f"  Metadata: {metadata_path}")
+
+        # Validate paths
+        if not source_path.exists():
+            raise FileNotFoundError(f"Source path not found: {source_path}")
+        if not image_dir.exists():
+            raise FileNotFoundError(f"Image directory not found: {image_dir}")
+        if not metadata_path.exists():
+            raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
+
+        # Load configuration
+        logger.info("\nLoading configuration...")
+        constants = SystemConstants()
+        config = ExperimentConfig(
+            num_clients=2,
+            num_rounds=5,
+            local_epochs=2,
+            learning_rate=0.001,
+            batch_size=32,
+        )
+        logger.info(f"  Num clients: {config.num_clients}")
+        logger.info(f"  Num rounds: {config.num_rounds}")
+        logger.info(f"  Local epochs: {config.local_epochs}")
+
+        # Determine device
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+            logger.info("  Device: GPU (CUDA)")
+        else:
+            device = torch.device("cpu")
+            logger.info("  Device: CPU")
+
+        # Load metadata
+        logger.info("\nLoading dataset metadata...")
+        data_df = load_metadata(metadata_path, constants, logger)
+        logger.info(f"  Total samples: {len(data_df)}")
+        class_dist = data_df[constants.TARGET_COLUMN].value_counts().to_dict()
+        logger.info(f"  Class distribution: {class_dist}")
+
+        # Initialize trainer
+        logger.info("\nInitializing FederatedTrainer...")
+        trainer = FederatedTrainer(
+            config=config, constants=constants, device=device
         )
 
-        logger.info("\n" + "="*80)
+        # Run training
+        logger.info("\nStarting federated learning simulation...")
+        logger.info("-" * 80)
+
+        results = trainer.train(
+            data_df=data_df,
+            image_dir=image_dir,
+            experiment_name="pneumonia_federated",
+        )
+
+        # Display summary
+        logger.info("\n" + "=" * 80)
         logger.info("FEDERATED TRAINING COMPLETED SUCCESSFULLY!")
-        logger.info("="*80)
-        logger.info("\nResults Summary:")
-        logger.info(f"  Experiment: {results.get('experiment_name', 'N/A')}")
-        logger.info(f"  Status: {results.get('status', 'completed')}")
-        logger.info(f"  Num Clients: {results.get('num_clients', 'N/A')}")
-        logger.info(f"  Num Rounds: {results.get('num_rounds', 'N/A')}")
-        logger.info(f"  Partition Strategy: {results.get('partition_strategy', 'N/A')}")
-        logger.info(f"  Checkpoint directory: {checkpoint_dir}")
-        logger.info(f"  Logs directory: {logs_dir}")
-
-        # Display metrics if available
-        if 'metrics' in results:
-            metrics = results['metrics']
-
-            if metrics.get('losses_distributed'):
-                logger.info("\nTraining Losses per Round:")
-                for round_num, (_, loss) in enumerate(metrics['losses_distributed'], 1):
-                    logger.info(f"  Round {round_num}: {loss:.4f}")
-
-            if metrics.get('metrics_distributed'):
-                logger.info("\nFinal Round Metrics:")
-                final_metrics = metrics['metrics_distributed'][-1] if metrics['metrics_distributed'] else {}
-                for key, value in final_metrics.items():
-                    logger.info(f"  {key}: {value}")
+        logger.info("=" * 80)
+        logger.info(f"\nResults Summary:")
+        logger.info(f"  Experiment: {results.get('experiment_name')}")
+        logger.info(f"  Status: {results.get('status')}")
+        logger.info(f"  Num Clients: {results.get('num_clients')}")
+        logger.info(f"  Num Rounds: {results.get('num_rounds')}")
 
         return 0
 
     except Exception as e:
-        logger.error("\n" + "="*80)
+        logger.error("\n" + "=" * 80)
         logger.error("FEDERATED TRAINING FAILED!")
-        logger.error("="*80)
+        logger.error("=" * 80)
         logger.error(f"Error: {type(e).__name__}: {str(e)}")
 
         import traceback
+
         logger.error("\nFull traceback:")
         logger.error(traceback.format_exc())
 

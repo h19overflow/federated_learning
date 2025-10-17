@@ -8,7 +8,6 @@ partitioning across federated clients for fair model training.
 Dependencies:
 - pandas: DataFrame operations
 - numpy: Array splitting and shuffling
-- logging: Optional logging support
 
 Role in System:
 - Distributes data fairly across federated clients
@@ -16,8 +15,8 @@ Role in System:
 - Enables repeatable partitioning through seeding
 """
 
-import logging
-from typing import List, Optional
+from typing import List
+
 import numpy as np
 import pandas as pd
 
@@ -27,7 +26,6 @@ def partition_data_stratified(
     num_clients: int,
     target_column: str,
     seed: int = 42,
-    logger: Optional[logging.Logger] = None
 ) -> List[pd.DataFrame]:
     """
     Partition data across clients while maintaining class distribution.
@@ -41,23 +39,9 @@ def partition_data_stratified(
         num_clients: Number of federated clients (must be > 0)
         target_column: Column name containing class labels
         seed: Random seed for reproducible shuffling (default: 42)
-        logger: Optional logger for partition size reporting
 
     Returns:
         List of DataFrames, one per client, each with balanced class distribution
-
-    Raises:
-        ValueError: If num_clients <= 0 or target_column not in DataFrame
-        TypeError: If df is not a pandas DataFrame
-
-    Example:
-        >>> df = pd.DataFrame({
-        ...     'image_id': [1, 2, 3, 4, 5, 6],
-        ...     'label': ['normal', 'pneumonia', 'normal', 'pneumonia', 'normal', 'pneumonia']
-        ... })
-        >>> partitions = partition_data_stratified(df, num_clients=3, target_column='label')
-        >>> len(partitions)
-        3
     """
     # Validate inputs
     if not isinstance(df, pd.DataFrame):
@@ -75,7 +59,9 @@ def partition_data_stratified(
     np.random.seed(seed)
 
     # Initialize client partitions
-    client_partitions: List[pd.DataFrame] = [pd.DataFrame() for _ in range(num_clients)]
+    client_partitions: List[pd.DataFrame] = [
+        pd.DataFrame() for _ in range(num_clients)
+    ]
 
     # Distribute each class across clients
     for class_label in df[target_column].unique():
@@ -87,25 +73,13 @@ def partition_data_stratified(
         # Assign each split to corresponding client
         for client_idx, split in enumerate(class_splits):
             client_partitions[client_idx] = pd.concat(
-                [client_partitions[client_idx], split],
-                ignore_index=True
+                [client_partitions[client_idx], split], ignore_index=True
             )
 
     # Shuffle each partition
     for i in range(num_clients):
         client_partitions[i] = client_partitions[i].sample(
-            frac=1,
-            random_state=seed + i
+            frac=1, random_state=seed + i
         ).reset_index(drop=True)
-
-    # Log partition information
-    if logger:
-        logger.info(f"Data partitioned across {num_clients} clients")
-        for i, partition in enumerate(client_partitions):
-            class_dist = partition[target_column].value_counts().to_dict()
-            logger.debug(
-                f"Client {i}: {len(partition)} samples, "
-                f"class distribution: {class_dist}"
-            )
 
     return client_partitions
