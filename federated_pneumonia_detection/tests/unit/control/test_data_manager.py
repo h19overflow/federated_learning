@@ -197,14 +197,15 @@ class TestLoadData:
             img = Image.fromarray(np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8))
             img.save(image_dir / f"image_{i}.jpg")
 
-        # Create sample DataFrame
+        constants = SystemConstants()
+        
+        # Create sample DataFrame with correct column names
         data = {
-            "filename": [f"image_{i}.jpg" for i in range(20)],
-            "target": [0, 1] * 10,
+            constants.FILENAME_COLUMN: [f"image_{i}.jpg" for i in range(20)],
+            constants.TARGET_COLUMN: [0, 1] * 10,
         }
         df = pd.DataFrame(data)
 
-        constants = SystemConstants()
         config = ExperimentConfig(batch_size=4, validation_split=0.2)
 
         return {
@@ -327,8 +328,9 @@ class TestLoadData:
 
     def test_load_data_missing_filename_column_raises_error(self, mock_setup):
         """Test that missing filename column raises ValueError."""
+        constants = SystemConstants()
         bad_df = mock_setup["df"].rename(
-            columns={mock_setup["constants"].FILENAME_COLUMN: "bad_name"}
+            columns={constants.FILENAME_COLUMN: "bad_name"}
         )
 
         with pytest.raises(ValueError, match="Missing required columns"):
@@ -341,8 +343,9 @@ class TestLoadData:
 
     def test_load_data_missing_target_column_raises_error(self, mock_setup):
         """Test that missing target column raises ValueError."""
+        constants = SystemConstants()
         bad_df = mock_setup["df"].rename(
-            columns={mock_setup["constants"].TARGET_COLUMN: "bad_name"}
+            columns={constants.TARGET_COLUMN: "bad_name"}
         )
 
         with pytest.raises(ValueError, match="Missing required columns"):
