@@ -144,22 +144,23 @@ class FederatedTrainer:
 
         try:
             # Detect source type and extract/find data
-            if os.path.isfile(source_path):
-                image_dir, csv_path = self.handler.extract_and_validate(source_path, csv_filename)
-            elif os.path.isdir(source_path):
-                image_dir, csv_path = self.handler.extract_and_validate(source_path, csv_filename)
-            else:
-                raise ValueError(f"Invalid source path: {source_path}")
+            image_dir, csv_path = self.handler.extract_and_validate(source_path,
+                                                                    csv_filename)
 
             # Load and process data
-            train_df, val_df = self.dataset_preparer.prepare_dataset(csv_path, image_dir)
+            train_df, val_df = self.dataset_preparer.prepare_dataset(csv_path,
+                                                                     image_dir)
 
             # Combine train and val for federated partitioning
-            full_df = pd.concat([train_df, val_df], ignore_index=True)
+            full_df = pd.concat([train_df, val_df],
+                                ignore_index=True)
 
-            # Partition data across clients
-            client_partitions = self._partition_data_for_clients(full_df)
-
+            # # Partition data across clients
+            # client_partitions = self._partition_data_for_clients(full_df)
+            client_partitions=partition_data_stratified(full_df, self.config.num_clients,
+                                                        self.constants.TARGET_COLUMN,
+                                                        self.config.seed,
+                                                        self.logger)
             # Run federated learning simulation
             results = self._run_federated_simulation(
                 client_partitions,
@@ -175,34 +176,6 @@ class FederatedTrainer:
         finally:
             self.handler.cleanup()
 
-    def _partition_data_for_clients(self, df) -> list:
-        """
-        Partition data across federated clients based on strategy.
-
-        Args:
-            df: Full dataset DataFrame
-
-        Returns:
-            List of DataFrames, one per client
-        """
-        num_clients = self.config.num_clients
-
-        self.logger.info(f"Partitioning data for {num_clients} clients using '{self.partition_strategy}' strategy")
-
-        partitions = partition_data_stratified(
-                df,
-                num_clients,
-                self.constants.TARGET_COLUMN,
-                self.config.seed,
-                self.logger
-            )
-
-        # Log partition statistics
-        for i, partition in enumerate(partitions):
-            class_dist = partition[self.constants.TARGET_COLUMN].value_counts().to_dict()
-            self.logger.info(f"Client {i}: {len(partition)} samples, class distribution: {class_dist}")
-
-        return partitions
 
     def _run_federated_simulation(
         self,
