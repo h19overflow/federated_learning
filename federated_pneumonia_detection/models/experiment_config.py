@@ -18,18 +18,18 @@ class ExperimentConfig:
 
     # Model parameters
     learning_rate: float = 0.001
-    epochs: int = 10
+    epochs: int = 15
     weight_decay: float = 0.0001
     freeze_backbone: bool = True
-    dropout_rate: float = 0.5
+    dropout_rate: float = 0.3
     fine_tune_layers_count: int = 0  # 0 = freeze all, negative = unfreeze last N layers
     num_classes: int = 1  # 1 for binary classification
     monitor_metric: str = 'val_loss'  # Metric to monitor for LR scheduling
 
     # Data parameters
-    sample_fraction: float = 0.10
+    sample_fraction: float = 0.05
     validation_split: float = 0.20
-    batch_size: int = 128
+    batch_size: int = 512
 
     # Training parameters
     early_stopping_patience: int = 5
@@ -38,10 +38,10 @@ class ExperimentConfig:
     min_lr: float = 1e-7
 
     # Federated Learning parameters
-    num_rounds: int = 10
-    num_clients: int = 5
-    clients_per_round: int = 3
-    local_epochs: int = 1
+    num_rounds: int = 2
+    num_clients: int = 2
+    clients_per_round: int = 2
+    local_epochs: int = 15
 
     # System parameters
     seed: int = 42

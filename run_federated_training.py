@@ -58,11 +58,11 @@ def main():
         logger.info("\nLoading configuration...")
         constants = SystemConstants()
         config = ExperimentConfig(
-            num_clients=5,
-            num_rounds=5,
-            local_epochs=2,
-            learning_rate=0.001,
-            batch_size=32,
+            num_clients=2,
+            num_rounds=2,
+            local_epochs=15,
+            learning_rate=0.0015,
+            batch_size=512,
         )
         logger.info(f"  Num clients: {config.num_clients}")
         logger.info(f"  Num rounds: {config.num_rounds}")
