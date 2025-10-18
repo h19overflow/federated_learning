@@ -8,6 +8,8 @@ import logging
 from typing import Optional, Dict, Any
 
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
+from federated_pneumonia_detection.src.boundary.CRUD.experiment import experiment_crud
+from federated_pneumonia_detection.src.boundary.engine import get_session
 from .utils import DataSourceExtractor, DatasetPreparer, TrainerBuilder
 
 
@@ -194,6 +196,35 @@ class CentralizedTrainer:
                 self.logger.error(f"  Error type: {type(e).__name__}")
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
+
+            # Save results to database
+            self.logger.info("-" * 80)
+            self.logger.info("Saving results to database...")
+            self.logger.info("-" * 80)
+            try:
+                db = get_session()
+                # Create experiment if not exists
+                exp = experiment_crud.get_by_name(db, experiment_name)
+                if not exp:
+                    exp = experiment_crud.create(db, name=experiment_name, description=f"Centralized training run for {experiment_name}")
+                    db.commit()
+                    self.logger.info(f"Created new experiment: {exp.id}")
+                
+                run_id = self.trainer_builder.save_results_to_db(
+                    trainer, 
+                    model,
+                    experiment_id=exp.id,
+                    training_mode="centralized",
+                    source_path=source_path
+                )
+                results['run_id'] = run_id
+                self.logger.info(f"✓ Results saved to database successfully")
+                db.close()
+            except Exception as e:
+                self.logger.error(f"✗ Failed to save results to database")
+                self.logger.error(f"  Error type: {type(e).__name__}")
+                self.logger.error(f"  Error message: {str(e)}")
+                self.logger.warning("Training completed but database save failed - continuing without database persistence")
 
             self.logger.info("=" * 80)
             self.logger.info("TRAINING COMPLETED SUCCESSFULLY!")

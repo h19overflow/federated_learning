@@ -209,6 +209,36 @@ class FederatedTrainer:
 
         return evaluate_fn
 
+    def _save_history(
+        self, history: Any, filename: str = "fl_history.json"
+    ) -> None:
+        """
+        Save the Flower History object to a JSON file.
+
+        Args:
+            history: Flower History object containing training metrics
+            filename: Output filename for the history JSON file
+
+        Raises:
+            Exception: If saving fails
+        """
+        try:
+            history_data = {
+                "losses_distributed": history.losses_distributed,
+                "losses_centralized": history.losses_centralized,
+                "metrics_distributed": history.metrics_distributed,
+                "metrics_centralized": history.metrics_centralized,
+                "metrics_distributed_fit": history.metrics_distributed_fit,
+            }
+
+            with open(filename, "w") as f:
+                json.dump(history_data, f, indent=2)
+
+            self.logger.info(f"History saved to {filename}")
+        except Exception as e:
+            self.logger.error(f"Failed to save history to {filename}: {e}")
+            raise
+
     def train(
         self,
         data_df: pd.DataFrame,
@@ -354,8 +384,9 @@ class FederatedTrainer:
                     "losses_centralized": history.losses_centralized,
                 },
             }
-            with open("history.md", "w") as f:
-                f.write(history.to_markdown())
+            
+            # Save history to JSON
+            self._save_history(history, "fl_history.json")
             return results
 
         except Exception as e:
