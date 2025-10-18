@@ -25,9 +25,6 @@ def main():
     )
     logger = logging.getLogger(__name__)
 
-    logger.info("="*80)
-    logger.info("CENTRALIZED TRAINING - Pneumonia Detection")
-    logger.info("="*80)
 
     # Define paths
     source_path = "Training"  # Directory containing Images/ and CSV files
@@ -39,11 +36,8 @@ def main():
     logs_dir = "results/centralized/logs"
 
     logger.info(f"Source path: {source_path}")
-    logger.info(f"Checkpoint directory: {checkpoint_dir}")
-    logger.info(f"Logs directory: {logs_dir}")
 
     # Create trainer
-    logger.info("\nInitializing CentralizedTrainer...")
     trainer = CentralizedTrainer(
         config_path=config_path,
         checkpoint_dir=checkpoint_dir,
@@ -61,7 +55,6 @@ def main():
     # Run training
     try:
         logger.info("\nStarting training...")
-        logger.info("-"*80)
 
         results = trainer.train(
             source_path=source_path,
@@ -69,14 +62,7 @@ def main():
             csv_filename="stage2_train_metadata.csv"
         )
 
-        logger.info("\n" + "="*80)
-        logger.info("TRAINING COMPLETED SUCCESSFULLY!")
-        logger.info("="*80)
-        logger.info("\nResults Summary:")
-        logger.info(f"  Status: {results.get('status', 'completed')}")
         logger.info(f"  Best model: {results.get('best_checkpoint_path', 'N/A')}")
-        logger.info(f"  Checkpoint directory: {checkpoint_dir}")
-        logger.info(f"  Logs directory: {logs_dir}")
 
         if 'final_metrics' in results:
             logger.info("\nFinal Metrics:")

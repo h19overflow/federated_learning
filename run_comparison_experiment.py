@@ -25,9 +25,7 @@ def main():
     )
     logger = logging.getLogger(__name__)
 
-    logger.info("="*80)
     logger.info("COMPARISON EXPERIMENT - Centralized vs Federated Learning")
-    logger.info("="*80)
 
     # Define paths
     source_path = "Training"  # Directory containing Images/ and CSV files
@@ -35,8 +33,6 @@ def main():
     partition_strategy = "stratified"  # For federated learning
     base_output_dir = "experiments"  # Base directory for all experiment outputs
 
-    logger.info(f"Source path: {source_path}")
-    logger.info(f"Partition strategy (FL): {partition_strategy}")
     logger.info(f"Base output directory: {base_output_dir}")
 
     # Create orchestrator

@@ -243,7 +243,7 @@ class XRayDataModule(pl.LightningDataModule):
             pin_memory=self.pin_memory,
             persistent_workers=self.persistent_workers,
             prefetch_factor=self.prefetch_factor,
-            drop_last=True,  # Drop incomplete batches for stable training
+            drop_last=False,  # Keep all samples to ensure at least one batch exists
             worker_init_fn=self._worker_init_fn
         )
 

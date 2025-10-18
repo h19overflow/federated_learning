@@ -104,7 +104,7 @@ class LitResNet(pl.LightningModule):
         # Training metrics
         self.train_accuracy = torchmetrics.Accuracy(task=task_type, num_classes=num_classes)
         self.train_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
-
+        self.train_loss = torchmetrics.MeanSquaredError()
         # Validation metrics
         self.val_accuracy = torchmetrics.Accuracy(task=task_type, num_classes=num_classes)
         self.val_precision = torchmetrics.Precision(task=task_type, num_classes=num_classes)
@@ -181,7 +181,6 @@ class LitResNet(pl.LightningModule):
         self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         self.log("train_acc", self.train_accuracy, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         self.log("train_f1", self.train_f1, on_step=False, on_epoch=True, sync_dist=True)
-
         return loss
 
     def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
@@ -204,10 +203,7 @@ class LitResNet(pl.LightningModule):
         # Log metrics
         self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         self.log("val_acc", self.val_accuracy, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log("val_precision", self.val_precision, on_step=False, on_epoch=True, sync_dist=True)
         self.log("val_recall", self.val_recall, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("val_f1", self.val_f1, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("val_auroc", self.val_auroc, on_step=False, on_epoch=True, sync_dist=True)
 
         return loss
 

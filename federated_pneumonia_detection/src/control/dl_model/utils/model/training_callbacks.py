@@ -65,7 +65,6 @@ def compute_class_weights_for_pl(train_df, class_column: str = 'Target') -> Opti
         logging.getLogger(__name__).error(f"Failed to compute class weights: {e}")
         return None
 
-# TODO , add actual reduce lr on pl trainer 
 def prepare_trainer_and_callbacks_pl(
     train_df_for_weights,
     class_column: str = 'Target',
@@ -96,7 +95,6 @@ def prepare_trainer_and_callbacks_pl(
     # Setup default values from config or fallbacks
     patience = config.early_stopping_patience if config else 7
     min_delta = getattr(config, 'early_stopping_min_delta', 0.001)
-    reduce_lr_patience = config.reduce_lr_patience if config else 3
     max_epochs = config.epochs if config else 50
 
     # Compute class weights
@@ -114,18 +112,6 @@ def prepare_trainer_and_callbacks_pl(
         verbose=True,
         
     )
-
-    # Additional checkpoint for validation loss (backup metric)
-    checkpoint_loss_callback = ModelCheckpoint(
-        dirpath=checkpoint_dir,
-        filename=f'{model_filename}_loss_{{epoch:02d}}_{{val_loss:.3f}}',
-        monitor='val_loss',
-        mode='min',
-        save_top_k=1,
-        auto_insert_metric_name=False,
-        verbose=False
-    )
-
     # EarlyStopping callback - stop training when validation recall stops improving
     early_stop_callback = EarlyStopping(
         monitor='val_recall',
@@ -150,7 +136,6 @@ def prepare_trainer_and_callbacks_pl(
     # Compile callbacks list
     callbacks = [
         checkpoint_callback,
-        checkpoint_loss_callback,
         early_stop_callback,
         lr_monitor,
         highest_recall_callback
@@ -209,7 +194,7 @@ def create_trainer_from_config(
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
         devices=1 if torch.cuda.is_available() else 'auto',
         precision='16-mixed' if torch.cuda.is_available() else 32,
-        log_every_n_steps=50,
+        log_every_n_steps=10,
         enable_checkpointing=True,
         enable_progress_bar=True,
         enable_model_summary=True,
