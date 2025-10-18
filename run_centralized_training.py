@@ -7,6 +7,7 @@ import os
 import sys
 import logging
 from pathlib import Path
+import uuid
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -30,7 +31,7 @@ def main():
     source_path = "Training"  # Directory containing Images/ and CSV files
     config_path = None  # Use default configuration
     experiment_name = "pneumonia_centralized"
-
+    run_id = str(experiment_name + "_" + str(uuid.uuid4()))
     # Output directories
     checkpoint_dir = "results/centralized/checkpoints"
     logs_dir = "results/centralized/logs"
@@ -41,7 +42,7 @@ def main():
     trainer = CentralizedTrainer(
         config_path=config_path,
         checkpoint_dir=checkpoint_dir,
-        logs_dir=logs_dir
+        logs_dir=logs_dir,
     )
 
     # Display training status
@@ -59,7 +60,8 @@ def main():
         results = trainer.train(
             source_path=source_path,
             experiment_name=experiment_name,
-            csv_filename="stage2_train_metadata.csv"
+            csv_filename="stage2_train_metadata.csv",
+            run_id=run_id
         )
 
         logger.info(f"  Best model: {results.get('best_checkpoint_path', 'N/A')}")

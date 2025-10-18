@@ -80,7 +80,8 @@ class CentralizedTrainer:
         self,
         source_path: str,
         experiment_name: str = "pneumonia_detection",
-        csv_filename: Optional[str] = None
+        csv_filename: Optional[str] = None,
+        run_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Complete training workflow from zip file or directory.
@@ -122,7 +123,7 @@ class CentralizedTrainer:
 
             # Step 4: Build model and callbacks
             try:
-                model, callbacks, metrics_collector = self._build_model_and_callbacks(train_df, experiment_name)
+                model, callbacks, metrics_collector = self._build_model_and_callbacks(train_df, experiment_name, run_id)
             except Exception as e:
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
@@ -178,7 +179,8 @@ class CentralizedTrainer:
     def _build_model_and_callbacks(
         self,
         train_df: pd.DataFrame,
-        experiment_name: str = "pneumonia_detection"
+        experiment_name: str = "pneumonia_detection",
+        run_id: Optional[int] = None
     ) -> Tuple[LitResNet, list, Any]:
         """
         Build model and training callbacks.
@@ -200,7 +202,8 @@ class CentralizedTrainer:
             constants=self.constants,
             config=self.config,
             metrics_dir=os.path.join(self.logs_dir, 'metrics'),
-            experiment_name=experiment_name
+            experiment_name=experiment_name,
+            run_id = run_id
         )
 
         model = LitResNet(
@@ -236,7 +239,7 @@ class CentralizedTrainer:
         trainer = create_trainer_from_config(
             constants=self.constants,
             config=self.config,
-            callbacks=callbacks
+            callbacks=callbacks,
         )
 
         trainer.logger = tb_logger

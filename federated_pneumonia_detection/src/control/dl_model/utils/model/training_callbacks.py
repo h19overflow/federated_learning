@@ -2,7 +2,6 @@
 Training callbacks and utilities for PyTorch Lightning model training.
 Provides checkpoint management, early stopping, and monitoring functionality.
 """
-
 import os
 import json
 import logging
@@ -81,7 +80,9 @@ def prepare_trainer_and_callbacks_pl(
     constants: Optional[SystemConstants] = None,
     config: Optional[ExperimentConfig] = None,
     metrics_dir: Optional[str] = None,
-    experiment_name: str = "pneumonia_detection"
+    experiment_name: str = "pneumonia_detection",
+    run_id: Optional[int] = None,
+    enable_db_persistence: bool = True
 ) -> Dict[str, Any]:
     """
     Prepare PyTorch Lightning trainer callbacks and configuration.
@@ -95,6 +96,8 @@ def prepare_trainer_and_callbacks_pl(
         config: Experiment configuration
         metrics_dir: Optional directory to save metrics (defaults to checkpoint_dir/metrics)
         experiment_name: Name of the experiment for metrics tracking
+        run_id: Optional database run ID for metrics persistence
+        enable_db_persistence: Whether to persist metrics to database
 
     Returns:
         Dictionary containing callbacks and trainer configuration
@@ -150,7 +153,9 @@ def prepare_trainer_and_callbacks_pl(
         metrics_dir = os.path.join(checkpoint_dir, 'metrics')
     metrics_collector = MetricsCollectorCallback(
         save_dir=metrics_dir,
-        experiment_name=experiment_name
+        experiment_name=experiment_name,
+        run_id=run_id,
+        enable_db_persistence=enable_db_persistence
     )
 
     # Compile callbacks list

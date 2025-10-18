@@ -23,6 +23,11 @@ from typing import Dict, Any, List, Optional
 
 import pandas as pd
 import torch
+from sqlalchemy.orm import Session
+
+from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 
 
 class FederatedMetricsCollector:
@@ -37,7 +42,9 @@ class FederatedMetricsCollector:
         self,
         save_dir: str,
         client_id: str,
-        experiment_name: str = "federated_experiment"
+        experiment_name: str = "federated_experiment",
+        run_id: Optional[int] = None,
+        enable_db_persistence: bool = True
     ):
         """
         Initialize federated metrics collector.
@@ -46,10 +53,14 @@ class FederatedMetricsCollector:
             save_dir: Directory to save metrics files
             client_id: Unique identifier for this client
             experiment_name: Name of the federated experiment
+            run_id: Optional database run ID for persistence
+            enable_db_persistence: Whether to save metrics to database
         """
         self.save_dir = Path(save_dir)
         self.client_id = client_id
         self.experiment_name = experiment_name
+        self.run_id = run_id
+        self.enable_db_persistence = enable_db_persistence
         self.logger = logging.getLogger(__name__)
 
         # Create save directory
@@ -292,6 +303,13 @@ class FederatedMetricsCollector:
         # Create summary report
         self._create_summary_report(timestamp, client_prefix)
 
+        # Persist to database if enabled
+        if self.enable_db_persistence and self.run_id:
+            try:
+                self.persist_to_database()
+            except Exception as e:
+                self.logger.error(f"Database persistence failed: {e}")
+
     def _flatten_round_metrics(self) -> pd.DataFrame:
         """Flatten round metrics for CSV export."""
         flattened = []
@@ -394,3 +412,99 @@ class FederatedMetricsCollector:
     def get_metadata(self) -> Dict[str, Any]:
         """Return experiment metadata."""
         return self.metadata
+
+    def persist_to_database(self, db: Optional[Session] = None):
+        """
+        Persist collected federated metrics to database.
+
+        Args:
+            db: Optional database session. If None, creates a new session.
+        """
+        if not self.enable_db_persistence:
+            self.logger.info("Database persistence is disabled")
+            return
+
+        if self.run_id is None:
+            self.logger.warning("No run_id provided, skipping database persistence")
+            return
+
+        close_session = False
+        if db is None:
+            db = get_session()
+            close_session = True
+
+        try:
+            metrics_to_persist = []
+
+            # Persist round-level metrics
+            for round_data in self.round_metrics:
+                round_num = round_data['round']
+
+                # Persist fit metrics (training)
+                fit_metrics = round_data.get('fit_metrics', {})
+                for key, value in fit_metrics.items():
+                    if key in ['timestamp'] or not isinstance(value, (int, float)):
+                        continue
+
+                    metrics_to_persist.append({
+                        'run_id': self.run_id,
+                        'metric_name': f'fit_{key}',
+                        'metric_value': float(value),
+                        'step': round_num,
+                        'dataset_type': 'train'
+                    })
+
+                # Persist eval metrics (validation)
+                eval_metrics = round_data.get('eval_metrics', {})
+                for key, value in eval_metrics.items():
+                    if key in ['timestamp'] or not isinstance(value, (int, float)):
+                        continue
+
+                    metrics_to_persist.append({
+                        'run_id': self.run_id,
+                        'metric_name': f'eval_{key}',
+                        'metric_value': float(value),
+                        'step': round_num,
+                        'dataset_type': 'validation'
+                    })
+
+            # Persist local epoch metrics (more granular)
+            for epoch_data in self.local_epoch_metrics:
+                round_num = epoch_data.get('round', 0)
+                local_epoch = epoch_data.get('local_epoch', 0)
+
+                # Use combined step: round * 1000 + local_epoch for uniqueness
+                combined_step = round_num * 1000 + local_epoch
+
+                for key, value in epoch_data.items():
+                    if key in ['round', 'local_epoch', 'timestamp']:
+                        continue
+
+                    if not isinstance(value, (int, float)):
+                        continue
+
+                    metrics_to_persist.append({
+                        'run_id': self.run_id,
+                        'metric_name': f'local_{key}',
+                        'metric_value': float(value),
+                        'step': combined_step,
+                        'dataset_type': 'train'
+                    })
+
+            # Bulk create metrics for efficiency
+            if metrics_to_persist:
+                run_metric_crud.bulk_create(db, metrics_to_persist)
+                db.commit()
+                self.logger.info(
+                    f"Persisted {len(metrics_to_persist)} federated metrics to database "
+                    f"for client {self.client_id}, run_id={self.run_id}"
+                )
+
+        except Exception as e:
+            self.logger.error(f"Failed to persist federated metrics to database: {e}")
+            if close_session:
+                db.rollback()
+            raise
+        finally:
+            if close_session:
+                db.close()

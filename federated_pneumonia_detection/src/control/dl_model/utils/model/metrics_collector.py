@@ -1,11 +1,17 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import torch
 import pandas as pd
 import json
 import pytorch_lightning as pl
+from sqlalchemy.orm import Session
+
+from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
+from federated_pneumonia_detection.src.boundary.CRUD.run_configuration import run_configuration_crud
 
 
 class MetricsCollectorCallback(pl.Callback):
@@ -14,17 +20,27 @@ class MetricsCollectorCallback(pl.Callback):
     Saves to both JSON and CSV formats for easy analysis and visualization.
     """
 
-    def __init__(self, save_dir: str, experiment_name: str = "experiment"):
+    def __init__(
+        self,
+        save_dir: str,
+        experiment_name: str = "experiment",
+        run_id: Optional[int] = None,
+        enable_db_persistence: bool = True
+    ):
         """
         Initialize metrics collector.
 
         Args:
             save_dir: Directory to save metrics files
             experiment_name: Name of the experiment for file naming
+            run_id: Optional database run ID for persistence
+            enable_db_persistence: Whether to save metrics to database
         """
         super().__init__()
         self.save_dir = Path(save_dir)
         self.experiment_name = experiment_name
+        self.run_id = run_id
+        self.enable_db_persistence = enable_db_persistence
         self.logger = logging.getLogger(__name__)
 
         # Create save directory
@@ -153,39 +169,6 @@ class MetricsCollectorCallback(pl.Callback):
 
         return metrics
 
-    def _save_metrics(self):
-        """Save metrics to JSON and CSV files."""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        # Save detailed metrics as JSON
-        json_path = self.save_dir / f"{self.experiment_name}_metrics_{timestamp}.json"
-        full_data = {
-            'metadata': self.metadata,
-            'epoch_metrics': self.epoch_metrics
-        }
-
-        with open(json_path, 'w') as f:
-            json.dump(full_data, f, indent=2)
-
-        self.logger.info(f"Saved JSON metrics to: {json_path}")
-
-        # Save epoch metrics as CSV for easy plotting
-        if self.epoch_metrics:
-            df = pd.DataFrame(self.epoch_metrics)
-            csv_path = self.save_dir / f"{self.experiment_name}_metrics_{timestamp}.csv"
-            df.to_csv(csv_path, index=False)
-            self.logger.info(f"Saved CSV metrics to: {csv_path}")
-
-        # Save metadata separately
-        metadata_path = self.save_dir / f"{self.experiment_name}_metadata_{timestamp}.json"
-        with open(metadata_path, 'w') as f:
-            json.dump(self.metadata, f, indent=2)
-
-        self.logger.info(f"Saved metadata to: {metadata_path}")
-
-        # Create a summary report
-        self._create_summary_report(timestamp)
-
     def _create_summary_report(self, timestamp: str):
         """Create a human-readable summary report."""
         report_path = self.save_dir / f"{self.experiment_name}_summary_{timestamp}.txt"
@@ -231,3 +214,118 @@ class MetricsCollectorCallback(pl.Callback):
     def get_metadata(self) -> Dict[str, Any]:
         """Return experiment metadata."""
         return self.metadata
+
+    def persist_to_database(self, db: Optional[Session] = None):
+        """
+        Persist collected metrics to database.
+
+        Args:
+            db: Optional database session. If None, creates a new session.
+        """
+        if not self.enable_db_persistence:
+            self.logger.info("Database persistence is disabled")
+            return
+
+        if self.run_id is None:
+            self.logger.warning("No run_id provided, skipping database persistence")
+            return
+
+        close_session = False
+        if db is None:
+            db = get_session()
+            close_session = True
+
+        try:
+            # Persist all epoch metrics to database
+            metrics_to_persist = []
+
+            for epoch_data in self.epoch_metrics:
+                epoch = epoch_data.get('epoch', 0)
+
+                # Extract and persist each metric type
+                for key, value in epoch_data.items():
+                    if key in ['epoch', 'timestamp', 'global_step']:
+                        continue
+
+                    if not isinstance(value, (int, float)):
+                        continue
+
+                    # Determine dataset type from metric name
+                    if key.startswith('train_'):
+                        dataset_type = 'train'
+                        metric_name = key
+                    elif key.startswith('val_'):
+                        dataset_type = 'validation'
+                        metric_name = key
+                    elif key.startswith('test_'):
+                        dataset_type = 'test'
+                        metric_name = key
+                    else:
+                        dataset_type = 'other'
+                        metric_name = key
+
+                    metrics_to_persist.append({
+                        'run_id': self.run_id,
+                        'metric_name': metric_name,
+                        'metric_value': float(value),
+                        'step': epoch,
+                        'dataset_type': dataset_type
+                    })
+
+            # Bulk create metrics for efficiency
+            if metrics_to_persist:
+                run_metric_crud.bulk_create(db, metrics_to_persist)
+                db.commit()
+                self.logger.info(
+                    f"Persisted {len(metrics_to_persist)} metrics to database "
+                    f"for run_id={self.run_id}"
+                )
+
+        except Exception as e:
+            self.logger.error(f"Failed to persist metrics to database: {e}")
+            if close_session:
+                db.rollback()
+            raise
+        finally:
+            if close_session:
+                db.close()
+
+    def _save_metrics(self):
+        """Save metrics to JSON and CSV files, and optionally to database."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Save detailed metrics as JSON
+        json_path = self.save_dir / f"{self.experiment_name}_metrics_{timestamp}.json"
+        full_data = {
+            'metadata': self.metadata,
+            'epoch_metrics': self.epoch_metrics
+        }
+
+        with open(json_path, 'w') as f:
+            json.dump(full_data, f, indent=2)
+
+        self.logger.info(f"Saved JSON metrics to: {json_path}")
+
+        # Save epoch metrics as CSV for easy plotting
+        if self.epoch_metrics:
+            df = pd.DataFrame(self.epoch_metrics)
+            csv_path = self.save_dir / f"{self.experiment_name}_metrics_{timestamp}.csv"
+            df.to_csv(csv_path, index=False)
+            self.logger.info(f"Saved CSV metrics to: {csv_path}")
+
+        # Save metadata separately
+        metadata_path = self.save_dir / f"{self.experiment_name}_metadata_{timestamp}.json"
+        with open(metadata_path, 'w') as f:
+            json.dump(self.metadata, f, indent=2)
+
+        self.logger.info(f"Saved metadata to: {metadata_path}")
+
+        # Create a summary report
+        self._create_summary_report(timestamp)
+
+        # Persist to database if enabled
+        if self.enable_db_persistence and self.run_id:
+            try:
+                self.persist_to_database()
+            except Exception as e:
+                self.logger.error(f"Database persistence failed: {e}")
