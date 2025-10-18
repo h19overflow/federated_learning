@@ -16,7 +16,7 @@ Role in System:
 """
 
 from collections import OrderedDict
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 import torch
 import torch.nn as nn
@@ -28,6 +28,9 @@ from federated_pneumonia_detection.src.entities.resnet_with_custom_head import (
     ResNetWithCustomHead,
 )
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.src.control.federated_learning.federated_metrics_collector import (
+    FederatedMetricsCollector,
+)
 
 
 class FlowerClient(NumPyClient):
@@ -40,8 +43,23 @@ class FlowerClient(NumPyClient):
         valloader: DataLoader,
         config: ExperimentConfig,
         device: torch.device,
+        client_id: Optional[str] = None,
+        metrics_dir: Optional[str] = None,
+        experiment_name: str = "federated_pneumonia"
     ) -> None:
-        """Initialize Flower client with dependencies."""
+        """
+        Initialize Flower client with dependencies.
+
+        Args:
+            net: Neural network model
+            trainloader: Training data loader
+            valloader: Validation data loader
+            config: Experiment configuration
+            device: Device for training (CPU/GPU)
+            client_id: Unique identifier for this client
+            metrics_dir: Directory to save metrics (None = no metrics collection)
+            experiment_name: Name of the experiment
+        """
         if net is None:
             raise ValueError("net cannot be None")
         if trainloader is None:
@@ -54,6 +72,29 @@ class FlowerClient(NumPyClient):
         self.valloader = valloader
         self.config = config
         self.device = device
+        self.client_id = client_id or "client_0"
+        self.current_round = 0
+
+        # Initialize metrics collector if directory provided
+        self.metrics_collector = None
+        if metrics_dir:
+            self.metrics_collector = FederatedMetricsCollector(
+                save_dir=metrics_dir,
+                client_id=self.client_id,
+                experiment_name=experiment_name
+            )
+
+            # Record model info
+            model_info = {
+                'total_parameters': sum(p.numel() for p in net.parameters()),
+                'trainable_parameters': sum(
+                    p.numel() for p in net.parameters() if p.requires_grad
+                ),
+                'train_samples': len(trainloader.dataset),
+                'val_samples': len(valloader.dataset),
+                'device': str(device)
+            }
+            self.metrics_collector.start_training(model_info)
 
     def get_parameters(self, config: Dict[str, Any]) -> List:
         """Extract model parameters as numpy arrays."""
@@ -72,7 +113,14 @@ class FlowerClient(NumPyClient):
         local_epochs = config.get("local_epochs", self.config.local_epochs)
         learning_rate = config.get("lr", self.config.learning_rate)
 
-        train_loss = train(
+        # Record round start if metrics collector is active
+        if self.metrics_collector:
+            self.metrics_collector.record_round_start(
+                round_num=self.current_round,
+                server_config=config
+            )
+
+        train_loss, epoch_losses = train(
             self.net,
             self.trainloader,
             local_epochs,
@@ -80,7 +128,19 @@ class FlowerClient(NumPyClient):
             learning_rate,
             self.config.weight_decay,
             self.config.num_classes,
+            metrics_collector=self.metrics_collector,
+            current_round=self.current_round
         )
+
+        # Record fit metrics
+        if self.metrics_collector:
+            self.metrics_collector.record_fit_metrics(
+                round_num=self.current_round,
+                train_loss=train_loss,
+                num_samples=len(self.trainloader.dataset)
+            )
+
+        self.current_round += 1
 
         return (
             get_weights(self.net),
@@ -101,7 +161,22 @@ class FlowerClient(NumPyClient):
             self.config.num_classes,
         )
 
+        # Record evaluation metrics
+        # Note: current_round - 1 because fit() already incremented it
+        if self.metrics_collector:
+            self.metrics_collector.record_eval_metrics(
+                round_num=self.current_round - 1,
+                val_loss=loss,
+                val_accuracy=accuracy,
+                num_samples=len(self.valloader.dataset)
+            )
+
         return loss, len(self.valloader.dataset), {"accuracy": accuracy}
+
+    def finalize(self):
+        """Finalize training and save all collected metrics."""
+        if self.metrics_collector:
+            self.metrics_collector.end_training()
 
 # Helper functions
 
@@ -125,8 +200,26 @@ def train(
     learning_rate: float,
     weight_decay: float,
     num_classes: int,
-) -> float:
-    """Train the model on the training set."""
+    metrics_collector: Optional[FederatedMetricsCollector] = None,
+    current_round: int = 0
+) -> Tuple[float, List[float]]:
+    """
+    Train the model on the training set.
+
+    Args:
+        net: Neural network model
+        trainloader: Training data loader
+        epochs: Number of local epochs
+        device: Device for training
+        learning_rate: Learning rate
+        weight_decay: Weight decay
+        num_classes: Number of output classes
+        metrics_collector: Optional metrics collector
+        current_round: Current federated round
+
+    Returns:
+        Tuple of (average_loss, epoch_losses)
+    """
     net.to(device)
     criterion = (
         nn.BCEWithLogitsLoss()
@@ -139,8 +232,14 @@ def train(
         weight_decay=weight_decay,
     )
     net.train()
-    running_loss = 0.0
-    for _ in range(epochs):
+
+    epoch_losses = []
+    total_running_loss = 0.0
+
+    for epoch in range(epochs):
+        epoch_loss = 0.0
+        num_batches = 0
+
         for images, labels in trainloader:
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
@@ -155,10 +254,27 @@ def train(
 
             loss.backward()
             optimizer.step()
-            running_loss += loss.item()
 
-    avg_trainloss = running_loss / len(trainloader)
-    return avg_trainloss
+            epoch_loss += loss.item()
+            num_batches += 1
+
+        # Calculate average loss for this epoch
+        avg_epoch_loss = epoch_loss / num_batches
+        epoch_losses.append(avg_epoch_loss)
+        total_running_loss += epoch_loss
+
+        # Record epoch metrics if collector is available
+        if metrics_collector:
+            metrics_collector.record_local_epoch(
+                round_num=current_round,
+                local_epoch=epoch,
+                train_loss=avg_epoch_loss,
+                learning_rate=learning_rate,
+                num_samples=len(trainloader.dataset)
+            )
+
+    avg_trainloss = total_running_loss / (len(trainloader) * epochs)
+    return avg_trainloss, epoch_losses
 
 
 def evaluate(
