@@ -17,9 +17,9 @@ from federated_pneumonia_detection.models.experiment_config import ExperimentCon
 from federated_pneumonia_detection.src.control.federated_learning import (
     FederatedTrainer,
 )
-from federated_pneumonia_detection.src.utils.data_processing import load_metadata
+from federated_pneumonia_detection.src.utils.data_processing import load_metadata, sample_dataframe
+from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 
-# TODO , everything is functional it's just that the fraction of the training set seems to be wrong, it does it fully no matter what.
 # TODO , Figure out how to extract logs from the trainer in order to show in the terminal on the frontend.
 # TODO , Saving the resutls to the database is still pending we need to add a step to save the results to the database.
 def main():
@@ -56,19 +56,19 @@ def main():
         if not metadata_path.exists():
             raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
 
-        # Load configuration
+        # Load configuration from YAML
         logger.info("\nLoading configuration...")
-        constants = SystemConstants()
-        config = ExperimentConfig(
-            num_clients=2,
-            num_rounds=2,
-            local_epochs=15,
-            learning_rate=0.0015,
-            batch_size=512,
+        config_loader = ConfigLoader()
+        yaml_config = config_loader.load_config(
+            "federated_pneumonia_detection/config/default_config.yaml"
         )
+        constants = config_loader.create_system_constants(yaml_config)
+        config = config_loader.create_experiment_config(yaml_config)
+        
         logger.info(f"  Num clients: {config.num_clients}")
         logger.info(f"  Num rounds: {config.num_rounds}")
         logger.info(f"  Local epochs: {config.local_epochs}")
+        logger.info(f"  Sample fraction: {config.sample_fraction}")
 
         # Determine device
         if torch.cuda.is_available():
@@ -81,7 +81,18 @@ def main():
         # Load metadata
         logger.info("\nLoading dataset metadata...")
         data_df = load_metadata(metadata_path, constants, logger)
-        logger.info(f"  Total samples: {len(data_df)}")
+        logger.info(f"  Total samples loaded: {len(data_df)}")
+        
+        # Apply sampling fraction from config
+        logger.info(f"\nApplying sample fraction: {config.sample_fraction}")
+        data_df = sample_dataframe(
+            data_df,
+            sample_fraction=config.sample_fraction,
+            target_column=constants.TARGET_COLUMN,
+            seed=config.seed,
+            logger=logger
+        )
+        logger.info(f"  Samples after sampling: {len(data_df)}")
         class_dist = data_df[constants.TARGET_COLUMN].value_counts().to_dict()
         logger.info(f"  Class distribution: {class_dist}")
 

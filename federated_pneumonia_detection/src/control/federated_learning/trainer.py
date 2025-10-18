@@ -19,6 +19,7 @@ Role in System:
 """
 
 import logging
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Callable
 
@@ -307,6 +308,7 @@ class FederatedTrainer:
                 min_available_clients=self.config.num_clients,
                 evaluate_fn=self._create_evaluate_fn(global_val_loader),
                 initial_parameters=initial_parameters,
+                fit_metrics_aggregation_fn=weighted_average,
             )
 
             # 6. Configure client resources
@@ -348,18 +350,26 @@ class FederatedTrainer:
                 "metrics": {
                     "losses_distributed": history.losses_distributed,
                     "metrics_distributed": history.metrics_distributed,
+                    "metrics_centerlized": history.metrics_centralized,
+                    "losses_centralized": history.losses_centralized,
                 },
             }
-
-            # Log final metrics
-            if history.metrics_distributed:
-                final_metrics = history.metrics_distributed[-1]
-                self.logger.info(f"\nFinal Metrics (Round {self.config.num_rounds}):")
-                for key, value in final_metrics.items():
-                    self.logger.info(f"  {key}: {value}")
-
+            with open("history.md", "w") as f:
+                f.write(history.to_markdown())
             return results
 
         except Exception as e:
             self.logger.error(f"Federated training failed: {e}", exc_info=True)
             raise RuntimeError(f"Training failed: {e}") from e
+
+# Helper function to aggregate metrics
+def weighted_average(metrics):
+    # metrics: List of tuples (num_examples, metrics_dict)
+    total_examples = sum([num_examples for num_examples, _ in metrics])
+    result = {}
+    for num_examples, m in metrics:
+        for k, v in m.items():
+            if k not in result:
+                result[k] = 0.0
+            result[k] += v * num_examples / total_examples
+    return result
