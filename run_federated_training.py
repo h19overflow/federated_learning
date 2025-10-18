@@ -20,6 +20,7 @@ from federated_pneumonia_detection.src.control.federated_learning import (
 from federated_pneumonia_detection.src.utils.data_processing import load_metadata
 
 # TODO , everything is functional it's just that the fraction of the training set seems to be wrong, it does it fully no matter what.
+# TODO , Figure out how to extract logs from the trainer in order to show in the terminal on the frontend.
 def main():
     """Run federated learning training on the Training dataset."""
 

@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from federated_pneumonia_detection.src.control.comparison.experiment_orchestrator import ExperimentOrchestrator
 
-
+# TODO , Figure out how to extract logs from the trainer in order to show in the terminal on the frontend.
 def main():
     """Run comparison experiment between centralized and federated learning."""
 
