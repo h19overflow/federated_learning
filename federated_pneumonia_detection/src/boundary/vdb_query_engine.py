@@ -20,7 +20,7 @@ class QueryEngine:
     def query(self, query: str):
         """Query the vectorstore."""
         try:
-            results = self.vectorstore.similarity_search(query)
+            results = self.vectorstore.similarity_search(query,k=15)
             return results
         except Exception as e:
             logging.getLogger(__name__).error(f"Error querying the vectorstore: {e}")

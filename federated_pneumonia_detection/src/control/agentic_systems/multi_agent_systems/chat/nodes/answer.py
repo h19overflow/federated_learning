@@ -1,6 +1,7 @@
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.chat_agent.chat_agent import ChatAgent
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.schemase import ChatState
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.schemas import ChatState
 from federated_pneumonia_detection.src.utils.logger import get_logger
+
 async def answer(state: ChatState) -> ChatState:
     """Answer the question."""
     try:    

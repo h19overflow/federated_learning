@@ -1,5 +1,5 @@
 from federated_pneumonia_detection.src.boundary.vdb_query_engine import QueryEngine
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.schemase import ChatState
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.schemas import ChatState
 
 def fetch_context(state: ChatState) -> ChatState:
     """Fetch the context from the database."""
