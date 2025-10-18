@@ -109,6 +109,36 @@ class ConfigManager:
         # Set the value
         current[keys[-1]] = value
     
+    def _flatten_config(self, config_dict: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
+        """
+        Convert nested config dictionary to dot-notation keys.
+        
+        Recursively flattens nested dictionaries into dot-separated keys,
+        suitable for use with the set() method.
+        
+        Args:
+            config_dict: The configuration dictionary to flatten
+            prefix: The prefix to use for keys (used for recursion)
+        
+        Returns:
+            Dictionary with flattened dot-notation keys and non-None values
+            
+        Example:
+            nested = {"experiment": {"learning_rate": 0.002}, "system": {"batch_size": 256}}
+            flattened = config.flatten_config(nested)
+            # Returns: {"experiment.learning_rate": 0.002, "system.batch_size": 256}
+        """
+        flattened = {}
+        for key, value in config_dict.items():
+            if value is None:
+                continue
+            full_key = f"{prefix}.{key}" if prefix else key
+            if isinstance(value, dict):
+                flattened.update(self._flatten_config(value, full_key))
+            else:
+                flattened[full_key] = value
+        return flattened
+    
     def get(self, key_path: str, default: Any = None) -> Any:
         """
         Get a configuration value using dot notation.
