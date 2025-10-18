@@ -21,7 +21,7 @@ class SystemConstants:
 
     # Training constants
     BATCH_SIZE: int = 128
-    SAMPLE_FRACTION: float = 0.10
+    SAMPLE_FRACTION: float = 0.05
     VALIDATION_SPLIT: float = 0.20
     SEED: int = 42
 

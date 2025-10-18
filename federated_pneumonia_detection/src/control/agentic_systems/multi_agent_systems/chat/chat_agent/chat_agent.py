@@ -7,6 +7,8 @@ from langchain_core.documents import Document
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.chat_agent.chat_prompt import ANSWERING_PROMPT
 from federated_pneumonia_detection.config.settings import Settings
 load_dotenv()
+# TODO , After establishing the CRUDS operations and saving configuration add an analysis mode where the agent is provided information about the run 
+# as well metrics of currrent run results , perhaps the latest , add / command to fetch context about an experiment , and other commands to help the user to analyze the results.
 
 class ChatAgent:
     """Chat agent class."""

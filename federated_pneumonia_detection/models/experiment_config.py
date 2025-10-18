@@ -22,7 +22,7 @@ class ExperimentConfig:
     weight_decay: float = 0.0001
     freeze_backbone: bool = True
     dropout_rate: float = 0.3
-    fine_tune_layers_count: int = 0  # 0 = freeze all, negative = unfreeze last N layers
+    fine_tune_layers_count: int = -10  # 0 = freeze all, negative = unfreeze last N layers
     num_classes: int = 1  # 1 for binary classification
     monitor_metric: str = 'val_loss'  # Metric to monitor for LR scheduling
 
