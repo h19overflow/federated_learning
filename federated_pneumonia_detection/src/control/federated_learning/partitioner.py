@@ -20,7 +20,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-#TODO, No fraction consideration here , not pulled from either the config or perhaps the system constants.
+
 def partition_data_stratified(
     df: pd.DataFrame,
     num_clients: int,

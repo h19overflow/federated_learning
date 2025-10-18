@@ -122,7 +122,7 @@ class CentralizedTrainer:
 
             # Step 4: Build model and callbacks
             try:
-                model, callbacks = self._build_model_and_callbacks(train_df)
+                model, callbacks, metrics_collector = self._build_model_and_callbacks(train_df, experiment_name)
             except Exception as e:
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
@@ -149,7 +149,7 @@ class CentralizedTrainer:
             # Collect results
             self.logger.info("Collecting training results...")
             try:
-                results = self._collect_training_results(trainer, model)
+                results = self._collect_training_results(trainer, model, metrics_collector)
                 self.logger.info(f"✓ Results collected successfully")
             except Exception as e:
                 self.logger.error(f"  Error type: {type(e).__name__}")
@@ -160,10 +160,6 @@ class CentralizedTrainer:
             self.logger.error(f"  Error type: {type(e).__name__}")
             self.logger.error(f"  Error message: {str(e)}")
             raise
-   
-
-
- 
 
     def get_training_status(self) -> Dict[str, Any]:
         """Get current training status and configuration."""
@@ -181,16 +177,18 @@ class CentralizedTrainer:
 
     def _build_model_and_callbacks(
         self,
-        train_df: pd.DataFrame
-    ) -> Tuple[LitResNet, list]:
+        train_df: pd.DataFrame,
+        experiment_name: str = "pneumonia_detection"
+    ) -> Tuple[LitResNet, list, Any]:
         """
         Build model and training callbacks.
 
         Args:
             train_df: Training dataframe for computing class weights
+            experiment_name: Name for the experiment
 
         Returns:
-            Tuple of (model, callbacks)
+            Tuple of (model, callbacks, metrics_collector)
         """
         self.logger.info("Setting up model and callbacks...")
 
@@ -200,7 +198,9 @@ class CentralizedTrainer:
             checkpoint_dir=self.checkpoint_dir,
             model_filename="pneumonia_model",
             constants=self.constants,
-            config=self.config
+            config=self.config,
+            metrics_dir=os.path.join(self.logs_dir, 'metrics'),
+            experiment_name=experiment_name
         )
 
         model = LitResNet(
@@ -212,7 +212,7 @@ class CentralizedTrainer:
 
         self.logger.info(f"Model created with {sum(p.numel() for p in model.parameters())} parameters")
 
-        return model, callback_config['callbacks']
+        return model, callback_config['callbacks'], callback_config['metrics_collector']
 
     def _build_trainer(self, callbacks: list, experiment_name: str) -> pl.Trainer:
         """
@@ -246,7 +246,8 @@ class CentralizedTrainer:
     def _collect_training_results(
         self,
         trainer: pl.Trainer,
-        model: LitResNet
+        model: LitResNet,
+        metrics_collector: Any
     ) -> Dict[str, Any]:
         """
         Collect and organize training results.
@@ -254,6 +255,7 @@ class CentralizedTrainer:
         Args:
             trainer: Trained PyTorch Lightning trainer
             model: Trained model instance
+            metrics_collector: MetricsCollectorCallback instance
 
         Returns:
             Dictionary with training results
@@ -273,23 +275,31 @@ class CentralizedTrainer:
             if checkpoint_callback.best_model_score is not None:
                 best_model_score = checkpoint_callback.best_model_score.item() if hasattr(checkpoint_callback.best_model_score, 'item') else float(checkpoint_callback.best_model_score)
         
+        # Safely extract trainer state
+        state_value = None
+        if trainer.state and hasattr(trainer.state, 'stage') and trainer.state.stage:
+            state_value = trainer.state.stage.value if hasattr(trainer.state.stage, 'value') else str(trainer.state.stage)
+
+        # Extract metrics history from collector
+        metrics_history = metrics_collector.get_metrics_history() if metrics_collector else []
+        metrics_metadata = metrics_collector.get_metadata() if metrics_collector else {}
+
         results = {
             'best_model_path': best_model_path,
             'best_model_score': best_model_score,
             'current_epoch': trainer.current_epoch,
             'global_step': trainer.global_step,
-            'state': trainer.state.stage.value if trainer.state else None,
+            'state': state_value,
             'model_summary': model.get_model_summary(),
             'checkpoint_dir': self.checkpoint_dir,
-            'logs_dir': self.logs_dir
+            'logs_dir': self.logs_dir,
+            'metrics_history': metrics_history,
+            'metrics_metadata': metrics_metadata,
+            'total_epochs_trained': len(metrics_history)
         }
 
-        self.logger.info(f"Training results collected: {results}")
-        self.logger.debug(f"Checkpoint callback: {checkpoint_callback}")
-        if checkpoint_callback:
-            self.logger.debug(f"  best_model_path: {checkpoint_callback.best_model_path}")
-            self.logger.debug(f"  best_model_score: {checkpoint_callback.best_model_score}")
-        
+        self.logger.info(f"Training results collected: {len(metrics_history)} epochs tracked")
+
         return results
 
     def _prepare_dataset(self, csv_path: str, image_dir: str) -> Tuple[pd.DataFrame, pd.DataFrame]:

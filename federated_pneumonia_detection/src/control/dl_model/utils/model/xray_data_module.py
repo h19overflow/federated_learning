@@ -265,16 +265,16 @@ class XRayDataModule(pl.LightningDataModule):
             pin_memory=self.pin_memory,
             persistent_workers=self.persistent_workers,
             prefetch_factor=self.prefetch_factor,
-            drop_last=False,  # Keep all validation samples
+            drop_last=False,
             worker_init_fn=self._worker_init_fn
         )
 
     def test_dataloader(self) -> Optional[DataLoader]:
         """
-        Create test data loader.
+        Create test data loader if test data available.
 
         Returns:
-            DataLoader for test data or None if no test data
+            DataLoader for test data, or None if no test data
         """
         if self.test_dataset is None:
             return None
@@ -291,14 +291,7 @@ class XRayDataModule(pl.LightningDataModule):
             worker_init_fn=self._worker_init_fn
         )
 
-    def predict_dataloader(self) -> DataLoader:
-        """
-        Create prediction data loader (uses validation dataset).
 
-        Returns:
-            DataLoader for prediction
-        """
-        return self.val_dataloader()
 
     def _worker_init_fn(self, worker_id: int) -> None:
         """
@@ -312,149 +305,5 @@ class XRayDataModule(pl.LightningDataModule):
         np.random.seed(worker_seed + worker_id)
         torch.manual_seed(worker_seed + worker_id)
 
-    def get_data_statistics(self) -> Dict[str, Any]:
-        """
-        Get comprehensive statistics about the datasets.
 
-        Returns:
-            Dictionary with dataset statistics
-        """
-        stats = {
-            'train_samples': len(self.train_dataset) if self.train_dataset else 0,
-            'val_samples': len(self.val_dataset) if self.val_dataset else 0,
-            'test_samples': len(self.test_dataset) if self.test_dataset else 0,
-            'color_mode': self.color_mode,
-            'image_size': self.constants.IMG_SIZE,
-            'batch_size': self.config.batch_size,
-            'num_workers': self.config.num_workers
-        }
-
-        # Add class distributions
-        for dataset_name, dataset in [
-            ('train', self.train_dataset),
-            ('val', self.val_dataset),
-            ('test', self.test_dataset)
-        ]:
-            if dataset is not None:
-                class_dist = dataset.get_class_distribution()
-                memory_info = dataset.get_memory_usage_estimate()
-
-                stats[f'{dataset_name}_class_distribution'] = class_dist
-                stats[f'{dataset_name}_memory_estimate_mb'] = memory_info['estimated_total_memory_mb']
-
-        return stats
-
-    def validate_all_images(self) -> Dict[str, Any]:
-        """
-        Validate all images in all datasets.
-
-        Returns:
-            Dictionary with validation results for each dataset
-        """
-        results = {}
-
-        for dataset_name, dataset in [
-            ('train', self.train_dataset),
-            ('val', self.val_dataset),
-            ('test', self.test_dataset)
-        ]:
-            if dataset is not None:
-                valid_count, invalid_count, invalid_files = dataset.validate_all_images()
-                results[dataset_name] = {
-                    'valid_count': valid_count,
-                    'invalid_count': invalid_count,
-                    'invalid_files': invalid_files,
-                    'success_rate': valid_count / (valid_count + invalid_count) if (valid_count + invalid_count) > 0 else 0.0
-                }
-
-        return results
-
-    def get_sample_batch(self, dataset_type: str = 'train', batch_size: Optional[int] = None) -> dict[
-        str, ndarray[tuple[Any, ...], dtype[Any]] | Any]:
-        """
-        Get a sample batch for inspection or debugging.
-
-        Args:
-            dataset_type: 'train', 'val', or 'test'
-            batch_size: Size of sample batch (uses config batch_size if None)
-
-        Returns:
-            Dictionary with sample batch data
-        """
-        dataset_map = {
-            'train': self.train_dataset,
-            'val': self.val_dataset,
-            'test': self.test_dataset
-        }
-
-        dataset = dataset_map.get(dataset_type)
-        if dataset is None:
-            raise ValueError(f"Dataset '{dataset_type}' not available")
-
-        batch_size = batch_size or min(self.config.batch_size, len(dataset))
-
-        # Create temporary DataLoader for sampling
-        temp_loader = DataLoader(
-            dataset,
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=0  # No multiprocessing for sampling
-        )
-
-        # Get first batch
-        batch_images, batch_labels = next(iter(temp_loader))
-
-        return {
-            'images': batch_images,
-            'labels': batch_labels,
-            'batch_size': batch_images.shape[0],
-            'image_shape': batch_images.shape[1:],
-            'label_distribution': torch.bincount(batch_labels.long()).cpu().numpy()
-        }
-
-    def teardown(self, stage: Optional[str] = None) -> None:
-        """
-        Clean up resources.
-
-        Args:
-            stage: Stage being torn down
-        """
-        # Clear datasets to free memory
-        if stage in ('fit', None):
-            self.train_dataset = None
-            self.val_dataset = None
-
-        if stage == 'test':
-            self.test_dataset = None
-
-        self.logger.info(f"Teardown completed for stage: {stage}")
-
-    def state_dict(self) -> Dict[str, Any]:
-        """
-        Get state dictionary for checkpointing.
-
-        Returns:
-            State dictionary
-        """
-        return {
-            'constants': self.constants,
-            'config': self.config.to_dict(),
-            'color_mode': self.color_mode,
-            'custom_preprocessing_config': self.custom_preprocessing_config,
-            'hyperparameters': self.hparams
-        }
-
-    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
-        """
-        Load state from dictionary.
-
-        Args:
-            state_dict: State dictionary to load
-        """
-        # Update configuration if needed
-        if 'hyperparameters' in state_dict:
-            for key, value in state_dict['hyperparameters'].items():
-                if hasattr(self, key):
-                    setattr(self, key, value)
-
-        self.logger.info("State loaded from checkpoint")
+   

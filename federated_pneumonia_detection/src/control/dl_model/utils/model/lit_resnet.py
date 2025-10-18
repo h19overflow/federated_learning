@@ -32,7 +32,7 @@ class LitResNet(pl.LightningModule):
         base_model_weights: Optional[ResNet50_Weights] = None,
         class_weights_tensor: Optional[torch.Tensor] = None,
         num_classes: int = 1,
-        monitor_metric: str = "val_loss"
+        monitor_metric: str = "train_loss"
     ):
         """
         Initialize Lightning module.
