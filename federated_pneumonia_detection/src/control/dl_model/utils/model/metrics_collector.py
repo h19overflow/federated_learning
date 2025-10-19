@@ -9,9 +9,7 @@ import pytorch_lightning as pl
 from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
-from federated_pneumonia_detection.src.boundary.CRUD.run_configuration import run_configuration_crud
 
 # TODO: change the run_id to int
 class MetricsCollectorCallback(pl.Callback):

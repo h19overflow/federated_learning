@@ -15,10 +15,21 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 from federated_pneumonia_detection.src.boundary.CRUD.experiment import experiment_crud
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.control.dl_model.utils.model.training_callbacks import prepare_trainer_and_callbacks_pl, create_trainer_from_config
-from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import LitResNet
-from federated_pneumonia_detection.src.control.dl_model.utils.model.xray_data_module import XRayDataModule
-from federated_pneumonia_detection.src.utils.data_processing import load_metadata, create_train_val_split, sample_dataframe
+from federated_pneumonia_detection.src.control.dl_model.utils.model.training_callbacks import (
+    prepare_trainer_and_callbacks_pl,
+    create_trainer_from_config,
+)
+from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import (
+    LitResNet,
+)
+from federated_pneumonia_detection.src.control.dl_model.utils.model.xray_data_module import (
+    XRayDataModule,
+)
+from federated_pneumonia_detection.src.utils.data_processing import (
+    load_metadata,
+    create_train_val_split,
+    sample_dataframe,
+)
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from .utils import DataSourceExtractor
 
@@ -33,7 +44,7 @@ class CentralizedTrainer:
         self,
         config_path: Optional[str] = None,
         checkpoint_dir: str = "results/checkpoints",
-        logs_dir: str = "results/training_logs"
+        logs_dir: str = "results/training_logs",
     ):
         """
         Initialize centralized trainer.
@@ -75,13 +86,12 @@ class CentralizedTrainer:
             self.logger.error(f"Failed to initialize utilities: {e}")
             raise
 
-
     def train(
         self,
         source_path: str,
         experiment_name: str = "pneumonia_detection",
         csv_filename: Optional[str] = None,
-        run_id: Optional[int] = None
+        run_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Complete training workflow from zip file or directory.
@@ -97,9 +107,10 @@ class CentralizedTrainer:
 
         try:
             try:
-                image_dir, csv_path = self.data_source_extractor.extract_and_validate(source_path, csv_filename)
+                image_dir, csv_path = self.data_source_extractor.extract_and_validate(
+                    source_path, csv_filename
+                )
             except Exception as e:
-                self.logger.error(f"✗ Failed to extract/validate data source")
                 self.logger.error(f"  Error type: {type(e).__name__}")
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
@@ -114,16 +125,16 @@ class CentralizedTrainer:
             # Step 3: Create data module
             try:
                 data_module = self._create_data_module(train_df, val_df, image_dir)
-                self.logger.info(f"✓ Data module created successfully")
             except Exception as e:
-                self.logger.error(f"✗ Failed to create data module")
                 self.logger.error(f"  Error type: {type(e).__name__}")
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
 
             # Step 4: Build model and callbacks
             try:
-                model, callbacks, metrics_collector = self._build_model_and_callbacks(train_df, experiment_name, run_id)
+                model, callbacks, metrics_collector = self._build_model_and_callbacks(
+                    train_df, experiment_name, run_id
+                )
             except Exception as e:
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
@@ -132,7 +143,6 @@ class CentralizedTrainer:
             try:
                 trainer = self._build_trainer(callbacks, experiment_name)
             except Exception as e:
-                self.logger.error(f"✗ Failed to create trainer")
                 self.logger.error(f"  Error type: {type(e).__name__}")
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
@@ -140,9 +150,7 @@ class CentralizedTrainer:
             # Step 6: Train model
             try:
                 trainer.fit(model, data_module)
-                self.logger.info(f"✓ Model training completed")
             except Exception as e:
-                self.logger.error(f"✗ Training failed during model.fit()")
                 self.logger.error(f"  Error type: {type(e).__name__}")
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
@@ -150,8 +158,9 @@ class CentralizedTrainer:
             # Collect results
             self.logger.info("Collecting training results...")
             try:
-                results = self._collect_training_results(trainer, model, metrics_collector)
-                self.logger.info(f"✓ Results collected successfully")
+                results = self._collect_training_results(
+                    trainer, model, metrics_collector
+                )
             except Exception as e:
                 self.logger.error(f"  Error type: {type(e).__name__}")
                 raise
@@ -165,22 +174,22 @@ class CentralizedTrainer:
     def get_training_status(self) -> Dict[str, Any]:
         """Get current training status and configuration."""
         return {
-            'checkpoint_dir': self.checkpoint_dir,
-            'logs_dir': self.logs_dir,
-            'config': {
-                'epochs': self.config.epochs,
-                'learning_rate': self.config.learning_rate,
-                'batch_size': self.config.batch_size,
-                'validation_split': self.config.validation_split
+            "checkpoint_dir": self.checkpoint_dir,
+            "logs_dir": self.logs_dir,
+            "config": {
+                "epochs": self.config.epochs,
+                "learning_rate": self.config.learning_rate,
+                "batch_size": self.config.batch_size,
+                "validation_split": self.config.validation_split,
             },
-            'temp_dir_active': self.data_source_extractor.temp_extract_dir is not None
+            "temp_dir_active": self.data_source_extractor.temp_extract_dir is not None,
         }
 
     def _build_model_and_callbacks(
         self,
         train_df: pd.DataFrame,
         experiment_name: str = "pneumonia_detection",
-        run_id: Optional[int] = None
+        run_id: Optional[int] = None,
     ) -> Tuple[LitResNet, list, Any]:
         """
         Build model and training callbacks.
@@ -201,21 +210,23 @@ class CentralizedTrainer:
             model_filename="pneumonia_model",
             constants=self.constants,
             config=self.config,
-            metrics_dir=os.path.join(self.logs_dir, 'metrics'),
+            metrics_dir=os.path.join(self.logs_dir, "metrics"),
             experiment_name=experiment_name,
-            run_id = run_id
+            run_id=run_id,
         )
 
         model = LitResNet(
             constants=self.constants,
             config=self.config,
-            class_weights_tensor=callback_config['class_weights'],
-            monitor_metric="val_recall"
+            class_weights_tensor=callback_config["class_weights"],
+            monitor_metric="val_recall",
         )
 
-        self.logger.info(f"Model created with {sum(p.numel() for p in model.parameters())} parameters")
+        self.logger.info(
+            f"Model created with {sum(p.numel() for p in model.parameters())} parameters"
+        )
 
-        return model, callback_config['callbacks'], callback_config['metrics_collector']
+        return model, callback_config["callbacks"], callback_config["metrics_collector"]
 
     def _build_trainer(self, callbacks: list, experiment_name: str) -> pl.Trainer:
         """
@@ -231,9 +242,7 @@ class CentralizedTrainer:
         self.logger.info("Setting up trainer...")
 
         tb_logger = TensorBoardLogger(
-            save_dir=self.logs_dir,
-            name=experiment_name,
-            version=None
+            save_dir=self.logs_dir, name=experiment_name, version=None
         )
 
         trainer = create_trainer_from_config(
@@ -247,10 +256,7 @@ class CentralizedTrainer:
         return trainer
 
     def _collect_training_results(
-        self,
-        trainer: pl.Trainer,
-        model: LitResNet,
-        metrics_collector: Any
+        self, trainer: pl.Trainer, model: LitResNet, metrics_collector: Any
     ) -> Dict[str, Any]:
         """
         Collect and organize training results.
@@ -269,43 +275,61 @@ class CentralizedTrainer:
             if isinstance(callback, pl.callbacks.ModelCheckpoint):
                 checkpoint_callback = callback
                 break
-        
+
         best_model_path = None
         best_model_score = None
-        
+
         if checkpoint_callback:
-            best_model_path = checkpoint_callback.best_model_path if checkpoint_callback.best_model_path else None
+            best_model_path = (
+                checkpoint_callback.best_model_path
+                if checkpoint_callback.best_model_path
+                else None
+            )
             if checkpoint_callback.best_model_score is not None:
-                best_model_score = checkpoint_callback.best_model_score.item() if hasattr(checkpoint_callback.best_model_score, 'item') else float(checkpoint_callback.best_model_score)
-        
+                best_model_score = (
+                    checkpoint_callback.best_model_score.item()
+                    if hasattr(checkpoint_callback.best_model_score, "item")
+                    else float(checkpoint_callback.best_model_score)
+                )
+
         # Safely extract trainer state
         state_value = None
-        if trainer.state and hasattr(trainer.state, 'stage') and trainer.state.stage:
-            state_value = trainer.state.stage.value if hasattr(trainer.state.stage, 'value') else str(trainer.state.stage)
+        if trainer.state and hasattr(trainer.state, "stage") and trainer.state.stage:
+            state_value = (
+                trainer.state.stage.value
+                if hasattr(trainer.state.stage, "value")
+                else str(trainer.state.stage)
+            )
 
         # Extract metrics history from collector
-        metrics_history = metrics_collector.get_metrics_history() if metrics_collector else []
+        metrics_history = (
+            metrics_collector.get_metrics_history() if metrics_collector else []
+        )
         metrics_metadata = metrics_collector.get_metadata() if metrics_collector else {}
 
         results = {
-            'best_model_path': best_model_path,
-            'best_model_score': best_model_score,
-            'current_epoch': trainer.current_epoch,
-            'global_step': trainer.global_step,
-            'state': state_value,
-            'model_summary': model.get_model_summary(),
-            'checkpoint_dir': self.checkpoint_dir,
-            'logs_dir': self.logs_dir,
-            'metrics_history': metrics_history,
-            'metrics_metadata': metrics_metadata,
-            'total_epochs_trained': len(metrics_history)
+            "best_model_path": best_model_path,
+            "best_model_score": best_model_score,
+            "current_epoch": trainer.current_epoch,
+            "global_step": trainer.global_step,
+            "state": state_value,
+            "model_summary": model.get_model_summary(),
+            "checkpoint_dir": self.checkpoint_dir,
+            "logs_dir": self.logs_dir,
+            "metrics_history": metrics_history,
+            "metrics_metadata": metrics_metadata,
+            "total_epochs_trained": len(metrics_history),
         }
 
-        self.logger.info(f"Training results collected: {len(metrics_history)} epochs tracked")
+        self.logger.info(
+            f"Training results collected: {len(metrics_history)} epochs tracked"
+        )
 
         return results
 
-    def _prepare_dataset(self, csv_path: str, image_dir: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def _prepare_dataset(
+        self, csv_path: str, image_dir: str
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Prepare training and validation datasets.
 
@@ -316,7 +340,6 @@ class CentralizedTrainer:
         Returns:
             Tuple of (train_df, val_df)
         """
-        self.logger.info(f"Loading and processing dataset...")
 
         # Create temporary constants with extracted paths
         temp_constants = SystemConstants(
@@ -328,7 +351,7 @@ class CentralizedTrainer:
             TARGET_COLUMN=self.constants.TARGET_COLUMN,
             FILENAME_COLUMN=self.constants.FILENAME_COLUMN,
             IMAGE_EXTENSION=self.constants.IMAGE_EXTENSION,
-            SEED=self.constants.SEED
+            SEED=self.constants.SEED,
         )
 
         # Load metadata
@@ -342,7 +365,7 @@ class CentralizedTrainer:
                 self.config.sample_fraction,
                 temp_constants.TARGET_COLUMN,
                 self.config.seed,
-                self.logger
+                self.logger,
             )
 
         # Create train/val split
@@ -351,17 +374,16 @@ class CentralizedTrainer:
             self.config.validation_split,
             temp_constants.TARGET_COLUMN,
             self.config.seed,
-            self.logger
+            self.logger,
         )
 
-        self.logger.info(f"Dataset prepared: {len(train_df)} train, {len(val_df)} validation")
+        self.logger.info(
+            f"Dataset prepared: {len(train_df)} train, {len(val_df)} validation"
+        )
         return train_df, val_df
 
     def _create_data_module(
-        self,
-        train_df: pd.DataFrame,
-        val_df: pd.DataFrame,
-        image_dir: str
+        self, train_df: pd.DataFrame, val_df: pd.DataFrame, image_dir: str
     ) -> XRayDataModule:
         """
         Create PyTorch Lightning DataModule.
@@ -382,7 +404,7 @@ class CentralizedTrainer:
             constants=self.constants,
             config=self.config,
             image_dir=image_dir,
-            validate_images_on_init=False
+            validate_images_on_init=False,
         )
 
         return data_module
@@ -395,7 +417,7 @@ class CentralizedTrainer:
         if not logger.handlers:
             handler = logging.StreamHandler()
             formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
             )
             handler.setFormatter(formatter)
             logger.addHandler(handler)

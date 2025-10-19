@@ -7,6 +7,7 @@ import os
 import sys
 import logging
 from pathlib import Path
+import time
 import uuid
 
 # Add project root to path
@@ -28,10 +29,11 @@ def main():
 
 
     # Define paths
+    # convert the id into int , and capture current timestamp
+    run_id = int(time.time())
     source_path = "Training"  # Directory containing Images/ and CSV files
     config_path = None  # Use default configuration
-    experiment_name = "pneumonia_centralized"
-    run_id = str(experiment_name + "_" + str(uuid.uuid4()))
+    experiment_name = "pneumonia_centralized_" + str(run_id)
     # Output directories
     checkpoint_dir = "results/centralized/checkpoints"
     logs_dir = "results/centralized/logs"
