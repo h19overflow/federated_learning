@@ -13,7 +13,7 @@ from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run_configuration import run_configuration_crud
 
-
+# TODO: change the run_id to int
 class MetricsCollectorCallback(pl.Callback):
     """
     Comprehensive metrics collector that saves all training metrics across epochs.

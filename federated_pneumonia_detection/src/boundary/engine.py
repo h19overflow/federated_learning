@@ -84,6 +84,9 @@ def get_session():
     engine = create_engine(settings.get_postgres_db_uri())
     Session = sessionmaker(bind=engine)
     return Session()
+def get_engine():
+    engine = create_engine(settings.get_postgres_db_uri())
+    return engine
 
 if __name__ == "__main__":
     create_tables()
