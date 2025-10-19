@@ -10,13 +10,13 @@ from federated_pneumonia_detection.src.utils.logger import get_logger
 
 
 def load_pdf(file_path: str) -> list[Document]:
-    try: 
+    try:
         loader = PyPDFium2Loader(file_path)
         return loader.load()
     except Exception as e:
         get_logger(__name__).error(f"Error loading PDF: {e}")
         return []
-    
+
 
 def chunk_pdf(pdf_docs: list[Document]) -> list[Document]:
     try:
@@ -26,20 +26,26 @@ def chunk_pdf(pdf_docs: list[Document]) -> list[Document]:
     except Exception as e:
         get_logger(__name__).error(f"Error chunking PDF: {e}")
         return []
-    
+
+
 def insert_documents_to_postgres(postgres_url: str, documents: list[Document]):
     """
     Insert documents into Postgres database.
     """
     try:
         embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        vectorstore = PGVector(connection=postgres_url
-                           , collection_name='research_papers',embeddings=embeddings)
+        vectorstore = PGVector(
+            connection=postgres_url,
+            collection_name="research_papers",
+            embeddings=embeddings,
+        )
         vectorstore.add_documents(documents=documents)
         return True
     except Exception as e:
         get_logger(__name__).error(f"Error inserting documents into Postgres: {e}")
         return False
+
+
 def pipeline(postgres_url: str, file_path: str):
     """
     Pipeline to load PDF, chunk it, and insert it into Postgres database.
@@ -52,12 +58,14 @@ def pipeline(postgres_url: str, file_path: str):
     except Exception as e:
         get_logger(__name__).error(f"Error in pipeline: {e}")
         return False
-    
-    
+
+
 if __name__ == "__main__":
     directory_path = r"C:\Users\User\Projects\FYP2\federated_pneumonia_detection\src\control\agentic_systems\pipelines\rag\input"
-    
-    for file in os.listdir(directory_path):   
+
+    for file in os.listdir(directory_path):
         get_logger(__name__).info(f"Processing file: {file}")
         if file.endswith(".pdf"):
-            pipeline(Settings().get_postgres_db_uri(), os.path.join(directory_path, file))
+            pipeline(
+                Settings().get_postgres_db_uri(), os.path.join(directory_path, file)
+            )

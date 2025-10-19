@@ -130,6 +130,7 @@ class FederatedTrainer:
             valloader=val_loader,
             config=self.config,
             device=self.device,
+            metrics_dir='results/federated_learning/metrics'
         ).to_client()
 
     def _create_evaluate_fn(

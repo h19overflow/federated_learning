@@ -27,7 +27,7 @@ class ExperimentConfig:
     monitor_metric: str = 'val_loss'  # Metric to monitor for LR scheduling
 
     # Data parameters
-    sample_fraction: float = 0.005
+    sample_fraction: float = 0.10
     validation_split: float = 0.20
     batch_size: int = 512
 

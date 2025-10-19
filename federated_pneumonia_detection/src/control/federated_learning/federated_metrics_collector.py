@@ -22,13 +22,11 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 import pandas as pd
-import torch
 from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
-
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 
 class FederatedMetricsCollector:
     """
@@ -425,9 +423,14 @@ class FederatedMetricsCollector:
             return
 
         if self.run_id is None:
-            self.logger.warning("No run_id provided, skipping database persistence")
-            return
-
+            self.run_id = run_crud.create(db, **{
+                'training_mode': 'federated',
+                'status': 'in_progress',
+                'start_time': datetime.now(),
+                'wandb_id': 'placeholder',
+                'source_path': 'placeholder',
+            })
+        
         close_session = False
         if db is None:
             db = get_session()

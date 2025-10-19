@@ -59,9 +59,7 @@ def partition_data_stratified(
     np.random.seed(seed)
 
     # Initialize client partitions
-    client_partitions: List[pd.DataFrame] = [
-        pd.DataFrame() for _ in range(num_clients)
-    ]
+    client_partitions: List[pd.DataFrame] = [pd.DataFrame() for _ in range(num_clients)]
 
     # Distribute each class across clients
     for class_label in df[target_column].unique():
@@ -78,8 +76,10 @@ def partition_data_stratified(
 
     # Shuffle each partition
     for i in range(num_clients):
-        client_partitions[i] = client_partitions[i].sample(
-            frac=1, random_state=seed + i
-        ).reset_index(drop=True)
+        client_partitions[i] = (
+            client_partitions[i]
+            .sample(frac=1, random_state=seed + i)
+            .reset_index(drop=True)
+        )
 
     return client_partitions

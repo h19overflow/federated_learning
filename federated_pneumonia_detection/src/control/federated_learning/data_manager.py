@@ -27,7 +27,9 @@ from torch.utils.data import DataLoader
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.src.utils.image_transforms import TransformBuilder
-from federated_pneumonia_detection.src.entities.custom_image_dataset import CustomImageDataset
+from federated_pneumonia_detection.src.entities.custom_image_dataset import (
+    CustomImageDataset,
+)
 
 
 def split_partition(

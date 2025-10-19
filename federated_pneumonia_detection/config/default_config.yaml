@@ -5,8 +5,8 @@
 system:
   img_size: [256, 256]  # Increased for better feature extraction with available VRAM
   image_extension: ".png"
-  batch_size: 512  # Doubled to leverage 16GB VRAM efficiently
-  sample_fraction: 0.005
+  batch_size: 128  # Doubled to leverage 16GB VRAM efficiently
+  sample_fraction: 0.2
   validation_split: 0.20
   seed: 42
 
@@ -42,10 +42,10 @@ experiment:
   min_lr: 0.0000001
 
   # Federated Learning parameters
-  num_rounds: 2  # Increased for better model convergence
-  num_clients: 2
-  clients_per_round: 2
-  local_epochs: 15  # Increased to 2 for better local learning per round
+  num_rounds: 3 # Increased for better model convergence
+  num_clients: 3
+  clients_per_round: 3
+  local_epochs: 20  # Increased to 2 for better local learning per round
 
   # System parameters
   device: "cuda"  # auto, cpu, cuda, mps

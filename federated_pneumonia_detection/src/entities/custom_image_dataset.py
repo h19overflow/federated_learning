@@ -3,7 +3,6 @@ Custom PyTorch Dataset for X-ray image loading and processing.
 Handles image file loading, transformations, and label management with comprehensive error handling.
 """
 
-
 from typing import Tuple, Optional, Union, Callable
 from pathlib import Path
 from federated_pneumonia_detection.src.utils.logger import get_logger
@@ -30,8 +29,8 @@ class CustomImageDataset(Dataset):
         image_dir: Union[str, Path],
         constants: SystemConstants,
         transform: Optional[Callable] = None,
-        color_mode: str = 'RGB',
-        validate_images: bool = True
+        color_mode: str = "RGB",
+        validate_images: bool = True,
     ):
         """
         Initialize the dataset with validation and error handling.
@@ -73,9 +72,13 @@ class CustomImageDataset(Dataset):
             else:
                 self.valid_indices = np.arange(len(self.filenames))
 
-        self.logger.info(f"Dataset initialized with {len(self.valid_indices)} valid samples")
+        self.logger.info(
+            f"Dataset initialized with {len(self.valid_indices)} valid samples"
+        )
 
-    def _validate_inputs(self, dataframe: pd.DataFrame, image_dir: Union[str, Path]) -> None:
+    def _validate_inputs(
+        self, dataframe: pd.DataFrame, image_dir: Union[str, Path]
+    ) -> None:
         """Validate constructor inputs."""
         if not isinstance(dataframe, pd.DataFrame):
             raise ValueError("dataframe must be a pandas DataFrame")
@@ -88,14 +91,19 @@ class CustomImageDataset(Dataset):
             self.logger.error(f"Image directory path is not a directory: {image_dir}")
             raise ValueError(f"Image directory path is not a directory: {image_dir}")
 
-        if self.color_mode not in ['RGB', 'L']:
+        if self.color_mode not in ["RGB", "L"]:
             self.logger.error(f"Color mode must be 'RGB' or 'L'")
             raise ValueError("color_mode must be 'RGB' or 'L'")
 
         # Check required columns if dataframe is not empty
         if not dataframe.empty:
-            required_columns = [self.constants.FILENAME_COLUMN, self.constants.TARGET_COLUMN]
-            missing_columns = [col for col in required_columns if col not in dataframe.columns]
+            required_columns = [
+                self.constants.FILENAME_COLUMN,
+                self.constants.TARGET_COLUMN,
+            ]
+            missing_columns = [
+                col for col in required_columns if col not in dataframe.columns
+            ]
             if missing_columns:
                 self.logger.error(f"Missing required columns: {missing_columns}")
                 raise ValueError(f"Missing required columns: {missing_columns}")
@@ -131,7 +139,9 @@ class CustomImageDataset(Dataset):
                 invalid_count += 1
 
         if invalid_count > 0:
-            self.logger.info(f"Found {invalid_count} invalid image files out of {len(self.filenames)}")
+            self.logger.info(
+                f"Found {invalid_count} invalid image files out of {len(self.filenames)}"
+            )
 
         return np.array(valid_indices)
 
@@ -154,8 +164,12 @@ class CustomImageDataset(Dataset):
             RuntimeError: If image loading fails
         """
         if idx >= len(self.valid_indices) or idx < 0:
-            self.logger.error(f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}")
-            raise IndexError(f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}")
+            self.logger.error(
+                f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}"
+            )
+            raise IndexError(
+                f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}"
+            )
 
         # Get the actual index from valid indices
         actual_idx = self.valid_indices[idx]
@@ -195,11 +209,11 @@ class CustomImageDataset(Dataset):
         try:
             with Image.open(image_path) as img:
                 # Convert to RGB first to handle various input formats
-                img_rgb = img.convert('RGB')
+                img_rgb = img.convert("RGB")
 
                 # Then convert to target mode if different
-                if self.color_mode == 'L':
-                    return img_rgb.convert('L')
+                if self.color_mode == "L":
+                    return img_rgb.convert("L")
                 else:
                     return img_rgb
 
@@ -241,25 +255,27 @@ class CustomImageDataset(Dataset):
         image_path = self.image_dir / filename
 
         info = {
-            'index': idx,
-            'actual_index': actual_idx,
-            'filename': filename,
-            'label': label,
-            'image_path': str(image_path),
-            'exists': image_path.exists()
+            "index": idx,
+            "actual_index": actual_idx,
+            "filename": filename,
+            "label": label,
+            "image_path": str(image_path),
+            "exists": image_path.exists(),
         }
 
         # Add image info if file exists
         if image_path.exists():
             try:
                 with Image.open(image_path) as img:
-                    info.update({
-                        'image_size': img.size,
-                        'image_mode': img.mode,
-                        'image_format': img.format
-                    })
+                    info.update(
+                        {
+                            "image_size": img.size,
+                            "image_mode": img.mode,
+                            "image_format": img.format,
+                        }
+                    )
             except Exception as e:
-                info['image_error'] = str(e)
+                info["image_error"] = str(e)
 
         return info
 
@@ -302,7 +318,7 @@ class CustomImageDataset(Dataset):
         """
         if len(self.valid_indices) == 0:
             self.logger.info("No valid indices in dataset")
-            return {'total_samples': 0, 'estimated_memory_mb': 0}
+            return {"total_samples": 0, "estimated_memory_mb": 0}
 
         # Sample a few images to estimate average size
         sample_size = min(10, len(self.valid_indices))
@@ -323,10 +339,12 @@ class CustomImageDataset(Dataset):
 
         if sample_size > 0:
             avg_pixels = total_pixels / sample_size
-            channels = 3 if self.color_mode == 'RGB' else 1
+            channels = 3 if self.color_mode == "RGB" else 1
             bytes_per_pixel = 4  # Assuming float32
 
-            estimated_mb_per_image = (avg_pixels * channels * bytes_per_pixel) / (1024 * 1024)
+            estimated_mb_per_image = (avg_pixels * channels * bytes_per_pixel) / (
+                1024 * 1024
+            )
             total_estimated_mb = estimated_mb_per_image * len(self.valid_indices)
         else:
             self.logger.info("No valid indices in dataset")
@@ -334,9 +352,9 @@ class CustomImageDataset(Dataset):
             total_estimated_mb = 0
 
         return {
-            'total_samples': len(self.valid_indices),
-            'avg_pixels_per_image': avg_pixels if sample_size > 0 else 0,
-            'estimated_mb_per_image': estimated_mb_per_image,
-            'estimated_total_memory_mb': total_estimated_mb,
-            'color_mode': self.color_mode
+            "total_samples": len(self.valid_indices),
+            "avg_pixels_per_image": avg_pixels if sample_size > 0 else 0,
+            "estimated_mb_per_image": estimated_mb_per_image,
+            "estimated_total_memory_mb": total_estimated_mb,
+            "color_mode": self.color_mode,
         }

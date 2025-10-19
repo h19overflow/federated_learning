@@ -18,7 +18,7 @@ from federated_pneumonia_detection.src.utils.logger import get_logger
 def load_metadata(
     metadata_path: Union[str, Path],
     constants: SystemConstants,
-    logger: Optional[logging.Logger] = None
+    logger: Optional[logging.Logger] = None,
 ) -> pd.DataFrame:
     """
     Load and prepare metadata CSV file.
@@ -78,7 +78,7 @@ def load_metadata(
     required_columns = [
         constants.PATIENT_ID_COLUMN,
         constants.TARGET_COLUMN,
-        constants.FILENAME_COLUMN
+        constants.FILENAME_COLUMN,
     ]
 
     for col in required_columns:
@@ -95,7 +95,7 @@ def sample_dataframe(
     sample_fraction: float,
     target_column: str,
     seed: int = 42,
-    logger: Optional[logging.Logger] = None
+    logger: Optional[logging.Logger] = None,
 ) -> pd.DataFrame:
     """
     Sample DataFrame while maintaining class distribution.
@@ -137,7 +137,9 @@ def sample_dataframe(
             logger.info(f"Stratified sampling: {len(df_sample)} samples")
         else:
             # Simple random sampling for single class
-            df_sample = df.sample(frac=sample_fraction, random_state=seed).reset_index(drop=True)
+            df_sample = df.sample(frac=sample_fraction, random_state=seed).reset_index(
+                drop=True
+            )
             logger.info(f"Random sampling: {len(df_sample)} samples")
 
         return df_sample
@@ -152,7 +154,7 @@ def create_train_val_split(
     validation_split: float,
     target_column: str,
     seed: int = 42,
-    logger: Optional[logging.Logger] = None
+    logger: Optional[logging.Logger] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Create train/validation split with stratification when possible.
@@ -184,13 +186,12 @@ def create_train_val_split(
         stratify = df[target_column] if len(unique_targets) > 1 else None
 
         train_df, val_df = train_test_split(
-            df,
-            test_size=validation_split,
-            random_state=seed,
-            stratify=stratify
+            df, test_size=validation_split, random_state=seed, stratify=stratify
         )
 
-        logger.info(f"Created train/val split - Train: {len(train_df)}, Val: {len(val_df)}")
+        logger.info(
+            f"Created train/val split - Train: {len(train_df)}, Val: {len(val_df)}"
+        )
         return train_df, val_df
 
     except Exception as e:
@@ -201,7 +202,7 @@ def create_train_val_split(
 def load_and_split_data(
     constants: SystemConstants,
     config: ExperimentConfig,
-    metadata_path: Optional[Union[str, Path]] = None
+    metadata_path: Optional[Union[str, Path]] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Complete data loading and splitting pipeline.
@@ -223,7 +224,9 @@ def load_and_split_data(
     try:
         # Determine metadata path
         if metadata_path is None:
-            metadata_path = os.path.join(constants.BASE_PATH, constants.METADATA_FILENAME)
+            metadata_path = os.path.join(
+                constants.BASE_PATH, constants.METADATA_FILENAME
+            )
 
         # Load metadata
         df = load_metadata(metadata_path, constants, logger)
@@ -235,10 +238,16 @@ def load_and_split_data(
 
         # Create train/validation split
         train_df, val_df = create_train_val_split(
-            df_sample, config.validation_split, constants.TARGET_COLUMN, config.seed, logger
+            df_sample,
+            config.validation_split,
+            constants.TARGET_COLUMN,
+            config.seed,
+            logger,
         )
 
-        logger.info(f"Data processing completed: {len(train_df)} train, {len(val_df)} validation samples")
+        logger.info(
+            f"Data processing completed: {len(train_df)} train, {len(val_df)} validation samples"
+        )
         return train_df, val_df
 
     except Exception as e:
@@ -247,8 +256,7 @@ def load_and_split_data(
 
 
 def validate_image_paths(
-    constants: SystemConstants,
-    logger: Optional[logging.Logger] = None
+    constants: SystemConstants, logger: Optional[logging.Logger] = None
 ) -> bool:
     """
     Validate that image directories exist.
@@ -306,15 +314,17 @@ def get_data_statistics(df: pd.DataFrame, target_column: str) -> dict:
     """
     logger = get_logger(__name__)
     stats = {
-        'total_samples': len(df),
-        'class_distribution': df[target_column].value_counts().to_dict(),
-        'missing_values': df.isnull().sum().to_dict(),
-        'columns': list(df.columns)
+        "total_samples": len(df),
+        "class_distribution": df[target_column].value_counts().to_dict(),
+        "missing_values": df.isnull().sum().to_dict(),
+        "columns": list(df.columns),
     }
 
     if len(df) > 0:
         class_counts = df[target_column].value_counts()
-        stats['class_balance_ratio'] = class_counts.min() / class_counts.max() if len(class_counts) > 1 else 1.0
+        stats["class_balance_ratio"] = (
+            class_counts.min() / class_counts.max() if len(class_counts) > 1 else 1.0
+        )
 
     return stats
 
@@ -336,7 +346,9 @@ class DataProcessor:
             "Use load_and_split_data() function instead."
         )
 
-    def load_and_process_data(self, config: ExperimentConfig) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def load_and_process_data(
+        self, config: ExperimentConfig
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Load and process data using the new function-based approach."""
         return load_and_split_data(self.constants, config)
 
@@ -346,14 +358,18 @@ class DataProcessor:
 
     def get_image_paths(self) -> Tuple[str, str]:
         """Get image paths."""
-        main_images_path = os.path.join(self.constants.BASE_PATH, self.constants.MAIN_IMAGES_FOLDER)
+        main_images_path = os.path.join(
+            self.constants.BASE_PATH, self.constants.MAIN_IMAGES_FOLDER
+        )
         image_dir_path = get_image_directory_path(self.constants)
         return main_images_path, image_dir_path
 
     # Private methods for backward compatibility with tests
     def _load_metadata(self) -> pd.DataFrame:
         """Load metadata (backward compatibility wrapper)."""
-        metadata_path = os.path.join(self.constants.BASE_PATH, self.constants.METADATA_FILENAME)
+        metadata_path = os.path.join(
+            self.constants.BASE_PATH, self.constants.METADATA_FILENAME
+        )
         return load_metadata(metadata_path, self.constants, self.logger)
 
     def _prepare_filenames(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -362,9 +378,12 @@ class DataProcessor:
         if self.constants.PATIENT_ID_COLUMN not in df.columns:
             raise ValueError(f"Missing column: {self.constants.PATIENT_ID_COLUMN}")
         df[self.constants.FILENAME_COLUMN] = (
-            df[self.constants.PATIENT_ID_COLUMN].astype(str) + self.constants.IMAGE_EXTENSION
+            df[self.constants.PATIENT_ID_COLUMN].astype(str)
+            + self.constants.IMAGE_EXTENSION
         )
-        df[self.constants.TARGET_COLUMN] = df[self.constants.TARGET_COLUMN].astype(int).astype(str)
+        df[self.constants.TARGET_COLUMN] = (
+            df[self.constants.TARGET_COLUMN].astype(int).astype(str)
+        )
         return df
 
     def _validate_data(self, df: pd.DataFrame) -> None:
@@ -376,7 +395,7 @@ class DataProcessor:
         required_columns = [
             self.constants.PATIENT_ID_COLUMN,
             self.constants.TARGET_COLUMN,
-            self.constants.FILENAME_COLUMN
+            self.constants.FILENAME_COLUMN,
         ]
 
         missing_cols = [col for col in required_columns if col not in df.columns]
@@ -389,10 +408,18 @@ class DataProcessor:
                 self.logger.error(f"Missing values found in column: {col}")
                 raise ValueError(f"Missing values found in column: {col}")
 
-    def _sample_data(self, df: pd.DataFrame, sample_fraction: float, seed: int) -> pd.DataFrame:
+    def _sample_data(
+        self, df: pd.DataFrame, sample_fraction: float, seed: int
+    ) -> pd.DataFrame:
         """Sample data (backward compatibility wrapper)."""
-        return sample_dataframe(df, sample_fraction, self.constants.TARGET_COLUMN, seed, self.logger)
+        return sample_dataframe(
+            df, sample_fraction, self.constants.TARGET_COLUMN, seed, self.logger
+        )
 
-    def _create_train_val_split(self, df: pd.DataFrame, validation_split: float, seed: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def _create_train_val_split(
+        self, df: pd.DataFrame, validation_split: float, seed: int
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Create train/val split (backward compatibility wrapper)."""
-        return create_train_val_split(df, validation_split, self.constants.TARGET_COLUMN, seed, self.logger)
+        return create_train_val_split(
+            df, validation_split, self.constants.TARGET_COLUMN, seed, self.logger
+        )

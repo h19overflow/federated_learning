@@ -45,7 +45,7 @@ class FlowerClient(NumPyClient):
         device: torch.device,
         client_id: Optional[str] = None,
         metrics_dir: Optional[str] = None,
-        experiment_name: str = "federated_pneumonia"
+        experiment_name: str = "federated_pneumonia",
     ) -> None:
         """
         Initialize Flower client with dependencies.
@@ -67,6 +67,30 @@ class FlowerClient(NumPyClient):
         if valloader is None:
             raise ValueError("valloader cannot be None")
 
+        # Validate that client has sufficient data
+        train_samples = (
+            len(trainloader.dataset) if hasattr(trainloader, "dataset") else 0
+        )
+        if train_samples == 0:
+            raise ValueError(
+                f"Client {client_id or 'unknown'} has no training samples. "
+                "Check data partitioning and sample_fraction settings."
+            )
+
+        # Warn if batch size is larger than dataset
+        if (
+            hasattr(trainloader, "batch_size")
+            and trainloader.batch_size
+            and train_samples < trainloader.batch_size
+        ):
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Client {client_id or 'unknown'}: batch_size ({trainloader.batch_size}) "
+                f"> train_samples ({train_samples}). This will result in only 1 batch per epoch."
+            )
+
         self.net = net
         self.trainloader = trainloader
         self.valloader = valloader
@@ -81,18 +105,18 @@ class FlowerClient(NumPyClient):
             self.metrics_collector = FederatedMetricsCollector(
                 save_dir=metrics_dir,
                 client_id=self.client_id,
-                experiment_name=experiment_name
+                experiment_name=experiment_name,
             )
 
             # Record model info
             model_info = {
-                'total_parameters': sum(p.numel() for p in net.parameters()),
-                'trainable_parameters': sum(
+                "total_parameters": sum(p.numel() for p in net.parameters()),
+                "trainable_parameters": sum(
                     p.numel() for p in net.parameters() if p.requires_grad
                 ),
-                'train_samples': len(trainloader.dataset),
-                'val_samples': len(valloader.dataset),
-                'device': str(device)
+                "train_samples": len(trainloader.dataset),
+                "val_samples": len(valloader.dataset),
+                "device": str(device),
             }
             self.metrics_collector.start_training(model_info)
 
@@ -116,8 +140,7 @@ class FlowerClient(NumPyClient):
         # Record round start if metrics collector is active
         if self.metrics_collector:
             self.metrics_collector.record_round_start(
-                round_num=self.current_round,
-                server_config=config
+                round_num=self.current_round, server_config=config
             )
 
         train_loss, epoch_losses = train(
@@ -129,7 +152,7 @@ class FlowerClient(NumPyClient):
             self.config.weight_decay,
             self.config.num_classes,
             metrics_collector=self.metrics_collector,
-            current_round=self.current_round
+            current_round=self.current_round,
         )
 
         # Record fit metrics
@@ -137,7 +160,7 @@ class FlowerClient(NumPyClient):
             self.metrics_collector.record_fit_metrics(
                 round_num=self.current_round,
                 train_loss=train_loss,
-                num_samples=len(self.trainloader.dataset)
+                num_samples=len(self.trainloader.dataset),
             )
 
         self.current_round += 1
@@ -168,7 +191,7 @@ class FlowerClient(NumPyClient):
                 round_num=self.current_round - 1,
                 val_loss=loss,
                 val_accuracy=accuracy,
-                num_samples=len(self.valloader.dataset)
+                num_samples=len(self.valloader.dataset),
             )
 
         return loss, len(self.valloader.dataset), {"accuracy": accuracy}
@@ -178,7 +201,9 @@ class FlowerClient(NumPyClient):
         if self.metrics_collector:
             self.metrics_collector.end_training()
 
+
 # Helper functions
+
 
 def get_weights(net: ResNetWithCustomHead) -> List:
     """Extract model weights as numpy arrays."""
@@ -201,7 +226,7 @@ def train(
     weight_decay: float,
     num_classes: int,
     metrics_collector: Optional[FederatedMetricsCollector] = None,
-    current_round: int = 0
+    current_round: int = 0,
 ) -> Tuple[float, List[float]]:
     """
     Train the model on the training set.
@@ -221,11 +246,7 @@ def train(
         Tuple of (average_loss, epoch_losses)
     """
     net.to(device)
-    criterion = (
-        nn.BCEWithLogitsLoss()
-        if num_classes == 1
-        else nn.CrossEntropyLoss()
-    )
+    criterion = nn.BCEWithLogitsLoss() if num_classes == 1 else nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(
         net.parameters(),
         lr=learning_rate,
@@ -259,21 +280,28 @@ def train(
             num_batches += 1
 
         # Calculate average loss for this epoch
-        avg_epoch_loss = epoch_loss / num_batches
-        epoch_losses.append(avg_epoch_loss)
-        total_running_loss += epoch_loss
+        # Guard against division by zero when no batches were processed
+        if num_batches > 0:
+            avg_epoch_loss = epoch_loss / num_batches
+            epoch_losses.append(avg_epoch_loss)
+            total_running_loss += epoch_loss
+        else:
+            # No data to train on - append 0.0 as placeholder
+            epoch_losses.append(0.0)
 
         # Record epoch metrics if collector is available
-        if metrics_collector:
+        if metrics_collector and num_batches > 0:
             metrics_collector.record_local_epoch(
                 round_num=current_round,
                 local_epoch=epoch,
                 train_loss=avg_epoch_loss,
                 learning_rate=learning_rate,
-                num_samples=len(trainloader.dataset)
+                num_samples=len(trainloader.dataset),
             )
 
-    avg_trainloss = total_running_loss / (len(trainloader) * epochs)
+    # Calculate final average, guarding against empty trainloader
+    total_batches = len(trainloader) * epochs
+    avg_trainloss = total_running_loss / total_batches if total_batches > 0 else 0.0
     return avg_trainloss, epoch_losses
 
 
@@ -285,11 +313,7 @@ def evaluate(
 ) -> Tuple[float, float]:
     """Evaluate the model on the validation set."""
     net.to(device)
-    criterion = (
-        nn.BCEWithLogitsLoss()
-        if num_classes == 1
-        else nn.CrossEntropyLoss()
-    )
+    criterion = nn.BCEWithLogitsLoss() if num_classes == 1 else nn.CrossEntropyLoss()
     correct, loss = 0, 0.0
     with torch.no_grad():
         for images, labels in valloader:
@@ -309,4 +333,3 @@ def evaluate(
     accuracy = correct / len(valloader.dataset)
     loss = loss / len(valloader)
     return loss, accuracy
-

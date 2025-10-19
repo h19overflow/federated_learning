@@ -30,7 +30,7 @@ class ResNetWithCustomHead(nn.Module):
         num_classes: int = 1,
         dropout_rate: Optional[float] = None,
         fine_tune_layers_count: Optional[int] = None,
-        custom_head_sizes: Optional[list] = None
+        custom_head_sizes: Optional[list] = None,
     ):
         """
         Initialize ResNet50 with custom classification head.
@@ -55,10 +55,15 @@ class ResNetWithCustomHead(nn.Module):
 
         # Set parameters from config with overrides
         self.num_classes = num_classes
-        self.dropout_rate = dropout_rate if dropout_rate is not None else getattr(config, 'dropout_rate', 0.5)
+        self.dropout_rate = (
+            dropout_rate
+            if dropout_rate is not None
+            else getattr(config, "dropout_rate", 0.5)
+        )
         self.fine_tune_layers_count = (
-            fine_tune_layers_count if fine_tune_layers_count is not None
-            else getattr(config, 'fine_tune_layers_count', 0)
+            fine_tune_layers_count
+            if fine_tune_layers_count is not None
+            else getattr(config, "fine_tune_layers_count", 0)
         )
 
         # Validate parameters
@@ -111,7 +116,9 @@ class ResNetWithCustomHead(nn.Module):
             # Store backbone info for fine-tuning
             self.backbone_layers = list(self.features.children())
 
-            self.logger.info(f"ResNet50 backbone created with {len(self.backbone_layers)} layers")
+            self.logger.info(
+                f"ResNet50 backbone created with {len(self.backbone_layers)} layers"
+            )
 
         except Exception as e:
             self.logger.error(f"Failed to create ResNet50 backbone: {e}")
@@ -131,25 +138,28 @@ class ResNetWithCustomHead(nn.Module):
         # Build classifier layers
         classifier_layers: list[nn.Module] = [
             nn.AdaptiveAvgPool2d((1, 1)),  # Global average pooling
-            nn.Flatten()
+            nn.Flatten(),
         ]
 
         # Add fully connected layers with dropout
         for i in range(len(head_sizes) - 1):
-            classifier_layers.extend([
-                nn.Linear(head_sizes[i], head_sizes[i + 1]),
-            ])
+            classifier_layers.extend(
+                [
+                    nn.Linear(head_sizes[i], head_sizes[i + 1]),
+                ]
+            )
 
             # Add activation and dropout except for the final layer
             if i < len(head_sizes) - 2:
-                classifier_layers.extend([
-                    nn.ReLU(inplace=True),
-                    nn.Dropout(self.dropout_rate)
-                ])
+                classifier_layers.extend(
+                    [nn.ReLU(inplace=True), nn.Dropout(self.dropout_rate)]
+                )
 
         self.classifier = nn.Sequential(*classifier_layers)
 
-        self.logger.info(f"Classifier head created: {' -> '.join(map(str, head_sizes))}")
+        self.logger.info(
+            f"Classifier head created: {' -> '.join(map(str, head_sizes))}"
+        )
 
     def _configure_fine_tuning(self) -> None:
         """Configure fine-tuning of backbone layers."""
@@ -165,9 +175,13 @@ class ResNetWithCustomHead(nn.Module):
             self._unfreeze_last_n_layers(abs(self.fine_tune_layers_count))
 
         # Count unfrozen parameters
-        total_unfrozen = sum(1 for param in self.features.parameters() if param.requires_grad)
+        total_unfrozen = sum(
+            1 for param in self.features.parameters() if param.requires_grad
+        )
 
-        self.logger.info(f"Fine-tuning: {total_unfrozen}/{total_frozen + total_unfrozen} backbone parameters unfrozen")
+        self.logger.info(
+            f"Fine-tuning: {total_unfrozen}/{total_frozen + total_unfrozen} backbone parameters unfrozen"
+        )
 
     def _unfreeze_last_n_layers(self, n_layers: int) -> None:
         """Unfreeze the last n layers of the backbone."""
@@ -184,8 +198,9 @@ class ResNetWithCustomHead(nn.Module):
                 for param in layer.parameters(recurse=False):
                     param.requires_grad = True
 
-        self.logger.info(f"Unfroze last {layers_to_unfreeze} parameter-containing layers")
-
+        self.logger.info(
+            f"Unfroze last {layers_to_unfreeze} parameter-containing layers"
+        )
 
         # Unfreeze the first n layers
         layers_to_unfreeze = min(n_layers, len(param_layers))
@@ -194,7 +209,9 @@ class ResNetWithCustomHead(nn.Module):
                 for param in layer.parameters(recurse=False):
                     param.requires_grad = True
 
-        self.logger.info(f"Unfroze first {layers_to_unfreeze} parameter-containing layers")
+        self.logger.info(
+            f"Unfroze first {layers_to_unfreeze} parameter-containing layers"
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -232,24 +249,28 @@ class ResNetWithCustomHead(nn.Module):
         total_params = sum(p.numel() for p in self.parameters())
         trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
         backbone_params = sum(p.numel() for p in self.features.parameters())
-        backbone_trainable = sum(p.numel() for p in self.features.parameters() if p.requires_grad)
+        backbone_trainable = sum(
+            p.numel() for p in self.features.parameters() if p.requires_grad
+        )
         head_params = sum(p.numel() for p in self.classifier.parameters())
 
         return {
-            'model_name': 'ResNetWithCustomHead',
-            'backbone': 'ResNet50',
-            'backbone_weights': str(self.base_model_weights),
-            'num_classes': self.num_classes,
-            'dropout_rate': self.dropout_rate,
-            'fine_tune_layers_count': self.fine_tune_layers_count,
-            'total_parameters': total_params,
-            'trainable_parameters': trainable_params,
-            'backbone_parameters': backbone_params,
-            'backbone_trainable_parameters': backbone_trainable,
-            'head_parameters': head_params,
-            'trainable_ratio': trainable_params / total_params if total_params > 0 else 0.0,
-            'input_size': self.constants.IMG_SIZE,
-            'architecture': str(self.classifier)
+            "model_name": "ResNetWithCustomHead",
+            "backbone": "ResNet50",
+            "backbone_weights": str(self.base_model_weights),
+            "num_classes": self.num_classes,
+            "dropout_rate": self.dropout_rate,
+            "fine_tune_layers_count": self.fine_tune_layers_count,
+            "total_parameters": total_params,
+            "trainable_parameters": trainable_params,
+            "backbone_parameters": backbone_params,
+            "backbone_trainable_parameters": backbone_trainable,
+            "head_parameters": head_params,
+            "trainable_ratio": trainable_params / total_params
+            if total_params > 0
+            else 0.0,
+            "input_size": self.constants.IMG_SIZE,
+            "architecture": str(self.classifier),
         }
 
     def freeze_backbone(self) -> None:
@@ -282,7 +303,9 @@ class ResNetWithCustomHead(nn.Module):
         self.dropout_rate = new_rate
         self.logger.info(f"Dropout rate updated to {new_rate}")
 
-    def get_feature_maps(self, x: torch.Tensor, layer_name: Optional[str] = None) -> torch.Tensor:
+    def get_feature_maps(
+        self, x: torch.Tensor, layer_name: Optional[str] = None
+    ) -> torch.Tensor:
         """
         Extract feature maps from a specific layer.
 
@@ -302,6 +325,7 @@ class ResNetWithCustomHead(nn.Module):
         def hook_fn(name):
             def hook(module, input, output):
                 features[name] = output
+
             return hook
 
         # Register hook

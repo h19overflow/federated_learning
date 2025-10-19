@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 load_dotenv()
 
+
 # TODO , add topk to the retriever
 class QueryEngine:
     def __init__(self):
@@ -53,7 +54,6 @@ class QueryEngine:
             self.ensemble_retriever = EnsembleRetriever(
                 retrievers=[self.bm25_retriever, self.vector_store_retriever],
                 llm=ChatGoogleGenerativeAI(model="gemini-2.0-flash"),
-                
             )
         except Exception as e:
             logger.error(f"Error initializing the ensemble retriever: {e}")
@@ -85,7 +85,7 @@ class QueryEngine:
             logger.error(f"Error getting the system prompt: {e}")
             raise e
         return prompt
-    
+
     def get_chain(self):
         try:
             prompt = self.get_prompts()
@@ -93,20 +93,25 @@ class QueryEngine:
             logger.error(f"Error getting the prompt: {e}")
             raise e
         try:
-            chain = create_retrieval_chain(self.ensemble_retriever, create_stuff_documents_chain(self.llm, prompt))
+            chain = create_retrieval_chain(
+                self.ensemble_retriever, create_stuff_documents_chain(self.llm, prompt)
+            )
         except Exception as e:
             logger.error(f"Error getting the chain: {e}")
             raise e
         return chain
+
 
 if __name__ == "__main__":
     query_engine = QueryEngine()
     chain = query_engine.get_chain()
     result = chain.invoke({"input": "What is the point of federated learning?"})
     print(result["answer"])
-    result2 = chain.invoke({"input": "What are the main components of federated learning?"})
+    result2 = chain.invoke(
+        {"input": "What are the main components of federated learning?"}
+    )
     print(result2["answer"])
     for result in result["context"]:
         print(result.metadata["source"])
-        print('-'*100)
-        print(result.metadata['page'])
+        print("-" * 100)
+        print(result.metadata["page"])

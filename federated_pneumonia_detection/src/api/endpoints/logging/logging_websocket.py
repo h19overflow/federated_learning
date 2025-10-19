@@ -1,5 +1,8 @@
 from fastapi import WebSocket, APIRouter, WebSocketDisconnect
-from federated_pneumonia_detection.src.utils.webocket_logger import ConnectionManager, WebSocketLogHandler
+from federated_pneumonia_detection.src.utils.webocket_logger import (
+    ConnectionManager,
+    WebSocketLogHandler,
+)
 
 router = APIRouter()
 manager = ConnectionManager()
@@ -14,7 +17,6 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     return {"message": "WebSocket connected successfully"}
-
 
 
 """
