@@ -1,27 +1,16 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, Float, ForeignKey, TIMESTAMP
+from sqlalchemy import create_engine, Column, Integer, String,  Float, ForeignKey, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
-from datetime import datetime
 from federated_pneumonia_detection.config.settings import Settings
 
 Base = declarative_base()
 settings = Settings()
 
-class Experiment(Base):
-    __tablename__ = 'experiments'
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255))
-    description = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    
-    runs = relationship("Run", back_populates="experiment")
 
 class Run(Base):
     __tablename__ = 'runs'
     
     id = Column(Integer, primary_key=True)
-    experiment_id = Column(Integer, ForeignKey('experiments.id'))
     training_mode = Column(String(50))
     status = Column(String(50))
     start_time = Column(TIMESTAMP)
@@ -29,7 +18,6 @@ class Run(Base):
     wandb_id = Column(String(255))
     source_path = Column(String(1024))
     
-    experiment = relationship("Experiment", back_populates="runs")
     configuration = relationship("RunConfiguration", back_populates="run", uselist=False)
     metrics = relationship("RunMetric", back_populates="run")
     artifacts = relationship("RunArtifact", back_populates="run")

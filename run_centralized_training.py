@@ -33,7 +33,6 @@ def main():
     run_id = int(time.time())
     source_path = "Training"  # Directory containing Images/ and CSV files
     config_path = None  # Use default configuration
-    experiment_name = "pneumonia_centralized_" + str(run_id)
     # Output directories
     checkpoint_dir = "results/centralized/checkpoints"
     logs_dir = "results/centralized/logs"
@@ -61,7 +60,6 @@ def main():
 
         results = trainer.train(
             source_path=source_path,
-            experiment_name=experiment_name,
             csv_filename="stage2_train_metadata.csv",
             run_id=run_id
         )

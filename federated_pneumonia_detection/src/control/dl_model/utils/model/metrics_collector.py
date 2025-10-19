@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 
 # TODO: change the run_id to int
 class MetricsCollectorCallback(pl.Callback):
@@ -23,6 +24,8 @@ class MetricsCollectorCallback(pl.Callback):
         save_dir: str,
         experiment_name: str = "experiment",
         run_id: Optional[int] = None,
+        experiment_id: Optional[int] = None,
+        training_mode: str = "centralized",
         enable_db_persistence: bool = True
     ):
         """
@@ -32,12 +35,16 @@ class MetricsCollectorCallback(pl.Callback):
             save_dir: Directory to save metrics files
             experiment_name: Name of the experiment for file naming
             run_id: Optional database run ID for persistence
+            experiment_id: Required for creating run if run_id doesn't exist
+            training_mode: Training mode (centralized, federated, etc.)
             enable_db_persistence: Whether to save metrics to database
         """
         super().__init__()
         self.save_dir = Path(save_dir)
         self.experiment_name = experiment_name
         self.run_id = run_id
+        self.experiment_id = experiment_id
+        self.training_mode = training_mode
         self.enable_db_persistence = enable_db_persistence
         self.logger = logging.getLogger(__name__)
 
@@ -213,6 +220,37 @@ class MetricsCollectorCallback(pl.Callback):
         """Return experiment metadata."""
         return self.metadata
 
+    def _ensure_run_exists(self, db: Session) -> int:
+        """
+        Ensure run exists in database. Create it if necessary.
+        
+        Returns:
+            run_id: The ID of the run
+        """
+        if self.run_id is not None:
+            # Run already exists, verify it's in database
+            existing_run = run_crud.get(db, self.run_id)
+            if existing_run:
+                return self.run_id
+        run_data = {
+            'training_mode': self.training_mode,
+            'status': 'in_progress',
+            'start_time': self.training_start_time or datetime.now(),
+            'wandb_id': 'placeholder',
+            'source_path': 'placeholder',
+        }
+        
+        new_run = run_crud.create(db, **run_data)
+        db.flush()
+        self.run_id = new_run.id
+        
+        self.logger.info(
+            f"Created new run with id={self.run_id} for "
+            f"experiment_id={self.experiment_id}"
+        )
+        
+        return self.run_id
+
     def persist_to_database(self, db: Optional[Session] = None):
         """
         Persist collected metrics to database.
@@ -224,16 +262,15 @@ class MetricsCollectorCallback(pl.Callback):
             self.logger.info("Database persistence is disabled")
             return
 
-        if self.run_id is None:
-            self.logger.warning("No run_id provided, skipping database persistence")
-            return
-
         close_session = False
         if db is None:
             db = get_session()
             close_session = True
 
         try:
+            # Ensure run exists before persisting metrics
+            run_id = self._ensure_run_exists(db)
+            
             # Persist all epoch metrics to database
             metrics_to_persist = []
 
@@ -263,7 +300,7 @@ class MetricsCollectorCallback(pl.Callback):
                         metric_name = key
 
                     metrics_to_persist.append({
-                        'run_id': self.run_id,
+                        'run_id': run_id,
                         'metric_name': metric_name,
                         'metric_value': float(value),
                         'step': epoch,
@@ -276,7 +313,7 @@ class MetricsCollectorCallback(pl.Callback):
                 db.commit()
                 self.logger.info(
                     f"Persisted {len(metrics_to_persist)} metrics to database "
-                    f"for run_id={self.run_id}"
+                    f"for run_id={run_id}"
                 )
 
         except Exception as e:

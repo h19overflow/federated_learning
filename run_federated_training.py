@@ -12,8 +12,6 @@ import torch
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from federated_pneumonia_detection.models.system_constants import SystemConstants
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.src.control.federated_learning import (
     FederatedTrainer,
 )

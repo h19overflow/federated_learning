@@ -3,7 +3,6 @@ Script to run comparison experiment between centralized and federated learning.
 Uses the ExperimentOrchestrator to run both approaches and generate comparison report.
 """
 
-import os
 import sys
 import logging
 from pathlib import Path

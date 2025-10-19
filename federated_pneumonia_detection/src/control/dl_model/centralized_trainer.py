@@ -13,8 +13,6 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
-from federated_pneumonia_detection.src.boundary.CRUD.experiment import experiment_crud
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.control.dl_model.utils.model.training_callbacks import (
     prepare_trainer_and_callbacks_pl,
     create_trainer_from_config,

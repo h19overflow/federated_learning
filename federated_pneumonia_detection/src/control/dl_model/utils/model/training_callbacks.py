@@ -125,7 +125,6 @@ def prepare_trainer_and_callbacks_pl(
         save_last=True,
         auto_insert_metric_name=False,
         verbose=True,
-
     )
     # EarlyStopping callback - stop training when validation recall stops improving
     early_stop_callback = EarlyStopping(
@@ -155,6 +154,7 @@ def prepare_trainer_and_callbacks_pl(
         save_dir=metrics_dir,
         experiment_name=experiment_name,
         run_id=run_id,
+        training_mode="centralized",
         enable_db_persistence=enable_db_persistence
     )
 
