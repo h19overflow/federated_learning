@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
-from federated_pneumonia_detection.src.utils.logger import get_logger
+from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 
 
 def load_metadata(

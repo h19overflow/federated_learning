@@ -14,14 +14,12 @@ The training process:
 Configuration should be set prior to invoking training via the configuration endpoints.
 """
 
-import logging
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form
 from typing import Dict, Any
 import os
-from pathlib import Path
 import shutil
 
-from federated_pneumonia_detection.src.utils.logger import get_logger
+from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import (
     CentralizedTrainer,
 )

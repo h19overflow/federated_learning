@@ -76,6 +76,9 @@ class FederatedTrainer:
         self.constants = constants
         self.device = device
         self.logger = logging.getLogger(self.__class__.__name__)
+        self._client_instances = {}
+        self.metrics_dir = None
+        self.experiment_name = None
 
     def _create_model(self) -> ResNetWithCustomHead:
         """Create a ResNetWithCustomHead model instance."""
@@ -119,19 +122,73 @@ class FederatedTrainer:
         if cid not in self._client_data_cache:
             raise ValueError(f"Client {cid} data not found in cache")
 
-        client_id = int(cid)
         train_loader, val_loader = self._client_data_cache[cid]
 
         model = self._create_model()
 
-        return FlowerClient(
+        client = FlowerClient(
             net=model,
             trainloader=train_loader,
             valloader=val_loader,
             config=self.config,
             device=self.device,
-            metrics_dir='results/federated_learning/metrics'
-        ).to_client()
+            client_id=cid,
+            metrics_dir=self.metrics_dir,
+            experiment_name=self.experiment_name,
+        )
+        
+        # Store client reference for later finalization
+        self._client_instances[cid] = client
+        
+        return client
+
+    def _finalize_client_metrics(self) -> Dict[str, Any]:
+        """
+        Finalize all client metrics, save individual files, and aggregate into single file.
+
+        Returns:
+            Aggregated metrics dictionary with per-client data
+        """
+        aggregated_metrics = {
+            "experiment_name": self.experiment_name,
+            "num_clients": len(self._client_instances),
+            "num_rounds": self.config.num_rounds,
+            "clients": {}
+        }
+
+        # Finalize each client and collect their metrics
+        for client_id, client in self._client_instances.items():
+            try:
+                client.finalize()
+                
+                # Collect client metrics if available
+                if hasattr(client, 'metrics_collector') and client.metrics_collector:
+                    aggregated_metrics["clients"][client_id] = {
+                        "metadata": client.metrics_collector.get_metadata(),
+                        "round_metrics": client.metrics_collector.get_round_metrics(),
+                        "local_epoch_metrics": client.metrics_collector.get_local_epoch_metrics(),
+                    }
+            except Exception as e:
+                self.logger.error(f"Error finalizing client {client_id}: {e}")
+
+        return aggregated_metrics
+
+    def _save_aggregated_client_metrics(self, aggregated_metrics: Dict[str, Any], filename: str = "fl_clients_history.json"):
+        """
+        Save aggregated client metrics to JSON file.
+
+        Args:
+            aggregated_metrics: Aggregated metrics from all clients
+            filename: Output filename
+        """
+        output_path = Path(self.metrics_dir) / filename
+        
+        try:
+            with open(output_path, 'w') as f:
+                json.dump(aggregated_metrics, f, indent=2)
+            self.logger.info(f"Saved aggregated client metrics to: {output_path}")
+        except Exception as e:
+            self.logger.error(f"Failed to save aggregated client metrics: {e}")
 
     def _create_evaluate_fn(
         self, val_loader
@@ -342,11 +399,16 @@ class FederatedTrainer:
                 fit_metrics_aggregation_fn=weighted_average,
             )
 
-            # 6. Configure client resources
+            # 6. Configure client resources and metrics collection
             client_resources = {
                 "num_gpus": 1.0 if self.device.type == "cuda" else 0.0,
                 "num_cpus": 1.0,
             }
+            
+            # Set metrics directory and experiment name for clients
+            self.experiment_name = experiment_name
+            self.metrics_dir = Path("results/federated_learning/metrics")
+            self.metrics_dir.mkdir(parents=True, exist_ok=True)
 
             # 7. Run simulation
             self.logger.info("\nStarting Flower simulation...")
@@ -367,9 +429,13 @@ class FederatedTrainer:
                 client_resources=client_resources,
             )
 
-            # 8. Extract results
+            # 8. Extract results and finalize client metrics
             self.logger.info("\n" + "-"*80)
             self.logger.info("Federated Learning Completed!")
+            self.logger.info("Finalizing client metrics...")
+            
+            aggregated_client_metrics = self._finalize_client_metrics()
+            self._save_aggregated_client_metrics(aggregated_client_metrics)
 
             results = {
                 "experiment_name": experiment_name,

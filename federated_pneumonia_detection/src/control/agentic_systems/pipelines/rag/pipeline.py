@@ -6,7 +6,7 @@ from langchain_postgres import PGVector
 from langchain_core.documents import Document
 
 from federated_pneumonia_detection.config.settings import Settings
-from federated_pneumonia_detection.src.utils.logger import get_logger
+from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 
 
 def load_pdf(file_path: str) -> list[Document]:

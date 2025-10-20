@@ -17,13 +17,12 @@ Configuration should be set prior to invoking experiments via the configuration 
 Key comparison parameters: partition_strategy, num_clients, num_rounds, learning_rate
 """
 
-import logging
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form
 from typing import Dict, Any
 import os
 import shutil
 
-from federated_pneumonia_detection.src.utils.logger import get_logger
+from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 from federated_pneumonia_detection.src.control.comparison.experiment_orchestrator import (
     ExperimentOrchestrator,
 )

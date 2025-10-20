@@ -20,12 +20,11 @@ Example usage:
     config_manager.save()
 """
 
-import os
 import yaml
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 from pathlib import Path
 import copy
-from federated_pneumonia_detection.src.utils.logger import get_logger
+from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 
 
 class ConfigManager:

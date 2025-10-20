@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-
+from federated_pneumonia_detection.src.utils.loggers.progress_logger import ProgressLogger
 class MetricsCollectorCallback(pl.Callback):
     """
     Comprehensive metrics collector that saves all training metrics across epochs.
@@ -25,7 +25,9 @@ class MetricsCollectorCallback(pl.Callback):
         run_id: Optional[int] = None,
         experiment_id: Optional[int] = None,
         training_mode: str = "centralized",
-        enable_db_persistence: bool = True
+        enable_db_persistence: bool = True,
+        enable_progress_logging: bool = True,
+        progress_log_dir: str = "logs/progress"
     ):
         """
         Initialize metrics collector.
@@ -37,6 +39,8 @@ class MetricsCollectorCallback(pl.Callback):
             experiment_id: Required for creating run if run_id doesn't exist
             training_mode: Training mode (centralized, federated, etc.)
             enable_db_persistence: Whether to save metrics to database
+            enable_progress_logging: Whether to enable real-time progress logging
+            progress_log_dir: Directory for progress logs
         """
         super().__init__()
         self.save_dir = Path(save_dir)
@@ -45,10 +49,25 @@ class MetricsCollectorCallback(pl.Callback):
         self.experiment_id = experiment_id
         self.training_mode = training_mode
         self.enable_db_persistence = enable_db_persistence
+        self.enable_progress_logging = enable_progress_logging
         self.logger = logging.getLogger(__name__)
 
         # Create save directory
         self.save_dir.mkdir(parents=True, exist_ok=True)
+
+        # Initialize progress logger (multiprocessing-safe)
+        self.progress_logger = None
+        if enable_progress_logging:
+            try:
+                self.progress_logger = ProgressLogger(
+                    log_dir=progress_log_dir,
+                    experiment_name=experiment_name,
+                    mode=training_mode
+                )
+                self.logger.info(f"Progress logging enabled: {self.progress_logger.get_log_file_path()}")
+            except Exception as e:
+                self.logger.warning(f"Could not initialize progress logger: {e}")
+                self.progress_logger = None
 
         # Metrics storage
         self.epoch_metrics = []
@@ -95,6 +114,19 @@ class MetricsCollectorCallback(pl.Callback):
             # Update existing entry with training metrics
             self.epoch_metrics[-1].update(metrics)
 
+        # Log progress for frontend observability
+        if self.progress_logger:
+            try:
+                train_metrics = {k: v for k, v in metrics.items()
+                               if k not in ['epoch', 'global_step', 'timestamp']}
+                self.progress_logger.log_epoch_end(
+                    epoch=trainer.current_epoch,
+                    metrics=train_metrics,
+                    phase='train'
+                )
+            except Exception as e:
+                self.logger.warning(f"Progress logging failed: {e}")
+
     def on_validation_epoch_end(self, trainer, pl_module):
         """Collect validation metrics at the end of each validation epoch."""
         if trainer.sanity_checking:
@@ -119,6 +151,19 @@ class MetricsCollectorCallback(pl.Callback):
         if current_val_loss < self.metadata['best_val_loss']:
             self.metadata['best_val_loss'] = current_val_loss
 
+        # Log progress for frontend observability
+        if self.progress_logger:
+            try:
+                validation_metrics = {k: v for k, v in val_metrics.items()
+                                    if k not in ['epoch', 'global_step', 'timestamp']}
+                self.progress_logger.log_epoch_end(
+                    epoch=trainer.current_epoch,
+                    metrics=validation_metrics,
+                    phase='val'
+                )
+            except Exception as e:
+                self.logger.warning(f"Progress logging failed: {e}")
+
     def on_train_end(self, trainer, pl_module):
         """Save all collected metrics when training ends."""
         self.training_end_time = datetime.now()
@@ -130,9 +175,35 @@ class MetricsCollectorCallback(pl.Callback):
             self.metadata['training_duration_seconds'] = duration.total_seconds()
             self.metadata['training_duration_formatted'] = str(duration)
 
+        # Log training completion
+        if self.progress_logger:
+            try:
+                self.progress_logger.log_training_complete({
+                    'total_epochs': self.metadata['total_epochs'],
+                    'best_epoch': self.metadata['best_epoch'],
+                    'best_val_recall': self.metadata['best_val_recall'],
+                    'best_val_loss': self.metadata['best_val_loss'],
+                    'duration_seconds': self.metadata.get('training_duration_seconds', 0)
+                })
+            except Exception as e:
+                self.logger.warning(f"Progress logging failed: {e}")
+
         # Save metrics in multiple formats
         self._save_metrics()
         self.logger.info(f"Metrics saved to {self.save_dir}")
+
+    # def _attach_websocket_handler(self):
+    #     """Attach websocket handler to logger for real-time metric broadcasting."""
+    #     try:
+    #         from federated_pneumonia_detection.src.utils.loggers.webocket_logger import WebSocketLogHandler
+            
+    #         handler = WebSocketLogHandler(self.websocket_manager)
+    #         formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    #         handler.setFormatter(formatter)
+    #         self.logger.addHandler(handler)
+    #         self.logger.debug("WebSocket handler attached successfully")
+    #     except Exception as e:
+    #         self.logger.warning(f"Could not attach WebSocket handler: {e}")
 
     def _extract_metrics(self, trainer, pl_module, stage: str) -> Dict[str, Any]:
         """

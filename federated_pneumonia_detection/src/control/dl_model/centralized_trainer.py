@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any, Tuple
 from pathlib import Path
 
 import pandas as pd
+
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
@@ -30,7 +31,64 @@ from federated_pneumonia_detection.src.utils.data_processing import (
 )
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from .utils import DataSourceExtractor
-
+# TODO, ers\User\Projects\FYP2\.venv\Lib\site-packages\pytorch_lightning\utilities\combined_loader.py", line 43, in __iter__
+#     self.iterators = [iter(iterable) for iterable in self.iterables]
+#                       ^^^^^^^^^^^^^^
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\torch\utils\data\dataloader.py", line 489, in __iter__
+#     self._iterator = self._get_iterator()
+#                      ^^^^^^^^^^^^^^^^^^^^
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\torch\utils\data\dataloader.py", line 427, in _get_iterator
+#     return _MultiProcessingDataLoaderIter(self)
+#            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\torch\utils\data\dataloader.py", line 1172, in __init__
+#     w.start()
+#   File "C:\Users\User\AppData\Roaming\uv\python\cpython-3.12.11-windows-x86_64-none\Lib\multiprocessing\process.py", line 121, in start
+#     self._popen = self._Popen(self)
+#                   ^^^^^^^^^^^^^^^^^
+#   File "C:\Users\User\AppData\Roaming\uv\python\cpython-3.12.11-windows-x86_64-none\Lib\multiprocessing\context.py", line 224, in _Popen
+#     return _default_context.get_context().Process._Popen(process_obj)
+#            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#   File "C:\Users\User\AppData\Roaming\uv\python\cpython-3.12.11-windows-x86_64-none\Lib\multiprocessing\context.py", line 337, in _Popen
+#     return Popen(process_obj)
+#            ^^^^^^^^^^^^^^^^^^
+#   File "C:\Users\User\AppData\Roaming\uv\python\cpython-3.12.11-windows-x86_64-none\Lib\multiprocessing\popen_spawn_win32.py", line 95, in __init__
+#     reduction.dump(process_obj, to_child)
+#   File "C:\Users\User\AppData\Roaming\uv\python\cpython-3.12.11-windows-x86_64-none\Lib\multiprocessing\reduction.py", line 60, in dump
+#     ForkingPickler(file, protocol).dump(obj)
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\torch\utils\data\dataloader.py", line 763, in __getstate__
+#     raise NotImplementedError("{} cannot be pickled", self.__class__.__name__)
+# NotImplementedError: ('{} cannot be pickled', '_MultiProcessingDataLoaderIter')
+#
+# During handling of the above exception, another exception occurred:
+#
+# Traceback (most recent call last):
+#   File "C:\Users\User\Projects\FYP2\run_centralized_training.py", line 61, in main
+#     results = trainer.train(
+#               ^^^^^^^^^^^^^^
+#   File "C:\Users\User\Projects\FYP2\federated_pneumonia_detection\src\control\dl_model\centralized_trainer.py", line 157, in train
+#     trainer.fit(model, data_module)
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\pytorch_lightning\trainer\trainer.py", line 560, in fit
+#     call._call_and_handle_interrupt(
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\pytorch_lightning\trainer\call.py", line 70, in _call_and_handle_interrupt
+#     trainer._teardown()
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\pytorch_lightning\trainer\trainer.py", line 1038, in _teardown
+#     loop.teardown()
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\pytorch_lightning\loops\fit_loop.py", line 505, in teardown
+#     self._data_fetcher.teardown()
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\pytorch_lightning\loops\fetchers.py", line 80, in teardown
+#     self.reset()
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\pytorch_lightning\loops\fetchers.py", line 142, in reset
+#     super().reset()
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\pytorch_lightning\loops\fetchers.py", line 76, in reset
+#     self.length = sized_len(self.combined_loader)
+#                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\lightning_fabric\utilities\data.py", line 52, in sized_len
+#     length = len(dataloader)  # type: ignore [arg-type]
+#              ^^^^^^^^^^^^^^^
+#   File "C:\Users\User\Projects\FYP2\.venv\Lib\site-packages\pytorch_lightning\utilities\combined_loader.py", line 358, in __len__
+#     raise RuntimeError("Please call `iter(combined_loader)` first.")
+# RuntimeError: Please call `iter(combined_loader)` first.
+#  - run_centralized_training.py - 84
 
 class CentralizedTrainer:
     """
@@ -43,6 +101,7 @@ class CentralizedTrainer:
         config_path: Optional[str] = None,
         checkpoint_dir: str = "results/checkpoints",
         logs_dir: str = "results/training_logs",
+        websocket_manager: Optional[Any] = None,
     ):
         """
         Initialize centralized trainer.
@@ -51,9 +110,11 @@ class CentralizedTrainer:
             config_path: Optional path to configuration file
             checkpoint_dir: Directory to save model checkpoints
             logs_dir: Directory to save training logs
+            websocket_manager: Optional WebSocket connection manager for real-time logging
         """
         self.checkpoint_dir = checkpoint_dir
         self.logs_dir = logs_dir
+        self.websocket_manager = websocket_manager
         self.logger = self._setup_logging()
 
         # Load configuration
@@ -211,6 +272,7 @@ class CentralizedTrainer:
             metrics_dir=os.path.join(self.logs_dir, "metrics"),
             experiment_name=experiment_name,
             run_id=run_id,
+            websocket_manager=self.websocket_manager,
         )
 
         model = LitResNet(

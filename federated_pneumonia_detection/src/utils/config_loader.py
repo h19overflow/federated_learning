@@ -9,8 +9,7 @@ import yaml
 
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
-from pathlib import Path
-from federated_pneumonia_detection.src.utils.logger import get_logger
+from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 
 
 class ConfigLoader:

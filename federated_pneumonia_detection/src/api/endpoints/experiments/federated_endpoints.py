@@ -17,7 +17,6 @@ Configuration should be set prior to invoking training via the configuration end
 Key federated parameters: num_rounds, num_clients, local_epochs, num_clients
 """
 
-import logging
 from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form
 from typing import Dict, Any
@@ -26,7 +25,7 @@ import shutil
 
 import torch
 
-from federated_pneumonia_detection.src.utils.logger import get_logger
+from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 from federated_pneumonia_detection.src.utils.data_processing import load_metadata
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig

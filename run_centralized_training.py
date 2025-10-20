@@ -3,12 +3,10 @@ Script to run centralized training on the pneumonia dataset.
 Uses the Training folder containing images and metadata CSV.
 """
 
-import os
 import sys
 import logging
 from pathlib import Path
 import time
-import uuid
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))

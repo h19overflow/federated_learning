@@ -235,17 +235,22 @@ class XRayDataModule(pl.LightningDataModule):
         if self.train_dataset is None:
             raise RuntimeError("Training dataset not initialized. Call setup() first.")
 
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.config.batch_size,
-            shuffle=True,
-            num_workers=self.config.num_workers,
-            pin_memory=self.pin_memory,
-            persistent_workers=self.persistent_workers,
-            prefetch_factor=self.prefetch_factor,
-            drop_last=False,  # Keep all samples to ensure at least one batch exists
-            worker_init_fn=self._worker_init_fn
-        )
+        # Build dataloader kwargs based on num_workers
+        loader_kwargs = {
+            'batch_size': self.config.batch_size,
+            'shuffle': True,
+            'num_workers': self.config.num_workers,
+            'pin_memory': self.pin_memory,
+            'drop_last': False,
+        }
+
+        # Only set these parameters when using multiprocessing (num_workers > 0)
+        if self.config.num_workers > 0:
+            loader_kwargs['persistent_workers'] = self.persistent_workers
+            loader_kwargs['prefetch_factor'] = self.prefetch_factor
+            loader_kwargs['worker_init_fn'] = self._worker_init_fn
+
+        return DataLoader(self.train_dataset, **loader_kwargs)
 
     def val_dataloader(self) -> DataLoader:
         """
@@ -257,17 +262,22 @@ class XRayDataModule(pl.LightningDataModule):
         if self.val_dataset is None:
             raise RuntimeError("Validation dataset not initialized. Call setup() first.")
 
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.config.batch_size,
-            shuffle=False,
-            num_workers=self.config.num_workers,
-            pin_memory=self.pin_memory,
-            persistent_workers=self.persistent_workers,
-            prefetch_factor=self.prefetch_factor,
-            drop_last=False,
-            worker_init_fn=self._worker_init_fn
-        )
+        # Build dataloader kwargs based on num_workers
+        loader_kwargs = {
+            'batch_size': self.config.batch_size,
+            'shuffle': False,
+            'num_workers': self.config.num_workers,
+            'pin_memory': self.pin_memory,
+            'drop_last': False,
+        }
+
+        # Only set these parameters when using multiprocessing (num_workers > 0)
+        if self.config.num_workers > 0:
+            loader_kwargs['persistent_workers'] = self.persistent_workers
+            loader_kwargs['prefetch_factor'] = self.prefetch_factor
+            loader_kwargs['worker_init_fn'] = self._worker_init_fn
+
+        return DataLoader(self.val_dataset, **loader_kwargs)
 
     def test_dataloader(self) -> Optional[DataLoader]:
         """
@@ -279,17 +289,22 @@ class XRayDataModule(pl.LightningDataModule):
         if self.test_dataset is None:
             return None
 
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.config.batch_size,
-            shuffle=False,
-            num_workers=self.config.num_workers,
-            pin_memory=self.pin_memory,
-            persistent_workers=self.persistent_workers,
-            prefetch_factor=self.prefetch_factor,
-            drop_last=False,
-            worker_init_fn=self._worker_init_fn
-        )
+        # Build dataloader kwargs based on num_workers
+        loader_kwargs = {
+            'batch_size': self.config.batch_size,
+            'shuffle': False,
+            'num_workers': self.config.num_workers,
+            'pin_memory': self.pin_memory,
+            'drop_last': False,
+        }
+
+        # Only set these parameters when using multiprocessing (num_workers > 0)
+        if self.config.num_workers > 0:
+            loader_kwargs['persistent_workers'] = self.persistent_workers
+            loader_kwargs['prefetch_factor'] = self.prefetch_factor
+            loader_kwargs['worker_init_fn'] = self._worker_init_fn
+
+        return DataLoader(self.test_dataset, **loader_kwargs)
 
 
 
