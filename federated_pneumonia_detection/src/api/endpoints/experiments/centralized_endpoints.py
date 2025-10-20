@@ -59,25 +59,13 @@ def _run_centralized_training_task(
     task_logger.info("=" * 80)
 
     try:
-        task_logger.info(f"\nInitializing CentralizedTrainer...")
         task_logger.info(f"  Source: {source_path}")
-        task_logger.info(f"  Checkpoints: {checkpoint_dir}")
-        task_logger.info(f"  Logs: {logs_dir}")
-        task_logger.info(f"  Experiment: {experiment_name}")
 
         trainer = CentralizedTrainer(
             config_path=None, checkpoint_dir=checkpoint_dir, logs_dir=logs_dir
         )
 
-        status = trainer.get_training_status()
         task_logger.info("\nTrainer Configuration:")
-        task_logger.info(f"  Epochs: {status['config']['epochs']}")
-        task_logger.info(f"  Learning Rate: {status['config']['learning_rate']}")
-        task_logger.info(f"  Batch Size: {status['config']['batch_size']}")
-        task_logger.info(f"  Validation Split: {status['config']['validation_split']}")
-
-        task_logger.info("\nStarting training...")
-        task_logger.info("-" * 80)
 
         results = trainer.train(
             source_path=source_path,
@@ -87,12 +75,6 @@ def _run_centralized_training_task(
 
         task_logger.info("\n" + "=" * 80)
         task_logger.info("TRAINING COMPLETED SUCCESSFULLY!")
-        task_logger.info("=" * 80)
-        task_logger.info("\nResults Summary:")
-        task_logger.info(f"  Status: {results.get('status', 'completed')}")
-        task_logger.info(f"  Best model: {results.get('best_checkpoint_path', 'N/A')}")
-        task_logger.info(f"  Checkpoint directory: {checkpoint_dir}")
-        task_logger.info(f"  Logs directory: {logs_dir}")
 
         if "final_metrics" in results:
             task_logger.info("\nFinal Metrics:")
@@ -102,9 +84,6 @@ def _run_centralized_training_task(
         return results
 
     except Exception as e:
-        task_logger.error("\n" + "=" * 80)
-        task_logger.error("TRAINING FAILED!")
-        task_logger.error("=" * 80)
         task_logger.error(f"Error: {type(e).__name__}: {str(e)}")
 
         import traceback

@@ -70,11 +70,6 @@ def _run_federated_training_task(
         image_dir = source_path / "Images"
         metadata_path = source_path / csv_filename
 
-        task_logger.info(f"\nData paths:")
-        task_logger.info(f"  Source: {source_path}")
-        task_logger.info(f"  Images: {image_dir}")
-        task_logger.info(f"  Metadata: {metadata_path}")
-
         if not source_path.exists():
             raise FileNotFoundError(f"Source path not found: {source_path}")
         if not image_dir.exists():
@@ -120,18 +115,11 @@ def _run_federated_training_task(
         task_logger.info("\n" + "=" * 80)
         task_logger.info("FEDERATED TRAINING COMPLETED SUCCESSFULLY!")
         task_logger.info("=" * 80)
-        task_logger.info(f"\nResults Summary:")
-        task_logger.info(f"  Experiment: {results.get('experiment_name')}")
-        task_logger.info(f"  Status: {results.get('status')}")
-        task_logger.info(f"  Num Clients: {results.get('num_clients')}")
-        task_logger.info(f"  Num Rounds: {results.get('num_rounds')}")
 
         return results
 
     except Exception as e:
-        task_logger.error("\n" + "=" * 80)
         task_logger.error("FEDERATED TRAINING FAILED!")
-        task_logger.error("=" * 80)
         task_logger.error(f"Error: {type(e).__name__}: {str(e)}")
 
         import traceback

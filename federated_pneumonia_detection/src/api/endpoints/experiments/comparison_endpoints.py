@@ -64,9 +64,6 @@ def _run_comparison_task(
 
     try:
         task_logger.info(f"\nInitializing ExperimentOrchestrator...")
-        task_logger.info(f"  Source: {source_path}")
-        task_logger.info(f"  Partition strategy: {partition_strategy}")
-        task_logger.info(f"  Output directory: {base_output_dir}")
 
         orchestrator = ExperimentOrchestrator(
             config_path=None,
@@ -75,15 +72,8 @@ def _run_comparison_task(
         )
 
         exp_info = orchestrator.get_experiment_info()
-        task_logger.info("\nExperiment Configuration:")
-        task_logger.info(f"  Timestamp: {exp_info['timestamp']}")
-        task_logger.info(f"  Experiment Directory: {exp_info['experiment_dir']}")
-        task_logger.info(f"  Partition Strategy: {exp_info['partition_strategy']}")
 
-        task_logger.info("\n" + "=" * 80)
         task_logger.info("Starting comparison experiment...")
-        task_logger.info("This will run both centralized and federated training")
-        task_logger.info("=" * 80 + "\n")
 
         comparison_results = orchestrator.run_comparison(
             source_path=source_path,
@@ -91,12 +81,6 @@ def _run_comparison_task(
             federated_name=federated_name,
         )
 
-        task_logger.info("\n" + "=" * 80)
-        task_logger.info("COMPARISON EXPERIMENT COMPLETED!")
-        task_logger.info("=" * 80)
-
-        task_logger.info("\nDetailed Results:")
-        task_logger.info("-" * 80)
 
         cent_results = comparison_results["centralized"]
         task_logger.info("\nCentralized Training:")
@@ -134,18 +118,10 @@ def _run_comparison_task(
                 for key, value in comp_metrics["federated_metrics"].items():
                     task_logger.info(f"    {key}: {value}")
 
-        task_logger.info("\n" + "=" * 80)
-        task_logger.info(
-            f"All results saved to: {comparison_results['experiment_dir']}"
-        )
-        task_logger.info("=" * 80)
-
         return comparison_results
 
     except Exception as e:
-        task_logger.error("\n" + "=" * 80)
         task_logger.error("COMPARISON EXPERIMENT FAILED!")
-        task_logger.error("=" * 80)
         task_logger.error(f"Error: {type(e).__name__}: {str(e)}")
 
         import traceback
@@ -271,10 +247,6 @@ async def start_comparison_experiment(
 
         source_path = extract_path
 
-        logger.info(f"Received request to start comparison experiment")
-        logger.info(f"  Partition strategy: {partition_strategy}")
-        logger.info(f"  Output directory: {base_output_dir}")
-        logger.info(f"  Extracted data to: {source_path}")
 
         background_tasks.add_task(
             _run_comparison_task,
