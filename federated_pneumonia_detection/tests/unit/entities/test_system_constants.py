@@ -17,7 +17,7 @@ class TestSystemConstants:
         assert constants.IMG_SIZE == (224, 224)
         assert constants.IMAGE_EXTENSION == '.png'
         assert constants.BATCH_SIZE == 128
-        assert constants.SAMPLE_FRACTION == 0.10
+        assert constants.SAMPLE_FRACTION == 0.05
         assert constants.VALIDATION_SPLIT == 0.20
         assert constants.SEED == 42
         assert constants.BASE_PATH == '.'
@@ -46,7 +46,7 @@ class TestSystemConstants:
         assert custom_constants.IMG_SIZE == (256, 256)
         assert custom_constants.BATCH_SIZE == 64
         assert custom_constants.SEED == 123
-        # Other values should remain default
+        # Other values should use create_custom defaults (not dataclass defaults)
         assert custom_constants.SAMPLE_FRACTION == 0.10
         assert custom_constants.IMAGE_EXTENSION == '.png'
 

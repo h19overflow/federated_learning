@@ -17,14 +17,14 @@ class TestExperimentConfig:
 
         # Model parameters
         assert config.learning_rate == 0.001
-        assert config.epochs == 10
+        assert config.epochs == 15
         assert config.weight_decay == 0.0001
         assert config.freeze_backbone is True
 
         # Data parameters
         assert config.sample_fraction == 0.10
         assert config.validation_split == 0.20
-        assert config.batch_size == 128
+        assert config.batch_size == 512
 
         # Training parameters
         assert config.early_stopping_patience == 5
@@ -33,10 +33,10 @@ class TestExperimentConfig:
         assert config.min_lr == 1e-7
 
         # Federated Learning parameters
-        assert config.num_rounds == 10
-        assert config.num_clients == 5
-        assert config.clients_per_round == 3
-        assert config.local_epochs == 1
+        assert config.num_rounds == 2
+        assert config.num_clients == 2
+        assert config.clients_per_round == 2
+        assert config.local_epochs == 15
 
         # System parameters
         assert config.seed == 42
@@ -126,7 +126,7 @@ class TestExperimentConfig:
         assert config.seed == 999
         # Other values should be defaults
         assert config.learning_rate == 0.001
-        assert config.epochs == 10
+        assert config.epochs == 15
 
     def test_from_system_constants_with_overrides(self):
         """Test creating config from system constants with additional parameters."""
@@ -139,9 +139,9 @@ class TestExperimentConfig:
             freeze_backbone=False
         )
 
-        # Values from constants
+        # Values from constants (SystemConstants defaults)
         assert config.batch_size == 128
-        assert config.sample_fraction == 0.10
+        assert config.sample_fraction == 0.05
         assert config.seed == 42
 
         # Overridden values

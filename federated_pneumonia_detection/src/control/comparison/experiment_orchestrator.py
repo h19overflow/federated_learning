@@ -12,7 +12,7 @@ from datetime import datetime
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import (
     CentralizedTrainer,
 )
-from federated_pneumonia_detection.src.control.federated_learning.federated_trainer import (
+from federated_pneumonia_detection.src.control.federated_learning import (
     FederatedTrainer,
 )
 

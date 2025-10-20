@@ -46,6 +46,7 @@ class ExperimentConfig(BaseModel):
     # Model parameters
     learning_rate: Optional[float] = Field(None, description="Learning rate")
     epochs: Optional[int] = Field(None, description="Number of epochs")
+    batch_size: Optional[int] = Field(None, description="Batch size for training")
     weight_decay: Optional[float] = Field(None, description="Weight decay")
     freeze_backbone: Optional[bool] = Field(
         None, description="Whether to freeze backbone"

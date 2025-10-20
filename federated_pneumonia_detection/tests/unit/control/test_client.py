@@ -272,7 +272,7 @@ class TestTrainFunction:
     """Tests for train function."""
 
     def test_train_returns_float_loss(self):
-        """Test that train returns a float loss value."""
+        """Test that train returns a tuple of (float loss, list of epoch losses)."""
         net = SimpleTestNet(num_classes=2)
         device = torch.device("cpu")
 
@@ -281,7 +281,7 @@ class TestTrainFunction:
         labels = torch.randint(0, 2, (4,))
         trainloader = [(images, labels)]
 
-        loss = train(
+        avg_loss, epoch_losses = train(
             net=net,
             trainloader=trainloader,
             epochs=1,
@@ -291,8 +291,10 @@ class TestTrainFunction:
             num_classes=2,
         )
 
-        assert isinstance(loss, float)
-        assert loss >= 0
+        assert isinstance(avg_loss, float)
+        assert avg_loss >= 0
+        assert isinstance(epoch_losses, list)
+        assert len(epoch_losses) == 1
 
     def test_train_multiclass(self):
         """Test train with multi-class classification."""
@@ -303,7 +305,7 @@ class TestTrainFunction:
         labels = torch.randint(0, 3, (4,))
         trainloader = [(images, labels)]
 
-        loss = train(
+        avg_loss, epoch_losses = train(
             net=net,
             trainloader=trainloader,
             epochs=1,
@@ -313,8 +315,10 @@ class TestTrainFunction:
             num_classes=3,
         )
 
-        assert isinstance(loss, float)
-        assert loss >= 0
+        assert isinstance(avg_loss, float)
+        assert avg_loss >= 0
+        assert isinstance(epoch_losses, list)
+        assert len(epoch_losses) == 1
 
     def test_train_binary_classification(self):
         """Test train with binary classification (num_classes=1)."""
@@ -325,7 +329,7 @@ class TestTrainFunction:
         labels = torch.tensor([0.0, 1.0, 0.0, 1.0])
         trainloader = [(images, labels)]
 
-        loss = train(
+        avg_loss, epoch_losses = train(
             net=net,
             trainloader=trainloader,
             epochs=1,
@@ -335,8 +339,10 @@ class TestTrainFunction:
             num_classes=1,
         )
 
-        assert isinstance(loss, float)
-        assert loss >= 0
+        assert isinstance(avg_loss, float)
+        assert avg_loss >= 0
+        assert isinstance(epoch_losses, list)
+        assert len(epoch_losses) == 1
 
     def test_train_multiple_epochs(self):
         """Test that training runs for multiple epochs."""
@@ -347,7 +353,7 @@ class TestTrainFunction:
         labels = torch.randint(0, 2, (4,))
         trainloader = [(images, labels)]
 
-        loss = train(
+        avg_loss, epoch_losses = train(
             net=net,
             trainloader=trainloader,
             epochs=3,
@@ -357,8 +363,10 @@ class TestTrainFunction:
             num_classes=2,
         )
 
-        assert isinstance(loss, float)
-        assert loss >= 0
+        assert isinstance(avg_loss, float)
+        assert avg_loss >= 0
+        assert isinstance(epoch_losses, list)
+        assert len(epoch_losses) == 3
 
     def test_train_network_in_train_mode(self):
         """Test that network is set to train mode during training."""

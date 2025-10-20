@@ -1,6 +1,6 @@
 from federated_pneumonia_detection.src.api.deps import get_config
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.api.endpoints.configruation_settings.schemas import (
+from federated_pneumonia_detection.src.api.endpoints.configuration_settings.schemas import (
     ConfigurationUpdateRequest,
 )
 from fastapi import APIRouter, Depends

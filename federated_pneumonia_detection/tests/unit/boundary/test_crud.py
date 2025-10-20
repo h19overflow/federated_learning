@@ -3,7 +3,6 @@ Comprehensive unit tests for CRUD operations.
 
 Tests all CRUD classes with full coverage:
 - BaseCRUD: Base CRUD operations
-- ExperimentCRUD: Experiment-specific operations
 - RunCRUD: Run-specific operations
 - RunConfigurationCRUD: Configuration-specific operations
 - RunMetricCRUD: Metric-specific operations
@@ -16,12 +15,11 @@ from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
-from federated_pneumonia_detection.src.boundary.CRUD.experiment import ExperimentCRUD, experiment_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD, run_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run_configuration import RunConfigurationCRUD, run_configuration_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD, run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run_artifact import RunArtifactCRUD, run_artifact_crud
-from federated_pneumonia_detection.src.boundary.engine import Experiment, Run, RunConfiguration, RunMetric, RunArtifact
+from federated_pneumonia_detection.src.boundary.engine import Run, RunConfiguration, RunMetric, RunArtifact
 
 
 class TestBaseCRUD:
@@ -292,134 +290,6 @@ class TestBaseCRUD:
         assert result == []
 
 
-class TestExperimentCRUD:
-    """Test suite for ExperimentCRUD class."""
-    
-    @pytest.fixture
-    def exp_crud(self):
-        """Create ExperimentCRUD instance."""
-        return ExperimentCRUD()
-    
-    @pytest.fixture
-    def mock_db(self):
-        """Create mock database session."""
-        return Mock()
-    
-    def test_init(self):
-        """Test ExperimentCRUD initialization."""
-        crud = ExperimentCRUD()
-        assert crud.model == Experiment
-    
-    def test_singleton_instance(self):
-        """Test that experiment_crud singleton exists."""
-        assert isinstance(experiment_crud, ExperimentCRUD)
-        assert experiment_crud.model == Experiment
-    
-    def test_get_by_name(self, exp_crud, mock_db):
-        """Test get_by_name method."""
-        mock_exp = Mock()
-        mock_query = Mock()
-        mock_filter = Mock()
-        
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_filter
-        mock_filter.first.return_value = mock_exp
-        
-        result = exp_crud.get_by_name(mock_db, "test_exp")
-        
-        mock_db.query.assert_called_once_with(Experiment)
-        assert result == mock_exp
-    
-    def test_get_by_name_not_found(self, exp_crud, mock_db):
-        """Test get_by_name when experiment doesn't exist."""
-        mock_query = Mock()
-        mock_filter = Mock()
-        
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_filter
-        mock_filter.first.return_value = None
-        
-        result = exp_crud.get_by_name(mock_db, "nonexistent")
-        
-        assert result is None
-    
-    def test_get_with_runs(self, exp_crud, mock_db):
-        """Test get_with_runs method."""
-        mock_exp = Mock()
-        mock_query = Mock()
-        mock_filter = Mock()
-        
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_filter
-        mock_filter.first.return_value = mock_exp
-        
-        result = exp_crud.get_with_runs(mock_db, 1)
-        
-        assert result == mock_exp
-    
-    def test_get_recent(self, exp_crud, mock_db):
-        """Test get_recent method."""
-        mock_exps = [Mock(), Mock()]
-        mock_query = Mock()
-        mock_ordered = Mock()
-        mock_limited = Mock()
-        
-        mock_db.query.return_value = mock_query
-        mock_query.order_by.return_value = mock_ordered
-        mock_ordered.limit.return_value = mock_limited
-        mock_limited.all.return_value = mock_exps
-        
-        result = exp_crud.get_recent(mock_db, limit=10)
-        
-        mock_query.order_by.assert_called_once()
-        mock_ordered.limit.assert_called_once_with(10)
-        assert result == mock_exps
-    
-    def test_get_recent_default_limit(self, exp_crud, mock_db):
-        """Test get_recent with default limit."""
-        mock_exps = [Mock()]
-        mock_query = Mock()
-        mock_ordered = Mock()
-        mock_limited = Mock()
-        
-        mock_db.query.return_value = mock_query
-        mock_query.order_by.return_value = mock_ordered
-        mock_ordered.limit.return_value = mock_limited
-        mock_limited.all.return_value = mock_exps
-        
-        result = exp_crud.get_recent(mock_db)
-        
-        mock_ordered.limit.assert_called_once_with(10)
-        assert result == mock_exps
-    
-    def test_search_by_name(self, exp_crud, mock_db):
-        """Test search_by_name method."""
-        mock_exps = [Mock(), Mock()]
-        mock_query = Mock()
-        mock_filter = Mock()
-        
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_filter
-        mock_filter.all.return_value = mock_exps
-        
-        result = exp_crud.search_by_name(mock_db, "test")
-        
-        mock_query.filter.assert_called_once()
-        assert result == mock_exps
-    
-    def test_search_by_name_empty_result(self, exp_crud, mock_db):
-        """Test search_by_name with no matches."""
-        mock_query = Mock()
-        mock_filter = Mock()
-        
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_filter
-        mock_filter.all.return_value = []
-        
-        result = exp_crud.search_by_name(mock_db, "nonexistent_pattern")
-        
-        assert result == []
-
 
 class TestRunCRUD:
     """Test suite for RunCRUD class."""
@@ -444,20 +314,7 @@ class TestRunCRUD:
         assert isinstance(run_crud, RunCRUD)
         assert run_crud.model == Run
     
-    def test_get_by_experiment(self, run_crud_instance, mock_db):
-        """Test get_by_experiment method."""
-        mock_runs = [Mock(), Mock()]
-        mock_query = Mock()
-        mock_filter = Mock()
-        
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_filter
-        mock_filter.all.return_value = mock_runs
-        
-        result = run_crud_instance.get_by_experiment(mock_db, 1)
-        
-        mock_query.filter.assert_called_once()
-        assert result == mock_runs
+    
     
     def test_get_by_status(self, run_crud_instance, mock_db):
         """Test get_by_status method."""
@@ -583,23 +440,7 @@ class TestRunCRUD:
         
         assert result == mock_runs
     
-    def test_get_completed_runs_by_experiment(self, run_crud_instance, mock_db):
-        """Test get_completed_runs filtered by experiment."""
-        mock_runs = [Mock()]
-        mock_query = Mock()
-        mock_filter1 = Mock()
-        mock_filter2 = Mock()
-        mock_ordered = Mock()
-        
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_filter1
-        mock_filter1.filter.return_value = mock_filter2
-        mock_filter2.order_by.return_value = mock_ordered
-        mock_ordered.all.return_value = mock_runs
-        
-        result = run_crud_instance.get_completed_runs(mock_db, experiment_id=1)
-        
-        assert result == mock_runs
+    
     
     def test_get_failed_runs_all(self, run_crud_instance, mock_db):
         """Test get_failed_runs for all experiments."""
@@ -617,23 +458,7 @@ class TestRunCRUD:
         
         assert result == mock_runs
     
-    def test_get_failed_runs_by_experiment(self, run_crud_instance, mock_db):
-        """Test get_failed_runs filtered by experiment."""
-        mock_runs = [Mock()]
-        mock_query = Mock()
-        mock_filter1 = Mock()
-        mock_filter2 = Mock()
-        mock_ordered = Mock()
-        
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_filter1
-        mock_filter1.filter.return_value = mock_filter2
-        mock_filter2.order_by.return_value = mock_ordered
-        mock_ordered.all.return_value = mock_runs
-        
-        result = run_crud_instance.get_failed_runs(mock_db, experiment_id=1)
-        
-        assert result == mock_runs
+
 
 
 class TestRunConfigurationCRUD:
@@ -1103,16 +928,6 @@ class TestRunArtifactCRUD:
 class TestCRUDIntegration:
     """Integration tests for CRUD classes."""
     
-    def test_experiment_crud_inheritance(self):
-        """Test ExperimentCRUD inherits from BaseCRUD."""
-        crud = ExperimentCRUD()
-        assert isinstance(crud, BaseCRUD)
-        assert hasattr(crud, 'create')
-        assert hasattr(crud, 'get')
-        assert hasattr(crud, 'get_multi')
-        assert hasattr(crud, 'update')
-        assert hasattr(crud, 'delete')
-    
     def test_run_crud_inheritance(self):
         """Test RunCRUD inherits from BaseCRUD."""
         crud = RunCRUD()
@@ -1125,7 +940,6 @@ class TestCRUDIntegration:
     
     def test_all_crud_classes_defined(self):
         """Test all CRUD classes are properly instantiated."""
-        assert isinstance(experiment_crud, ExperimentCRUD)
         assert isinstance(run_crud, RunCRUD)
         assert isinstance(run_configuration_crud, RunConfigurationCRUD)
         assert isinstance(run_metric_crud, RunMetricCRUD)
@@ -1133,7 +947,6 @@ class TestCRUDIntegration:
     
     def test_all_crud_models_set(self):
         """Test all CRUD instances have correct models."""
-        assert experiment_crud.model == Experiment
         assert run_crud.model == Run
         assert run_configuration_crud.model == RunConfiguration
         assert run_metric_crud.model == RunMetric

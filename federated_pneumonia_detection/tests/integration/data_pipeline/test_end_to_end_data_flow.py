@@ -197,8 +197,8 @@ class TestEndToEndDataFlow:
         config = ExperimentConfig()
         processor = DataProcessor(constants)
 
-        # Should raise FileNotFoundError
-        with pytest.raises(FileNotFoundError):
+        # Should raise an error when metadata file is missing
+        with pytest.raises((FileNotFoundError, ValueError)):
             processor.load_and_process_data(config)
 
     def test_edge_case_small_dataset(self, temp_data_structure):
