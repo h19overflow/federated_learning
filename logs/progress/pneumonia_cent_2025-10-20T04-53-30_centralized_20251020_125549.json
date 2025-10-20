@@ -1,0 +1,360 @@
+{
+  "metadata": {
+    "experiment_name": "pneumonia_cent_2025-10-20T04-53-30",
+    "training_mode": "centralized",
+    "start_time": "2025-10-20T12:55:49.751775",
+    "status": "completed",
+    "end_time": "2025-10-20T12:59:40.915812"
+  },
+  "epochs": [
+    {
+      "type": "epoch_end",
+      "epoch": 0,
+      "phase": "val",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.7672013640403748,
+        "val_acc": 0.7590758800506592,
+        "val_recall": 0.6458333134651184,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:56:28.267715"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 0,
+      "phase": "train",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.7672013640403748,
+        "val_acc": 0.7590758800506592,
+        "val_recall": 0.6458333134651184,
+        "train_loss": 0.8616410493850708,
+        "train_acc": 0.714640200138092,
+        "train_f1": 0.521497905254364,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:56:28.284705"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 1,
+      "phase": "val",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.689124584197998,
+        "val_acc": 0.7326732873916626,
+        "val_recall": 0.8229166865348816,
+        "train_loss": 0.8616410493850708,
+        "train_acc": 0.714640200138092,
+        "train_f1": 0.521497905254364,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:56:49.184539"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 1,
+      "phase": "train",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.689124584197998,
+        "val_acc": 0.7326732873916626,
+        "val_recall": 0.8229166865348816,
+        "train_loss": 0.752363383769989,
+        "train_acc": 0.7253928780555725,
+        "train_f1": 0.6351648569107056,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:56:49.203605"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 2,
+      "phase": "val",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.7027575373649597,
+        "val_acc": 0.6963696479797363,
+        "val_recall": 0.8854166865348816,
+        "train_loss": 0.752363383769989,
+        "train_acc": 0.7253928780555725,
+        "train_f1": 0.6351648569107056,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:57:10.065053"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 2,
+      "phase": "train",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.7027575373649597,
+        "val_acc": 0.6963696479797363,
+        "val_recall": 0.8854166865348816,
+        "train_loss": 0.7134689092636108,
+        "train_acc": 0.7584781050682068,
+        "train_f1": 0.6696832776069641,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:57:10.080561"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 3,
+      "phase": "val",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.6700188517570496,
+        "val_acc": 0.7458745837211609,
+        "val_recall": 0.8333333134651184,
+        "train_loss": 0.7134689092636108,
+        "train_acc": 0.7584781050682068,
+        "train_f1": 0.6696832776069641,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:57:31.531296"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 3,
+      "phase": "train",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.6700188517570496,
+        "val_acc": 0.7458745837211609,
+        "val_recall": 0.8333333134651184,
+        "train_loss": 0.7262672781944275,
+        "train_acc": 0.7568238377571106,
+        "train_f1": 0.6689189076423645,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:57:31.548146"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 4,
+      "phase": "val",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.6600048542022705,
+        "val_acc": 0.7755775451660156,
+        "val_recall": 0.8020833134651184,
+        "train_loss": 0.7262672781944275,
+        "train_acc": 0.7568238377571106,
+        "train_f1": 0.6689189076423645,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:57:53.389864"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 4,
+      "phase": "train",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.6600048542022705,
+        "val_acc": 0.7755775451660156,
+        "val_recall": 0.8020833134651184,
+        "train_loss": 0.6882269382476807,
+        "train_acc": 0.7377998232841492,
+        "train_f1": 0.658772885799408,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:57:53.410660"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 5,
+      "phase": "val",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.6488587856292725,
+        "val_acc": 0.7623762488365173,
+        "val_recall": 0.84375,
+        "train_loss": 0.6882269382476807,
+        "train_acc": 0.7377998232841492,
+        "train_f1": 0.658772885799408,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:58:14.519741"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 5,
+      "phase": "train",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.6488587856292725,
+        "val_acc": 0.7623762488365173,
+        "val_recall": 0.84375,
+        "train_loss": 0.677929162979126,
+        "train_acc": 0.7642679810523987,
+        "train_f1": 0.6765039563179016,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:58:14.525256"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 6,
+      "phase": "val",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.6853405833244324,
+        "val_acc": 0.7887789011001587,
+        "val_recall": 0.75,
+        "train_loss": 0.677929162979126,
+        "train_acc": 0.7642679810523987,
+        "train_f1": 0.6765039563179016,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:58:36.760297"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 6,
+      "phase": "train",
+      "metrics": {
+        "lr-AdamW": 0.0010000000474974513,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.6853405833244324,
+        "val_acc": 0.7887789011001587,
+        "val_recall": 0.75,
+        "train_loss": 0.658328115940094,
+        "train_acc": 0.7634408473968506,
+        "train_f1": 0.6864035129547119,
+        "learning_rate": 0.001
+      },
+      "timestamp": "2025-10-20T12:58:36.776342"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 7,
+      "phase": "val",
+      "metrics": {
+        "lr-AdamW": 0.0005000000237487257,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.647332489490509,
+        "val_acc": 0.7722772359848022,
+        "val_recall": 0.8020833134651184,
+        "train_loss": 0.658328115940094,
+        "train_acc": 0.7634408473968506,
+        "train_f1": 0.6864035129547119,
+        "learning_rate": 0.0005
+      },
+      "timestamp": "2025-10-20T12:58:57.608485"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 7,
+      "phase": "train",
+      "metrics": {
+        "lr-AdamW": 0.0005000000237487257,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.647332489490509,
+        "val_acc": 0.7722772359848022,
+        "val_recall": 0.8020833134651184,
+        "train_loss": 0.6498903632164001,
+        "train_acc": 0.774193525314331,
+        "train_f1": 0.6963292360305786,
+        "learning_rate": 0.0005
+      },
+      "timestamp": "2025-10-20T12:58:57.627735"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 8,
+      "phase": "val",
+      "metrics": {
+        "lr-AdamW": 0.0005000000237487257,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.6677877306938171,
+        "val_acc": 0.7821782231330872,
+        "val_recall": 0.8020833134651184,
+        "train_loss": 0.6498903632164001,
+        "train_acc": 0.774193525314331,
+        "train_f1": 0.6963292360305786,
+        "learning_rate": 0.0005
+      },
+      "timestamp": "2025-10-20T12:59:19.280910"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 8,
+      "phase": "train",
+      "metrics": {
+        "lr-AdamW": 0.0005000000237487257,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.6677877306938171,
+        "val_acc": 0.7821782231330872,
+        "val_recall": 0.8020833134651184,
+        "train_loss": 0.6494467258453369,
+        "train_acc": 0.7634408473968506,
+        "train_f1": 0.687089741230011,
+        "learning_rate": 0.0005
+      },
+      "timestamp": "2025-10-20T12:59:19.298854"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 9,
+      "phase": "val",
+      "metrics": {
+        "lr-AdamW": 0.0005000000237487257,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.664631187915802,
+        "val_acc": 0.7788779139518738,
+        "val_recall": 0.8020833134651184,
+        "train_loss": 0.6494467258453369,
+        "train_acc": 0.7634408473968506,
+        "train_f1": 0.687089741230011,
+        "learning_rate": 0.0005
+      },
+      "timestamp": "2025-10-20T12:59:40.578308"
+    },
+    {
+      "type": "epoch_end",
+      "epoch": 9,
+      "phase": "train",
+      "metrics": {
+        "lr-AdamW": 0.0005000000237487257,
+        "lr-AdamW-momentum": 0.8999999761581421,
+        "val_loss": 0.664631187915802,
+        "val_acc": 0.7788779139518738,
+        "val_recall": 0.8020833134651184,
+        "train_loss": 0.6369938850402832,
+        "train_acc": 0.7783291935920715,
+        "train_f1": 0.7022222280502319,
+        "learning_rate": 0.0005
+      },
+      "timestamp": "2025-10-20T12:59:40.595568"
+    },
+    {
+      "type": "training_complete",
+      "final_metrics": {
+        "total_epochs": 10,
+        "best_epoch": 2,
+        "best_val_recall": 0.8854166865348816,
+        "best_val_loss": 0.647332489490509,
+        "duration_seconds": 227.762787
+      },
+      "timestamp": "2025-10-20T12:59:40.896449"
+    }
+  ],
+  "current_epoch": 9
+}

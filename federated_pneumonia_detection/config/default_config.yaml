@@ -1,83 +1,61 @@
-# Default configuration for federated pneumonia detection system
-# All values can be overridden in environment-specific config files
-
-# System Constants
-system:
-  img_size: [256, 256]  # Increased for better feature extraction with available VRAM
-  image_extension: ".png"
-  batch_size: 128  # Doubled to leverage 16GB VRAM efficiently
-  sample_fraction: 0.05
-  validation_split: 0.20
-  seed: 42
-
-# File Paths
-paths:
-  base_path: "."
-  main_images_folder: "Images"
-  images_subfolder: "Images"
-  metadata_filename: "Train_metadata.csv"
-
-# Data Column Names
 columns:
-  patient_id: "patientId"
-  target: "Target"
-  filename: "filename"
-
-# Experiment Configuration
+  filename: filename
+  patient_id: patientId
+  target: Target
 experiment:
-  # Model parameters
-  learning_rate: 0.0015  # Slightly increased for faster convergence with larger batch size
-  epochs: 2  # Increased to allow more training iterations
-  weight_decay: 0.0001
-  freeze_backbone: true
-  dropout_rate: 0.3  # Reduced since larger batch size provides regularization
-  fine_tune_layers_count: 0  # 0 = freeze all, negative = unfreeze last N layers
-  num_classes: 1  # 1 for binary classification
-  monitor_metric: "val_loss"  # val_loss, val_acc, val_f1, val_auroc
-
-  # Training parameters
-  early_stopping_patience: 7  # Increased patience for longer training
-  reduce_lr_patience: 3
-  reduce_lr_factor: 0.5
-  min_lr: 0.0000001
-
-  # Federated Learning parameters
-  num_rounds: 3 # Increased for better model convergence
-  num_clients: 3
-  clients_per_round: 3
-  local_epochs: 20  # Increased to 2 for better local learning per round
-
-  # System parameters
-  device: "cuda"  # auto, cpu, cuda, mps
-  num_workers: 0  # Set to 0 for Windows (multiprocessing pickling issues); use >0 on Linux
-
-  # Image processing parameters
-  color_mode: "RGB"  # RGB or L
-  use_imagenet_norm: true
-  augmentation_strength: 1.0  # 0.0 to 2.0
-  use_custom_preprocessing: false
-  validate_images_on_init: true
-  pin_memory: true  # Essential for GPU performance
-  persistent_workers: false  # Set to false for Windows (requires num_workers > 0)
-  prefetch_factor: 2  # Only used when num_workers > 0
-
-  # Custom preprocessing parameters
-  contrast_stretch: true
   adaptive_histogram: false
-  edge_enhancement: false
-  lower_percentile: 5.0
-  upper_percentile: 95.0
+  augmentation_strength: 1.0
+  batch_size: 32
+  clients_per_round: 3
   clip_limit: 2.0
+  color_mode: RGB
+  contrast_stretch: true
+  device: auto
+  dropout_rate: 0.3
+  early_stopping_patience: 7
+  edge_enhancement: false
   edge_strength: 1.0
-
-# Output Directories
-output:
-  checkpoint_dir: "models/checkpoints"
-  results_dir: "results"
-  log_dir: "logs"
-
-# Logging Configuration
+  epochs: 10
+  fine_tune_layers_count: 5
+  freeze_backbone: true
+  learning_rate: 0.001
+  local_epochs: 20
+  lower_percentile: 5.0
+  min_lr: 1.0e-07
+  monitor_metric: val_loss
+  num_classes: 1
+  num_clients: 3
+  num_rounds: 3
+  num_workers: 0
+  persistent_workers: false
+  pin_memory: true
+  prefetch_factor: 2
+  reduce_lr_factor: 0.5
+  reduce_lr_patience: 3
+  upper_percentile: 95.0
+  use_custom_preprocessing: false
+  use_imagenet_norm: true
+  validate_images_on_init: true
+  weight_decay: 0.0001
 logging:
-  level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   file_logging: true
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+output:
+  checkpoint_dir: models/checkpoints
+  log_dir: logs
+  results_dir: results
+paths:
+  base_path: .
+  images_subfolder: Images
+  main_images_folder: Images
+  metadata_filename: Train_metadata.csv
+system:
+  batch_size: 32
+  image_extension: .png
+  img_size:
+  - 256
+  - 256
+  sample_fraction: 0.05
+  seed: 42
+  validation_split: 0.2

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(uv run python:*)",
       "Bash(powershell -Command:*)",
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(dir federated_pneumonia_detectionresults)"
     ],
     "deny": [],
     "ask": []
