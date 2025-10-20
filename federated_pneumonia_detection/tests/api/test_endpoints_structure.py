@@ -8,15 +8,7 @@ This module validates that API endpoints:
 4. Handle errors appropriately
 5. Use correct HTTP methods for their actions
 """
-
-import pytest
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
 from pathlib import Path
-import tempfile
-import os
-import zipfile
-from fastapi import BackgroundTasks, UploadFile
-
 
 class TestEndpointStructure:
     """Test basic structure and routing of endpoints."""
