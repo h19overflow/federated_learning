@@ -3,15 +3,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import torch
-import pandas as pd
-import json
 import pytorch_lightning as pl
 from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.utils.loggers.progress_logger import ProgressLogger
+from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_file_persister import MetricsFilePersister
+
 class MetricsCollectorCallback(pl.Callback):
     """
     Comprehensive metrics collector that saves all training metrics across epochs.
@@ -26,8 +24,6 @@ class MetricsCollectorCallback(pl.Callback):
         experiment_id: Optional[int] = None,
         training_mode: str = "centralized",
         enable_db_persistence: bool = True,
-        enable_progress_logging: bool = True,
-        progress_log_dir: str = "logs/progress"
     ):
         """
         Initialize metrics collector.
@@ -41,6 +37,8 @@ class MetricsCollectorCallback(pl.Callback):
             enable_db_persistence: Whether to save metrics to database
             enable_progress_logging: Whether to enable real-time progress logging
             progress_log_dir: Directory for progress logs
+            websocket_manager: Optional ConnectionManager for WebSocket broadcasting
+            enable_websocket_broadcasting: Whether to broadcast progress via WebSocket
         """
         super().__init__()
         self.save_dir = Path(save_dir)
@@ -49,25 +47,10 @@ class MetricsCollectorCallback(pl.Callback):
         self.experiment_id = experiment_id
         self.training_mode = training_mode
         self.enable_db_persistence = enable_db_persistence
-        self.enable_progress_logging = enable_progress_logging
         self.logger = logging.getLogger(__name__)
 
-        # Create save directory
-        self.save_dir.mkdir(parents=True, exist_ok=True)
-
-        # Initialize progress logger (multiprocessing-safe)
-        self.progress_logger = None
-        if enable_progress_logging:
-            try:
-                self.progress_logger = ProgressLogger(
-                    log_dir=progress_log_dir,
-                    experiment_name=experiment_name,
-                    mode=training_mode
-                )
-                self.logger.info(f"Progress logging enabled: {self.progress_logger.get_log_file_path()}")
-            except Exception as e:
-                self.logger.warning(f"Could not initialize progress logger: {e}")
-                self.progress_logger = None
+        # Initialize file persister
+        self.file_persister = MetricsFilePersister(save_dir, experiment_name)
 
         # Metrics storage
         self.epoch_metrics = []
@@ -114,19 +97,6 @@ class MetricsCollectorCallback(pl.Callback):
             # Update existing entry with training metrics
             self.epoch_metrics[-1].update(metrics)
 
-        # Log progress for frontend observability
-        if self.progress_logger:
-            try:
-                train_metrics = {k: v for k, v in metrics.items()
-                               if k not in ['epoch', 'global_step', 'timestamp']}
-                self.progress_logger.log_epoch_end(
-                    epoch=trainer.current_epoch,
-                    metrics=train_metrics,
-                    phase='train'
-                )
-            except Exception as e:
-                self.logger.warning(f"Progress logging failed: {e}")
-
     def on_validation_epoch_end(self, trainer, pl_module):
         """Collect validation metrics at the end of each validation epoch."""
         if trainer.sanity_checking:
@@ -152,17 +122,6 @@ class MetricsCollectorCallback(pl.Callback):
             self.metadata['best_val_loss'] = current_val_loss
 
         # Log progress for frontend observability
-        if self.progress_logger:
-            try:
-                validation_metrics = {k: v for k, v in val_metrics.items()
-                                    if k not in ['epoch', 'global_step', 'timestamp']}
-                self.progress_logger.log_epoch_end(
-                    epoch=trainer.current_epoch,
-                    metrics=validation_metrics,
-                    phase='val'
-                )
-            except Exception as e:
-                self.logger.warning(f"Progress logging failed: {e}")
 
     def on_train_end(self, trainer, pl_module):
         """Save all collected metrics when training ends."""
@@ -175,35 +134,12 @@ class MetricsCollectorCallback(pl.Callback):
             self.metadata['training_duration_seconds'] = duration.total_seconds()
             self.metadata['training_duration_formatted'] = str(duration)
 
-        # Log training completion
-        if self.progress_logger:
-            try:
-                self.progress_logger.log_training_complete({
-                    'total_epochs': self.metadata['total_epochs'],
-                    'best_epoch': self.metadata['best_epoch'],
-                    'best_val_recall': self.metadata['best_val_recall'],
-                    'best_val_loss': self.metadata['best_val_loss'],
-                    'duration_seconds': self.metadata.get('training_duration_seconds', 0)
-                })
-            except Exception as e:
-                self.logger.warning(f"Progress logging failed: {e}")
 
         # Save metrics in multiple formats
         self._save_metrics()
         self.logger.info(f"Metrics saved to {self.save_dir}")
 
-    # def _attach_websocket_handler(self):
-    #     """Attach websocket handler to logger for real-time metric broadcasting."""
-    #     try:
-    #         from federated_pneumonia_detection.src.utils.loggers.webocket_logger import WebSocketLogHandler
-            
-    #         handler = WebSocketLogHandler(self.websocket_manager)
-    #         formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    #         handler.setFormatter(formatter)
-    #         self.logger.addHandler(handler)
-    #         self.logger.debug("WebSocket handler attached successfully")
-    #     except Exception as e:
-    #         self.logger.warning(f"Could not attach WebSocket handler: {e}")
+    
 
     def _extract_metrics(self, trainer, pl_module, stage: str) -> Dict[str, Any]:
         """
@@ -244,44 +180,6 @@ class MetricsCollectorCallback(pl.Callback):
 
         return metrics
 
-    def _create_summary_report(self, timestamp: str):
-        """Create a human-readable summary report."""
-        report_path = self.save_dir / f"{self.experiment_name}_summary_{timestamp}.txt"
-
-        with open(report_path, 'w') as f:
-            f.write("=" * 80 + "\n")
-            f.write(f"TRAINING SUMMARY: {self.experiment_name}\n")
-            f.write("=" * 80 + "\n\n")
-
-            f.write("EXPERIMENT METADATA:\n")
-            f.write("-" * 80 + "\n")
-            for key, value in self.metadata.items():
-                f.write(f"{key:30s}: {value}\n")
-
-            f.write("\n" + "=" * 80 + "\n")
-            f.write("EPOCH-BY-EPOCH METRICS:\n")
-            f.write("=" * 80 + "\n\n")
-
-            for epoch_data in self.epoch_metrics:
-                f.write(f"\nEpoch {epoch_data.get('epoch', 'N/A')}:\n")
-                f.write("-" * 80 + "\n")
-                for key, value in sorted(epoch_data.items()):
-                    if key not in ['epoch', 'timestamp', 'global_step']:
-                        if isinstance(value, float):
-                            f.write(f"  {key:28s}: {value:.6f}\n")
-                        else:
-                            f.write(f"  {key:28s}: {value}\n")
-
-            # Add best metrics summary
-            if self.epoch_metrics:
-                f.write("\n" + "=" * 80 + "\n")
-                f.write("BEST METRICS ACHIEVED:\n")
-                f.write("=" * 80 + "\n")
-                f.write(f"Best Validation Recall: {self.metadata['best_val_recall']:.6f} (Epoch {self.metadata['best_epoch']})\n")
-                f.write(f"Best Validation Loss:   {self.metadata['best_val_loss']:.6f}\n")
-
-        self.logger.info(f"Saved summary report to: {report_path}")
-
     def get_metrics_history(self) -> List[Dict[str, Any]]:
         """Return the collected metrics history."""
         return self.epoch_metrics
@@ -320,7 +218,6 @@ class MetricsCollectorCallback(pl.Callback):
         )
         
         return self.run_id
-
     def persist_to_database(self, db: Optional[Session] = None):
         """
         Persist collected metrics to database.
@@ -341,50 +238,8 @@ class MetricsCollectorCallback(pl.Callback):
             # Ensure run exists before persisting metrics
             run_id = self._ensure_run_exists(db)
             
-            # Persist all epoch metrics to database
-            metrics_to_persist = []
-
-            for epoch_data in self.epoch_metrics:
-                epoch = epoch_data.get('epoch', 0)
-
-                # Extract and persist each metric type
-                for key, value in epoch_data.items():
-                    if key in ['epoch', 'timestamp', 'global_step']:
-                        continue
-
-                    if not isinstance(value, (int, float)):
-                        continue
-
-                    # Determine dataset type from metric name
-                    if key.startswith('train_'):
-                        dataset_type = 'train'
-                        metric_name = key
-                    elif key.startswith('val_'):
-                        dataset_type = 'validation'
-                        metric_name = key
-                    elif key.startswith('test_'):
-                        dataset_type = 'test'
-                        metric_name = key
-                    else:
-                        dataset_type = 'other'
-                        metric_name = key
-
-                    metrics_to_persist.append({
-                        'run_id': run_id,
-                        'metric_name': metric_name,
-                        'metric_value': float(value),
-                        'step': epoch,
-                        'dataset_type': dataset_type
-                    })
-
-            # Bulk create metrics for efficiency
-            if metrics_to_persist:
-                run_metric_crud.bulk_create(db, metrics_to_persist)
-                db.commit()
-                self.logger.info(
-                    f"Persisted {len(metrics_to_persist)} metrics to database "
-                    f"for run_id={run_id}"
-                )
+            # Delegate metric persistence to CRUD layer
+            run_crud.persist_metrics(db, run_id, self.epoch_metrics)
 
         except Exception as e:
             self.logger.error(f"Failed to persist metrics to database: {e}")
@@ -397,38 +252,9 @@ class MetricsCollectorCallback(pl.Callback):
 
     def _save_metrics(self):
         """Save metrics to JSON and CSV files, and optionally to database."""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Delegate file persistence to the file persister
+        self.file_persister.save_metrics(self.epoch_metrics, self.metadata)
 
-        # Save detailed metrics as JSON
-        json_path = self.save_dir / f"{self.experiment_name}_metrics_{timestamp}.json"
-        full_data = {
-            'metadata': self.metadata,
-            'epoch_metrics': self.epoch_metrics
-        }
-
-        with open(json_path, 'w') as f:
-            json.dump(full_data, f, indent=2)
-
-        self.logger.info(f"Saved JSON metrics to: {json_path}")
-
-        # Save epoch metrics as CSV for easy plotting
-        if self.epoch_metrics:
-            df = pd.DataFrame(self.epoch_metrics)
-            csv_path = self.save_dir / f"{self.experiment_name}_metrics_{timestamp}.csv"
-            df.to_csv(csv_path, index=False)
-            self.logger.info(f"Saved CSV metrics to: {csv_path}")
-
-        # Save metadata separately
-        metadata_path = self.save_dir / f"{self.experiment_name}_metadata_{timestamp}.json"
-        with open(metadata_path, 'w') as f:
-            json.dump(self.metadata, f, indent=2)
-
-        self.logger.info(f"Saved metadata to: {metadata_path}")
-
-        # Create a summary report
-        self._create_summary_report(timestamp)
-
-        # Persist to database if enabled
         if self.enable_db_persistence and self.run_id:
             try:
                 self.persist_to_database()

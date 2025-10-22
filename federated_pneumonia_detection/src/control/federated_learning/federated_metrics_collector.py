@@ -28,6 +28,9 @@ from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.utils.loggers.progress_logger import FederatedProgressLogger
+from federated_pneumonia_detection.src.utils.loggers.websocket_progress_logger import (
+    WebSocketFederatedProgressLogger,
+)
 
 class FederatedMetricsCollector:
     """
@@ -45,7 +48,9 @@ class FederatedMetricsCollector:
         run_id: Optional[int] = None,
         enable_db_persistence: bool = True,
         enable_progress_logging: bool = True,
-        progress_log_dir: str = "logs/progress"
+        progress_log_dir: str = "logs/progress",
+        websocket_manager: Optional[Any] = None,
+        enable_websocket_broadcasting: bool = False,
     ):
         """
         Initialize federated metrics collector.
@@ -58,6 +63,8 @@ class FederatedMetricsCollector:
             enable_db_persistence: Whether to save metrics to database
             enable_progress_logging: Whether to enable real-time progress logging
             progress_log_dir: Directory for progress logs
+            websocket_manager: Optional ConnectionManager for WebSocket broadcasting
+            enable_websocket_broadcasting: Whether to broadcast progress via WebSocket
         """
         self.save_dir = Path(save_dir)
         self.client_id = client_id
@@ -74,15 +81,31 @@ class FederatedMetricsCollector:
         self.progress_logger = None
         if enable_progress_logging:
             try:
-                self.progress_logger = FederatedProgressLogger(
-                    client_id=client_id,
-                    log_dir=progress_log_dir,
-                    experiment_name=experiment_name
-                )
-                self.logger.info(
-                    f"Progress logging enabled for client {client_id}: "
-                    f"{self.progress_logger.get_log_file_path()}"
-                )
+                # Use WebSocket logger if manager and broadcasting are enabled
+                if websocket_manager and enable_websocket_broadcasting:
+                    self.progress_logger = WebSocketFederatedProgressLogger(
+                        client_id=client_id,
+                        websocket_manager=websocket_manager,
+                        experiment_id=experiment_name,
+                        log_dir=progress_log_dir,
+                        experiment_name=experiment_name,
+                        enable_file_logging=True,
+                        broadcast_interval=0.5
+                    )
+                    self.logger.info(
+                        f"WebSocket progress logging enabled for client {client_id}: "
+                        f"{self.progress_logger.get_log_file_path()}"
+                    )
+                else:
+                    self.progress_logger = FederatedProgressLogger(
+                        client_id=client_id,
+                        log_dir=progress_log_dir,
+                        experiment_name=experiment_name
+                    )
+                    self.logger.info(
+                        f"Progress logging enabled for client {client_id}: "
+                        f"{self.progress_logger.get_log_file_path()}"
+                    )
             except Exception as e:
                 self.logger.warning(f"Could not initialize progress logger: {e}")
                 self.progress_logger = None

@@ -1,6 +1,8 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+import logging
 from sqlalchemy.orm import Session
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
+from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.engine import Run
 
 
@@ -9,6 +11,7 @@ class RunCRUD(BaseCRUD[Run]):
 
     def __init__(self):
         super().__init__(Run)
+        self.logger = logging.getLogger(__name__)
 
     def get_by_experiment(self, db: Session, experiment_id: int) -> List[Run]:
         """Get all runs for a specific experiment."""
@@ -63,6 +66,67 @@ class RunCRUD(BaseCRUD[Run]):
         if experiment_id:
             query = query.filter(self.model.experiment_id == experiment_id)
         return query.order_by(self.model.end_time.desc()).all()
+
+    def persist_metrics(
+        self, db: Session, run_id: int, epoch_metrics: List[Dict[str, Any]]
+    ) -> None:
+        """
+        Persist collected metrics to database.
+
+        Args:
+            db: Database session
+            run_id: Run ID to associate metrics with
+            epoch_metrics: List of epoch metric dictionaries
+        """
+        try:
+            metrics_to_persist = []
+
+            for epoch_data in epoch_metrics:
+                epoch = epoch_data.get('epoch', 0)
+
+                # Extract and persist each metric type
+                for key, value in epoch_data.items():
+                    if key in ['epoch', 'timestamp', 'global_step']:
+                        continue
+
+                    if not isinstance(value, (int, float)):
+                        continue
+
+                    # Determine dataset type from metric name
+                    if key.startswith('train_'):
+                        dataset_type = 'train'
+                        metric_name = key
+                    elif key.startswith('val_'):
+                        dataset_type = 'validation'
+                        metric_name = key
+                    elif key.startswith('test_'):
+                        dataset_type = 'test'
+                        metric_name = key
+                    else:
+                        dataset_type = 'other'
+                        metric_name = key
+
+                    metrics_to_persist.append({
+                        'run_id': run_id,
+                        'metric_name': metric_name,
+                        'metric_value': float(value),
+                        'step': epoch,
+                        'dataset_type': dataset_type
+                    })
+
+            # Bulk create metrics for efficiency
+            if metrics_to_persist:
+                run_metric_crud.bulk_create(db, metrics_to_persist)
+                db.commit()
+                self.logger.info(
+                    f"Persisted {len(metrics_to_persist)} metrics to database "
+                    f"for run_id={run_id}"
+                )
+
+        except Exception as e:
+            self.logger.error(f"Failed to persist metrics to database: {e}")
+            db.rollback()
+            raise
 
 
 run_crud = RunCRUD()

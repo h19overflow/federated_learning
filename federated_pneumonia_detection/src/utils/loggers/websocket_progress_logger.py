@@ -39,6 +39,7 @@ class WebSocketProgressLogger(ProgressLogger):
     def __init__(
         self,
         websocket_manager: Optional[Any] = None,
+        experiment_id: Optional[str] = None,
         log_file: str = "training_progress.json",
         log_dir: str = "logs/progress",
         experiment_name: str = "experiment",
@@ -51,6 +52,7 @@ class WebSocketProgressLogger(ProgressLogger):
 
         Args:
             websocket_manager: ConnectionManager instance for WebSocket broadcasting
+            experiment_id: Experiment ID for WebSocket channel isolation
             log_file: Name of the progress log file
             log_dir: Directory to store progress logs
             experiment_name: Name of the experiment
@@ -67,6 +69,7 @@ class WebSocketProgressLogger(ProgressLogger):
         )
 
         self.websocket_manager = websocket_manager
+        self.experiment_id = experiment_id or experiment_name
         self.enable_file_logging = enable_file_logging
         self.broadcast_interval = broadcast_interval
         self._last_broadcast = 0.0
@@ -89,34 +92,52 @@ class WebSocketProgressLogger(ProgressLogger):
 
     def _broadcast_worker(self):
         """Background worker that broadcasts messages from queue."""
-        while self.is_running:
-            try:
-                # Get message from queue (blocks with timeout)
-                message = self.message_queue.get(timeout=1.0)
+        # Create a dedicated event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
-                # Broadcast via WebSocket
-                if self.websocket_manager:
-                    asyncio.run(self._async_broadcast(message))
+        try:
+            while self.is_running:
+                try:
+                    # Get message from queue (blocks with timeout)
+                    message = self.message_queue.get(timeout=1.0)
 
-                self.message_queue.task_done()
+                    # Broadcast via WebSocket using thread's event loop
+                    if self.websocket_manager:
+                        loop.run_until_complete(self._async_broadcast(message))
 
-            except Exception as e:
-                if not isinstance(e, Exception) or "Empty" not in str(type(e)):
-                    self.logger.warning(f"WebSocket broadcast error: {e}")
+                    self.message_queue.task_done()
+
+                except Exception as e:
+                    if not isinstance(e, Exception) or "Empty" not in str(type(e)):
+                        self.logger.warning(f"WebSocket broadcast error: {e}")
+        finally:
+            # Clean up event loop when thread exits
+            loop.close()
 
     async def _async_broadcast(self, message: Dict[str, Any]):
         """
         Async broadcast message to all WebSocket clients.
 
         Args:
-            message: Message to broadcast
+            message: Message to broadcast (must have 'type' field)
         """
         try:
-            # Format message as JSON
-            json_message = json.dumps(message)
+            # Wrap message in proper structure for frontend
+            # Frontend expects: { type, data, timestamp }
+            message_type = message.pop("type", "unknown")
 
-            # Broadcast to all connected clients
-            await self.websocket_manager.broadcast(json_message)
+            wrapped_message = {
+                "type": message_type,
+                "data": message,  # Everything except 'type' goes into 'data'
+                "timestamp": message.get("timestamp", datetime.now().isoformat()),
+            }
+
+            # Remove timestamp from data to avoid duplication
+            wrapped_message["data"].pop("timestamp", None)
+
+            # Broadcast dict directly (ConnectionManager will encode it)
+            await self.websocket_manager.broadcast(wrapped_message, self.experiment_id)
 
         except Exception as e:
             self.logger.error(f"Failed to broadcast via WebSocket: {e}")
@@ -236,6 +257,7 @@ class WebSocketFederatedProgressLogger(FederatedProgressLogger):
         self,
         client_id: str,
         websocket_manager: Optional[Any] = None,
+        experiment_id: Optional[str] = None,
         log_file: Optional[str] = None,
         log_dir: str = "logs/progress",
         experiment_name: str = "federated_experiment",
@@ -248,6 +270,7 @@ class WebSocketFederatedProgressLogger(FederatedProgressLogger):
         Args:
             client_id: Unique client identifier
             websocket_manager: ConnectionManager for WebSocket broadcasting
+            experiment_id: Experiment ID for WebSocket channel isolation
             log_file: Optional custom log file name
             log_dir: Directory to store progress logs
             experiment_name: Name of the experiment
@@ -263,6 +286,7 @@ class WebSocketFederatedProgressLogger(FederatedProgressLogger):
         )
 
         self.websocket_manager = websocket_manager
+        self.experiment_id = experiment_id or experiment_name
         self.enable_file_logging = enable_file_logging
         self.broadcast_interval = broadcast_interval
         self._last_broadcast = 0.0
@@ -285,24 +309,44 @@ class WebSocketFederatedProgressLogger(FederatedProgressLogger):
 
     def _broadcast_worker(self):
         """Background worker for WebSocket broadcasting."""
-        while self.is_running:
-            try:
-                message = self.message_queue.get(timeout=1.0)
+        # Create a dedicated event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
-                if self.websocket_manager:
-                    asyncio.run(self._async_broadcast(message))
+        try:
+            while self.is_running:
+                try:
+                    message = self.message_queue.get(timeout=1.0)
 
-                self.message_queue.task_done()
+                    if self.websocket_manager:
+                        loop.run_until_complete(self._async_broadcast(message))
 
-            except Exception as e:
-                if not isinstance(e, Exception) or "Empty" not in str(type(e)):
-                    self.logger.warning(f"WebSocket broadcast error: {e}")
+                    self.message_queue.task_done()
+
+                except Exception as e:
+                    if not isinstance(e, Exception) or "Empty" not in str(type(e)):
+                        self.logger.warning(f"WebSocket broadcast error: {e}")
+        finally:
+            # Clean up event loop when thread exits
+            loop.close()
 
     async def _async_broadcast(self, message: Dict[str, Any]):
         """Async broadcast to WebSocket clients."""
         try:
-            json_message = json.dumps(message)
-            await self.websocket_manager.broadcast(json_message)
+            # Wrap message in proper structure for frontend
+            message_type = message.pop("type", "unknown")
+
+            wrapped_message = {
+                "type": message_type,
+                "data": message,
+                "timestamp": message.get("timestamp", datetime.now().isoformat()),
+            }
+
+            # Remove timestamp from data to avoid duplication
+            wrapped_message["data"].pop("timestamp", None)
+
+            # Broadcast dict directly (ConnectionManager will encode it)
+            await self.websocket_manager.broadcast(wrapped_message, self.experiment_id)
         except Exception as e:
             self.logger.error(f"WebSocket broadcast failed: {e}")
 

@@ -83,7 +83,7 @@ def prepare_trainer_and_callbacks_pl(
     experiment_name: str = "pneumonia_detection",
     run_id: Optional[int] = None,
     enable_db_persistence: bool = True,
-    websocket_manager: Optional[Any] = None
+    enable_websocket_broadcasting: bool = False,
 ) -> Dict[str, Any]:
     """
     Prepare PyTorch Lightning trainer callbacks and configuration.
@@ -100,6 +100,7 @@ def prepare_trainer_and_callbacks_pl(
         run_id: Optional database run ID for metrics persistence
         enable_db_persistence: Whether to persist metrics to database
         websocket_manager: Optional WebSocket connection manager for real-time logging
+        enable_websocket_broadcasting: Whether to enable WebSocket broadcasting of progress
 
     Returns:
         Dictionary containing callbacks and trainer configuration
@@ -158,7 +159,7 @@ def prepare_trainer_and_callbacks_pl(
         run_id=run_id,
         training_mode="centralized",
         enable_db_persistence=enable_db_persistence,
-        # websocket_manager=websocket_manager
+        enable_websocket_broadcasting=enable_websocket_broadcasting,
     )
 
     # Compile callbacks list

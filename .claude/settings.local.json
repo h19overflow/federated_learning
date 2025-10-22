@@ -4,7 +4,8 @@
       "Bash(uv run python:*)",
       "Bash(powershell -Command:*)",
       "Bash(uv run:*)",
-      "Bash(dir federated_pneumonia_detectionresults)"
+      "Bash(dir federated_pneumonia_detectionresults)",
+      "Bash(uvicorn federated_pneumonia_detection.src.api.main:app --reload --host 127.0.0.1 --port 8001)"
     ],
     "deny": [],
     "ask": []

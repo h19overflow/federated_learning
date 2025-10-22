@@ -32,6 +32,7 @@ from federated_pneumonia_detection.models.experiment_config import ExperimentCon
 from federated_pneumonia_detection.src.control.federated_learning import (
     FederatedTrainer,
 )
+from .utils import get_websocket_manager
 
 router = APIRouter(
     prefix="/experiments/federated",
@@ -45,6 +46,7 @@ def _run_federated_training_task(
     source_path: str,
     experiment_name: str,
     csv_filename: str,
+    websocket_manager: Any = None,
 ) -> Dict[str, Any]:
     """
     Background task to execute federated training.
@@ -53,10 +55,12 @@ def _run_federated_training_task(
         source_path: Path to training data directory
         experiment_name: Name identifier for this training run
         csv_filename: Name of the CSV metadata file
+        websocket_manager: Optional WebSocket manager for real-time progress updates
 
     Returns:
         Dictionary containing training results
     """
+    import asyncio
     task_logger = get_logger(f"{__name__}._task")
 
     task_logger.info("=" * 80)
@@ -101,7 +105,12 @@ def _run_federated_training_task(
         task_logger.info(f"  Class distribution: {class_dist}")
 
         task_logger.info("\nInitializing FederatedTrainer...")
-        trainer = FederatedTrainer(config=config, constants=constants, device=device)
+        trainer = FederatedTrainer(
+            config=config,
+            constants=constants,
+            device=device,
+            websocket_manager=websocket_manager,
+        )
 
         task_logger.info("\nStarting federated learning simulation...")
         task_logger.info("-" * 80)
@@ -116,6 +125,23 @@ def _run_federated_training_task(
         task_logger.info("FEDERATED TRAINING COMPLETED SUCCESSFULLY!")
         task_logger.info("=" * 80)
 
+        # Send completion status via WebSocket
+        if websocket_manager:
+            try:
+                completion_message = {
+                    "type": "status",
+                    "data": {
+                        "status": "completed",
+                        "message": "Federated training completed successfully",
+                        "experiment_name": experiment_name,
+                    },
+                    "timestamp": __import__("datetime").datetime.now().isoformat(),
+                }
+                asyncio.run(websocket_manager.broadcast(completion_message, experiment_name))
+                task_logger.info("Sent completion status via WebSocket")
+            except Exception as ws_error:
+                task_logger.warning(f"Failed to send WebSocket completion: {ws_error}")
+
         return results
 
     except Exception as e:
@@ -126,6 +152,22 @@ def _run_federated_training_task(
 
         task_logger.error("\nFull traceback:")
         task_logger.error(traceback.format_exc())
+
+        # Send error status via WebSocket
+        if websocket_manager:
+            try:
+                error_message = {
+                    "type": "status",
+                    "data": {
+                        "status": "failed",
+                        "message": f"Federated training failed: {str(e)}",
+                        "experiment_name": experiment_name,
+                    },
+                    "timestamp": __import__("datetime").datetime.now().isoformat(),
+                }
+                asyncio.run(websocket_manager.broadcast(error_message, experiment_name))
+            except Exception as ws_error:
+                task_logger.warning(f"Failed to send WebSocket error: {ws_error}")
 
         return {
             "status": "failed",
@@ -220,6 +262,7 @@ async def start_federated_training(
             source_path=source_path,
             experiment_name=experiment_name,
             csv_filename=csv_filename,
+            websocket_manager=get_websocket_manager(),
         )
 
         return {

@@ -15,11 +15,13 @@ from federated_pneumonia_detection.src.api.endpoints.results import (
     logging_endpoints,
     results_endpoints,
 )
-from federated_pneumonia_detection.src.api.endpoints.logging import (
-    logging_websocket,
+
+from federated_pneumonia_detection.src.api.endpoints.chat import (
+    chat_router,
 )
 
-
+# FIXME: ERROR ON logging 
+# FIXME: ERROR on notifiying that the training is over.
 app = FastAPI(
     title="Federated Pneumonia Detection API",
     description="API for the Federated Pneumonia Detection system",
@@ -51,4 +53,4 @@ app.include_router(comparison_endpoints.router)
 app.include_router(status_endpoints.router)
 app.include_router(logging_endpoints.router)
 app.include_router(results_endpoints.router)
-app.include_router(logging_websocket.router)
+app.include_router(chat_router)

@@ -46,6 +46,7 @@ class FlowerClient(NumPyClient):
         client_id: Optional[str] = None,
         metrics_dir: Optional[str] = None,
         experiment_name: str = "federated_pneumonia",
+        websocket_manager: Optional[Any] = None,
     ) -> None:
         """
         Initialize Flower client with dependencies.
@@ -59,6 +60,7 @@ class FlowerClient(NumPyClient):
             client_id: Unique identifier for this client
             metrics_dir: Directory to save metrics (None = no metrics collection)
             experiment_name: Name of the experiment
+            websocket_manager: Optional WebSocket manager for real-time progress updates
         """
         if net is None:
             raise ValueError("net cannot be None")
@@ -106,6 +108,8 @@ class FlowerClient(NumPyClient):
                 save_dir=metrics_dir,
                 client_id=self.client_id,
                 experiment_name=experiment_name,
+                websocket_manager=websocket_manager,
+                enable_websocket_broadcasting=websocket_manager is not None,
             )
 
             # Record model info

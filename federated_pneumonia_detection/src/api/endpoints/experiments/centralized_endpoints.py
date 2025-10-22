@@ -20,9 +20,7 @@ import os
 import shutil
 
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
-from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import (
-    CentralizedTrainer,
-)
+from .utils import get_websocket_manager,_run_centralized_training_task, prepare_zip
 
 router = APIRouter(
     prefix="/experiments/centralized",
@@ -32,74 +30,10 @@ router = APIRouter(
 logger = get_logger(__name__)
 
 
-def _run_centralized_training_task(
-    source_path: str,
-    checkpoint_dir: str,
-    logs_dir: str,
-    experiment_name: str,
-    csv_filename: str,
-) -> Dict[str, Any]:
-    """
-    Background task to execute centralized training.
-
-    Args:
-        source_path: Path to training data directory
-        checkpoint_dir: Directory to save model checkpoints
-        logs_dir: Directory to save training logs
-        experiment_name: Name identifier for this training run
-        csv_filename: Name of the CSV metadata file
-
-    Returns:
-        Dictionary containing training results
-    """
-    task_logger = get_logger(f"{__name__}._task")
-
-    task_logger.info("=" * 80)
-    task_logger.info("CENTRALIZED TRAINING - Pneumonia Detection (Background Task)")
-    task_logger.info("=" * 80)
-
-    try:
-        task_logger.info(f"  Source: {source_path}")
-
-        trainer = CentralizedTrainer(
-            config_path=None, checkpoint_dir=checkpoint_dir, logs_dir=logs_dir
-        )
-
-        task_logger.info("\nTrainer Configuration:")
-
-        results = trainer.train(
-            source_path=source_path,
-            experiment_name=experiment_name,
-            csv_filename=csv_filename,
-        )
-
-        task_logger.info("\n" + "=" * 80)
-        task_logger.info("TRAINING COMPLETED SUCCESSFULLY!")
-
-        if "final_metrics" in results:
-            task_logger.info("\nFinal Metrics:")
-            for key, value in results["final_metrics"].items():
-                task_logger.info(f"  {key}: {value}")
-
-        return results
-
-    except Exception as e:
-        task_logger.error(f"Error: {type(e).__name__}: {str(e)}")
-
-        import traceback
-
-        task_logger.error("\nFull traceback:")
-        task_logger.error(traceback.format_exc())
-
-        return {
-            "status": "failed",
-            "error": str(e),
-            "error_type": type(e).__name__,
-        }
 
 
 @router.post("/train")
-async def start_centralized_training(
+def start_centralized_training(
     background_tasks: BackgroundTasks,
     data_zip: UploadFile = File(...),
     checkpoint_dir: str = Form("results/centralized/checkpoints"),
@@ -109,11 +43,9 @@ async def start_centralized_training(
 ) -> Dict[str, Any]:
     """
     Start centralized training in the background with uploaded data.
-
     Initiates a centralized machine learning training process using the current
     configuration settings. The training runs asynchronously, allowing this endpoint
     to return immediately.
-
     **Training Process:**
     - Extracts uploaded data archive (Images/ and metadata CSV)
     - Uses all training samples in a single centralized trainer
@@ -122,52 +54,21 @@ async def start_centralized_training(
     - Performs validation during training with early stopping
     - Saves best model checkpoints and training logs
 
-    **Prerequisites:**
-    - Configuration should be set via `/configuration/set_configuration` endpoint
-    - Upload a ZIP file containing Images/ directory and metadata CSV
-
     **Parameters:**
     - `data_zip`: ZIP file containing Images/ directory and metadata CSV (required)
     - `checkpoint_dir`: Where to save model checkpoints (default: "results/centralized/checkpoints")
     - `logs_dir`: Where to save training logs (default: "results/centralized/logs")
     - `experiment_name`: Identifier for this training run (default: "pneumonia_centralized")
     - `csv_filename`: Metadata CSV filename inside archive (default: "stage2_train_metadata.csv")
-
-    **Response:**
-    Returns immediately with confirmation that training has been queued. Check logs
-    in the specified `logs_dir` for training progress and results.
-
     **Status Tracking:**
     Monitor training progress through:
     - Log files at `{logs_dir}/`
     - Checkpoint files at `{checkpoint_dir}/`
     """
-    import zipfile
-    import tempfile
-
     temp_dir = None
     try:
         # Create temp directory for extraction
-        temp_dir = tempfile.mkdtemp()
-        zip_path = os.path.join(temp_dir, data_zip.filename)
-
-        # Save uploaded file
-        with open(zip_path, "wb") as f:
-            content = await data_zip.read()
-            f.write(content)
-
-        # Extract archive
-        extract_path = os.path.join(temp_dir, "extracted")
-        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall(extract_path)
-
-        source_path = extract_path
-
-        logger.info(
-            f"Received request to start centralized training: {experiment_name}"
-        )
-        logger.info(f"Extracted data to: {source_path}")
-
+        source_path = prepare_zip(data_zip,logger,experiment_name)
         background_tasks.add_task(
             _run_centralized_training_task,
             source_path=source_path,
@@ -175,6 +76,7 @@ async def start_centralized_training(
             logs_dir=logs_dir,
             experiment_name=experiment_name,
             csv_filename=csv_filename,
+            websocket_manager=get_websocket_manager(),
         )
 
         return {
