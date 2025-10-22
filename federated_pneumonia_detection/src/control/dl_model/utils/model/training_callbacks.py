@@ -3,21 +3,15 @@ Training callbacks and utilities for PyTorch Lightning model training.
 Provides checkpoint management, early stopping, and monitoring functionality.
 """
 import os
-import json
 import logging
 from typing import Optional, List, Dict, Any
-from pathlib import Path
-from datetime import datetime
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 import torch
 import numpy as np
-import pandas as pd
 from sklearn.utils import class_weight
-
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
-
 from federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector import MetricsCollectorCallback
 
 
@@ -38,9 +32,6 @@ class HighestValRecallCallback(pl.Callback):
         if current_recall > self.best_recall:
             self.best_recall = current_recall
             self.logger.info(f"New best validation recall: {self.best_recall:.4f}")
-
-
-
 
 def compute_class_weights_for_pl(train_df, class_column: str = 'Target') -> Optional[torch.Tensor]:
     """
@@ -160,7 +151,6 @@ def prepare_trainer_and_callbacks_pl(
         enable_db_persistence=enable_db_persistence,
         websocket_uri="ws://localhost:8765"
     )
-
     # Compile callbacks list
     callbacks = [
         checkpoint_callback,

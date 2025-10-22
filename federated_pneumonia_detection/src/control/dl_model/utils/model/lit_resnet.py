@@ -248,10 +248,7 @@ class LitResNet(pl.LightningModule):
         optimizer = optim.AdamW(
             self.parameters(),
             lr=self.config.learning_rate,
-            weight_decay=self.config.weight_decay,
-
-        )
-
+            weight_decay=self.config.weight_decay,)
         # Setup learning rate scheduler
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
@@ -271,7 +268,6 @@ class LitResNet(pl.LightningModule):
                 "strict": True
             }
         }
-
     def on_train_epoch_end(self) -> None:
         """Called at the end of training epoch."""
         # Log learning rate
