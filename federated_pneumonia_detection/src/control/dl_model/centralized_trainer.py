@@ -224,8 +224,6 @@ class CentralizedTrainer:
         except Exception as e:
             self.logger.error(f"Failed to create model: {e}")
 
-       
-
         return model, callback_config["callbacks"], callback_config["metrics_collector"]
 
     def _build_trainer(self, callbacks: list, experiment_name: str) -> pl.Trainer:

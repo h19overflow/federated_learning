@@ -1,9 +1,6 @@
 from pathlib import Path
-from typing import Dict, Any, Optional
-
+from typing import Dict, Any
 from fastapi import UploadFile
-
-from federated_pneumonia_detection.src.utils.connection_manager import ConnectionManager
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import CentralizedTrainer
 import zipfile
@@ -12,25 +9,6 @@ import os
 import shutil
 
 LOGS_DIR = Path("logs/progress")
-
-# Global WebSocket manager (singleton) shared across all`` endpoints
-_websocket_manager: Optional[ConnectionManager] = None
-
-
-def get_websocket_manager() -> ConnectionManager:
-    """
-    Get or create the singleton WebSocket connection manager.
-
-    This is shared across all training endpoints to ensure that
-    the same connections are used for broadcasting training progress.
-
-    Returns:
-        ConnectionManager instance
-    """
-    global _websocket_manager
-    if _websocket_manager is None:
-        _websocket_manager = ConnectionManager()
-    return _websocket_manager
 
 def find_experiment_log_file(experiment_id: str) -> Path | None:
     """
@@ -87,8 +65,6 @@ def calculate_progress(log_data: Dict[str, Any]) -> float:
         return min(100.0, (completed_epochs / total_epochs) * 100)
 
     return 0.0
-
-
 
 def _run_centralized_training_task(
     source_path: str,
