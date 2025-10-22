@@ -1,5 +1,8 @@
 
 # >   uvicorn federated_pneumonia_detection.src.api.main:app --reload --host 127.0.0.1 --port 8001
+import asyncio
+import logging
+import threading
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from federated_pneumonia_detection.src.api.endpoints.configuration_settings import (
@@ -19,6 +22,8 @@ from federated_pneumonia_detection.src.api.endpoints.results import (
 from federated_pneumonia_detection.src.api.endpoints.chat import (
     chat_router,
 )
+
+logger = logging.getLogger(__name__)
 
 # FIXME: ERROR ON logging 
 # FIXME: ERROR on notifiying that the training is over.
@@ -43,9 +48,106 @@ app.add_middleware(
 async def read_root():
     return {"message": "Federated Pneumonia Detection API"}
 
-# FIXME
-# TODO , After signling the start of training in cenetralized the websocket disconnects ,
-# and when the training is over nothing happens no refersh nothing
+
+# ============================================================================
+# WebSocket Server Auto-Start
+# ============================================================================
+
+def _start_websocket_server():
+    """
+    Start the WebSocket metrics relay server in a background thread.
+    
+    This allows metrics from training to stream to the frontend automatically
+    without requiring a separate terminal/process.
+    """
+    try:
+        import sys
+        from pathlib import Path
+        
+        # Add project root to path for imports
+        project_root = Path(__file__).parent.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+        
+        # Import and run the WebSocket server
+        import asyncio
+        import websockets
+        import json
+        from datetime import datetime
+        from typing import Set
+        
+        # Store all connected clients
+        connected_clients: Set[websockets.WebSocketServerProtocol] = set()
+        
+        async def handler(websocket: websockets.WebSocketServerProtocol) -> None:
+            """Handle WebSocket connections and broadcast metrics."""
+            connected_clients.add(websocket)
+            logger.info(f"WebSocket client connected. Total clients: {len(connected_clients)}")
+            
+            try:
+                async for message in websocket:
+                    try:
+                        data = json.loads(message)
+                        message_type = data.get('type', 'unknown')
+                        
+                        logger.debug(
+                            f"Broadcasting {message_type} to {len(connected_clients)} clients"
+                        )
+                        
+                        # Broadcast to all clients except sender
+                        if connected_clients:
+                            tasks = []
+                            for client in connected_clients:
+                                if client != websocket:
+                                    tasks.append(client.send(message))
+                            
+                            await asyncio.gather(*tasks, return_exceptions=True)
+                            
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Invalid JSON received: {e}")
+                    except Exception as e:
+                        logger.error(f"Error processing WebSocket message: {e}")
+                        
+            except websockets.exceptions.ConnectionClosed:
+                logger.debug("Client disconnected")
+            except Exception as e:
+                logger.error(f"WebSocket handler error: {e}")
+            finally:
+                connected_clients.discard(websocket)
+                logger.debug(f"WebSocket client removed. Total clients: {len(connected_clients)}")
+        
+        async def run_server():
+            """Run the WebSocket server."""
+            host = "localhost"
+            port = 8765
+            
+            logger.info(f"Starting WebSocket server on ws://{host}:{port}")
+            
+            async with websockets.serve(handler, host, port):
+                logger.info("✓ WebSocket metrics server is running")
+                # Keep server running
+                await asyncio.Future()
+        
+        # Run the server
+        asyncio.run(run_server())
+        
+    except ImportError as e:
+        logger.error(f"WebSocket server failed to start: {e}. Install with: pip install websockets")
+    except Exception as e:
+        logger.error(f"Failed to start WebSocket server: {e}")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Start WebSocket server when FastAPI app starts."""
+    # Start WebSocket server in background thread
+    websocket_thread = threading.Thread(
+        target=_start_websocket_server,
+        daemon=True,
+        name="WebSocket-Server-Thread"
+    )
+    websocket_thread.start()
+    logger.info("WebSocket server startup initiated in background thread")
 app.include_router(configuration_endpoints.router)
 app.include_router(centralized_endpoints.router)
 app.include_router(federated_endpoints.router)

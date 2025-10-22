@@ -5,10 +5,12 @@ from typing import Dict, Any, List, Optional
 import torch
 import pytorch_lightning as pl
 from sqlalchemy.orm import Session
-
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_file_persister import MetricsFilePersister
+from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
+
+# TODO: Currently the epoch end and the validation end send inforamtion , which should not be the case since now it's duplicate sending to the websocket.
 
 class MetricsCollectorCallback(pl.Callback):
     """
@@ -24,6 +26,7 @@ class MetricsCollectorCallback(pl.Callback):
         experiment_id: Optional[int] = None,
         training_mode: str = "centralized",
         enable_db_persistence: bool = True,
+        websocket_uri: Optional[str] = "ws://localhost:8765",
     ):
         """
         Initialize metrics collector.
@@ -35,10 +38,7 @@ class MetricsCollectorCallback(pl.Callback):
             experiment_id: Required for creating run if run_id doesn't exist
             training_mode: Training mode (centralized, federated, etc.)
             enable_db_persistence: Whether to save metrics to database
-            enable_progress_logging: Whether to enable real-time progress logging
-            progress_log_dir: Directory for progress logs
-            websocket_manager: Optional ConnectionManager for WebSocket broadcasting
-            enable_websocket_broadcasting: Whether to broadcast progress via WebSocket
+            websocket_uri: Optional WebSocket URI for real-time metrics streaming   
         """
         super().__init__()
         self.save_dir = Path(save_dir)
@@ -51,6 +51,11 @@ class MetricsCollectorCallback(pl.Callback):
 
         # Initialize file persister
         self.file_persister = MetricsFilePersister(save_dir, experiment_name)
+        
+        # Initialize WebSocket sender if URI provided
+        self.ws_sender = None
+        if websocket_uri:
+            self.ws_sender = MetricsWebSocketSender(websocket_uri)
 
         # Metrics storage
         self.epoch_metrics = []
@@ -96,6 +101,14 @@ class MetricsCollectorCallback(pl.Callback):
         else:
             # Update existing entry with training metrics
             self.epoch_metrics[-1].update(metrics)
+        
+        # Send train epoch metrics to frontend via WebSocket
+        if self.ws_sender:
+            self.ws_sender.send_epoch_end(
+                epoch=trainer.current_epoch,
+                phase='train',
+                metrics=metrics
+            )
 
     def on_validation_epoch_end(self, trainer, pl_module):
         """Collect validation metrics at the end of each validation epoch."""
@@ -121,7 +134,13 @@ class MetricsCollectorCallback(pl.Callback):
         if current_val_loss < self.metadata['best_val_loss']:
             self.metadata['best_val_loss'] = current_val_loss
 
-        # Log progress for frontend observability
+        # Send metrics to frontend via WebSocket
+        if self.ws_sender:
+            self.ws_sender.send_epoch_end(
+                epoch=trainer.current_epoch,
+                phase='val',
+                metrics=val_metrics
+            )
 
     def on_train_end(self, trainer, pl_module):
         """Save all collected metrics when training ends."""
@@ -187,6 +206,32 @@ class MetricsCollectorCallback(pl.Callback):
     def get_metadata(self) -> Dict[str, Any]:
         """Return experiment metadata."""
         return self.metadata
+
+    def send_round_end_metrics(
+        self,
+        round_num: int,
+        total_rounds: int,
+        fit_metrics: Optional[Dict[str, Any]] = None,
+        eval_metrics: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        Send federated learning round end metrics to WebSocket.
+        
+        Useful for federated learning scenarios.
+
+        Args:
+            round_num: Current round number
+            total_rounds: Total number of rounds
+            fit_metrics: Metrics from fit phase
+            eval_metrics: Metrics from evaluation phase
+        """
+        if self.ws_sender:
+            self.ws_sender.send_round_end(
+                round_num=round_num,
+                total_rounds=total_rounds,
+                fit_metrics=fit_metrics,
+                eval_metrics=eval_metrics
+            )
 
     def _ensure_run_exists(self, db: Session) -> int:
         """

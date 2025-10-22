@@ -200,30 +200,31 @@ class CentralizedTrainer:
             Tuple of (model, callbacks, metrics_collector)
         """
         self.logger.info("Setting up model and callbacks...")
+        try:
+            callback_config = prepare_trainer_and_callbacks_pl(
+                train_df_for_weights=train_df,
+                class_column=self.constants.TARGET_COLUMN,
+                checkpoint_dir=self.checkpoint_dir,
+                model_filename="pneumonia_model",
+                constants=self.constants,
+                config=self.config,
+                metrics_dir=os.path.join(self.logs_dir, "metrics"),
+                experiment_name=experiment_name,
+                run_id=run_id,
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to build model and callbacks: {e}")
+        try:
+            model = LitResNet(
+                constants=self.constants,
+                config=self.config,
+                class_weights_tensor=callback_config["class_weights"],
+                monitor_metric="val_recall",
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to create model: {e}")
 
-        callback_config = prepare_trainer_and_callbacks_pl(
-            train_df_for_weights=train_df,
-            class_column=self.constants.TARGET_COLUMN,
-            checkpoint_dir=self.checkpoint_dir,
-            model_filename="pneumonia_model",
-            constants=self.constants,
-            config=self.config,
-            metrics_dir=os.path.join(self.logs_dir, "metrics"),
-            experiment_name=experiment_name,
-            run_id=run_id,
-            enable_websocket_broadcasting=self.websocket_manager is not None,
-        )
-
-        model = LitResNet(
-            constants=self.constants,
-            config=self.config,
-            class_weights_tensor=callback_config["class_weights"],
-            monitor_metric="val_recall",
-        )
-
-        self.logger.info(
-            f"Model created with {sum(p.numel() for p in model.parameters())} parameters"
-        )
+       
 
         return model, callback_config["callbacks"], callback_config["metrics_collector"]
 
@@ -239,18 +240,24 @@ class CentralizedTrainer:
             Configured trainer instance
         """
         self.logger.info("Setting up trainer...")
-
-        tb_logger = TensorBoardLogger(
-            save_dir=self.logs_dir, name=experiment_name, version=None
-        )
-
-        trainer = create_trainer_from_config(
-            constants=self.constants,
-            config=self.config,
-            callbacks=callbacks,
-        )
-
-        trainer.logger = tb_logger
+        try:
+            tb_logger = TensorBoardLogger(
+                save_dir=self.logs_dir, name=experiment_name, version=None
+            )
+        except Exception as e:    
+            self.logger.error(f"Failed to create TensorBoard logger: {e}")
+            tb_logger = None
+        try:
+            trainer = create_trainer_from_config(
+                constants=self.constants,
+                config=self.config,
+                callbacks=callbacks,
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to create trainer: {e}")
+            trainer = None
+        if tb_logger:
+            trainer.logger = tb_logger
 
         return trainer
 

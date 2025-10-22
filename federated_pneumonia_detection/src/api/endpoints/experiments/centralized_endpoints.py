@@ -33,7 +33,7 @@ logger = get_logger(__name__)
 
 
 @router.post("/train")
-def start_centralized_training(
+async def start_centralized_training(
     background_tasks: BackgroundTasks,
     data_zip: UploadFile = File(...),
     checkpoint_dir: str = Form("results/centralized/checkpoints"),
@@ -68,7 +68,7 @@ def start_centralized_training(
     temp_dir = None
     try:
         # Create temp directory for extraction
-        source_path = prepare_zip(data_zip,logger,experiment_name)
+        source_path = await prepare_zip(data_zip,logger,experiment_name)
         background_tasks.add_task(
             _run_centralized_training_task,
             source_path=source_path,
@@ -76,7 +76,6 @@ def start_centralized_training(
             logs_dir=logs_dir,
             experiment_name=experiment_name,
             csv_filename=csv_filename,
-            websocket_manager=get_websocket_manager(),
         )
 
         return {

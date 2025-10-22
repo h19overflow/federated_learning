@@ -13,7 +13,7 @@ import shutil
 
 LOGS_DIR = Path("logs/progress")
 
-# Global WebSocket manager (singleton) shared across all endpoints
+# Global WebSocket manager (singleton) shared across all`` endpoints
 _websocket_manager: Optional[ConnectionManager] = None
 
 
@@ -142,58 +142,14 @@ def _run_centralized_training_task(
             task_logger.info("\nFinal Metrics:")
             for key, value in results["final_metrics"].items():
                 task_logger.info(f"  {key}: {value}")
-
-        # Send completion status via WebSocket
-        if websocket_manager:
-            try:
-                completion_message = {
-                    "type": "status",
-                    "data": {
-                        "status": "completed",
-                        "message": "Training completed successfully",
-                        "experiment_name": experiment_name,
-                    },
-                    "timestamp": __import__("datetime").datetime.now().isoformat(),
-                }
-                asyncio.run(websocket_manager.broadcast(completion_message, experiment_name))
-                task_logger.info("Sent completion status via WebSocket")
-            except Exception as ws_error:
-                task_logger.warning(f"Failed to send WebSocket completion: {ws_error}")
-
+                    # Send completion status via WebSocket
         return results
-
     except Exception as e:
-        task_logger.error(f"Error: {type(e).__name__}: {str(e)}")
+            task_logger.error(f"Error: {type(e).__name__}: {str(e)}")
+            return {"status": "failed", "error": str(e)}
 
-        import traceback
 
-        task_logger.error("\nFull traceback:")
-        task_logger.error(traceback.format_exc())
-
-        # Send error status via WebSocket
-        if websocket_manager:
-            try:
-                error_message = {
-                    "type": "status",
-                    "data": {
-                        "status": "failed",
-                        "message": f"Training failed: {str(e)}",
-                        "experiment_name": experiment_name,
-                    },
-                    "timestamp": __import__("datetime").datetime.now().isoformat(),
-                }
-                asyncio.run(websocket_manager.broadcast(error_message, experiment_name))
-            except Exception as ws_error:
-                task_logger.warning(f"Failed to send WebSocket error: {ws_error}")
-
-        return {
-            "status": "failed",
-            "error": str(e),
-            "error_type": type(e).__name__,
-        }
-        
-        
-def prepare_zip(data_zip:UploadFile,logger,experiment_name):
+async def prepare_zip(data_zip:UploadFile,logger,experiment_name):
     temp_dir =None
     try:
         # Create temp directory for extraction
@@ -202,7 +158,7 @@ def prepare_zip(data_zip:UploadFile,logger,experiment_name):
 
         # Save uploaded file
         with open(zip_path, "wb") as f:
-            content = data_zip.read()
+            content = await data_zip.read()
             f.write(content)
 
         # Extract archive

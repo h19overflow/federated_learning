@@ -83,7 +83,6 @@ def prepare_trainer_and_callbacks_pl(
     experiment_name: str = "pneumonia_detection",
     run_id: Optional[int] = None,
     enable_db_persistence: bool = True,
-    enable_websocket_broadcasting: bool = False,
 ) -> Dict[str, Any]:
     """
     Prepare PyTorch Lightning trainer callbacks and configuration.
@@ -159,7 +158,7 @@ def prepare_trainer_and_callbacks_pl(
         run_id=run_id,
         training_mode="centralized",
         enable_db_persistence=enable_db_persistence,
-        enable_websocket_broadcasting=enable_websocket_broadcasting,
+        websocket_uri="ws://localhost:8765"
     )
 
     # Compile callbacks list
