@@ -1,209 +1,26 @@
 """
-Endpoints for retrieving training run results from database.
+Download endpoints for exporting training run results.
 
-Simple REST API to fetch metrics and results using run_id.
-Maps database schema to frontend ExperimentResults format.
+Provides endpoints to download run results in multiple formats:
+JSON, CSV, and formatted text summary reports.
 """
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
-from typing import Dict, Any
 import json
 import csv
-from io import StringIO, BytesIO
+from io import StringIO
 from datetime import datetime
+
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from typing import Dict, Any
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
-from .utils import _transform_run_to_results, _find_best_epoch
+from .utils import _transform_run_to_results
 
-router = APIRouter(
-    prefix="/api/runs",
-    tags=["runs", "results"],
-)
-
+router = APIRouter()
 logger = get_logger(__name__)
-
-
-@router.get("/list")
-async def list_all_runs() -> Dict[str, Any]:
-    """
-    List all training runs with summary information.
-
-    Returns:
-        Dictionary with list of runs including key metrics
-    """
-    db = get_session()
-
-    try:
-        from federated_pneumonia_detection.src.boundary.engine import Run
-        runs = db.query(Run).order_by(Run.start_time.desc()).all()
-
-        run_summaries = []
-        for run in runs:
-            # Calculate best validation recall from metrics
-            best_val_recall = 0.0
-            if run.metrics:
-                val_recall_metrics = [
-                    m.metric_value for m in run.metrics
-                    if m.metric_name == 'val_recall'
-                ]
-                if val_recall_metrics:
-                    best_val_recall = max(val_recall_metrics)
-
-            run_summaries.append({
-                "id": run.id,
-                "training_mode": run.training_mode,
-                "status": run.status,
-                "start_time": run.start_time.isoformat() if run.start_time else None,
-                "end_time": run.end_time.isoformat() if run.end_time else None,
-                "best_val_recall": best_val_recall,
-                "metrics_count": len(run.metrics) if hasattr(run, 'metrics') else 0,
-                "run_description": run.run_description,
-            })
-
-        return {
-            "runs": run_summaries,
-            "total": len(run_summaries)
-        }
-
-    except Exception as e:
-        logger.error(f"Error listing runs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
-
-
-@router.get("/debug/all")
-async def debug_list_all_runs() -> Dict[str, Any]:
-    """
-    Debug endpoint: List all runs in database.
-
-    Returns:
-        List of all runs with basic info
-    """
-    db = get_session()
-
-    try:
-        from federated_pneumonia_detection.src.boundary.engine import Run
-        runs = db.query(Run).all()
-
-        return {
-            "total_runs": len(runs),
-            "runs": [
-                {
-                    "id": run.id,
-                    "experiment_id": run.experiment_id,
-                    "status": run.status,
-                    "training_mode": run.training_mode,
-                    "start_time": run.start_time.isoformat() if run.start_time else None,
-                    "metrics_count": len(run.metrics) if hasattr(run, 'metrics') else 0
-                }
-                for run in runs
-            ]
-        }
-    except Exception as e:
-        logger.error(f"Error listing runs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
-
-
-@router.get("/{run_id}/debug/epochs")
-async def debug_run_epochs(run_id: int) -> Dict[str, Any]:
-    """
-    Debug endpoint: Show all epochs stored for a run.
-
-    Returns:
-        Detailed breakdown of epochs in database
-    """
-    db = get_session()
-
-    try:
-        run = run_crud.get_with_metrics(db, run_id)
-
-        if not run:
-            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
-
-        # Get unique epochs from metrics
-        epochs_set = set()
-        metrics_by_epoch = {}
-
-        for metric in run.metrics:
-            epoch = metric.step
-            epochs_set.add(epoch)
-
-            if epoch not in metrics_by_epoch:
-                metrics_by_epoch[epoch] = []
-
-            metrics_by_epoch[epoch].append({
-                "name": metric.metric_name,
-                "value": metric.metric_value,
-                "type": metric.dataset_type
-            })
-
-        sorted_epochs = sorted(epochs_set)
-
-        return {
-            "run_id": run_id,
-            "total_unique_epochs": len(sorted_epochs),
-            "epoch_range_0indexed": f"{min(sorted_epochs)} to {max(sorted_epochs)}" if sorted_epochs else "N/A",
-            "epoch_range_1indexed": f"{min(sorted_epochs)+1} to {max(sorted_epochs)+1}" if sorted_epochs else "N/A",
-            "all_epochs_0indexed": sorted_epochs,
-            "all_epochs_1indexed": [e+1 for e in sorted_epochs],
-            "total_metrics": len(run.metrics),
-            "epochs_detail": {
-                str(epoch): {
-                    "metrics_count": len(metrics_by_epoch[epoch]),
-                    "metric_names": [m["name"] for m in metrics_by_epoch[epoch]]
-                }
-                for epoch in sorted_epochs
-            }
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error debugging run {run_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
-
-
-@router.get("/{run_id}/metrics")
-async def get_run_metrics(run_id: int) -> Dict[str, Any]:
-    """
-    Get complete training results for a specific run.
-
-    Fetches all metrics from database and transforms to frontend format.
-
-    Args:
-        run_id: Database run ID (received via WebSocket during training)
-
-    Returns:
-        ExperimentResults matching frontend TypeScript interface
-    """
-    db = get_session()
-
-    try:
-        run = run_crud.get_with_metrics(db, run_id)
-
-        if not run:
-            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
-
-        # Transform database data to frontend format
-        results = _transform_run_to_results(run)
-
-        return results
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching run {run_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch run results: {str(e)}")
-    finally:
-        db.close()
 
 
 @router.get("/{run_id}/download/json")
@@ -395,7 +212,7 @@ async def download_summary_report(run_id: int):
             report_lines.append("-" * 80)
 
             for entry in training_history:
-                epoch = entry.get('epoch', 1)  # Default to 1 since epochs are 1-indexed
+                epoch = entry.get('epoch', 1)
                 train_loss = entry.get('train_loss', 0)
                 val_loss = entry.get('val_loss', 0)
                 train_acc = entry.get('train_acc', 0)
@@ -436,5 +253,3 @@ async def download_summary_report(run_id: int):
         raise HTTPException(status_code=500, detail=f"Failed to generate summary: {str(e)}")
     finally:
         db.close()
-
-

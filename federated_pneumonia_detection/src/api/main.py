@@ -13,8 +13,8 @@ from federated_pneumonia_detection.src.api.endpoints.experiments import (
     federated_endpoints,
     comparison_endpoints,
     status_endpoints,
-    runs_endpoints,
 )
+from federated_pneumonia_detection.src.api.endpoints.experiments.runs_endpoints import router as runs_endpoints_router
 
 
 from federated_pneumonia_detection.src.api.endpoints.chat import (
@@ -151,5 +151,5 @@ app.include_router(centralized_endpoints.router)
 app.include_router(federated_endpoints.router)
 app.include_router(comparison_endpoints.router)
 app.include_router(status_endpoints.router)
-app.include_router(runs_endpoints.router)
+app.include_router(runs_endpoints_router)
 app.include_router(chat_router)
