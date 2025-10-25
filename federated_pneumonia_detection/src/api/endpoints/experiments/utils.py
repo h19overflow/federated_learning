@@ -183,8 +183,8 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
 
         # Track final (last epoch) metrics
         if epoch >= max(metrics_by_epoch.keys(), default=0):
-            if metric_name in ['val_accuracy', 'val_precision', 'val_recall',
-                              'val_f1', 'val_auroc', 'val_loss']:
+            if metric_name in ['val_accuracy', 'val_acc', 'val_precision', 'val_recall',
+                              'val_f1', 'val_auroc', 'val_auc', 'val_loss']:
                 final_metrics[metric_name] = value
 
     # Build training history
@@ -193,26 +193,39 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
         epoch_data = metrics_by_epoch[epoch]
 
         training_history.append({
-            "epoch": epoch,
+            "epoch": epoch + 1,  # Convert from 0-indexed to 1-indexed for display
             "train_loss": epoch_data.get("train_loss", 0.0),
             "val_loss": epoch_data.get("val_loss", 0.0),
             "train_acc": epoch_data.get("train_accuracy", epoch_data.get("train_acc", 0.0)),
             "val_acc": epoch_data.get("val_accuracy", epoch_data.get("val_acc", 0.0)),
+            "train_f1": epoch_data.get("train_f1", 0.0),
+            "val_precision": epoch_data.get("val_precision", 0.0),
+            "val_recall": epoch_data.get("val_recall", 0.0),
+            "val_f1": epoch_data.get("val_f1", 0.0),
+            "val_auroc": epoch_data.get("val_auroc", epoch_data.get("val_auc", 0.0)),
         })
 
     # Extract final metrics (use last epoch values or best values)
     last_epoch_data = metrics_by_epoch[max(metrics_by_epoch.keys())] if metrics_by_epoch else {}
 
+    # Calculate final metrics from last epoch
+    accuracy = final_metrics.get("val_accuracy", final_metrics.get("val_acc", 0.0))
+    precision = final_metrics.get("val_precision", 0.0)
+    recall = final_metrics.get("val_recall", 0.0)
+    f1 = final_metrics.get("val_f1", 0.0)
+    auc = final_metrics.get("val_auroc", final_metrics.get("val_auc", 0.0))
+    loss = final_metrics.get("val_loss", 0.0)
+
     result = {
         "experiment_id": f"run_{run.id}",
         "status": run.status,
         "final_metrics": {
-            "accuracy": final_metrics.get("val_accuracy", final_metrics.get("val_acc", 0.0)),
-            "precision": final_metrics.get("val_precision", 0.0),
-            "recall": final_metrics.get("val_recall", 0.0),
-            "f1_score": final_metrics.get("val_f1", 0.0),
-            "auc": final_metrics.get("val_auroc", final_metrics.get("val_auc", 0.0)),
-            "loss": final_metrics.get("val_loss", 0.0),
+            "accuracy": accuracy,
+            "precision": precision,
+            "recall": recall,
+            "f1_score": f1,
+            "auc": auc,
+            "loss": loss,
         },
         "training_history": training_history,
         "total_epochs": len(training_history),
@@ -222,8 +235,18 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
             "end_time": run.end_time.isoformat() if run.end_time else "",
             "total_epochs": len(training_history),
             "best_epoch": _find_best_epoch(training_history),
-            "best_val_recall": max([h.get("val_acc", 0) for h in training_history], default=0.0),
+            "best_val_accuracy": max([h.get("val_acc", 0) for h in training_history], default=0.0),
+            "best_val_recall": max([h.get("val_recall", 0) for h in training_history], default=0.0),
             "best_val_loss": min([h.get("val_loss", float('inf')) for h in training_history], default=0.0),
+            "best_val_f1": max([h.get("val_f1", 0) for h in training_history], default=0.0),
+            "best_val_auroc": max([h.get("val_auroc", 0) for h in training_history], default=0.0),
+            # Include all final metrics in metadata for display
+            "final_accuracy": accuracy,
+            "final_precision": precision,
+            "final_recall": recall,
+            "final_f1": f1,
+            "final_auc": auc,
+            "final_loss": loss,
         },
         "confusion_matrix": None,  # TODO: Add if available in metrics
     }

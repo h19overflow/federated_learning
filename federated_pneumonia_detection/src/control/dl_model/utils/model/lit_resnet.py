@@ -203,7 +203,10 @@ class LitResNet(pl.LightningModule):
         # Log metrics
         self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         self.log("val_acc", self.val_accuracy, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log("val_precision", self.val_precision, on_step=False, on_epoch=True, sync_dist=True)
         self.log("val_recall", self.val_recall, on_step=False, on_epoch=True, sync_dist=True)
+        self.log("val_f1", self.val_f1, on_step=False, on_epoch=True, sync_dist=True)
+        self.log("val_auroc", self.val_auroc, on_step=False, on_epoch=True, sync_dist=True)
 
         return loss
 
