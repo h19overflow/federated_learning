@@ -1,3 +1,4 @@
+
 """
 Endpoints for running centralized training experiments.
 
@@ -20,7 +21,7 @@ import os
 import shutil
 
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
-from .utils import _run_centralized_training_task, prepare_zip
+from .utils import run_centralized_training_task, prepare_zip
 
 router = APIRouter(
     prefix="/experiments/centralized",
@@ -70,7 +71,7 @@ async def start_centralized_training(
         # Create temp directory for extraction
         source_path = await prepare_zip(data_zip,logger,experiment_name)
         background_tasks.add_task(
-            _run_centralized_training_task,
+            run_centralized_training_task,
             source_path=source_path,
             checkpoint_dir=checkpoint_dir,
             logs_dir=logs_dir,

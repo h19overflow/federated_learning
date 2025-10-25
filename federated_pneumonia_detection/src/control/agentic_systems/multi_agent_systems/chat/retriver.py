@@ -11,16 +11,14 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_core.messages import HumanMessage, AIMessage
 from typing import List, Dict, Tuple
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 load_dotenv()
+# TODO: Add axriv MCP server in order to access different research papers, make sure it's functional and really helps.
 
-
-# TODO , add topk to the retriever
 class QueryEngine:
     def __init__(self, max_history: int = 10):
         """
@@ -47,7 +45,7 @@ class QueryEngine:
             logger.error(f"Error initializing the llm: {e}")
             raise e
         try:
-            self.vector_store_retriever = self.vector_store.as_retriever()
+            self.vector_store_retriever = self.vector_store.as_retriever(search_kwargs={"k": 10})
         except Exception as e:
             logger.error(f"Error initializing the vectorstore retriever: {e}")
             raise e
@@ -58,6 +56,7 @@ class QueryEngine:
             raise e
         try:
             self.bm25_retriever = BM25Retriever.from_documents(self.documents)
+            self.bm25_retriever.k = 10
         except Exception as e:
             logger.error(f"Error initializing the bm25 retriever: {e}")
             raise e
@@ -65,6 +64,7 @@ class QueryEngine:
             self.ensemble_retriever = EnsembleRetriever(
                 retrievers=[self.bm25_retriever, self.vector_store_retriever],
                 llm=ChatGoogleGenerativeAI(model="gemini-2.0-flash"),
+                weights=[0.5, 0.5]
             )
         except Exception as e:
             logger.error(f"Error initializing the ensemble retriever: {e}")

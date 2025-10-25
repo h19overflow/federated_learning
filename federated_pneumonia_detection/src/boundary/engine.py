@@ -10,6 +10,7 @@ class Run(Base):
     __tablename__ = 'runs'
     
     id = Column(Integer, primary_key=True)
+    run_description = Column(String(1024),nullable=True)
     training_mode = Column(String(50))
     status = Column(String(50))
     start_time = Column(TIMESTAMP)

@@ -10,8 +10,6 @@ from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_file_persister import MetricsFilePersister
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
 
-# TODO: Currently the epoch end and the validation end send inforamtion , which should not be the case since now it's duplicate sending to the websocket.
-
 class MetricsCollectorCallback(pl.Callback):
     """
     Comprehensive metrics collector that saves all training metrics across epochs.
@@ -74,12 +72,36 @@ class MetricsCollectorCallback(pl.Callback):
         }
 
     def on_train_start(self, trainer, pl_module):
-        """Record training start time and initial metadata."""
+        """Record training start time and create/get run in database."""
         self.training_start_time = datetime.now()
         self.metadata['start_time'] = self.training_start_time.isoformat()
 
+        # Create or get run_id from database immediately
+        if self.enable_db_persistence:
+            try:
+                db = get_session()
+                self.run_id = self._ensure_run_exists(db)
+                db.commit()  # COMMIT the transaction so other sessions can see it
+                db.close()
+                self.logger.info(f"Training run created: run_id={self.run_id}")
+            except Exception as e:
+                self.logger.error(f"Failed to create run: {e}")
+                db.rollback()
+                db.close()
+                self.run_id = None
+
+        # Send training start to frontend with run_id
+        if self.ws_sender and self.run_id:
+            self.ws_sender.send_metrics({
+                "run_id": self.run_id,
+                "experiment_name": self.experiment_name,
+                "max_epochs": trainer.max_epochs,
+                "training_mode": self.training_mode
+            }, "training_start")
+
         # Record model and training configuration
         self.metadata.update({
+            'run_id': self.run_id,
             'max_epochs': trainer.max_epochs,
             'num_devices': trainer.num_devices,
             'accelerator': trainer.accelerator.__class__.__name__ if trainer.accelerator else 'CPU',
@@ -101,14 +123,6 @@ class MetricsCollectorCallback(pl.Callback):
         else:
             # Update existing entry with training metrics
             self.epoch_metrics[-1].update(metrics)
-        
-        # Send train epoch metrics to frontend via WebSocket
-        if self.ws_sender:
-            self.ws_sender.send_epoch_end(
-                epoch=trainer.current_epoch,
-                phase='train',
-                metrics=metrics
-            )
 
     def on_validation_epoch_end(self, trainer, pl_module):
         """Collect validation metrics at the end of each validation epoch."""
@@ -157,6 +171,19 @@ class MetricsCollectorCallback(pl.Callback):
         # Save metrics in multiple formats
         self._save_metrics()
         self.logger.info(f"Metrics saved to {self.save_dir}")
+
+        # Send training completion to frontend with run_id and summary
+        if self.ws_sender and self.run_id:
+            self.ws_sender.send_metrics({
+                "run_id": self.run_id,
+                "status": "completed",
+                "experiment_name": self.experiment_name,
+                "best_epoch": self.metadata.get('best_epoch'),
+                "best_val_recall": self.metadata.get('best_val_recall'),
+                "total_epochs": len(self.epoch_metrics),
+                "training_duration": self.metadata.get('training_duration_formatted')
+            }, "training_end")
+            self.logger.info(f"Training complete notification sent (run_id={self.run_id})")
 
     
 
@@ -236,7 +263,7 @@ class MetricsCollectorCallback(pl.Callback):
     def _ensure_run_exists(self, db: Session) -> int:
         """
         Ensure run exists in database. Create it if necessary.
-        
+
         Returns:
             run_id: The ID of the run
         """
@@ -244,7 +271,14 @@ class MetricsCollectorCallback(pl.Callback):
             # Run already exists, verify it's in database
             existing_run = run_crud.get(db, self.run_id)
             if existing_run:
+                self.logger.debug(f"Using existing run_id={self.run_id}")
                 return self.run_id
+            else:
+                self.logger.warning(
+                    f"run_id={self.run_id} not found in database. "
+                    "This may indicate a session/commit issue. Creating new run."
+                )
+
         run_data = {
             'training_mode': self.training_mode,
             'status': 'in_progress',
@@ -252,16 +286,16 @@ class MetricsCollectorCallback(pl.Callback):
             'wandb_id': 'placeholder',
             'source_path': 'placeholder',
         }
-        
+
         new_run = run_crud.create(db, **run_data)
         db.flush()
         self.run_id = new_run.id
-        
+
         self.logger.info(
             f"Created new run with id={self.run_id} for "
             f"experiment_id={self.experiment_id}"
         )
-        
+
         return self.run_id
     def persist_to_database(self, db: Optional[Session] = None):
         """

@@ -7,7 +7,8 @@
       "Bash(dir federated_pneumonia_detectionresults)",
       "Bash(uvicorn federated_pneumonia_detection.src.api.main:app --reload --host 127.0.0.1 --port 8001)",
       "Bash(tree \"C:\\Users\\User\\Projects\\FYP2\\federated_pneumonia_detection\\src\\control\\dl_model\" -L 3)",
-      "Bash(dir /s \"C:\\Users\\User\\Projects\\FYP2\\federated_pneumonia_detection\\src\\control\\dl_model\")"
+      "Bash(dir /s \"C:\\Users\\User\\Projects\\FYP2\\federated_pneumonia_detection\\src\\control\\dl_model\")",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

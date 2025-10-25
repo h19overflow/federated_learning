@@ -148,7 +148,7 @@ def prepare_trainer_and_callbacks_pl(
         experiment_name=experiment_name,
         run_id=run_id,
         training_mode="centralized",
-        enable_db_persistence=enable_db_persistence,
+        enable_db_persistence=True,
         websocket_uri="ws://localhost:8765"
     )
     # Compile callbacks list

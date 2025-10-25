@@ -7,13 +7,13 @@ from fastapi import APIRouter, Depends
 from typing import Dict, Any
 
 router = APIRouter(
-    prefix="/configuration",
-    tags=["configuration"],
+    prefix="/config",
+    tags=["config"],
 )
 
 
-@router.post("/set_configuration")
-async def set_configuration(
+@router.post("/update")
+async def update_settings(
     configuration: ConfigurationUpdateRequest,
     config: ConfigManager = Depends(get_config),
 ) -> Dict[str, Any]:

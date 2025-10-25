@@ -18,8 +18,7 @@ from federated_pneumonia_detection.src.control.federated_learning import (
 from federated_pneumonia_detection.src.utils.data_processing import load_metadata, sample_dataframe
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 
-# TODO , Figure out how to extract logs from the trainer in order to show in the terminal on the frontend.
-# TODO , Saving the resutls to the database is still pending we need to add a step to save the results to the database.
+
 def main():
     """Run federated learning training on the Training dataset."""
 

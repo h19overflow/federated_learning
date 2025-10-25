@@ -32,7 +32,7 @@ from federated_pneumonia_detection.src.control.federated_learning.federated_metr
     FederatedMetricsCollector,
 )
 
-# TODO , this contains all the information per epoch we need to send to the frontend in order to monitor the training. 
+
 class FlowerClient(NumPyClient):
     """Flower NumPy client for federated learning."""
 
@@ -108,7 +108,6 @@ class FlowerClient(NumPyClient):
                 save_dir=metrics_dir,
                 client_id=self.client_id,
                 experiment_name=experiment_name,
-                websocket_manager=websocket_manager,
                 enable_websocket_broadcasting=websocket_manager is not None,
             )
 

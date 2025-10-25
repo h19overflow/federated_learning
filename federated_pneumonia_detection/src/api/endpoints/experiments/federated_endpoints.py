@@ -32,7 +32,6 @@ from federated_pneumonia_detection.models.experiment_config import ExperimentCon
 from federated_pneumonia_detection.src.control.federated_learning import (
     FederatedTrainer,
 )
-from .utils import get_websocket_manager
 # TODO: update the federated trainer in order to use the new websocket sender in the dl_model/utils/data/websockets_metrics_sender.py
 router = APIRouter(
     prefix="/experiments/federated",

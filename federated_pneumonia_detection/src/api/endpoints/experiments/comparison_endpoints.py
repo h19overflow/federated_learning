@@ -169,23 +169,6 @@ async def start_comparison_experiment(
     - Each client trains locally with num_rounds communication rounds
     - Global model aggregated using federated averaging (FedAvg)
     - Models compared without centralizing training data
-
-    **Output Structure:**
-    ```
-    {base_output_dir}/{timestamp}/
-    ├── centralized/
-    │   ├── checkpoints/
-    │   ├── logs/
-    │   └── results.json
-    ├── federated/
-    │   ├── checkpoints/
-    │   ├── logs/
-    │   └── results.json
-    └── comparison/
-        ├── metrics_comparison.json
-        └── report.html
-    ```
-
     **Prerequisites:**
     - Configuration should be set via `/configuration/set_configuration` endpoint
     - Upload a ZIP file containing Images/ directory and metadata CSV
@@ -199,32 +182,6 @@ async def start_comparison_experiment(
     - `centralized_name`: Experiment name for centralized run (default: "pneumonia_centralized")
     - `federated_name`: Experiment name for federated run (default: "pneumonia_federated")
 
-    **Response:**
-    Returns immediately with confirmation that comparison has been queued. Check logs
-    and results directories for progress and detailed metrics.
-
-    **Configuration Recommendations:**
-
-    For Centralized Training:
-    - epochs: 15-50
-    - batch_size: 256-512
-    - learning_rate: 0.001-0.01
-
-    For Federated Learning:
-    - num_clients: 2-5 (for fair comparison with centralized)
-    - num_rounds: 10-20
-    - local_epochs: 1-5 (1 epoch per round for fair sample usage comparison)
-    - learning_rate: 0.0005-0.005 (typically lower than centralized)
-
-    **Partition Strategies:**
-    - `stratified`: Maintains class distribution in each client's data (recommended)
-    - `random`: Random sampling for each client (less realistic for heterogeneous data)
-
-    **Status Tracking:**
-    Monitor experiment progress through:
-    - Individual training logs in centralized/ and federated/ directories
-    - Comparison metrics in comparison/
-    - Final HTML report with visualizations
     """
     import zipfile
     import tempfile

@@ -1,0 +1,87 @@
+@startuml Deployment Architecture
+!theme plain
+title Pneumonia Detection System - Deployment Diagram
+
+node "User's Browser" {
+    component [React SPA\n(localhost:5173)] as Frontend
+}
+
+node "Application Server\n(localhost:8001)" {
+    component [FastAPI Server\nuvicorn] as API
+    component [WebSocket Server\n(port 8765)] as WS
+    component [Background Workers\nFastAPI BackgroundTasks] as Workers
+}
+
+node "Training Process" {
+    component [PyTorch Lightning\nTraining Loop] as Training
+    component [CUDA/GPU\nAccelerator] as GPU
+}
+
+node "Database Server\n(localhost:5432)" {
+    database [PostgreSQL\npneumonia_detection] as DB
+}
+
+node "File System" {
+    folder [results/\ncheckpoints/] as Checkpoints
+    folder [results/\nlogs/] as Logs
+    folder [temp/] as Temp
+}
+
+' Network connections
+Frontend --> API: HTTP/REST\nPOST /train\nGET /metrics
+Frontend --> WS: WebSocket\nws://localhost:8765
+
+' Internal connections
+API --> Workers: Queue tasks
+Workers --> Training: Execute
+Training --> GPU: Compute
+Training --> DB: Persist metrics\nINSERT run_metrics
+Training --> WS: Broadcast events\nsend_metrics()
+Training --> Checkpoints: Save model\n.ckpt files
+Training --> Logs: Write logs\n.log files
+API --> Temp: Extract uploads\nZIP handling
+API --> DB: Query results\nSELECT metrics
+
+' Database relationships
+DB --> API: Return data\nJSON response
+
+note right of Frontend
+  **Browser Requirements:**
+  - Modern browser (Chrome/Firefox/Edge)
+  - WebSocket support
+  - JavaScript enabled
+end note
+
+note right of API
+  **Server Requirements:**
+  - Python 3.11+
+  - FastAPI + Uvicorn
+  - CORS enabled
+  - Async support
+end note
+
+note right of Training
+  **Hardware Requirements:**
+  - NVIDIA GPU (recommended)
+  - 8GB+ GPU memory
+  - 16GB+ RAM
+  - 50GB+ disk space
+end note
+
+note right of DB
+  **Database Schema:**
+  - runs (run metadata)
+  - run_metrics (epoch data)
+  - run_configuration (hyperparams)
+  - run_artifacts (file paths)
+end note
+
+note bottom of WS
+  **WebSocket Protocol:**
+  - Port: 8765
+  - Format: JSON
+  - Auto-reconnect: Yes
+  - Ping interval: 30s
+end note
+
+@enduml

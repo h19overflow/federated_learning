@@ -13,11 +13,9 @@ from federated_pneumonia_detection.src.api.endpoints.experiments import (
     federated_endpoints,
     comparison_endpoints,
     status_endpoints,
+    runs_endpoints,
 )
-from federated_pneumonia_detection.src.api.endpoints.results import (
-    logging_endpoints,
-    results_endpoints,
-)
+
 
 from federated_pneumonia_detection.src.api.endpoints.chat import (
     chat_router,
@@ -25,8 +23,6 @@ from federated_pneumonia_detection.src.api.endpoints.chat import (
 
 logger = logging.getLogger(__name__)
 
-# FIXME: ERROR ON logging 
-# FIXME: ERROR on notifiying that the training is over.
 app = FastAPI(
     title="Federated Pneumonia Detection API",
     description="API for the Federated Pneumonia Detection system",
@@ -36,10 +32,13 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-       "*"
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:5173",  # Vite default dev port
+        "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -73,7 +72,6 @@ def _start_websocket_server():
         import asyncio
         import websockets
         import json
-        from datetime import datetime
         from typing import Set
         
         # Store all connected clients
@@ -153,6 +151,5 @@ app.include_router(centralized_endpoints.router)
 app.include_router(federated_endpoints.router)
 app.include_router(comparison_endpoints.router)
 app.include_router(status_endpoints.router)
-app.include_router(logging_endpoints.router)
-app.include_router(results_endpoints.router)
+app.include_router(runs_endpoints.router)
 app.include_router(chat_router)

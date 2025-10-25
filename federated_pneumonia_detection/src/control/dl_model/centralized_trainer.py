@@ -109,14 +109,12 @@ class CentralizedTrainer:
                     source_path, csv_filename
                 )
             except Exception as e:
-                self.logger.error(f"  Error type: {type(e).__name__}")
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
 
             try:
                 train_df, val_df = self._prepare_dataset(csv_path, image_dir)
             except Exception as e:
-                self.logger.error(f"  Error type: {type(e).__name__}")
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
 
@@ -124,7 +122,6 @@ class CentralizedTrainer:
             try:
                 data_module = self._create_data_module(train_df, val_df, image_dir)
             except Exception as e:
-                self.logger.error(f"  Error type: {type(e).__name__}")
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
 
@@ -141,7 +138,6 @@ class CentralizedTrainer:
             try:
                 trainer = self._build_trainer(callbacks, experiment_name)
             except Exception as e:
-                self.logger.error(f"  Error type: {type(e).__name__}")
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
 
@@ -149,7 +145,6 @@ class CentralizedTrainer:
             try:
                 trainer.fit(model, data_module)
             except Exception as e:
-                self.logger.error(f"  Error type: {type(e).__name__}")
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
 
@@ -162,10 +157,9 @@ class CentralizedTrainer:
             except Exception as e:
                 self.logger.error(f"  Error type: {type(e).__name__}")
                 raise
-
             return results
+        
         except Exception as e:
-            self.logger.error(f"  Error type: {type(e).__name__}")
             self.logger.error(f"  Error message: {str(e)}")
             raise
 
@@ -211,6 +205,7 @@ class CentralizedTrainer:
                 metrics_dir=os.path.join(self.logs_dir, "metrics"),
                 experiment_name=experiment_name,
                 run_id=run_id,
+                enable_db_persistence=True,
             )
         except Exception as e:
             self.logger.error(f"Failed to build model and callbacks: {e}")

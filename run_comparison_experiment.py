@@ -12,8 +12,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from federated_pneumonia_detection.src.control.comparison.experiment_orchestrator import ExperimentOrchestrator
 
-# TODO , Figure out how to extract logs from the trainer in order to show in the terminal on the frontend.
-# TODO , Saving the resutls to the database is still pending we need to add a step to save the results to the database.
 def main():
     """Run comparison experiment between centralized and federated learning."""
 
