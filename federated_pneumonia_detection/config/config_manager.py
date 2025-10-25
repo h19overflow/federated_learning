@@ -59,6 +59,9 @@ class ConfigManager:
         """Save configuration to YAML file."""
         with open(self.config_path, "w", encoding="utf-8") as file:
             yaml.safe_dump(self.config, file, default_flow_style=False, indent=2)
+            file.flush()  # Ensure data is written to disk
+            import os
+            os.fsync(file.fileno())  # Force OS to write to disk immediately
 
     def _get_nested_value(self, config: Dict[str, Any], key_path: str) -> Any:
         """

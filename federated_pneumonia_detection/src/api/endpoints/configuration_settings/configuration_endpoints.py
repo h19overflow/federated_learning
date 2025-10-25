@@ -76,7 +76,9 @@ async def update_settings(
         updated_count += 1
 
     config.save()
-    logger.info(f"Configuration saved to {config.config_path}")
+    from pathlib import Path
+    abs_path = Path(config.config_path).resolve()
+    logger.info(f"Configuration saved to {config.config_path} (absolute: {abs_path})")
 
     # Verify save by reloading
     config.reload()

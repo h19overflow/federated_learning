@@ -26,8 +26,57 @@ router = APIRouter(
 logger = get_logger(__name__)
 
 
-@router.get("/debug/all")
+@router.get("/list")
 async def list_all_runs() -> Dict[str, Any]:
+    """
+    List all training runs with summary information.
+
+    Returns:
+        Dictionary with list of runs including key metrics
+    """
+    db = get_session()
+
+    try:
+        from federated_pneumonia_detection.src.boundary.engine import Run
+        runs = db.query(Run).order_by(Run.start_time.desc()).all()
+
+        run_summaries = []
+        for run in runs:
+            # Calculate best validation recall from metrics
+            best_val_recall = 0.0
+            if run.metrics:
+                val_recall_metrics = [
+                    m.metric_value for m in run.metrics
+                    if m.metric_name == 'val_recall'
+                ]
+                if val_recall_metrics:
+                    best_val_recall = max(val_recall_metrics)
+
+            run_summaries.append({
+                "id": run.id,
+                "training_mode": run.training_mode,
+                "status": run.status,
+                "start_time": run.start_time.isoformat() if run.start_time else None,
+                "end_time": run.end_time.isoformat() if run.end_time else None,
+                "best_val_recall": best_val_recall,
+                "metrics_count": len(run.metrics) if hasattr(run, 'metrics') else 0,
+                "run_description": run.run_description,
+            })
+
+        return {
+            "runs": run_summaries,
+            "total": len(run_summaries)
+        }
+
+    except Exception as e:
+        logger.error(f"Error listing runs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.get("/debug/all")
+async def debug_list_all_runs() -> Dict[str, Any]:
     """
     Debug endpoint: List all runs in database.
 

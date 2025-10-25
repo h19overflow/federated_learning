@@ -59,10 +59,22 @@ class ConfigLoader:
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
         try:
+            from pathlib import Path
+            abs_path = Path(config_path).resolve()
+
             with open(config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
 
-            self.logger.info(f"Configuration loaded from {config_path}")
+            self.logger.info(f"Configuration loaded from {config_path} (absolute: {abs_path})")
+
+            # Log key config values for debugging
+            if 'experiment' in config:
+                exp_config = config['experiment']
+                self.logger.info(f"[ConfigLoader] Loaded from YAML - "
+                               f"epochs={exp_config.get('epochs', 'NOT SET')}, "
+                               f"batch_size={exp_config.get('batch_size', 'NOT SET')}, "
+                               f"learning_rate={exp_config.get('learning_rate', 'NOT SET')}")
+
             return config
 
         except yaml.YAMLError as e:
@@ -125,10 +137,14 @@ class ConfigLoader:
         experiment_config = config.get("experiment", {})
         output_config = config.get("output", {})
 
+        # Extract epochs with logging
+        epochs_value = experiment_config.get("epochs", 10)
+        self.logger.info(f"[ConfigLoader] Creating ExperimentConfig with epochs={epochs_value} (from YAML: {experiment_config.get('epochs', 'NOT FOUND')})")
+
         return ExperimentConfig(
             # Model parameters
             learning_rate=experiment_config.get("learning_rate", 0.001),
-            epochs=experiment_config.get("epochs", 10),
+            epochs=epochs_value,
             weight_decay=experiment_config.get("weight_decay", 0.0001),
             freeze_backbone=experiment_config.get("freeze_backbone", True),
             dropout_rate=experiment_config.get("dropout_rate", 0.5),

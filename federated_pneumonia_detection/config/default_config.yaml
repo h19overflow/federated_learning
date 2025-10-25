@@ -12,10 +12,10 @@ experiment:
   contrast_stretch: true
   device: auto
   dropout_rate: 0.3
-  early_stopping_patience: 7
+  early_stopping_patience: 5
   edge_enhancement: false
   edge_strength: 1.0
-  epochs: 15
+  epochs: 10
   fine_tune_layers_count: 5
   freeze_backbone: true
   learning_rate: 0.001

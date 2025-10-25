@@ -13,6 +13,122 @@ from sklearn.utils import class_weight
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector import MetricsCollectorCallback
+from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
+
+
+class EarlyStoppingSignalCallback(pl.Callback):
+    """
+    Custom callback to detect when early stopping is triggered and signal frontend via WebSocket.
+
+    This callback monitors the EarlyStopping callback state and sends a notification when
+    training stops due to early stopping conditions being met.
+    """
+
+    def __init__(self, websocket_sender: Optional[MetricsWebSocketSender] = None):
+        """
+        Initialize the early stopping signal callback.
+
+        Args:
+            websocket_sender: MetricsWebSocketSender instance for frontend communication
+        """
+        super().__init__()
+        self.websocket_sender = websocket_sender
+        self.logger = logging.getLogger(__name__)
+        self.early_stop_callback = None
+        self.previous_should_stop = False
+        self.has_signaled = False
+
+    def setup(self, trainer: pl.Trainer, pl_module, stage: str) -> None:
+        """
+        Setup the callback - find the EarlyStopping callback if present.
+
+        Args:
+            trainer: PyTorch Lightning trainer
+            pl_module: Lightning module
+            stage: Training stage ('fit', 'validate', 'test')
+        """
+        # Find the EarlyStopping callback in trainer's callbacks
+        for callback in trainer.callbacks:
+            if isinstance(callback, EarlyStopping):
+                self.early_stop_callback = callback
+                self.logger.info(f"[EarlyStoppingSignal] Found EarlyStopping callback: {callback}")
+                break
+
+        if self.websocket_sender:
+            self.logger.info(f"[EarlyStoppingSignal] WebSocket sender available: {self.websocket_sender}")
+        else:
+            self.logger.warning("[EarlyStoppingSignal] No WebSocket sender provided!")
+
+    def on_train_epoch_end(self, trainer: pl.Trainer, pl_module) -> None:
+        """
+        Check if early stopping was triggered at the end of each epoch.
+
+        Args:
+            trainer: PyTorch Lightning trainer
+            pl_module: Lightning module
+        """
+        if not self.early_stop_callback:
+            self.logger.debug("[EarlyStoppingSignal] No early stop callback found")
+            return
+
+        if not self.websocket_sender:
+            self.logger.debug("[EarlyStoppingSignal] No websocket sender")
+            return
+
+        # Check if early stopping should stop training
+        should_stop = trainer.should_stop
+
+        self.logger.debug(
+            f"[EarlyStoppingSignal] Epoch {trainer.current_epoch}: "
+            f"should_stop={should_stop}, previous={self.previous_should_stop}, "
+            f"has_signaled={self.has_signaled}"
+        )
+
+        # Detect transition from not stopping to stopping (only signal once)
+        if should_stop and not self.previous_should_stop and not self.has_signaled:
+            self.logger.info("[EarlyStoppingSignal] Transition detected! Signaling early stopping...")
+            self._signal_early_stopping(trainer)
+            self.has_signaled = True
+
+        self.previous_should_stop = should_stop
+
+    def _signal_early_stopping(self, trainer: pl.Trainer) -> None:
+        """
+        Send early stopping signal to frontend via WebSocket.
+
+        Args:
+            trainer: PyTorch Lightning trainer
+        """
+        try:
+            # Get the best metric value from callback state
+            best_value = self.early_stop_callback.best_score
+            if isinstance(best_value, torch.Tensor):
+                best_value = best_value.item()
+
+            # Get monitored metric name
+            metric_name = self.early_stop_callback.monitor
+            current_epoch = trainer.current_epoch
+
+            self.logger.info(
+                f"[EarlyStoppingSignal] Sending signal - Epoch: {current_epoch}, "
+                f"Metric: {metric_name}={best_value:.4f}, Patience: {self.early_stop_callback.patience}"
+            )
+
+            # Send early stopping notification
+            self.websocket_sender.send_early_stopping_triggered(
+                epoch=current_epoch,
+                best_metric_value=float(best_value) if best_value else 0.0,
+                metric_name=metric_name,
+                patience=self.early_stop_callback.patience
+            )
+
+            self.logger.info(
+                f"[Early Stopping Signal] ✅ Successfully sent at epoch {current_epoch}, "
+                f"best {metric_name}={best_value:.4f}"
+            )
+
+        except Exception as e:
+            self.logger.error(f"[Early Stopping Signal] ❌ Failed to signal early stopping: {e}", exc_info=True)
 
 
 class HighestValRecallCallback(pl.Callback):
@@ -74,6 +190,7 @@ def prepare_trainer_and_callbacks_pl(
     experiment_name: str = "pneumonia_detection",
     run_id: Optional[int] = None,
     enable_db_persistence: bool = True,
+    websocket_sender: Optional[MetricsWebSocketSender] = None,
 ) -> Dict[str, Any]:
     """
     Prepare PyTorch Lightning trainer callbacks and configuration.
@@ -89,8 +206,7 @@ def prepare_trainer_and_callbacks_pl(
         experiment_name: Name of the experiment for metrics tracking
         run_id: Optional database run ID for metrics persistence
         enable_db_persistence: Whether to persist metrics to database
-        websocket_manager: Optional WebSocket connection manager for real-time logging
-        enable_websocket_broadcasting: Whether to enable WebSocket broadcasting of progress
+        websocket_sender: Optional MetricsWebSocketSender instance for frontend communication
 
     Returns:
         Dictionary containing callbacks and trainer configuration
@@ -100,10 +216,17 @@ def prepare_trainer_and_callbacks_pl(
     # Create checkpoint directory
     os.makedirs(checkpoint_dir, exist_ok=True)
 
+    # Create default WebSocket sender if not provided
+    if websocket_sender is None:
+        websocket_sender = MetricsWebSocketSender(websocket_uri="ws://localhost:8765")
+        logger.info("[Training Callbacks] Created default WebSocket sender")
+
     # Setup default values from config or fallbacks
     patience = config.early_stopping_patience if config else 7
     min_delta = getattr(config, 'early_stopping_min_delta', 0.001)
     max_epochs = config.epochs if config else 50
+
+    logger.info(f"[Trainer Setup] max_epochs={max_epochs}, early_stopping_patience={patience}, min_delta={min_delta}")
 
     # Compute class weights
     class_weights = compute_class_weights_for_pl(train_df_for_weights, class_column)
@@ -127,8 +250,10 @@ def prepare_trainer_and_callbacks_pl(
         min_delta=min_delta,
         verbose=True,
         strict=True,
-
+        log_rank_zero_only=True,
     )
+
+    logger.info(f"[EarlyStopping] Monitoring 'val_recall' with patience={patience}, min_delta={min_delta}")
 
     # Learning rate monitor
     lr_monitor = LearningRateMonitor(
@@ -151,10 +276,15 @@ def prepare_trainer_and_callbacks_pl(
         enable_db_persistence=True,
         websocket_uri="ws://localhost:8765"
     )
+
+    # Early stopping signal callback - notify frontend when early stopping occurs
+    early_stopping_signal = EarlyStoppingSignalCallback(websocket_sender=websocket_sender)
+
     # Compile callbacks list
     callbacks = [
         checkpoint_callback,
         early_stop_callback,
+        early_stopping_signal,  # Must come after early_stop_callback
         lr_monitor,
         highest_recall_callback,
         metrics_collector
@@ -184,7 +314,8 @@ def prepare_trainer_and_callbacks_pl(
         'trainer_config': trainer_config,
         'class_weights': class_weights,
         'checkpoint_dir': checkpoint_dir,
-        'metrics_collector': metrics_collector
+        'metrics_collector': metrics_collector,
+        'early_stopping_signal': early_stopping_signal
     }
 
 
