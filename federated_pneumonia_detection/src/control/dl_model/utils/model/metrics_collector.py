@@ -156,8 +156,13 @@ class MetricsCollectorCallback(pl.Callback):
                 metrics=val_metrics
             )
 
-    def on_train_end(self, trainer, pl_module):
-        """Save all collected metrics when training ends."""
+    def on_fit_end(self, trainer, pl_module):
+        """
+        Save all collected metrics when fit ends (after all training and validation).
+
+        Note: Using on_fit_end instead of on_train_end ensures that the final
+        validation epoch is included in the saved metrics.
+        """
         self.training_end_time = datetime.now()
         self.metadata['end_time'] = self.training_end_time.isoformat()
         self.metadata['total_epochs'] = len(self.epoch_metrics)
@@ -167,10 +172,9 @@ class MetricsCollectorCallback(pl.Callback):
             self.metadata['training_duration_seconds'] = duration.total_seconds()
             self.metadata['training_duration_formatted'] = str(duration)
 
-
         # Save metrics in multiple formats
         self._save_metrics()
-        self.logger.info(f"Metrics saved to {self.save_dir}")
+        self.logger.info(f"Metrics saved to {self.save_dir} - Total epochs: {len(self.epoch_metrics)}")
 
         # Send training completion to frontend with run_id and summary
         if self.ws_sender and self.run_id:

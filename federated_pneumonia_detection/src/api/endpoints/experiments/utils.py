@@ -160,13 +160,16 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
 
     Database format:
         RunMetric(metric_name='val_recall', metric_value=0.95, step=10, dataset_type='validation')
+        Note: step is 0-indexed (0-9 for 10 epochs)
 
     Frontend format:
         {
           final_metrics: {accuracy: 0.92, ...},
-          training_history: [{epoch: 0, train_loss: 0.5, ...}],
+          training_history: [{epoch: 1, train_loss: 0.5, ...}],  # epoch is 1-indexed (1-10)
           ...
         }
+
+    Important: Converts epochs from 0-indexed (database) to 1-indexed (display)
     """
 
     # Group metrics by epoch (step)
@@ -255,16 +258,21 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
 
 
 def _find_best_epoch(training_history: List[Dict]) -> int:
-    """Find epoch with best validation accuracy."""
-    if not training_history:
-        return 0
+    """
+    Find epoch with best validation accuracy.
 
-    best_epoch = 0
+    Note: Expects training_history with 1-indexed epochs (already transformed).
+    Returns 1 as minimum since epochs are now displayed as 1-10 instead of 0-9.
+    """
+    if not training_history:
+        return 1  # Return 1 instead of 0 since epochs are now 1-indexed
+
+    best_epoch = 1
     best_acc = 0.0
 
     for entry in training_history:
         if entry.get("val_acc", 0) > best_acc:
             best_acc = entry["val_acc"]
-            best_epoch = entry["epoch"]
+            best_epoch = entry["epoch"]  # This is already 1-indexed from transformation
 
     return best_epoch

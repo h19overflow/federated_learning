@@ -61,10 +61,19 @@ class CentralizedTrainer:
         try:
             if config_path:
                 # Load config as dictionary first
+                self.logger.info(f"Loading configuration from: {config_path}")
                 config_dict = config_loader.load_config(config_path)
                 self.constants = config_loader.create_system_constants(config_dict)
                 self.config = config_loader.create_experiment_config(config_dict)
+
+                # Log key configuration values
+                self.logger.info(f"Configuration loaded - Epochs: {self.config.epochs}, "
+                               f"Batch Size: {self.config.batch_size}, "
+                               f"Learning Rate: {self.config.learning_rate}, "
+                               f"Weight Decay: {self.config.weight_decay}, "
+                               f"Fine-tune Layers: {self.config.fine_tune_layers_count}")
             else:
+                self.logger.info("No config path provided, using defaults")
                 self.constants = config_loader.create_system_constants()
                 self.config = config_loader.create_experiment_config()
         except Exception as e:
