@@ -35,7 +35,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
         self.websocket_sender = websocket_sender
         self.logger = logging.getLogger(__name__)
         self.early_stop_callback = None
-        self.previous_should_stop = False
+        self.max_epochs = None
         self.has_signaled = False
 
     def setup(self, trainer: pl.Trainer, pl_module, stage: str) -> None:
@@ -47,50 +47,46 @@ class EarlyStoppingSignalCallback(pl.Callback):
             pl_module: Lightning module
             stage: Training stage ('fit', 'validate', 'test')
         """
+        self.max_epochs = trainer.max_epochs
+
         # Find the EarlyStopping callback in trainer's callbacks
         for callback in trainer.callbacks:
             if isinstance(callback, EarlyStopping):
                 self.early_stop_callback = callback
-                self.logger.info(f"[EarlyStoppingSignal] Found EarlyStopping callback: {callback}")
+                self.logger.info(f"[EarlyStoppingSignal] Found EarlyStopping callback with patience={callback.patience}")
                 break
 
         if self.websocket_sender:
-            self.logger.info(f"[EarlyStoppingSignal] WebSocket sender available: {self.websocket_sender}")
+            self.logger.info(f"[EarlyStoppingSignal] WebSocket sender available")
         else:
             self.logger.warning("[EarlyStoppingSignal] No WebSocket sender provided!")
 
-    def on_train_epoch_end(self, trainer: pl.Trainer, pl_module) -> None:
+    def on_train_end(self, trainer: pl.Trainer, pl_module) -> None:
         """
-        Check if early stopping was triggered at the end of each epoch.
+        Check if training ended due to early stopping (instead of max epochs reached).
+
+        Called when training ends, whether by reaching max_epochs or early stopping.
 
         Args:
             trainer: PyTorch Lightning trainer
             pl_module: Lightning module
         """
-        if not self.early_stop_callback:
-            self.logger.debug("[EarlyStoppingSignal] No early stop callback found")
+        if self.has_signaled:
             return
 
-        if not self.websocket_sender:
-            self.logger.debug("[EarlyStoppingSignal] No websocket sender")
+        if not self.early_stop_callback or not self.websocket_sender:
             return
 
-        # Check if early stopping should stop training
-        should_stop = trainer.should_stop
+        # If current_epoch < max_epochs, training stopped early (likely due to early stopping)
+        is_early_stopped = trainer.current_epoch < trainer.max_epochs
 
-        self.logger.debug(
-            f"[EarlyStoppingSignal] Epoch {trainer.current_epoch}: "
-            f"should_stop={should_stop}, previous={self.previous_should_stop}, "
-            f"has_signaled={self.has_signaled}"
-        )
-
-        # Detect transition from not stopping to stopping (only signal once)
-        if should_stop and not self.previous_should_stop and not self.has_signaled:
-            self.logger.info("[EarlyStoppingSignal] Transition detected! Signaling early stopping...")
+        if is_early_stopped:
+            self.logger.info(
+                f"[EarlyStoppingSignal] Detected early stopping: "
+                f"current_epoch={trainer.current_epoch}, max_epochs={trainer.max_epochs}"
+            )
             self._signal_early_stopping(trainer)
             self.has_signaled = True
-
-        self.previous_should_stop = should_stop
 
     def _signal_early_stopping(self, trainer: pl.Trainer) -> None:
         """
@@ -110,8 +106,8 @@ class EarlyStoppingSignalCallback(pl.Callback):
             current_epoch = trainer.current_epoch
 
             self.logger.info(
-                f"[EarlyStoppingSignal] Sending signal - Epoch: {current_epoch}, "
-                f"Metric: {metric_name}={best_value:.4f}, Patience: {self.early_stop_callback.patience}"
+                f"[EarlyStoppingSignal] 🛑 Sending early_stopping signal - "
+                f"Epoch: {current_epoch}, {metric_name}={best_value:.4f}, Patience: {self.early_stop_callback.patience}"
             )
 
             # Send early stopping notification
@@ -123,8 +119,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
             )
 
             self.logger.info(
-                f"[Early Stopping Signal] ✅ Successfully sent at epoch {current_epoch}, "
-                f"best {metric_name}={best_value:.4f}"
+                f"[Early Stopping Signal] ✅ Successfully signaled at epoch {current_epoch}"
             )
 
         except Exception as e:
