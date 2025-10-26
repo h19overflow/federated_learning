@@ -31,6 +31,8 @@ from federated_pneumonia_detection.src.utils.data_processing import (
 )
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from .utils import DataSourceExtractor
+
+
 class CentralizedTrainer:
     """
     Centralized training orchestrator that handles complete training workflow.
@@ -38,10 +40,10 @@ class CentralizedTrainer:
     """
 
     def __init__(
-        self,
-        config_path: Optional[str] = None,
-        checkpoint_dir: str = "results/checkpoints",
-        logs_dir: str = "results/training_logs",
+            self,
+            config_path: Optional[str] = None,
+            checkpoint_dir: str = "results/checkpoints",
+            logs_dir: str = "results/training_logs",
     ):
         """
         Initialize centralized trainer.
@@ -67,10 +69,10 @@ class CentralizedTrainer:
 
                 # Log key configuration values
                 self.logger.info(f"Configuration loaded - Epochs: {self.config.epochs}, "
-                               f"Batch Size: {self.config.batch_size}, "
-                               f"Learning Rate: {self.config.learning_rate}, "
-                               f"Weight Decay: {self.config.weight_decay}, "
-                               f"Fine-tune Layers: {self.config.fine_tune_layers_count}")
+                                 f"Batch Size: {self.config.batch_size}, "
+                                 f"Learning Rate: {self.config.learning_rate}, "
+                                 f"Weight Decay: {self.config.weight_decay}, "
+                                 f"Fine-tune Layers: {self.config.fine_tune_layers_count}")
             else:
                 self.logger.info("No config path provided, using defaults")
                 self.constants = config_loader.create_system_constants()
@@ -93,11 +95,11 @@ class CentralizedTrainer:
             raise
 
     def train(
-        self,
-        source_path: str,
-        experiment_name: str = "pneumonia_detection",
-        csv_filename: Optional[str] = None,
-        run_id: Optional[int] = None,
+            self,
+            source_path: str,
+            experiment_name: str = "pneumonia_detection",
+            csv_filename: Optional[str] = None,
+            run_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Complete training workflow from zip file or directory.
@@ -166,7 +168,7 @@ class CentralizedTrainer:
                 self.logger.error(f"  Error type: {type(e).__name__}")
                 raise
             return results
-        
+
         except Exception as e:
             self.logger.error(f"  Error message: {str(e)}")
             raise
@@ -186,10 +188,10 @@ class CentralizedTrainer:
         }
 
     def _build_model_and_callbacks(
-        self,
-        train_df: pd.DataFrame,
-        experiment_name: str = "pneumonia_detection",
-        run_id: Optional[int] = None,
+            self,
+            train_df: pd.DataFrame,
+            experiment_name: str = "pneumonia_detection",
+            run_id: Optional[int] = None,
     ) -> Tuple[LitResNet, list, Any]:
         """
         Build model and training callbacks.
@@ -245,7 +247,7 @@ class CentralizedTrainer:
             tb_logger = TensorBoardLogger(
                 save_dir=self.logs_dir, name=experiment_name, version=None
             )
-        except Exception as e:    
+        except Exception as e:
             self.logger.error(f"Failed to create TensorBoard logger: {e}")
             tb_logger = None
         try:
@@ -263,7 +265,7 @@ class CentralizedTrainer:
         return trainer
 
     def _collect_training_results(
-        self, trainer: pl.Trainer, model: LitResNet, metrics_collector: Any
+            self, trainer: pl.Trainer, model: LitResNet, metrics_collector: Any
     ) -> Dict[str, Any]:
         """
         Collect and organize training results.
@@ -335,7 +337,7 @@ class CentralizedTrainer:
         return results
 
     def _prepare_dataset(
-        self, csv_path: str, image_dir: str
+            self, csv_path: str, image_dir: str
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Prepare training and validation datasets.
@@ -390,7 +392,7 @@ class CentralizedTrainer:
         return train_df, val_df
 
     def _create_data_module(
-        self, train_df: pd.DataFrame, val_df: pd.DataFrame, image_dir: str
+            self, train_df: pd.DataFrame, val_df: pd.DataFrame, image_dir: str
     ) -> XRayDataModule:
         """
         Create PyTorch Lightning DataModule.

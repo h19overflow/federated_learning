@@ -1,6 +1,5 @@
 
 # >   uvicorn federated_pneumonia_detection.src.api.main:app --reload --host 127.0.0.1 --port 8001
-import asyncio
 import logging
 import threading
 from fastapi import FastAPI
@@ -14,7 +13,7 @@ from federated_pneumonia_detection.src.api.endpoints.experiments import (
     comparison_endpoints,
     status_endpoints,
 )
-from federated_pneumonia_detection.src.api.endpoints.experiments.runs_endpoints import router as runs_endpoints_router
+from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import router as runs_endpoints_router
 
 
 from federated_pneumonia_detection.src.api.endpoints.chat import (

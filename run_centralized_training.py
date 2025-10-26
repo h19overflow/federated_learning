@@ -13,8 +13,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import CentralizedTrainer
 
+
 def main():
     """Run centralized training on the Training dataset."""
+    # add try and except block to catch errors and log them
 
     # Configure logging
     logging.basicConfig(
@@ -22,7 +24,6 @@ def main():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     logger = logging.getLogger(__name__)
-
 
     # Define paths
     # convert the id into int , and capture current timestamp
@@ -65,9 +66,9 @@ def main():
         return 0
 
     except Exception as e:
-        logger.error("\n" + "="*80)
+        logger.error("\n" + "=" * 80)
         logger.error("TRAINING FAILED!")
-        logger.error("="*80)
+        logger.error("=" * 80)
         logger.error(f"Error: {type(e).__name__}: {str(e)}")
 
         import traceback
