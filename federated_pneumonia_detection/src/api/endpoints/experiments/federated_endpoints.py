@@ -20,19 +20,17 @@ Key federated parameters: num_rounds, num_clients, local_epochs, num_clients
 from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form
 from typing import Dict, Any
-import os
-import shutil
-
-import torch
 
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
-from federated_pneumonia_detection.src.utils.data_processing import load_metadata
-from federated_pneumonia_detection.models.system_constants import SystemConstants
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
-from federated_pneumonia_detection.src.control.federated_learning import (
-    FederatedTrainer,
-)
-# TODO: update the federated trainer in order to use the new websocket sender in the dl_model/utils/data/websockets_metrics_sender.py
+from .utils import prepare_zip, run_federated_training_task
+
+#Full traceback: - federated_endpoints.py - 132
+# 2025-10-26 12:06:26 - federated_pneumonia_detection.src.api.endpoints.experiments.federated_endpoints._task - ERROR - Traceback (most recent call last):
+#   File "C:\Users\User\Projects\FYP2\federated_pneumonia_detection\src\api\endpoints\experiments\federated_endpoints.py", line 77, in _run_federated_training_task
+#     raise FileNotFoundError(f"Image directory not found: {image_dir}")
+# FileNotFoundError: Image directory not found: C:\Users\User\AppData\Local\Temp\tmpr628gqva\extracted\Images
+#  - federated_endpoints.py - 133
+
 router = APIRouter(
     prefix="/experiments/federated",
     tags=["experiments", "federated"],
@@ -40,139 +38,6 @@ router = APIRouter(
 
 logger = get_logger(__name__)
 
-
-def _run_federated_training_task(
-    source_path: str,
-    experiment_name: str,
-    csv_filename: str,
-    websocket_manager: Any = None,
-) -> Dict[str, Any]:
-    """
-    Background task to execute federated training.
-
-    Args:
-        source_path: Path to training data directory
-        experiment_name: Name identifier for this training run
-        csv_filename: Name of the CSV metadata file
-        websocket_manager: Optional WebSocket manager for real-time progress updates
-
-    Returns:
-        Dictionary containing training results
-    """
-    import asyncio
-    task_logger = get_logger(f"{__name__}._task")
-
-    task_logger.info("=" * 80)
-    task_logger.info(
-        "FEDERATED LEARNING TRAINING - Pneumonia Detection (Background Task)"
-    )
-    task_logger.info("=" * 80)
-
-    try:
-        source_path = Path(source_path)
-        image_dir = source_path / "Images"
-        metadata_path = source_path / csv_filename
-
-        if not source_path.exists():
-            raise FileNotFoundError(f"Source path not found: {source_path}")
-        if not image_dir.exists():
-            raise FileNotFoundError(f"Image directory not found: {image_dir}")
-        if not metadata_path.exists():
-            raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
-
-        task_logger.info("\nLoading configuration...")
-        constants = SystemConstants()
-        config = ExperimentConfig()
-
-        task_logger.info(f"  Num clients: {config.num_clients}")
-        task_logger.info(f"  Num rounds: {config.num_rounds}")
-        task_logger.info(f"  Local epochs: {config.local_epochs}")
-        task_logger.info(f"  Learning rate: {config.learning_rate}")
-        task_logger.info(f"  Batch size: {config.batch_size}")
-
-        if torch.cuda.is_available():
-            device = torch.device("cuda")
-            task_logger.info("  Device: GPU (CUDA)")
-        else:
-            device = torch.device("cpu")
-            task_logger.info("  Device: CPU")
-
-        task_logger.info("\nLoading dataset metadata...")
-        data_df = load_metadata(metadata_path, constants, task_logger)
-        task_logger.info(f"  Total samples: {len(data_df)}")
-        class_dist = data_df[constants.TARGET_COLUMN].value_counts().to_dict()
-        task_logger.info(f"  Class distribution: {class_dist}")
-
-        task_logger.info("\nInitializing FederatedTrainer...")
-        trainer = FederatedTrainer(
-            config=config,
-            constants=constants,
-            device=device,
-            websocket_manager=websocket_manager,
-        )
-
-        task_logger.info("\nStarting federated learning simulation...")
-        task_logger.info("-" * 80)
-
-        results = trainer.train(
-            data_df=data_df,
-            image_dir=image_dir,
-            experiment_name=experiment_name,
-        )
-
-        task_logger.info("\n" + "=" * 80)
-        task_logger.info("FEDERATED TRAINING COMPLETED SUCCESSFULLY!")
-        task_logger.info("=" * 80)
-
-        # Send completion status via WebSocket
-        if websocket_manager:
-            try:
-                completion_message = {
-                    "type": "status",
-                    "data": {
-                        "status": "completed",
-                        "message": "Federated training completed successfully",
-                        "experiment_name": experiment_name,
-                    },
-                    "timestamp": __import__("datetime").datetime.now().isoformat(),
-                }
-                asyncio.run(websocket_manager.broadcast(completion_message, experiment_name))
-                task_logger.info("Sent completion status via WebSocket")
-            except Exception as ws_error:
-                task_logger.warning(f"Failed to send WebSocket completion: {ws_error}")
-
-        return results
-
-    except Exception as e:
-        task_logger.error("FEDERATED TRAINING FAILED!")
-        task_logger.error(f"Error: {type(e).__name__}: {str(e)}")
-
-        import traceback
-
-        task_logger.error("\nFull traceback:")
-        task_logger.error(traceback.format_exc())
-
-        # Send error status via WebSocket
-        if websocket_manager:
-            try:
-                error_message = {
-                    "type": "status",
-                    "data": {
-                        "status": "failed",
-                        "message": f"Federated training failed: {str(e)}",
-                        "experiment_name": experiment_name,
-                    },
-                    "timestamp": __import__("datetime").datetime.now().isoformat(),
-                }
-                asyncio.run(websocket_manager.broadcast(error_message, experiment_name))
-            except Exception as ws_error:
-                task_logger.warning(f"Failed to send WebSocket error: {ws_error}")
-
-        return {
-            "status": "failed",
-            "error": str(e),
-            "error_type": type(e).__name__,
-        }
 
 
 @router.post("/train")
@@ -232,36 +97,13 @@ async def start_federated_training(
     - Checkpoint files saved after each round
     - Global model updates in results directory
     """
-    import zipfile
-    import tempfile
-
-    temp_dir = None
     try:
-        # Create temp directory for extraction
-        temp_dir = tempfile.mkdtemp()
-        zip_path = os.path.join(temp_dir, data_zip.filename)
-
-        # Save uploaded file
-        with open(zip_path, "wb") as f:
-            content = await data_zip.read()
-            f.write(content)
-
-        # Extract archive
-        extract_path = os.path.join(temp_dir, "extracted")
-        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall(extract_path)
-
-        source_path = extract_path
-
-        logger.info(f"Received request to start federated training: {experiment_name}")
-        logger.info(f"Extracted data to: {source_path}")
-
+        source_path = await prepare_zip(data_zip, logger, experiment_name)
         background_tasks.add_task(
             _run_federated_training_task,
             source_path=source_path,
             experiment_name=experiment_name,
             csv_filename=csv_filename,
-            websocket_manager=get_websocket_manager(),
         )
 
         return {
@@ -271,6 +113,4 @@ async def start_federated_training(
         }
     except Exception as e:
         logger.error(f"Error processing uploaded file: {str(e)}")
-        if temp_dir and os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
         raise

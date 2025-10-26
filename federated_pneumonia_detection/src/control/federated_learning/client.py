@@ -46,7 +46,6 @@ class FlowerClient(NumPyClient):
         client_id: Optional[str] = None,
         metrics_dir: Optional[str] = None,
         experiment_name: str = "federated_pneumonia",
-        websocket_manager: Optional[Any] = None,
         websocket_uri: Optional[str] = "ws://localhost:8765",
         run_id: Optional[int] = None,
     ) -> None:
@@ -62,7 +61,6 @@ class FlowerClient(NumPyClient):
             client_id: Unique identifier for this client
             metrics_dir: Directory to save metrics (None = no metrics collection)
             experiment_name: Name of the experiment
-            websocket_manager: Optional WebSocket manager for real-time progress updates
             websocket_uri: WebSocket URI for real-time metrics streaming
             run_id: Optional database run ID for persistence
         """
@@ -113,7 +111,7 @@ class FlowerClient(NumPyClient):
                 client_id=self.client_id,
                 experiment_name=experiment_name,
                 run_id=run_id,
-                enable_progress_logging=websocket_manager is not None,
+                enable_progress_logging=True,
                 websocket_uri=websocket_uri,
             )
 

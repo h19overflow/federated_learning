@@ -3,29 +3,29 @@ columns:
   patient_id: patientId
   target: Target
 experiment:
-  adaptive_histogram: true
-  augmentation_strength: 0.4
+  adaptive_histogram: false
+  augmentation_strength: 1.0
   batch_size: 32
-  clients_per_round: 3
+  clients_per_round: 5
   clip_limit: 2.0
   color_mode: RGB
   contrast_stretch: true
   device: auto
-  dropout_rate: 0.5
-  early_stopping_patience: 10
-  edge_enhancement: true
+  dropout_rate: 0.3
+  early_stopping_patience: 5
+  edge_enhancement: false
   edge_strength: 1.0
-  epochs: 20
+  epochs: 10
   fine_tune_layers_count: 5
   freeze_backbone: true
   learning_rate: 0.001
-  local_epochs: 20
+  local_epochs: 5
   lower_percentile: 5.0
   min_lr: 1.0e-07
   monitor_metric: val_loss
   num_classes: 1
-  num_clients: 3
-  num_rounds: 3
+  num_clients: 5
+  num_rounds: 2
   num_workers: 0
   persistent_workers: false
   pin_memory: true
@@ -33,7 +33,7 @@ experiment:
   reduce_lr_factor: 0.5
   reduce_lr_patience: 3
   upper_percentile: 95.0
-  use_custom_preprocessing: true
+  use_custom_preprocessing: false
   use_imagenet_norm: true
   validate_images_on_init: true
   weight_decay: 0.0001

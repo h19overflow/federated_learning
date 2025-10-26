@@ -61,7 +61,6 @@ class FederatedTrainer:
         config: ExperimentConfig,
         constants: SystemConstants,
         device: torch.device,
-        websocket_manager: Any = None,
         websocket_uri: Optional[str] = "ws://localhost:8765",
     ) -> None:
         """
@@ -71,7 +70,6 @@ class FederatedTrainer:
             config: ExperimentConfig with FL hyperparameters
             constants: SystemConstants for data and model paths
             device: torch.device for GPU/CPU selection
-            websocket_manager: Optional WebSocket manager for real-time progress updates
             websocket_uri: WebSocket URI for real-time metrics streaming
         """
         if config is None:
@@ -84,7 +82,6 @@ class FederatedTrainer:
         self.config = config
         self.constants = constants
         self.device = device
-        self.websocket_manager = websocket_manager
         self.websocket_uri = websocket_uri
         self.logger = logging.getLogger(self.__class__.__name__)
         self._client_instances = {}
@@ -208,7 +205,6 @@ class FederatedTrainer:
             client_id=cid,
             metrics_dir=self.metrics_dir,
             experiment_name=self.experiment_name,
-            websocket_manager=self.websocket_manager,
             websocket_uri=self.websocket_uri,
             run_id=self.run_id,
         )

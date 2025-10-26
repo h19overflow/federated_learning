@@ -50,7 +50,6 @@ class CentralizedTrainer:
             config_path: Optional path to configuration file
             checkpoint_dir: Directory to save model checkpoints
             logs_dir: Directory to save training logs
-            websocket_manager: Optional WebSocket connection manager for real-time logging
         """
         self.checkpoint_dir = checkpoint_dir
         self.logs_dir = logs_dir
