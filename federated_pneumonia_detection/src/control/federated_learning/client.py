@@ -31,8 +31,9 @@ from federated_pneumonia_detection.models.experiment_config import ExperimentCon
 from federated_pneumonia_detection.src.control.federated_learning.federated_metrics_collector import (
     FederatedMetricsCollector,
 )
+from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
 
-
+# TODO: Complete the logging functionality throughout the client, as well as collecting the results.
 class FlowerClient(NumPyClient):
     """Flower NumPy client for federated learning."""
 
@@ -102,6 +103,19 @@ class FlowerClient(NumPyClient):
         self.device = device
         self.client_id = client_id or "client_0"
         self.current_round = 0
+        self.websocket_uri = websocket_uri
+        self.run_id = run_id
+        self.experiment_name = experiment_name
+
+        # Initialize WebSocket sender for direct client communication
+        self.ws_sender = None
+        if websocket_uri:
+            try:
+                self.ws_sender = MetricsWebSocketSender(websocket_uri)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to initialize WebSocket sender for client {self.client_id}: {e}")
 
         # Initialize metrics collector if directory provided
         self.metrics_collector = None
@@ -144,6 +158,21 @@ class FlowerClient(NumPyClient):
         local_epochs = config.get("local_epochs", self.config.local_epochs)
         learning_rate = config.get("lr", self.config.learning_rate)
 
+        # Send WebSocket notification that this client is starting training
+        if self.ws_sender:
+            try:
+                self.ws_sender.send_metrics({
+                    "run_id": self.run_id,
+                    "client_id": self.client_id,
+                    "round": self.current_round,
+                    "status": "client_training_started",
+                    "local_epochs": local_epochs,
+                    "num_samples": len(self.trainloader.dataset),
+                    "experiment_name": self.experiment_name
+                }, "client_training_start")
+            except Exception as e:
+                pass  # Silently fail if WebSocket unavailable
+
         # Record round start if metrics collector is active
         if self.metrics_collector:
             self.metrics_collector.record_round_start(
@@ -169,6 +198,21 @@ class FlowerClient(NumPyClient):
                 train_loss=train_loss,
                 num_samples=len(self.trainloader.dataset),
             )
+
+        # Send WebSocket notification that this client finished training
+        if self.ws_sender:
+            try:
+                self.ws_sender.send_metrics({
+                    "run_id": self.run_id,
+                    "client_id": self.client_id,
+                    "round": self.current_round,
+                    "status": "client_training_completed",
+                    "train_loss": train_loss,
+                    "num_samples": len(self.trainloader.dataset),
+                    "experiment_name": self.experiment_name
+                }, "client_training_end")
+            except Exception as e:
+                pass  # Silently fail if WebSocket unavailable
 
         self.current_round += 1
 
@@ -201,6 +245,22 @@ class FlowerClient(NumPyClient):
                 num_samples=len(self.valloader.dataset),
             )
 
+        # Send WebSocket notification that this client finished evaluation
+        if self.ws_sender:
+            try:
+                self.ws_sender.send_metrics({
+                    "run_id": self.run_id,
+                    "client_id": self.client_id,
+                    "round": self.current_round - 1,
+                    "status": "client_evaluation_completed",
+                    "val_loss": loss,
+                    "val_accuracy": accuracy,
+                    "num_samples": len(self.valloader.dataset),
+                    "experiment_name": self.experiment_name
+                }, "client_eval_end")
+            except Exception as e:
+                pass  # Silently fail if WebSocket unavailable
+
         return loss, len(self.valloader.dataset), {"accuracy": accuracy}
 
     def finalize(self):
@@ -224,7 +284,7 @@ def set_weights(net: ResNetWithCustomHead, parameters: List) -> None:
     net.load_state_dict(state_dict, strict=True)
 
 
-def train(
+def  train(
     net: ResNetWithCustomHead,
     trainloader: DataLoader,
     epochs: int,
@@ -263,6 +323,8 @@ def train(
 
     epoch_losses = []
     total_running_loss = 0.0
+    total_batches_all_epochs = len(trainloader) * epochs
+    processed_batches = 0
 
     for epoch in range(epochs):
         epoch_loss = 0.0
@@ -285,6 +347,7 @@ def train(
 
             epoch_loss += loss.item()
             num_batches += 1
+            processed_batches += 1
 
         # Calculate average loss for this epoch
         # Guard against division by zero when no batches were processed
@@ -298,12 +361,20 @@ def train(
 
         # Record epoch metrics if collector is available
         if metrics_collector and num_batches > 0:
+            progress_percent = (processed_batches / total_batches_all_epochs * 100) if total_batches_all_epochs > 0 else 0
             metrics_collector.record_local_epoch(
                 round_num=current_round,
                 local_epoch=epoch,
                 train_loss=avg_epoch_loss,
                 learning_rate=learning_rate,
                 num_samples=len(trainloader.dataset),
+                additional_metrics={
+                    "batch_count": num_batches,
+                    "epoch_progress": f"{epoch + 1}/{epochs}",
+                    "overall_progress_percent": progress_percent,
+                    "batches_processed": processed_batches,
+                    "total_batches": total_batches_all_epochs,
+                }
             )
 
     # Calculate final average, guarding against empty trainloader

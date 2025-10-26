@@ -143,18 +143,22 @@ class FederatedMetricsCollector:
         if self.ws_sender:
             try:
                 total_rounds = server_config.get('num_rounds', round_num + 1)
+                local_epochs = server_config.get('local_epochs', 1)
                 self.ws_sender.send_metrics({
                     "run_id": self.run_id,
                     "round": round_num,
                     "total_rounds": total_rounds,
                     "client_id": self.client_id,
-                    "experiment_name": self.experiment_name
+                    "experiment_name": self.experiment_name,
+                    "local_epochs": local_epochs,
+                    "status": "starting_round",
+                    "timestamp": datetime.now().isoformat()
                 }, "round_start")
-                self.logger.debug(f"[Client {self.client_id}] Sent round_start event for round {round_num}")
+                self.logger.info(f"[Client {self.client_id}] Sent round_start event for round {round_num}/{total_rounds} with {local_epochs} local epochs")
             except Exception as e:
                 self.logger.warning(f"Failed to send round_start via WebSocket: {e}")
 
-        self.logger.info(f"Round {round_num} started for client {self.client_id}")
+        self.logger.info(f"Round {round_num} started for client {self.client_id}, local_epochs={server_config.get('local_epochs', 1)}")
 
     def record_local_epoch(
         self,
@@ -210,11 +214,14 @@ class FederatedMetricsCollector:
                     "round": round_num,
                     "client_id": self.client_id,
                     "local_epoch": local_epoch,
-                    "metrics": metrics
+                    "metrics": metrics,
+                    "timestamp": datetime.now().isoformat(),
+                    "status": "training_progress",
+                    "experiment_name": self.experiment_name
                 }, "client_progress")
-                self.logger.debug(
-                    f"[Client {self.client_id}] Sent client_progress for round {round_num}, "
-                    f"local_epoch {local_epoch}"
+                self.logger.info(
+                    f"[Client {self.client_id}] Round {round_num}, Local Epoch {local_epoch}: "
+                    f"Loss={train_loss:.4f}, Samples={num_samples}"
                 )
             except Exception as e:
                 self.logger.warning(f"Failed to send client_progress via WebSocket: {e}")

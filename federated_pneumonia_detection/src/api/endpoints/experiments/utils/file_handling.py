@@ -46,7 +46,22 @@ async def prepare_zip(data_zip: UploadFile, logger, experiment_name: str) -> str
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(extract_path)
 
-        source_path = extract_path
+        # Handle case where ZIP contains a root directory wrapper
+        # Check if extracted content has exactly one root directory
+        extracted_items = os.listdir(extract_path)
+        if len(extracted_items) == 1:
+            potential_root = os.path.join(extract_path, extracted_items[0])
+            if os.path.isdir(potential_root):
+                # Check if this directory contains Images/ and CSV file
+                root_items = os.listdir(potential_root)
+                if "Images" in root_items and any(f.endswith(".csv") for f in root_items):
+                    source_path = potential_root
+                else:
+                    source_path = extract_path
+            else:
+                source_path = extract_path
+        else:
+            source_path = extract_path
 
         logger.info(f"Received request to start training: {experiment_name}")
         logger.info(f"Extracted data to: {source_path}")

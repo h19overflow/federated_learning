@@ -33,6 +33,7 @@ def validate_training_paths(source_path: str, csv_filename: str) -> tuple[Path, 
     Raises:
         FileNotFoundError: If any required path doesn't exist
     """
+    print("Validating training paths...")
     source_path_obj = Path(source_path)
     image_dir = source_path_obj / "Images"
     metadata_path = source_path_obj / csv_filename

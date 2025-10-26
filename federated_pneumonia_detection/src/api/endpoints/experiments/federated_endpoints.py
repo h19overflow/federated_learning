@@ -17,19 +17,12 @@ Configuration should be set prior to invoking training via the configuration end
 Key federated parameters: num_rounds, num_clients, local_epochs, num_clients
 """
 
-from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form
 from typing import Dict, Any
 
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 from .utils import prepare_zip, run_federated_training_task
 
-#Full traceback: - federated_endpoints.py - 132
-# 2025-10-26 12:06:26 - federated_pneumonia_detection.src.api.endpoints.experiments.federated_endpoints._task - ERROR - Traceback (most recent call last):
-#   File "C:\Users\User\Projects\FYP2\federated_pneumonia_detection\src\api\endpoints\experiments\federated_endpoints.py", line 77, in _run_federated_training_task
-#     raise FileNotFoundError(f"Image directory not found: {image_dir}")
-# FileNotFoundError: Image directory not found: C:\Users\User\AppData\Local\Temp\tmpr628gqva\extracted\Images
-#  - federated_endpoints.py - 133
 
 router = APIRouter(
     prefix="/experiments/federated",
@@ -100,7 +93,7 @@ async def start_federated_training(
     try:
         source_path = await prepare_zip(data_zip, logger, experiment_name)
         background_tasks.add_task(
-            _run_federated_training_task,
+            run_federated_training_task,
             source_path=source_path,
             experiment_name=experiment_name,
             csv_filename=csv_filename,

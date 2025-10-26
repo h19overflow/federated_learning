@@ -5,7 +5,6 @@
 Implement the same metrics streaming pattern from `centralized_trainer.py` into `federated_trainer.py` to enable
 real-time WebSocket communication with the frontend during federated learning training.
 
----
 
 ## Current State Analysis
 
