@@ -47,6 +47,8 @@ class FlowerClient(NumPyClient):
         metrics_dir: Optional[str] = None,
         experiment_name: str = "federated_pneumonia",
         websocket_manager: Optional[Any] = None,
+        websocket_uri: Optional[str] = "ws://localhost:8765",
+        run_id: Optional[int] = None,
     ) -> None:
         """
         Initialize Flower client with dependencies.
@@ -61,6 +63,8 @@ class FlowerClient(NumPyClient):
             metrics_dir: Directory to save metrics (None = no metrics collection)
             experiment_name: Name of the experiment
             websocket_manager: Optional WebSocket manager for real-time progress updates
+            websocket_uri: WebSocket URI for real-time metrics streaming
+            run_id: Optional database run ID for persistence
         """
         if net is None:
             raise ValueError("net cannot be None")
@@ -108,7 +112,9 @@ class FlowerClient(NumPyClient):
                 save_dir=metrics_dir,
                 client_id=self.client_id,
                 experiment_name=experiment_name,
-                enable_websocket_broadcasting=websocket_manager is not None,
+                run_id=run_id,
+                enable_progress_logging=websocket_manager is not None,
+                websocket_uri=websocket_uri,
             )
 
             # Record model info

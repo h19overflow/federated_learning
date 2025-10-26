@@ -13,6 +13,7 @@ Role in System:
 - Records local training and evaluation metrics
 - Aggregates client-level performance across rounds
 - Persists metrics to JSON/CSV for analysis
+- Streams metrics to frontend via WebSocket for real-time monitoring
 """
 
 import json
@@ -27,6 +28,7 @@ from sqlalchemy.orm import Session
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
 
 class FederatedMetricsCollector:
     """
@@ -44,6 +46,7 @@ class FederatedMetricsCollector:
         run_id: Optional[int] = None,
         enable_db_persistence: bool = True,
         enable_progress_logging: bool = True,
+        websocket_uri: Optional[str] = "ws://localhost:8765",
     ):
         """
         Initialize federated metrics collector.
@@ -55,9 +58,7 @@ class FederatedMetricsCollector:
             run_id: Optional database run ID for persistence
             enable_db_persistence: Whether to save metrics to database
             enable_progress_logging: Whether to enable real-time progress logging
-            progress_log_dir: Directory for progress logs
-            websocket_manager: Optional ConnectionManager for WebSocket broadcasting
-            enable_websocket_broadcasting: Whether to broadcast progress via WebSocket
+            websocket_uri: Optional WebSocket URI for real-time metrics streaming
         """
         self.save_dir = Path(save_dir)
         self.client_id = client_id
@@ -70,7 +71,15 @@ class FederatedMetricsCollector:
         # Create save directory
         self.save_dir.mkdir(parents=True, exist_ok=True)
 
-        # Initialize progress logger (multiprocessing-safe)
+        # Initialize WebSocket sender for real-time metrics streaming
+        self.ws_sender = None
+        if websocket_uri:
+            try:
+                self.ws_sender = MetricsWebSocketSender(websocket_uri)
+                self.logger.info(f"[FederatedMetrics] WebSocket sender initialized for client {client_id}")
+            except Exception as e:
+                self.logger.warning(f"[FederatedMetrics] Failed to initialize WebSocket sender: {e}")
+                self.ws_sender = None
 
         # Metrics storage
         self.round_metrics = []  # One entry per federated round
@@ -130,13 +139,20 @@ class FederatedMetricsCollector:
 
         self.round_metrics.append(round_data)
 
-        # Log progress for frontend observability
-        if self.progress_logger:
+        # Send round start notification via WebSocket
+        if self.ws_sender:
             try:
-                total_rounds = server_config.get('total_rounds', round_num)
-                self.progress_logger.log_round_start(round_num, total_rounds)
+                total_rounds = server_config.get('num_rounds', round_num + 1)
+                self.ws_sender.send_metrics({
+                    "run_id": self.run_id,
+                    "round": round_num,
+                    "total_rounds": total_rounds,
+                    "client_id": self.client_id,
+                    "experiment_name": self.experiment_name
+                }, "round_start")
+                self.logger.debug(f"[Client {self.client_id}] Sent round_start event for round {round_num}")
             except Exception as e:
-                self.logger.warning(f"Progress logging failed: {e}")
+                self.logger.warning(f"Failed to send round_start via WebSocket: {e}")
 
         self.logger.info(f"Round {round_num} started for client {self.client_id}")
 
@@ -178,8 +194,8 @@ class FederatedMetricsCollector:
         if self.round_metrics and self.round_metrics[-1]['round'] == round_num:
             self.round_metrics[-1]['local_epochs'].append(epoch_data)
 
-        # Log progress for frontend observability
-        if self.progress_logger:
+        # Send local epoch progress via WebSocket (optional - can be disabled for performance)
+        if self.ws_sender and self.enable_progress_logging:
             try:
                 metrics = {
                     'train_loss': train_loss,
@@ -189,13 +205,19 @@ class FederatedMetricsCollector:
                 if additional_metrics:
                     metrics.update(additional_metrics)
 
-                self.progress_logger.log_local_epoch(
-                    round_num=round_num,
-                    local_epoch=local_epoch,
-                    metrics=metrics
+                self.ws_sender.send_metrics({
+                    "run_id": self.run_id,
+                    "round": round_num,
+                    "client_id": self.client_id,
+                    "local_epoch": local_epoch,
+                    "metrics": metrics
+                }, "client_progress")
+                self.logger.debug(
+                    f"[Client {self.client_id}] Sent client_progress for round {round_num}, "
+                    f"local_epoch {local_epoch}"
                 )
             except Exception as e:
-                self.logger.warning(f"Progress logging failed: {e}")
+                self.logger.warning(f"Failed to send client_progress via WebSocket: {e}")
 
     def record_fit_metrics(
         self,
@@ -265,17 +287,21 @@ class FederatedMetricsCollector:
             self.round_metrics[-1]['eval_metrics'] = eval_data
             self.round_metrics[-1]['end_time'] = datetime.now().isoformat()
 
-            # Log progress for frontend observability
-            if self.progress_logger:
+            # Send round end notification via WebSocket with both fit and eval metrics
+            if self.ws_sender:
                 try:
                     fit_metrics = self.round_metrics[-1].get('fit_metrics', {})
-                    self.progress_logger.log_round_end(
+                    self.ws_sender.send_round_end(
                         round_num=round_num,
+                        total_rounds=self.metadata.get('total_rounds', round_num + 1),
                         fit_metrics=fit_metrics,
                         eval_metrics=eval_data
                     )
+                    self.logger.debug(
+                        f"[Client {self.client_id}] Sent round_end event for round {round_num}"
+                    )
                 except Exception as e:
-                    self.logger.warning(f"Progress logging failed: {e}")
+                    self.logger.warning(f"Failed to send round_end via WebSocket: {e}")
 
         # Update best metrics
         if val_accuracy > self.metadata['best_val_accuracy']:
@@ -302,20 +328,26 @@ class FederatedMetricsCollector:
             self.metadata['training_duration_seconds'] = duration.total_seconds()
             self.metadata['training_duration_formatted'] = str(duration)
 
-        # Log training completion
-        if self.progress_logger:
+        # Send client training completion via WebSocket
+        if self.ws_sender:
             try:
-                self.progress_logger.log_training_complete({
-                    'total_rounds': self.metadata['total_rounds'],
-                    'total_local_epochs': self.metadata['total_local_epochs'],
-                    'best_round': self.metadata['best_round'],
-                    'best_val_accuracy': self.metadata['best_val_accuracy'],
-                    'best_val_loss': self.metadata['best_val_loss'],
-                    'total_samples_trained': self.metadata['total_samples_trained'],
-                    'duration_seconds': self.metadata.get('training_duration_seconds', 0)
-                })
+                self.ws_sender.send_metrics({
+                    "run_id": self.run_id,
+                    "client_id": self.client_id,
+                    "status": "completed",
+                    "total_rounds": self.metadata['total_rounds'],
+                    "total_local_epochs": self.metadata['total_local_epochs'],
+                    "best_round": self.metadata['best_round'],
+                    "best_val_accuracy": self.metadata['best_val_accuracy'],
+                    "best_val_loss": self.metadata['best_val_loss'],
+                    "total_samples_trained": self.metadata['total_samples_trained'],
+                    "training_duration": self.metadata.get('training_duration_formatted', '0:00:00')
+                }, "client_complete")
+                self.logger.info(
+                    f"[Client {self.client_id}] Sent client_complete event"
+                )
             except Exception as e:
-                self.logger.warning(f"Progress logging failed: {e}")
+                self.logger.warning(f"Failed to send client_complete via WebSocket: {e}")
 
         # Save metrics
         self._save_metrics()

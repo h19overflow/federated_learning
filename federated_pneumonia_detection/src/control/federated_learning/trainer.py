@@ -21,13 +21,15 @@ Role in System:
 import logging
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Callable
+from typing import Any, Dict, List, Tuple, Callable, Optional
+from datetime import datetime
 
 import torch
 import pandas as pd
 import flwr as fl
 from flwr.server.strategy import FedAvg
 from flwr.common import ndarrays_to_parameters, Parameters
+from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
@@ -43,6 +45,9 @@ from federated_pneumonia_detection.src.control.federated_learning.data_manager i
 from federated_pneumonia_detection.src.control.federated_learning.partitioner import (
     partition_data_stratified,
 )
+from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
+from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 
 
 logger = logging.getLogger(__name__)
@@ -57,6 +62,7 @@ class FederatedTrainer:
         constants: SystemConstants,
         device: torch.device,
         websocket_manager: Any = None,
+        websocket_uri: Optional[str] = "ws://localhost:8765",
     ) -> None:
         """
         Initialize FederatedTrainer.
@@ -66,6 +72,7 @@ class FederatedTrainer:
             constants: SystemConstants for data and model paths
             device: torch.device for GPU/CPU selection
             websocket_manager: Optional WebSocket manager for real-time progress updates
+            websocket_uri: WebSocket URI for real-time metrics streaming
         """
         if config is None:
             raise ValueError("config cannot be None")
@@ -78,10 +85,23 @@ class FederatedTrainer:
         self.constants = constants
         self.device = device
         self.websocket_manager = websocket_manager
+        self.websocket_uri = websocket_uri
         self.logger = logging.getLogger(self.__class__.__name__)
         self._client_instances = {}
         self.metrics_dir = None
         self.experiment_name = None
+        self.run_id = None
+        self.training_start_time = None
+        
+        # Initialize WebSocket sender for server-level events
+        self.ws_sender = None
+        if websocket_uri:
+            try:
+                self.ws_sender = MetricsWebSocketSender(websocket_uri)
+                self.logger.info("[FederatedTrainer] WebSocket sender initialized")
+            except Exception as e:
+                self.logger.warning(f"[FederatedTrainer] Failed to initialize WebSocket sender: {e}")
+                self.ws_sender = None
 
     def _create_model(self) -> ResNetWithCustomHead:
         """Create a ResNetWithCustomHead model instance."""
@@ -93,6 +113,56 @@ class FederatedTrainer:
             config=self.config,
         )
         return model.to(self.device)
+
+    def _create_run(
+        self,
+        experiment_name: str,
+        source_path: str = "federated_data",
+        db: Optional[Session] = None,
+    ) -> int:
+        """
+        Create a new run in the database before training starts.
+
+        Args:
+            experiment_name: Name of the experiment
+            source_path: Source data path
+            db: Optional database session
+
+        Returns:
+            Created run_id
+        """
+        close_session = False
+        if db is None:
+            db = get_session()
+            close_session = True
+
+        try:
+            run_data = {
+                'training_mode': 'federated',
+                'status': 'in_progress',
+                'start_time': datetime.now(),
+                'experiment_name': experiment_name,
+                'source_path': source_path,
+                'config': {
+                    'num_clients': self.config.num_clients,
+                    'num_rounds': self.config.num_rounds,
+                    'local_epochs': self.config.local_epochs,
+                    'learning_rate': self.config.learning_rate,
+                    'batch_size': self.config.batch_size,
+                }
+            }
+            run_id = run_crud.create(db, **run_data)
+            db.commit()
+            self.logger.info(f"Created federated learning run with ID: {run_id}")
+            return run_id
+        except Exception as e:
+            self.logger.error(f"Failed to create run: {e}")
+            if close_session:
+                db.rollback()
+            raise
+        finally:
+            if close_session:
+                db.close()
 
     def _get_initial_parameters(self) -> Parameters:
         """
@@ -139,6 +209,8 @@ class FederatedTrainer:
             metrics_dir=self.metrics_dir,
             experiment_name=self.experiment_name,
             websocket_manager=self.websocket_manager,
+            websocket_uri=self.websocket_uri,
+            run_id=self.run_id,
         )
         
         # Store client reference for later finalization
@@ -306,22 +378,27 @@ class FederatedTrainer:
         data_df: pd.DataFrame,
         image_dir: Path,
         experiment_name: str = "federated_learning",
+        source_path: str = "federated_data",
     ) -> Dict[str, Any]:
         """
         Execute federated learning training.
 
         Steps:
-        1. Partition data across clients
-        2. Create client dataloaders
-        3. Get initial parameters
-        4. Configure FedAvg strategy with evaluation
-        5. Run Flower simulation
-        6. Return history
+        1. Create run in database
+        2. Send training_start WebSocket event
+        3. Partition data across clients
+        4. Create client dataloaders
+        5. Get initial parameters
+        6. Configure FedAvg strategy with evaluation
+        7. Run Flower simulation
+        8. Send training_end WebSocket event
+        9. Return history
 
         Args:
             data_df: DataFrame with filename and target columns
             image_dir: Directory containing training images
             experiment_name: Name for the experiment
+            source_path: Source data path for database tracking
 
         Returns:
             Dictionary with training results and metrics
@@ -334,7 +411,34 @@ class FederatedTrainer:
         self.logger.info(f"Starting Federated Learning: {experiment_name}")
         self.logger.info("="*80)
 
+        self.training_start_time = datetime.now()
+        
         try:
+            # Step 0: Create run in database BEFORE starting simulation
+            self.logger.info("\nCreating run in database...")
+            try:
+                self.run_id = self._create_run(experiment_name, source_path)
+                self.logger.info(f"Run ID: {self.run_id}")
+            except Exception as e:
+                self.logger.warning(f"Failed to create run in database: {e}")
+                self.run_id = None
+            
+            # Step 0.5: Send training_start WebSocket event
+            if self.ws_sender and self.run_id:
+                try:
+                    self.ws_sender.send_metrics({
+                        "run_id": self.run_id,
+                        "experiment_name": experiment_name,
+                        "training_mode": "federated",
+                        "num_clients": self.config.num_clients,
+                        "num_rounds": self.config.num_rounds,
+                        "local_epochs": self.config.local_epochs,
+                        "total_samples": len(data_df),
+                    }, "training_start")
+                    self.logger.info(f"[FederatedTrainer] Sent training_start event for run_id={self.run_id}")
+                except Exception as e:
+                    self.logger.warning(f"Failed to send training_start via WebSocket: {e}")
+            
             # 1. Partition data
             self.logger.info(
                 f"\nPartitioning data into {self.config.num_clients} clients..."
@@ -441,12 +545,31 @@ class FederatedTrainer:
             aggregated_client_metrics = self._finalize_client_metrics()
             self._save_aggregated_client_metrics(aggregated_client_metrics)
 
+            # Calculate best round from server evaluation metrics
+            best_round = 0
+            best_val_accuracy = 0.0
+            best_val_loss = float('inf')
+            
+            if history.metrics_centralized:
+                for round_num, (_, metrics_dict) in enumerate(history.metrics_centralized.get('accuracy', []), start=1):
+                    if metrics_dict > best_val_accuracy:
+                        best_val_accuracy = metrics_dict
+                        best_round = round_num
+                
+                for round_num, (_, loss_value) in enumerate(history.losses_centralized, start=1):
+                    if loss_value < best_val_loss:
+                        best_val_loss = loss_value
+
             results = {
+                "run_id": self.run_id,
                 "experiment_name": experiment_name,
                 "status": "completed",
                 "num_clients": self.config.num_clients,
                 "num_rounds": self.config.num_rounds,
                 "local_epochs": self.config.local_epochs,
+                "best_round": best_round,
+                "best_val_accuracy": best_val_accuracy,
+                "best_val_loss": best_val_loss,
                 "history": history,
                 "metrics": {
                     "losses_distributed": history.losses_distributed,
@@ -456,12 +579,51 @@ class FederatedTrainer:
                 },
             }
             
+            # Calculate training duration
+            training_end_time = datetime.now()
+            training_duration = training_end_time - self.training_start_time
+            results["training_duration"] = str(training_duration)
+            
+            # Step 9: Send training_end WebSocket event
+            if self.ws_sender and self.run_id:
+                try:
+                    self.ws_sender.send_training_end(
+                        run_id=self.run_id,
+                        status="completed",
+                        experiment_name=experiment_name,
+                        best_round=best_round,
+                        best_val_accuracy=best_val_accuracy,
+                        best_val_loss=best_val_loss,
+                        total_rounds=self.config.num_rounds,
+                        training_duration=str(training_duration),
+                    )
+                    self.logger.info(f"[FederatedTrainer] Sent training_end event for run_id={self.run_id}")
+                except Exception as e:
+                    self.logger.warning(f"Failed to send training_end via WebSocket: {e}")
+            
             # Save history to JSON
             self._save_history(history, "fl_history.json")
             return results
 
         except Exception as e:
             self.logger.error(f"Federated training failed: {e}", exc_info=True)
+            
+            # Send training_end with failure status
+            if self.ws_sender and self.run_id:
+                try:
+                    training_end_time = datetime.now()
+                    training_duration = training_end_time - self.training_start_time if self.training_start_time else None
+                    self.ws_sender.send_training_end(
+                        run_id=self.run_id,
+                        status="failed",
+                        experiment_name=experiment_name if 'experiment_name' in locals() else "unknown",
+                        error_message=str(e),
+                        training_duration=str(training_duration) if training_duration else "0:00:00",
+                    )
+                    self.logger.info(f"[FederatedTrainer] Sent training_end (failed) event for run_id={self.run_id}")
+                except Exception as ws_error:
+                    self.logger.warning(f"Failed to send training_end (failed) via WebSocket: {ws_error}")
+            
             raise RuntimeError(f"Training failed: {e}") from e
 
 # Helper function to aggregate metrics
