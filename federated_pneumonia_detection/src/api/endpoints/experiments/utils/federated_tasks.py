@@ -55,6 +55,7 @@ def run_federated_training_task(
             config=config,
             constants=constants,
             device=device,
+
         )
 
         return execute_federated_training(

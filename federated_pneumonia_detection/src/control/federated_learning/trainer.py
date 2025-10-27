@@ -23,6 +23,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Callable, Optional
 from datetime import datetime
+import os
 
 import torch
 import pandas as pd
@@ -138,20 +139,11 @@ class FederatedTrainer:
                 'training_mode': 'federated',
                 'status': 'in_progress',
                 'start_time': datetime.now(),
-                'experiment_name': experiment_name,
-                'source_path': source_path,
-                'config': {
-                    'num_clients': self.config.num_clients,
-                    'num_rounds': self.config.num_rounds,
-                    'local_epochs': self.config.local_epochs,
-                    'learning_rate': self.config.learning_rate,
-                    'batch_size': self.config.batch_size,
-                }
             }
             run_id = run_crud.create(db, **run_data)
             db.commit()
             self.logger.info(f"Created federated learning run with ID: {run_id}")
-            return run_id
+            return run_id.id
         except Exception as e:
             self.logger.error(f"Failed to create run: {e}")
             if close_session:
@@ -240,6 +232,8 @@ class FederatedTrainer:
                         "round_metrics": client.metrics_collector.get_round_metrics(),
                         "local_epoch_metrics": client.metrics_collector.get_local_epoch_metrics(),
                     }
+                with open(f'results/federated_learning/metrics/{self.experiment_name}_client_{client_id}_metrics.json', 'w') as f:
+                    json.dump(aggregated_metrics["clients"][client_id], f, indent=2)
             except Exception as e:
                 self.logger.error(f"Error finalizing client {client_id}: {e}")
 
@@ -339,35 +333,6 @@ class FederatedTrainer:
 
         return evaluate_fn
 
-    def _save_history(
-        self, history: Any, filename: str = "fl_history.json"
-    ) -> None:
-        """
-        Save the Flower History object to a JSON file.
-
-        Args:
-            history: Flower History object containing training metrics
-            filename: Output filename for the history JSON file
-
-        Raises:
-            Exception: If saving fails
-        """
-        try:
-            history_data = {
-                "losses_distributed": history.losses_distributed,
-                "losses_centralized": history.losses_centralized,
-                "metrics_distributed": history.metrics_distributed,
-                "metrics_centralized": history.metrics_centralized,
-                "metrics_distributed_fit": history.metrics_distributed_fit,
-            }
-
-            with open(filename, "w") as f:
-                json.dump(history_data, f, indent=2)
-
-            self.logger.info(f"History saved to {filename}")
-        except Exception as e:
-            self.logger.error(f"Failed to save history to {filename}: {e}")
-            raise
 
     def train(
         self,
@@ -585,7 +550,6 @@ class FederatedTrainer:
                 try:
                     self.ws_sender.send_training_end(
                         run_id=self.run_id,
-                        status="completed",
                         experiment_name=experiment_name,
                         best_round=best_round,
                         best_val_accuracy=best_val_accuracy,
@@ -598,7 +562,6 @@ class FederatedTrainer:
                     self.logger.warning(f"Failed to send training_end via WebSocket: {e}")
             
             # Save history to JSON
-            self._save_history(history, "fl_history.json")
             return results
 
         except Exception as e:
