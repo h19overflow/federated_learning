@@ -19,7 +19,7 @@ experiment:
   fine_tune_layers_count: 5
   freeze_backbone: true
   learning_rate: 0.001
-  local_epochs: 3
+  local_epochs: 2
   lower_percentile: 5.0
   min_lr: 1.0e-07
   monitor_metric: val_loss

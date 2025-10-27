@@ -15,12 +15,11 @@ ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN uv venv $VIRTUAL_ENV
 
-# Copy dependency files
-COPY pyproject.toml uv.lock* ./
+# Copy the pre-generated requirements-all.txt
+COPY requirements-all.txt ./
 
-# Install dependencies with uv
-RUN uv pip compile pyproject.toml -o requirements.txt && \
-    uv pip install -r requirements.txt
+# Install all dependencies with uv
+RUN uv pip install -r requirements-all.txt
 
 # Install binary dependencies if you have them
 COPY requirements-binary.txt* ./

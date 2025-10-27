@@ -17,6 +17,7 @@ from federated_pneumonia_detection.src.control.federated_learning import (
     FederatedTrainer,
 )
 from federated_pneumonia_detection.src.utils.data_processing import load_metadata
+from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 
 
 def validate_training_paths(source_path: str, csv_filename: str) -> tuple[Path, Path, Path]:
@@ -59,8 +60,9 @@ def load_training_config(task_logger) -> tuple[ExperimentConfig, SystemConstants
         Tuple of (config, constants, device)
     """
     task_logger.info("\nLoading configuration...")
-    constants = SystemConstants()
-    config = ExperimentConfig()
+    configs = ConfigLoader()
+    constants = configs.create_system_constants()
+    config = configs.create_experiment_config()
 
     task_logger.info(f"  Num clients: {config.num_clients}")
     task_logger.info(f"  Num rounds: {config.num_rounds}")

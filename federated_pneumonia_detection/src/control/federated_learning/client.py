@@ -164,11 +164,13 @@ class FlowerClient(NumPyClient):
                 self.ws_sender.send_metrics({
                     "run_id": self.run_id,
                     "client_id": self.client_id,
-                    "round": self.current_round,
+                    "round": self.current_round + 1,  # 1-indexed for display
+                    "round_index": self.current_round,  # Keep 0-indexed for internal tracking
                     "status": "client_training_started",
                     "local_epochs": local_epochs,
                     "num_samples": len(self.trainloader.dataset),
-                    "experiment_name": self.experiment_name
+                    "experiment_name": self.experiment_name,
+                    "timestamp": __import__('datetime').datetime.now().isoformat()
                 }, "client_training_start")
             except Exception as e:
                 pass  # Silently fail if WebSocket unavailable

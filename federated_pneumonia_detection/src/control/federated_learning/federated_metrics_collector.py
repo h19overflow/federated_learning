@@ -146,7 +146,8 @@ class FederatedMetricsCollector:
                 local_epochs = server_config.get('local_epochs', 1)
                 self.ws_sender.send_metrics({
                     "run_id": self.run_id,
-                    "round": round_num,
+                    "round": round_num + 1,  # 1-indexed for display
+                    "round_index": round_num,  # Keep 0-indexed for internal tracking
                     "total_rounds": total_rounds,
                     "client_id": self.client_id,
                     "experiment_name": self.experiment_name,
@@ -154,7 +155,7 @@ class FederatedMetricsCollector:
                     "status": "starting_round",
                     "timestamp": datetime.now().isoformat()
                 }, "round_start")
-                self.logger.info(f"[Client {self.client_id}] Sent round_start event for round {round_num}/{total_rounds} with {local_epochs} local epochs")
+                self.logger.info(f"[Client {self.client_id}] Sent round_start event for round {round_num + 1}/{total_rounds} with {local_epochs} local epochs")
             except Exception as e:
                 self.logger.warning(f"Failed to send round_start via WebSocket: {e}")
 
@@ -211,7 +212,8 @@ class FederatedMetricsCollector:
 
                 self.ws_sender.send_metrics({
                     "run_id": self.run_id,
-                    "round": round_num,
+                    "round": round_num + 1,  # 1-indexed for display
+                    "round_index": round_num,  # Keep 0-indexed for internal tracking
                     "client_id": self.client_id,
                     "local_epoch": local_epoch,
                     "metrics": metrics,
@@ -220,7 +222,7 @@ class FederatedMetricsCollector:
                     "experiment_name": self.experiment_name
                 }, "client_progress")
                 self.logger.info(
-                    f"[Client {self.client_id}] Round {round_num}, Local Epoch {local_epoch}: "
+                    f"[Client {self.client_id}] Round {round_num + 1}, Local Epoch {local_epoch}: "
                     f"Loss={train_loss:.4f}, Samples={num_samples}"
                 )
             except Exception as e:

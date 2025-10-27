@@ -19,7 +19,8 @@ from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import route
 from federated_pneumonia_detection.src.api.endpoints.chat import (
     chat_router,
 )
-
+import os
+os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'  # or ':16:8'
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
