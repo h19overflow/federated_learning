@@ -12,7 +12,7 @@ from typing import Optional
 
 from fastapi import UploadFile
 
-
+# FIXME : Currently there is no validation to the contents of the zip file , as well as the utils are not used.
 async def prepare_zip(data_zip: UploadFile, logger, experiment_name: str) -> str:
     """
     Extract uploaded ZIP file and return the extraction path.

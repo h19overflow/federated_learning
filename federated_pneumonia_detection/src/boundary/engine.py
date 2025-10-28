@@ -5,7 +5,9 @@ from federated_pneumonia_detection.config.settings import Settings
 Base = declarative_base()
 settings = Settings()
 
-
+# TODO: in the federated trainer , client and the federated metrics collector,
+#  we need to make sure we persist the data in the new format , as well as building the CRUD for the new models
+# Make federated specific funtions in the CRUD layer for the run , run_metrics.
 class Run(Base):
     __tablename__ = 'runs'
 
