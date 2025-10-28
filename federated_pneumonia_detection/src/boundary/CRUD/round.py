@@ -1,4 +1,4 @@
-from ..engine import  get_session
+from ..engine import  get_session,Client
 from ..engine import Round
 from typing import List, Optional
 from datetime import datetime
@@ -16,6 +16,7 @@ class RoundCRUD:
             session.add(new_round)
             session.flush()  # Get the ID before committing
             round_id = new_round.id
+            session.commit()
 
         # Return a fresh instance to avoid detached instance issues
         return RoundCRUD.get_round_by_id(round_id)
@@ -27,6 +28,7 @@ class RoundCRUD:
             if round_instance:
                 # Expunge to detach from session before closing
                 session.expunge(round_instance)
+                session.commit()
             return round_instance
 
     def get_round_by_client_and_number(self,client_id: int, round_number: int) -> Optional[Round]:
@@ -46,6 +48,7 @@ class RoundCRUD:
             rounds = session.query(Round).filter(Round.client_id == client_id).order_by(Round.round_number).all()
             for round_instance in rounds:
                 session.expunge(round_instance)
+
             return rounds
 
     def get_rounds_by_number(self,round_number: int) -> List[Round]:
@@ -60,7 +63,6 @@ class RoundCRUD:
         """Get all rounds for a specific run (across all clients)"""
         with get_session() as session:
             # Join with Client table to access run_id
-            from ..engine import Client
             rounds = session.query(Round).join(Client).filter(
                 Client.run_id == run_id
             ).order_by(Round.round_number, Round.client_id).all()
@@ -75,6 +77,7 @@ class RoundCRUD:
             if round_instance:
                 round_instance.start_time = datetime.utcnow()
                 session.flush()
+                session.commit()
                 return True
             return False
 
@@ -85,6 +88,7 @@ class RoundCRUD:
             if round_instance:
                 round_instance.end_time = datetime.utcnow()
                 session.flush()
+                session.commit()
                 return True
             return False
 
@@ -95,6 +99,7 @@ class RoundCRUD:
             if round_instance:
                 round_instance.round_metadata = metadata
                 session.flush()
+                session.commit()
                 return True
             return False
 
@@ -105,5 +110,6 @@ class RoundCRUD:
             if round_instance:
                 session.delete(round_instance)
                 session.flush()
+                session.commit()
                 return True
             return False

@@ -3,34 +3,86 @@ from typing import List, Optional
 import datetime
 
 class ClientCRUD:
-    @staticmethod
-    def create_client(run_id, client_identifier):
+
+    def create_client(self,run_id: int, client_identifier: str, client_config: Optional[dict] = None):
         """Create a new client"""
-        with get_session() as session:
+        session = get_session()
+        try:
             new_client = Client(
                 run_id=run_id,
                 client_identifier=client_identifier,
                 created_at=datetime.datetime.utcnow(),
+                client_config=client_config,
             )
             session.add(new_client)
-            session.flush()  # Get the ID before committing
+            session.commit()
             client_id = new_client.id
+            return ClientCRUD.get_client_by_id(client_id)
+        finally:
+            session.close()
 
-        # Return a fresh instance to avoid detached instance issues
-        return ClientCRUD.get_client_by_id(client_id)
 
     def get_client_by_id(self,client_id: int) -> Optional[Client]:
         """Get a specific client by ID"""
-        with get_session() as session:
+        session = get_session()
+        try:
             client_instance = session.query(Client).filter(Client.id == client_id).first()
             if client_instance:
-                # Expunge to detach from session before closing
                 session.expunge(client_instance)
             return client_instance
-    def set_client_config(self,client_id:int,configs:dict):
+        finally:
+            session.close()
+
+
+    def get_client_by_identifier(self,run_id: int, client_identifier: str) -> Optional[Client]:
+        """Get a specific client by run_id and client_identifier"""
+        session = get_session()
+        try:
+            client_instance = session.query(Client).filter(
+                Client.run_id == run_id,
+                Client.client_identifier == client_identifier
+            ).first()
+            if client_instance:
+                session.expunge(client_instance)
+            return client_instance
+        finally:
+            session.close()
+
+
+    def get_clients_by_run_id(self,run_id: int) -> List[Client]:
+        """Get all clients for a specific run"""
+        session = get_session()
+        try:
+            clients = session.query(Client).filter(Client.run_id == run_id).all()
+            for client_instance in clients:
+                session.expunge(client_instance)
+            return clients
+        finally:
+            session.close()
+
+
+    def set_client_config(self,client_id: int, configs: dict):
         """Set client configurations"""
-        with get_session() as session:
+        session = get_session()
+        try:
             client_instance = session.query(Client).filter(Client.id == client_id).first()
             if client_instance:
                 client_instance.client_config = configs
                 session.commit()
+                return True
+            return False
+        finally:
+            session.close()
+
+    def delete_client(self,client_id: int):
+        """Delete a specific client"""
+        session = get_session()
+        try:
+            client_instance = session.query(Client).filter(Client.id == client_id).first()
+            if client_instance:
+                session.delete(client_instance)
+                session.commit()
+                return True
+            return False
+        finally:
+            session.close()
