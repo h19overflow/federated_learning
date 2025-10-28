@@ -156,7 +156,7 @@ class FlowerClient(NumPyClient):
 
         local_epochs = config.get("local_epochs", self.config.local_epochs)
         learning_rate = config.get("lr", self.config.learning_rate)
-
+        # TODO: Using the round CRUD , we need to persist the rounds as well following the models in engine
         # Send WebSocket notification that this client is starting training
         if self.ws_sender:
             try:

@@ -325,8 +325,8 @@ class FederatedMetricsCollector:
             f"Round {round_num}: Eval completed - Loss: {val_loss:.4f}, "
             f"Accuracy: {val_accuracy:.4f}"
         )
-    # FIXME: so this function is called in the client file but as a helper
-    #  function and the parent function is never called, so how do i pass that the entierty of the rounds are over?
+  # TODO: Lastly we need to format this well so it follos the run_metrics schema in the engine , we need to ensure the persestince is valid
+
     def end_training(self):
         """Record training end time and save all metrics."""
         self.training_end_time = datetime.now()

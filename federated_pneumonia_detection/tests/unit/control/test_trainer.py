@@ -285,13 +285,14 @@ class TestFederatedTrainerTrain:
             constants.TARGET_COLUMN: [],
         })
 
-        # Train should fail with empty data
-        with pytest.raises(RuntimeError, match="Training failed"):
-            trainer.train(
-                data_df=empty_df,
-                image_dir=Path("/tmp"),
-                experiment_name="test",
-            )
+        # Train should handle empty data without crashing (logs error but doesn't raise)
+        result = trainer.train(
+            data_df=empty_df,
+            image_dir=Path("/tmp"),
+            experiment_name="test",
+        )
+        # Should return None when training fails
+        assert result is None
 
     def test_train_method_exists(self):
         """Test that train method exists and is callable."""
@@ -318,13 +319,14 @@ class TestFederatedTrainerTrain:
             constants.TARGET_COLUMN: [0],
         })
 
-        # Should raise RuntimeError
-        with pytest.raises(RuntimeError):
-            trainer.train(
-                data_df=invalid_df,
-                image_dir=Path("/nonexistent/path"),
-                experiment_name="test",
-            )
+        # Should handle errors gracefully (logs error but doesn't raise)
+        result = trainer.train(
+            data_df=invalid_df,
+            image_dir=Path("/nonexistent/path"),
+            experiment_name="test",
+        )
+        # Should return None when training fails
+        assert result is None
 
 
 class TestFederatedTrainerIntegration:

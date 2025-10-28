@@ -327,6 +327,7 @@ class FederatedTrainer:
             # Step 0: Create run in database BEFORE starting simulation
             self.logger.info("\nCreating run in database...")
             try:
+                # TODO: After creating the run we need to create the clients in the DB as well , using the Client CRUD
                 self.run_id = self._create_run(experiment_name, source_path)
                 self.logger.info(f"Run ID: {self.run_id}")
             except Exception as e:
@@ -445,13 +446,13 @@ class FederatedTrainer:
                 config=fl.server.ServerConfig(num_rounds=self.config.num_rounds),
                 strategy=strategy,
                 client_resources=client_resources,
+
             )
 
             # 8. Finalize all client metrics
             self.logger.info("\n" + "-"*80)
             self.logger.info("Federated Learning Completed!")
             self.logger.info("Finalizing client metrics...")
-
             for cid, client in self._client_instances.items():
                 try:
                     client.finalize()
