@@ -199,6 +199,7 @@ class FederatedTrainer:
             experiment_name=self.experiment_name,
             websocket_uri=self.websocket_uri,
             run_id=self.run_id,
+
         )
         
         # Store client reference for later finalization
@@ -206,55 +207,7 @@ class FederatedTrainer:
         
         return client
 
-    def _finalize_client_metrics(self) -> Dict[str, Any]:
-        """
-        Finalize all client metrics, save individual files, and aggregate into single file.
 
-        Returns:
-            Aggregated metrics dictionary with per-client data
-        """
-        aggregated_metrics = {
-            "experiment_name": self.experiment_name,
-            "num_clients": len(self._client_instances),
-            "num_rounds": self.config.num_rounds,
-            "clients": {}
-        }
-
-        # Finalize each client and collect their metrics
-        for client_id, client in self._client_instances.items():
-            try:
-                client.finalize()
-                
-                # Collect client metrics if available
-                if hasattr(client, 'metrics_collector') and client.metrics_collector:
-                    aggregated_metrics["clients"][client_id] = {
-                        "metadata": client.metrics_collector.get_metadata(),
-                        "round_metrics": client.metrics_collector.get_round_metrics(),
-                        "local_epoch_metrics": client.metrics_collector.get_local_epoch_metrics(),
-                    }
-                with open(f'results/federated_learning/metrics/{self.experiment_name}_client_{client_id}_metrics.json', 'w') as f:
-                    json.dump(aggregated_metrics["clients"][client_id], f, indent=2)
-            except Exception as e:
-                self.logger.error(f"Error finalizing client {client_id}: {e}")
-
-        return aggregated_metrics
-
-    def _save_aggregated_client_metrics(self, aggregated_metrics: Dict[str, Any], filename: str = "fl_clients_history.json"):
-        """
-        Save aggregated client metrics to JSON file.
-
-        Args:
-            aggregated_metrics: Aggregated metrics from all clients
-            filename: Output filename
-        """
-        output_path = Path(self.metrics_dir) / filename
-        
-        try:
-            with open(output_path, 'w') as f:
-                json.dump(aggregated_metrics, f, indent=2)
-            self.logger.info(f"Saved aggregated client metrics to: {output_path}")
-        except Exception as e:
-            self.logger.error(f"Failed to save aggregated client metrics: {e}")
 
     def _create_evaluate_fn(
         self, val_loader
@@ -368,10 +321,6 @@ class FederatedTrainer:
             ValueError: If data_df is empty or invalid
             RuntimeError: If training fails
         """
-        self.logger.info("="*80)
-        self.logger.info(f"Starting Federated Learning: {experiment_name}")
-        self.logger.info("="*80)
-
         self.training_start_time = datetime.now()
         
         try:
@@ -498,14 +447,19 @@ class FederatedTrainer:
                 client_resources=client_resources,
             )
 
-            # 8. Extract results and finalize client metrics
+            # 8. Finalize all client metrics
             self.logger.info("\n" + "-"*80)
             self.logger.info("Federated Learning Completed!")
             self.logger.info("Finalizing client metrics...")
-            
-            aggregated_client_metrics = self._finalize_client_metrics()
-            self._save_aggregated_client_metrics(aggregated_client_metrics)
 
+            for cid, client in self._client_instances.items():
+                try:
+                    client.finalize()
+                    self.logger.info(f"  ✓ Finalized metrics for client {cid}")
+                except Exception as e:
+                    self.logger.warning(f"  ✗ Failed to finalize client {cid}: {e}")
+
+            # 9. Extract results
             # Calculate best round from server evaluation metrics
             best_round = 0
             best_val_accuracy = 0.0
@@ -550,12 +504,15 @@ class FederatedTrainer:
                 try:
                     self.ws_sender.send_training_end(
                         run_id=self.run_id,
-                        experiment_name=experiment_name,
-                        best_round=best_round,
-                        best_val_accuracy=best_val_accuracy,
-                        best_val_loss=best_val_loss,
-                        total_rounds=self.config.num_rounds,
-                        training_duration=str(training_duration),
+                        summary_data={
+                            "best_round": best_round,
+                            "best_val_accuracy": best_val_accuracy,
+                            "best_val_loss": best_val_loss,
+                            "total_rounds": self.config.num_rounds,
+                            "training_duration": str(training_duration),
+                            "status": "completed",
+
+                        }
                     )
                     self.logger.info(f"[FederatedTrainer] Sent training_end event for run_id={self.run_id}")
                 except Exception as e:
@@ -566,24 +523,6 @@ class FederatedTrainer:
 
         except Exception as e:
             self.logger.error(f"Federated training failed: {e}", exc_info=True)
-            
-            # Send training_end with failure status
-            if self.ws_sender and self.run_id:
-                try:
-                    training_end_time = datetime.now()
-                    training_duration = training_end_time - self.training_start_time if self.training_start_time else None
-                    self.ws_sender.send_training_end(
-                        run_id=self.run_id,
-                        status="failed",
-                        experiment_name=experiment_name if 'experiment_name' in locals() else "unknown",
-                        error_message=str(e),
-                        training_duration=str(training_duration) if training_duration else "0:00:00",
-                    )
-                    self.logger.info(f"[FederatedTrainer] Sent training_end (failed) event for run_id={self.run_id}")
-                except Exception as ws_error:
-                    self.logger.warning(f"Failed to send training_end (failed) via WebSocket: {ws_error}")
-            
-            raise RuntimeError(f"Training failed: {e}") from e
 
 # Helper function to aggregate metrics
 def weighted_average(metrics):

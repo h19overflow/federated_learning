@@ -29,7 +29,8 @@ from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
-
+# TODO : client_complete is never sent to the frontend client , need to debug and figure out why ,
+#  other events such as client_progress and round_start are working fine, it's not even logged on the python logs.
 class FederatedMetricsCollector:
     """
     Comprehensive metrics collector for federated learning clients.
@@ -324,7 +325,8 @@ class FederatedMetricsCollector:
             f"Round {round_num}: Eval completed - Loss: {val_loss:.4f}, "
             f"Accuracy: {val_accuracy:.4f}"
         )
-
+    # FIXME: so this function is called in the client file but as a helper
+    #  function and the parent function is never called, so how do i pass that the entierty of the rounds are over?
     def end_training(self):
         """Record training end time and save all metrics."""
         self.training_end_time = datetime.now()
@@ -358,150 +360,6 @@ class FederatedMetricsCollector:
             except Exception as e:
                 self.logger.warning(f"Failed to send client_complete via WebSocket: {e}")
 
-        # Save metrics
-        self._save_metrics()
-        self.logger.info(
-            f"Training ended for client {self.client_id}. "
-            f"Metrics saved to {self.save_dir}"
-        )
-
-    def _save_metrics(self):
-        """Save all collected metrics to files."""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        client_prefix = f"{self.experiment_name}_client_{self.client_id}"
-
-        # Save comprehensive JSON
-        json_path = self.save_dir / f"{client_prefix}_metrics_{timestamp}.json"
-        full_data = {
-            'metadata': self.metadata,
-            'round_metrics': self.round_metrics,
-            'local_epoch_metrics': self.local_epoch_metrics
-        }
-
-        with open(json_path, 'w') as f:
-            json.dump(full_data, f, indent=2)
-        self.logger.info(f"Saved JSON metrics to: {json_path}")
-
-        # Save round metrics as CSV
-        if self.round_metrics:
-            round_df = self._flatten_round_metrics()
-            csv_path = self.save_dir / f"{client_prefix}_rounds_{timestamp}.csv"
-            round_df.to_csv(csv_path, index=False)
-            self.logger.info(f"Saved round metrics CSV to: {csv_path}")
-
-        # Save local epoch metrics as CSV
-        if self.local_epoch_metrics:
-            epoch_df = pd.DataFrame(self.local_epoch_metrics)
-            csv_path = self.save_dir / f"{client_prefix}_epochs_{timestamp}.csv"
-            epoch_df.to_csv(csv_path, index=False)
-            self.logger.info(f"Saved epoch metrics CSV to: {csv_path}")
-
-        # Save metadata
-        metadata_path = self.save_dir / f"{client_prefix}_metadata_{timestamp}.json"
-        with open(metadata_path, 'w') as f:
-            json.dump(self.metadata, f, indent=2)
-        self.logger.info(f"Saved metadata to: {metadata_path}")
-
-        # Create summary report
-        self._create_summary_report(timestamp, client_prefix)
-
-        # Persist to database if enabled
-        if self.enable_db_persistence and self.run_id:
-            try:
-                self.persist_to_database()
-            except Exception as e:
-                self.logger.error(f"Database persistence failed: {e}")
-
-    def _flatten_round_metrics(self) -> pd.DataFrame:
-        """Flatten round metrics for CSV export."""
-        flattened = []
-
-        for round_data in self.round_metrics:
-            flat_entry = {
-                'round': round_data['round'],
-                'start_time': round_data['start_time'],
-                'end_time': round_data.get('end_time', None)
-            }
-
-            # Add fit metrics
-            fit_metrics = round_data.get('fit_metrics', {})
-            for key, value in fit_metrics.items():
-                if key != 'timestamp':
-                    flat_entry[f'fit_{key}'] = value
-
-            # Add eval metrics
-            eval_metrics = round_data.get('eval_metrics', {})
-            for key, value in eval_metrics.items():
-                if key != 'timestamp':
-                    flat_entry[f'eval_{key}'] = value
-
-            # Add local epoch summary
-            local_epochs = round_data.get('local_epochs', [])
-            if local_epochs:
-                flat_entry['num_local_epochs'] = len(local_epochs)
-                flat_entry['avg_local_loss'] = sum(
-                    e['train_loss'] for e in local_epochs
-                ) / len(local_epochs)
-
-            flattened.append(flat_entry)
-
-        return pd.DataFrame(flattened)
-
-    def _create_summary_report(self, timestamp: str, client_prefix: str):
-        """Create a human-readable summary report."""
-        report_path = self.save_dir / f"{client_prefix}_summary_{timestamp}.txt"
-
-        with open(report_path, 'w') as f:
-            f.write("=" * 80 + "\n")
-            f.write(f"FEDERATED LEARNING SUMMARY - CLIENT {self.client_id}\n")
-            f.write("=" * 80 + "\n\n")
-
-            f.write("EXPERIMENT METADATA:\n")
-            f.write("-" * 80 + "\n")
-            for key, value in self.metadata.items():
-                f.write(f"{key:30s}: {value}\n")
-
-            f.write("\n" + "=" * 80 + "\n")
-            f.write("ROUND-BY-ROUND METRICS:\n")
-            f.write("=" * 80 + "\n\n")
-
-            for round_data in self.round_metrics:
-                f.write(f"\nRound {round_data['round']}:\n")
-                f.write("-" * 80 + "\n")
-
-                # Fit metrics
-                fit_metrics = round_data.get('fit_metrics', {})
-                if fit_metrics:
-                    f.write("  Training (Fit):\n")
-                    for key, value in fit_metrics.items():
-                        if key != 'timestamp' and isinstance(value, (int, float)):
-                            f.write(f"    {key:26s}: {value:.6f}\n")
-
-                # Eval metrics
-                eval_metrics = round_data.get('eval_metrics', {})
-                if eval_metrics:
-                    f.write("  Evaluation:\n")
-                    for key, value in eval_metrics.items():
-                        if key != 'timestamp' and isinstance(value, (int, float)):
-                            f.write(f"    {key:26s}: {value:.6f}\n")
-
-                # Local epochs summary
-                local_epochs = round_data.get('local_epochs', [])
-                if local_epochs:
-                    f.write(f"  Local Epochs: {len(local_epochs)}\n")
-
-            # Best metrics summary
-            f.write("\n" + "=" * 80 + "\n")
-            f.write("BEST METRICS ACHIEVED:\n")
-            f.write("=" * 80 + "\n")
-            f.write(
-                f"Best Validation Accuracy: {self.metadata['best_val_accuracy']:.6f} "
-                f"(Round {self.metadata['best_round']})\n"
-            )
-            f.write(f"Best Validation Loss:     {self.metadata['best_val_loss']:.6f}\n")
-            f.write(f"Total Samples Trained:    {self.metadata['total_samples_trained']}\n")
-
-        self.logger.info(f"Saved summary report to: {report_path}")
 
     def get_round_metrics(self) -> List[Dict[str, Any]]:
         """Return round metrics history."""
@@ -514,104 +372,3 @@ class FederatedMetricsCollector:
     def get_metadata(self) -> Dict[str, Any]:
         """Return experiment metadata."""
         return self.metadata
-
-    def persist_to_database(self, db: Optional[Session] = None):
-        """
-        Persist collected federated metrics to database.
-
-        Args:
-            db: Optional database session. If None, creates a new session.
-        """
-        if not self.enable_db_persistence:
-            self.logger.info("Database persistence is disabled")
-            return
-
-        if self.run_id is None:
-            self.run_id = run_crud.create(db, **{
-                'training_mode': 'federated',
-                'status': 'in_progress',
-                'start_time': datetime.now(),
-                'wandb_id': 'placeholder',
-                'source_path': 'placeholder',
-            })
-        
-        close_session = False
-        if db is None:
-            db = get_session()
-            close_session = True
-
-        try:
-            metrics_to_persist = []
-
-            # Persist round-level metrics
-            for round_data in self.round_metrics:
-                round_num = round_data['round']
-
-                # Persist fit metrics (training)
-                fit_metrics = round_data.get('fit_metrics', {})
-                for key, value in fit_metrics.items():
-                    if key in ['timestamp'] or not isinstance(value, (int, float)):
-                        continue
-
-                    metrics_to_persist.append({
-                        'run_id': self.run_id,
-                        'metric_name': f'fit_{key}',
-                        'metric_value': float(value),
-                        'step': round_num,
-                        'dataset_type': 'train'
-                    })
-
-                # Persist eval metrics (validation)
-                eval_metrics = round_data.get('eval_metrics', {})
-                for key, value in eval_metrics.items():
-                    if key in ['timestamp'] or not isinstance(value, (int, float)):
-                        continue
-
-                    metrics_to_persist.append({
-                        'run_id': self.run_id,
-                        'metric_name': f'eval_{key}',
-                        'metric_value': float(value),
-                        'step': round_num,
-                        'dataset_type': 'validation'
-                    })
-
-            # Persist local epoch metrics (more granular)
-            for epoch_data in self.local_epoch_metrics:
-                round_num = epoch_data.get('round', 0)
-                local_epoch = epoch_data.get('local_epoch', 0)
-
-                # Use combined step: round * 1000 + local_epoch for uniqueness
-                combined_step = round_num * 1000 + local_epoch
-
-                for key, value in epoch_data.items():
-                    if key in ['round', 'local_epoch', 'timestamp']:
-                        continue
-
-                    if not isinstance(value, (int, float)):
-                        continue
-
-                    metrics_to_persist.append({
-                        'run_id': self.run_id,
-                        'metric_name': f'local_{key}',
-                        'metric_value': float(value),
-                        'step': combined_step,
-                        'dataset_type': 'train'
-                    })
-
-            # Bulk create metrics for efficiency
-            if metrics_to_persist:
-                run_metric_crud.bulk_create(db, metrics_to_persist)
-                db.commit()
-                self.logger.info(
-                    f"Persisted {len(metrics_to_persist)} federated metrics to database "
-                    f"for client {self.client_id}, run_id={self.run_id}"
-                )
-
-        except Exception as e:
-            self.logger.error(f"Failed to persist federated metrics to database: {e}")
-            if close_session:
-                db.rollback()
-            raise
-        finally:
-            if close_session:
-                db.close()

@@ -33,7 +33,6 @@ from federated_pneumonia_detection.src.control.federated_learning.federated_metr
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
 
-# TODO: Complete the logging functionality throughout the client, as well as collecting the results.
 class FlowerClient(NumPyClient):
     """Flower NumPy client for federated learning."""
 
@@ -379,9 +378,11 @@ def  train(
                 }
             )
 
+
     # Calculate final average, guarding against empty trainloader
     total_batches = len(trainloader) * epochs
     avg_trainloss = total_running_loss / total_batches if total_batches > 0 else 0.0
+
     return avg_trainloss, epoch_losses
 
 
