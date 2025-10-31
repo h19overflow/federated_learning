@@ -32,7 +32,7 @@ from federated_pneumonia_detection.src.control.federated_learning.federated_metr
     FederatedMetricsCollector,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
-
+from federated_pneumonia_detection.src.boundary.CRUD.round import RoundCRUD
 class FlowerClient(NumPyClient):
     """Flower NumPy client for federated learning."""
 
@@ -44,6 +44,7 @@ class FlowerClient(NumPyClient):
         config: ExperimentConfig,
         device: torch.device,
         client_id: Optional[str] = None,
+        client_db_id: Optional[int] = None,
         metrics_dir: Optional[str] = None,
         experiment_name: str = "federated_pneumonia",
         websocket_uri: Optional[str] = "ws://localhost:8765",
@@ -59,6 +60,7 @@ class FlowerClient(NumPyClient):
             config: Experiment configuration
             device: Device for training (CPU/GPU)
             client_id: Unique identifier for this client
+            client_db_id: Database ID for this client (for persistence)
             metrics_dir: Directory to save metrics (None = no metrics collection)
             experiment_name: Name of the experiment
             websocket_uri: WebSocket URI for real-time metrics streaming
@@ -101,10 +103,13 @@ class FlowerClient(NumPyClient):
         self.config = config
         self.device = device
         self.client_id = client_id or "client_0"
+        self.client_db_id = client_db_id
         self.current_round = 0
+        self.current_round_db_id = None  # Will be set when round is created
         self.websocket_uri = websocket_uri
         self.run_id = run_id
         self.experiment_name = experiment_name
+        self.round_crud = RoundCRUD() if client_db_id else None  # Only initialize if we have DB ID
 
         # Initialize WebSocket sender for direct client communication
         self.ws_sender = None
@@ -122,6 +127,7 @@ class FlowerClient(NumPyClient):
             self.metrics_collector = FederatedMetricsCollector(
                 save_dir=metrics_dir,
                 client_id=self.client_id,
+                client_db_id=self.client_db_id,
                 experiment_name=experiment_name,
                 run_id=run_id,
                 enable_progress_logging=True,
@@ -156,7 +162,46 @@ class FlowerClient(NumPyClient):
 
         local_epochs = config.get("local_epochs", self.config.local_epochs)
         learning_rate = config.get("lr", self.config.learning_rate)
-        # TODO: Using the round CRUD , we need to persist the rounds as well following the models in engine
+
+        # Create or get Round record in database if client_db_id is available
+        if self.client_db_id and self.round_crud:
+            try:
+                import logging
+                logger = logging.getLogger(__name__)
+
+                round_metadata = {
+                    "local_epochs": local_epochs,
+                    "learning_rate": learning_rate,
+                    "num_samples": len(self.trainloader.dataset),
+                }
+                # Use get_or_create to handle resuming training gracefully
+                round_record = self.round_crud.get_or_create_round(
+                    client_id=self.client_db_id,
+                    round_number=self.current_round,
+                    round_metadata=round_metadata,
+                )
+                if round_record and hasattr(round_record, 'id'):
+                    self.current_round_db_id = round_record.id
+                    # Pass round_db_id to metrics collector
+                    if self.metrics_collector:
+                        self.metrics_collector.set_round_db_id(self.current_round_db_id)
+                    logger.info(
+                        f"[Client {self.client_id}] Round {self.current_round}: "
+                        f"round_db_id={self.current_round_db_id}, "
+                        f"local_epochs={local_epochs}, lr={learning_rate}"
+                    )
+                else:
+                    logger.warning(
+                        f"[Client {self.client_id}] Failed to create/get Round record for round {self.current_round}"
+                    )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(
+                    f"[Client {self.client_id}] Error creating/getting Round record: {e}",
+                    exc_info=True
+                )
+
         # Send WebSocket notification that this client is starting training
         if self.ws_sender:
             try:
@@ -245,6 +290,21 @@ class FlowerClient(NumPyClient):
                 val_accuracy=accuracy,
                 num_samples=len(self.valloader.dataset),
             )
+
+        # Complete Round record in database if we have a round_db_id
+        if self.current_round_db_id and self.round_crud:
+            try:
+                self.round_crud.complete_round(self.current_round_db_id)
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(
+                    f"Completed Round record: round_db_id={self.current_round_db_id}, "
+                    f"loss={loss:.4f}, accuracy={accuracy:.4f}"
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to complete Round record: {e}")
 
         # Send WebSocket notification that this client finished evaluation
         if self.ws_sender:

@@ -4,7 +4,7 @@ from sqlalchemy import func
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 from federated_pneumonia_detection.src.boundary.engine import RunMetric
 
-
+# TODO: run metrics are still not being recordede for the federated training mode
 class RunMetricCRUD(BaseCRUD[RunMetric]):
     """CRUD operations for RunMetric model."""
 

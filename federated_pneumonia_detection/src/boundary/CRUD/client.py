@@ -1,7 +1,7 @@
 from ..engine import get_session, Client
 from typing import List, Optional
 import datetime
-
+# TODO : If clients are part of multiple rounds they are not being recordeed for the multiple rounds only the first round , in the db
 class ClientCRUD:
 
     def create_client(self,run_id: int, client_identifier: str, client_config: Optional[dict] = None):
@@ -17,7 +17,7 @@ class ClientCRUD:
             session.add(new_client)
             session.commit()
             client_id = new_client.id
-            return ClientCRUD.get_client_by_id(client_id)
+            return self.get_client_by_id(client_id)
         finally:
             session.close()
 

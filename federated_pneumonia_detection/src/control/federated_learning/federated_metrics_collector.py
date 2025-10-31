@@ -15,19 +15,14 @@ Role in System:
 - Persists metrics to JSON/CSV for analysis
 - Streams metrics to frontend via WebSocket for real-time monitoring
 """
-
-import json
 import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-import pandas as pd
-from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
-from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
 # TODO : client_complete is never sent to the frontend client , need to debug and figure out why ,
 #  other events such as client_progress and round_start are working fine, it's not even logged on the python logs.
@@ -44,6 +39,7 @@ class FederatedMetricsCollector:
         save_dir: str,
         client_id: str,
         experiment_name: str = "federated_experiment",
+        client_db_id: Optional[int] = None,
         run_id: Optional[int] = None,
         enable_db_persistence: bool = True,
         enable_progress_logging: bool = True,
@@ -56,6 +52,7 @@ class FederatedMetricsCollector:
             save_dir: Directory to save metrics files
             client_id: Unique identifier for this client
             experiment_name: Name of the federated experiment
+            client_db_id: Optional database client ID for persistence
             run_id: Optional database run ID for persistence
             enable_db_persistence: Whether to save metrics to database
             enable_progress_logging: Whether to enable real-time progress logging
@@ -63,8 +60,10 @@ class FederatedMetricsCollector:
         """
         self.save_dir = Path(save_dir)
         self.client_id = client_id
+        self.client_db_id = client_db_id
         self.experiment_name = experiment_name
         self.run_id = run_id
+        self.current_round_db_id = None  # Set by FlowerClient when round is created
         self.enable_db_persistence = enable_db_persistence
         self.enable_progress_logging = enable_progress_logging
         self.logger = logging.getLogger(__name__)
@@ -105,6 +104,16 @@ class FederatedMetricsCollector:
         self.logger.info(
             f"Federated metrics collector initialized for client {client_id}"
         )
+
+    def set_round_db_id(self, round_db_id: Optional[int]):
+        """
+        Set the database round ID for the current round.
+
+        Args:
+            round_db_id: Database round ID
+        """
+        self.current_round_db_id = round_db_id
+        self.logger.debug(f"Set round_db_id={round_db_id} for client {self.client_id}")
 
     def start_training(self, model_info: Optional[Dict[str, Any]] = None):
         """
@@ -325,10 +334,153 @@ class FederatedMetricsCollector:
             f"Round {round_num}: Eval completed - Loss: {val_loss:.4f}, "
             f"Accuracy: {val_accuracy:.4f}"
         )
-  # TODO: Lastly we need to format this well so it follos the run_metrics schema in the engine , we need to ensure the persestince is valid
+    # TODO: Still not being recorded in the database correctly , need to cross check the model in the db ,
+    #  as well as check the problem with rounds and clients being recorded only on the first round
+    def _persist_metrics_to_db(self) -> bool:
+        """
+        Persist collected metrics to database using RunMetricCRUD.
+
+        Returns:
+            True if persistence was successful, False otherwise
+        """
+        if not self.run_id or not self.client_db_id:
+            self.logger.warning(
+                f"[Client {self.client_id}] Cannot persist metrics: "
+                f"run_id={self.run_id}, client_db_id={self.client_db_id}"
+            )
+            return False
+
+        try:
+            db = get_session()
+            metrics_persisted = 0
+            metrics_failed = 0
+
+            self.logger.info(
+                f"[Client {self.client_id}] Starting metrics persistence: "
+                f"run_id={self.run_id}, total_rounds={len(self.round_metrics)}"
+            )
+
+            # Persist round metrics
+            for round_data in self.round_metrics:
+                round_num = round_data.get('round')
+
+                # Get round_db_id from the round_data (if available) or from current_round_db_id
+                round_db_id = None
+                if round_num == len(self.round_metrics) - 1:
+                    # Last round - use current_round_db_id
+                    round_db_id = self.current_round_db_id
+
+                self.logger.debug(
+                    f"[Client {self.client_id}] Persisting round {round_num}: "
+                    f"round_db_id={round_db_id}"
+                )
+
+                # Persist fit metrics
+                fit_metrics = round_data.get('fit_metrics', {})
+                if fit_metrics:
+                    train_loss = fit_metrics.get('train_loss')
+                    if train_loss is not None:
+                        try:
+                            run_metric_crud.create(
+                                db,
+                                run_id=self.run_id,
+                                client_id=self.client_db_id,
+                                round_id=round_db_id,
+                                metric_name="train_loss",
+                                metric_value=float(train_loss),
+                                step=round_num,
+                                dataset_type="train",
+                                context="local",
+                            )
+                            metrics_persisted += 1
+                            self.logger.debug(
+                                f"[Client {self.client_id}] Persisted train_loss={train_loss:.4f} "
+                                f"for round {round_num}"
+                            )
+                        except Exception as e:
+                            metrics_failed += 1
+                            self.logger.error(
+                                f"[Client {self.client_id}] Failed to persist train_loss "
+                                f"(round={round_num}, value={train_loss}): {e}",
+                                exc_info=True
+                            )
+
+                # Persist eval metrics
+                eval_metrics = round_data.get('eval_metrics', {})
+                if eval_metrics:
+                    val_loss = eval_metrics.get('val_loss')
+                    if val_loss is not None:
+                        try:
+                            run_metric_crud.create(
+                                db,
+                                run_id=self.run_id,
+                                client_id=self.client_db_id,
+                                round_id=round_db_id,
+                                metric_name="val_loss",
+                                metric_value=float(val_loss),
+                                step=round_num,
+                                dataset_type="val",
+                                context="local",
+                            )
+                            metrics_persisted += 1
+                            self.logger.debug(
+                                f"[Client {self.client_id}] Persisted val_loss={val_loss:.4f} "
+                                f"for round {round_num}"
+                            )
+                        except Exception as e:
+                            metrics_failed += 1
+                            self.logger.error(
+                                f"[Client {self.client_id}] Failed to persist val_loss "
+                                f"(round={round_num}, value={val_loss}): {e}",
+                                exc_info=True
+                            )
+
+                    val_accuracy = eval_metrics.get('val_accuracy')
+                    if val_accuracy is not None:
+                        try:
+                            run_metric_crud.create(
+                                db,
+                                run_id=self.run_id,
+                                client_id=self.client_db_id,
+                                round_id=round_db_id,
+                                metric_name="val_accuracy",
+                                metric_value=float(val_accuracy),
+                                step=round_num,
+                                dataset_type="val",
+                                context="local",
+                            )
+                            metrics_persisted += 1
+                            self.logger.debug(
+                                f"[Client {self.client_id}] Persisted val_accuracy={val_accuracy:.4f} "
+                                f"for round {round_num}"
+                            )
+                        except Exception as e:
+                            metrics_failed += 1
+                            self.logger.error(
+                                f"[Client {self.client_id}] Failed to persist val_accuracy "
+                                f"(round={round_num}, value={val_accuracy}): {e}",
+                                exc_info=True
+                            )
+
+            db.commit()
+            db.close()
+
+            self.logger.info(
+                f"[Client {self.client_id}] Metrics persistence complete: "
+                f"persisted={metrics_persisted}, failed={metrics_failed}, "
+                f"total_rounds={len(self.round_metrics)}"
+            )
+            return metrics_failed == 0
+
+        except Exception as e:
+            self.logger.error(
+                f"[Client {self.client_id}] Critical error during metrics persistence: {e}",
+                exc_info=True
+            )
+            return False
 
     def end_training(self):
-        """Record training end time and save all metrics."""
+        """Record training end time, save all metrics, and persist to database."""
         self.training_end_time = datetime.now()
         self.metadata['end_time'] = self.training_end_time.isoformat()
         self.metadata['total_rounds'] = len(self.round_metrics)
@@ -339,12 +491,17 @@ class FederatedMetricsCollector:
             self.metadata['training_duration_seconds'] = duration.total_seconds()
             self.metadata['training_duration_formatted'] = str(duration)
 
+        # Persist metrics to database
+        if self.enable_db_persistence:
+            self._persist_metrics_to_db()
+
         # Send client training completion via WebSocket
         if self.ws_sender:
             try:
-                self.ws_sender.send_metrics({
+                completion_data = {
                     "run_id": self.run_id,
                     "client_id": self.client_id,
+                    "client_db_id": self.client_db_id,
                     "status": "completed",
                     "total_rounds": self.metadata['total_rounds'],
                     "total_local_epochs": self.metadata['total_local_epochs'],
@@ -352,13 +509,15 @@ class FederatedMetricsCollector:
                     "best_val_accuracy": self.metadata['best_val_accuracy'],
                     "best_val_loss": self.metadata['best_val_loss'],
                     "total_samples_trained": self.metadata['total_samples_trained'],
-                    "training_duration": self.metadata.get('training_duration_formatted', '0:00:00')
-                }, "client_complete")
+                    "training_duration": self.metadata.get('training_duration_formatted', '0:00:00'),
+                    "timestamp": datetime.now().isoformat()
+                }
+                self.ws_sender.send_metrics(completion_data, "client_complete")
                 self.logger.info(
-                    f"[Client {self.client_id}] Sent client_complete event"
+                    f"[Client {self.client_id}] Sent client_complete event: {completion_data}"
                 )
             except Exception as e:
-                self.logger.warning(f"Failed to send client_complete via WebSocket: {e}")
+                self.logger.error(f"Failed to send client_complete via WebSocket: {e}", exc_info=True)
 
 
     def get_round_metrics(self) -> List[Dict[str, Any]]:

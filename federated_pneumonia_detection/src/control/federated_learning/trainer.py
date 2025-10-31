@@ -49,6 +49,7 @@ from federated_pneumonia_detection.src.control.federated_learning.partitioner im
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.CRUD.client import ClientCRUD
 
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,7 @@ class FederatedTrainer:
         self.websocket_uri = websocket_uri
         self.logger = logging.getLogger(self.__class__.__name__)
         self._client_instances = {}
+        self._client_db_ids = {}  # Map client_id (cid) -> database client_id
         self.metrics_dir = None
         self.experiment_name = None
         self.run_id = None
@@ -111,6 +113,63 @@ class FederatedTrainer:
             config=self.config,
         )
         return model.to(self.device)
+
+    def _create_clients_in_db(
+        self,
+        num_clients: int,
+        db: Optional[Session] = None,
+    ) -> Dict[str, int]:
+        """
+        Create Client records in the database for each federated client.
+
+        Args:
+            num_clients: Number of clients to create
+            db: Optional database session
+
+        Returns:
+            Dictionary mapping client_id (cid) -> database client_id
+        """
+        close_session = False
+        if db is None:
+            db = get_session()
+            close_session = True
+
+        try:
+            client_crud = ClientCRUD()
+            client_db_ids = {}
+
+            for client_idx in range(num_clients):
+                client_id = str(client_idx)
+                client_config = {
+                    "partition_index": client_idx,
+                    "client_index": client_idx,
+                }
+
+                client_record = client_crud.create_client(
+                    run_id=self.run_id,
+                    client_identifier=client_id,
+                    client_config=client_config,
+                )
+
+                if client_record and hasattr(client_record, 'id'):
+                    client_db_ids[client_id] = client_record.id
+                    self.logger.info(
+                        f"Created Client record: client_id={client_id}, "
+                        f"db_id={client_record.id}, run_id={self.run_id}"
+                    )
+                else:
+                    self.logger.warning(
+                        f"Failed to create Client record for client_id={client_id}"
+                    )
+
+            return client_db_ids
+
+        except Exception as e:
+            self.logger.error(f"Failed to create clients in database: {e}")
+            raise
+        finally:
+            if close_session:
+                db.close()
 
     def _create_run(
         self,
@@ -188,6 +247,13 @@ class FederatedTrainer:
 
         model = self._create_model()
 
+        # Get database client_id for this client
+        client_db_id = self._client_db_ids.get(cid)
+        if not client_db_id:
+            self.logger.warning(
+                f"No database client ID found for client {cid}, proceeding without DB tracking"
+            )
+
         client = FlowerClient(
             net=model,
             trainloader=train_loader,
@@ -195,16 +261,17 @@ class FederatedTrainer:
             config=self.config,
             device=self.device,
             client_id=cid,
+            client_db_id=client_db_id,
             metrics_dir=self.metrics_dir,
             experiment_name=self.experiment_name,
             websocket_uri=self.websocket_uri,
             run_id=self.run_id,
 
         )
-        
+
         # Store client reference for later finalization
         self._client_instances[cid] = client
-        
+
         return client
 
 
@@ -370,6 +437,21 @@ class FederatedTrainer:
                     f"  Client {idx}: {len(partition)} samples, "
                     f"class distribution: {class_dist}"
                 )
+
+            # 1.5: Create Client records in database
+            self.logger.info(
+                "\nCreating Client records in database..."
+            )
+            try:
+                self._client_db_ids = self._create_clients_in_db(
+                    num_clients=self.config.num_clients
+                )
+                self.logger.info(
+                    f"Successfully created {len(self._client_db_ids)} Client records"
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to create Client records: {e}")
+                self._client_db_ids = {}
 
             # 2. Create dataloaders and cache them for client_fn
             self.logger.info("\nCreating client dataloaders...")
