@@ -10,10 +10,8 @@ from pathlib import Path
 import torch
 import pandas as pd
 import pytorch_lightning as pl
-from numpy import ndarray, dtype
 from torch.utils.data import DataLoader
 import numpy as np
-
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.src.entities.custom_image_dataset import CustomImageDataset
@@ -118,7 +116,7 @@ class XRayDataModule(pl.LightningDataModule):
                 if missing_cols:
                     raise ValueError(f"Missing columns in {name} DataFrame: {missing_cols}")
 
-    def setup(self, stage: Optional[str] = None) -> None:
+    def setup(self, stage: Optional[str] = None, ) -> None:
         """
         Set up datasets based on stage.
 
@@ -224,7 +222,6 @@ class XRayDataModule(pl.LightningDataModule):
         return self.transform_builder.build_validation_transforms(
             custom_preprocessing=self.custom_preprocessing_config if self.custom_preprocessing_config else None
         )
-
     def train_dataloader(self) -> DataLoader:
         """
         Create training data loader.
@@ -279,7 +276,7 @@ class XRayDataModule(pl.LightningDataModule):
 
         return DataLoader(self.val_dataset, **loader_kwargs)
 
-    def test_dataloader(self) -> Optional[DataLoader]:
+    def test_dataloader(self) -> DataLoader:
         """
         Create test data loader if test data available.
 
@@ -308,7 +305,7 @@ class XRayDataModule(pl.LightningDataModule):
 
 
 
-    def _worker_init_fn(self, worker_id: int) -> None:
+    def _worker_init_fn(self, worker_id: int) -> DataLoader:
         """
         Initialize worker processes with different random seeds.
 
@@ -319,6 +316,3 @@ class XRayDataModule(pl.LightningDataModule):
         worker_seed = torch.initial_seed() % 2**32
         np.random.seed(worker_seed + worker_id)
         torch.manual_seed(worker_seed + worker_id)
-
-
-   

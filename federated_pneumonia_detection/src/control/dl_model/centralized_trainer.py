@@ -5,6 +5,7 @@ Orchestrates complete training workflow from zip file or directory to trained mo
 
 import os
 import logging
+import json
 from typing import Optional, Dict, Any, Tuple
 from pathlib import Path
 
@@ -333,6 +334,13 @@ class CentralizedTrainer:
         self.logger.info(
             f"Training results collected: {len(metrics_history)} epochs tracked"
         )
+        
+        self.logger.info(f"Saving metrics to: results/centralized/metrics_output/metrics.json")
+
+        output_path = os.path.join(self.logs_dir, 'metrics_output', 'metrics.json')
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, 'w') as f:
+            json.dump(results, f)
 
         return results
 

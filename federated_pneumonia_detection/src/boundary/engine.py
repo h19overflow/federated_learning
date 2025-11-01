@@ -55,10 +55,6 @@ class Round(Base):
 
     client = relationship("Client", back_populates="rounds")
 
-    __table_args__ = (
-        # Ensure unique round numbers per client
-        UniqueConstraint('client_id', 'round_number', name='uix_client_round'),
-    )
 
 
 class RunConfiguration(Base):

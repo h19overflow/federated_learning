@@ -4,82 +4,24 @@ from typing import List, Optional
 from datetime import datetime
 
 class RoundCRUD:
-    def get_or_create_round(self, client_id: int, round_number: int, round_metadata: Optional[dict] = None) -> Optional[Round]:
-        """
-        Get existing round or create if it doesn't exist (handles unique constraint gracefully).
 
-        This method prevents UniqueViolation errors when training runs are restarted or resumed.
-
-        Args:
-            client_id: ID of the client
-            round_number: Round number for this client
-            round_metadata: Optional metadata for the round (config, hyperparameters, etc.)
-
-        Returns:
-            Round instance or None if operation fails
-        """
-        import logging
-        logger = logging.getLogger(__name__)
-
-        # First try to get existing round
-        try:
-            existing_round = self.get_round_by_client_and_number(client_id, round_number)
-            if existing_round:
-                logger.debug(
-                    f"Found existing Round: client_id={client_id}, round_number={round_number}, "
-                    f"round_id={existing_round.id}"
-                )
-                return existing_round
-        except Exception as e:
-            logger.warning(f"Failed to check for existing round: {e}")
-
-        # If not exists, create new round
-        try:
-            new_round = self.create_round(client_id, round_number, round_metadata)
-            logger.debug(
-                f"Created new Round: client_id={client_id}, round_number={round_number}, "
-                f"round_id={new_round.id if new_round else None}"
-            )
-            return new_round
-        except Exception as e:
-            logger.warning(
-                f"Round creation failed (client_id={client_id}, round_number={round_number}): {e}"
-            )
-            # Try one more time to get the existing round (in case it was created by another process)
-            try:
-                existing_round = self.get_round_by_client_and_number(client_id, round_number)
-                if existing_round:
-                    logger.info(
-                        f"Recovered existing Round after creation failure: client_id={client_id}, "
-                        f"round_number={round_number}, round_id={existing_round.id}"
-                    )
-                    return existing_round
-            except Exception as recovery_error:
-                logger.error(f"Failed to recover existing round: {recovery_error}")
-
-            # If still can't find it, log error and return None
-            logger.error(
-                f"Unable to create or retrieve Round: client_id={client_id}, round_number={round_number}, "
-                f"error={e}"
-            )
-            return None
 
     def create_round(self,client_id: int, round_number: int, round_metadata: Optional[dict] = None):
         """Create a new round for a specific client"""
-        with get_session() as session:
-            new_round = Round(
-                client_id=client_id,
-                round_number=round_number,
-                round_metadata=round_metadata,
-                start_time=datetime.utcnow(),
-            )
-            session.add(new_round)
-            session.flush()  # Get the ID before committing
-            round_id = new_round.id
-            session.commit()
-
-        # Return a fresh instance to avoid detached instance issues
-        return self.get_round_by_id(round_id)
+        if self.get_round_by_client_and_number(client_id, round_number):
+            return self.get_round_by_client_and_number(client_id, round_number)
+        else:
+            with get_session() as session:
+                new_round = Round(
+                    client_id=client_id,
+                    round_number=round_number,
+                    round_metadata=round_metadata,
+                    start_time=datetime.utcnow(),
+                )
+                session.add(new_round)
+                session.flush()
+                session.commit()
+                return self.get_round_by_id(new_round.id)
 
     def get_round_by_id(self,round_id: int) -> Optional[Round]:
         """Get a specific round by ID"""
