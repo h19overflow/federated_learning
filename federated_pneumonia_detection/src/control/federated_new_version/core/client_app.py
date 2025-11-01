@@ -14,6 +14,8 @@ from federated_pneumonia_detection.src.control.dl_model.utils.model.xray_data_mo
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from typing import Any
+import os
+import json
 
 disable_progress_bar()
 
@@ -67,6 +69,7 @@ def train(msg: Message, context: Context):
     trainer = centerlized_trainer._build_trainer(
         callbacks=callbacks,
         experiment_name="federated_pneumonia_detection",
+        is_federated=True,
     )
     trainer.fit(model, data_module)
 
@@ -75,6 +78,9 @@ def train(msg: Message, context: Context):
         model=model,
         metrics_collector=metrics_collector,
     )
+    config = msg.content.get("configs", {})
+    current_round = config["server-round"]  # Gets the current round number
+    current_client_id = context.node.id
     metrics_history = filter_list_of_dicts(
         results["metrics_history"],
         [
@@ -99,6 +105,14 @@ def train(msg: Message, context: Context):
             "metrics": metric_record,
         }
     )
+    if os.path.exists(os.path.join(config.logs_dir, 'metrics_output')):
+        with open(os.path.join(config.logs_dir, 'metrics_output', f'metrics_{current_round}_{current_client_id}.json'), 'w') as f:
+            json.dump(metrics_history, f)
+    else: 
+        os.makedirs(os.path.join(config.logs_dir, 'metrics_output'), exist_ok=True)
+        with open(os.path.join(config.logs_dir, 'metrics_output', f'metrics_{current_round}_{current_client_id}.json'), 'w') as f:
+            json.dump(metrics_history, f)
+    print(f"Metrics saved to: {os.path.join(config.logs_dir, 'metrics_output', 'metrics.json')}")
     return Message(content=content, reply_to=msg)
 
 
@@ -136,12 +150,14 @@ def evaluate(msg: Message, context: Context):
             train_df=train_df,
             experiment_name="federated_pneumonia_detection",
             run_id=configs["run_id"],
+            is_federated=False,
         )
     )
     model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
     trainer = centerlized_trainer._build_trainer(
         callbacks=callbacks,
         experiment_name="federated_pneumonia_detection",
+        is_federated=False,
     )
     results = trainer.test(model, val_loader)
     loss = results[0]["test_loss"]

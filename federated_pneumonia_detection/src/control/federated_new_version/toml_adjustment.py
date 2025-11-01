@@ -8,7 +8,7 @@ except ImportError:
 
 
 def update_flwr_config(
-    pyproject_path: str = r"federated_pneumonia_detection\src\control\federated_new_version\pyproject.toml",
+    pyproject_path: str = None,
     **kwargs,
 ):
     """
@@ -22,6 +22,10 @@ def update_flwr_config(
         num_supernodes=8
     )
     """
+    if pyproject_path is None:
+        from pathlib import Path
+        pyproject_path = str(Path(__file__).parent / "pyproject.toml")
+    
     # Read existing config
     with open(pyproject_path, "rb") as f:
         data = tomllib.load(f)

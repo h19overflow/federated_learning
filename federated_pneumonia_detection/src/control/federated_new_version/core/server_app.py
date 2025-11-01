@@ -53,8 +53,8 @@ def main(grid: Grid, context: Context) -> None:
 
     # Initialize ConfigurableFedAvg strategy with configs
     strategy = ConfigurableFedAvg(
-        fraction_train=0.5,
-        fraction_evaluate=0.5,
+        fraction_train=1,
+        fraction_evaluate=1,
         train_config=train_config,
         eval_config=eval_config,
     )
@@ -73,9 +73,10 @@ def main(grid: Grid, context: Context) -> None:
 
 # Helper function
 def read_configs_to_toml() -> dict:
-    config_manager = ConfigManager(
-        config_path=r"federated_pneumonia_detection\config\default_config.yaml"
-    )
+    from pathlib import Path
+    # Navigate from core/server_app.py -> federated_pneumonia_detection/config/default_config.yaml
+    config_dir = Path(__file__).parent.parent.parent.parent.parent / "config" / "default_config.yaml"
+    config_manager = ConfigManager(config_path=str(config_dir))
     flwr_configs = {}
     if config_manager.has_key("experiment.num-server-rounds"):
         flwr_configs["num_server_rounds"] = config_manager.get(
@@ -84,10 +85,10 @@ def read_configs_to_toml() -> dict:
     if config_manager.has_key("experiment.max-epochs"):
         flwr_configs["max_epochs"] = config_manager.get("experiment.max-epochs")
     if config_manager.has_key("experiment.options.num-supernodes"):
-        flwr_configs["options_num_supernodes"] = config_manager.get(
+        flwr_configs["num_supernodes"] = config_manager.get(
             "experiment.options.num-supernodes"
         )
     else:
         print("No num-supernodes found in config")
-    print(flwr_configs)
+    print(f"Loaded flwr_configs: {flwr_configs}")
     return flwr_configs

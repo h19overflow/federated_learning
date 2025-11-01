@@ -222,13 +222,14 @@ class CentralizedTrainer:
 
         return model, callback_config["callbacks"], callback_config["metrics_collector"]
 
-    def _build_trainer(self, callbacks: list, experiment_name: str) -> pl.Trainer:
+    def _build_trainer(self, callbacks: list, experiment_name: str, is_federated: bool = False) -> pl.Trainer:
         """
         Build PyTorch Lightning trainer.
 
         Args:
             callbacks: List of callbacks to use
             experiment_name: Name for experiment logging
+            is_federated: If True, uses max-epochs; if False, uses epochs
 
         Returns:
             Configured trainer instance
@@ -245,6 +246,7 @@ class CentralizedTrainer:
             trainer = create_trainer_from_config(
                 config=self.config,
                 callbacks=callbacks,
+                is_federated=is_federated,
             )
         except Exception as e:
             self.logger.error(f"Failed to create trainer: {e}")

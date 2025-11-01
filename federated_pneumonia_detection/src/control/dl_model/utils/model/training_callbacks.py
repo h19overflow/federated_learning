@@ -225,7 +225,7 @@ def prepare_trainer_and_callbacks_pl(
     # Setup default values from config
     patience = config.get('experiment.early_stopping_patience', 7)
     min_delta = config.get('experiment.early_stopping_min_delta', 0.001)
-    max_epochs = config.get('experiment.local_epochs', 50) if is_federated else config.get('experiment.epochs', 50)
+    max_epochs = config.get('experiment.max-epochs', 50) if is_federated else config.get('experiment.epochs', 50)
     training_mode = "federated" if is_federated else "centralized"
 
     logger.info(f"[Trainer Setup] max_epochs={max_epochs}, early_stopping_patience={patience}, min_delta={min_delta}")
@@ -323,7 +323,8 @@ def prepare_trainer_and_callbacks_pl(
 
 def create_trainer_from_config(
     config: Optional['ConfigManager'],
-    callbacks: List[pl.Callback]
+    callbacks: List[pl.Callback],
+    is_federated: bool = False,
 ) -> pl.Trainer:
     """
     Create PyTorch Lightning trainer with proper configuration.
@@ -331,6 +332,7 @@ def create_trainer_from_config(
     Args:
         config: ConfigManager instance
         callbacks: List of callbacks to use
+        is_federated: If True, uses local_epochs; if False, uses epochs
 
     Returns:
         Configured PyTorch Lightning trainer
@@ -344,7 +346,7 @@ def create_trainer_from_config(
     if seed is not None:
         pl.seed_everything(seed, workers=True)
 
-    epochs = config.get('experiment.epochs', 50)
+    epochs = config.get('experiment.max-epochs', 50) if is_federated else config.get('experiment.epochs', 50)
     gradient_clip_val = config.get('experiment.gradient_clip_val', 1.0)
     accumulate_grad_batches = config.get('experiment.accumulate_grad_batches', 1)
 

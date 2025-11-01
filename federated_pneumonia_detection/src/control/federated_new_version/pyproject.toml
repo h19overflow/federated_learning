@@ -36,8 +36,5 @@ max-epochs = 2
 [tool.flwr.federations]
 default = "local-simulation"
 
-[tool.flwr.federations.local-simulation]
-"options.num-supernodes" = 2
-
 [tool.flwr.federations.local-simulation.options]
-num-supernodes = 4
+num-supernodes = 2
