@@ -2,8 +2,11 @@
 Custom Flower strategy that sends training and evaluation configurations to clients.
 """
 
-from typing import Optional, Dict, Any
+from typing import Iterable, Optional, Dict, Any
+from flwr.app import ArrayRecord, ConfigRecord, Message
+from flwr.serverapp import Grid
 from flwr.serverapp.strategy import FedAvg
+
 
 class ConfigurableFedAvg(FedAvg):
     """
@@ -29,50 +32,40 @@ class ConfigurableFedAvg(FedAvg):
         self.train_config = train_config or {}
         self.eval_config = eval_config or {}
 
-    def configure_train_ins(
-        self, parameters, config
-    ):
-        """
-        Configure training instructions with custom configs.
+    def configure_train(
+        self, server_round: int, arrays: ArrayRecord, config: ConfigRecord, grid: Grid
+    ) -> Iterable[Message]:
+        """Configure the next round of federated training with custom configs.
         
         Args:
-            parameters: Model parameters to send to clients
-            config: Run configuration
+            server_round: Current round of federated learning
+            arrays: Current global ArrayRecord (model) to send to clients
+            config: Configuration to be sent to clients for training
+            grid: Grid instance for node sampling and communication
 
         Returns:
-            List of (client_id, FitIns) tuples with embedded configs
+            Iterable of messages to be sent to selected client nodes for training
         """
-        # Get the default training instructions from parent class
-        fit_ins_list = super().configure_train_ins(parameters, config)
-        
-        # Add configs to each client's training instruction
-        if fit_ins_list:
-            for i, (client_id, fit_ins) in enumerate(fit_ins_list):
-                # Embed configs in the message
-                fit_ins.config["configs"] = self.train_config
-        
-        return fit_ins_list
+        # Merge custom train config into the base config
+        config.update(self.train_config)
+        # Call parent class to configure training with updated config
+        return super().configure_train(server_round, arrays, config, grid)
 
-    def configure_evaluate_ins(
-        self, parameters, config
-    ):
-        """
-        Configure evaluation instructions with custom configs.
+    def configure_evaluate(
+        self, server_round: int, arrays: ArrayRecord, config: ConfigRecord, grid: Grid
+    ) -> Iterable[Message]:
+        """Configure the next round of federated evaluation with custom configs.
         
         Args:
-            parameters: Model parameters to send to clients
-            config: Run configuration
+            server_round: Current round of federated learning
+            arrays: Current global ArrayRecord (model) to send to clients
+            config: Configuration to be sent to clients for evaluation
+            grid: Grid instance for node sampling and communication
 
         Returns:
-            List of (client_id, EvaluateIns) tuples with embedded configs
+            Iterable of messages to be sent to selected client nodes for evaluation
         """
-        # Get the default evaluation instructions from parent class
-        evaluate_ins_list = super().configure_evaluate_ins(parameters, config)
-        
-        # Add configs to each client's evaluation instruction
-        if evaluate_ins_list:
-            for i, (client_id, eval_ins) in enumerate(evaluate_ins_list):
-                # Embed configs in the message
-                eval_ins.config["configs"] = self.eval_config
-        
-        return evaluate_ins_list
+        # Merge custom eval config into the base config
+        config.update(self.eval_config)
+        # Call parent class to configure evaluation with updated config
+        return super().configure_evaluate(server_round, arrays, config, grid)

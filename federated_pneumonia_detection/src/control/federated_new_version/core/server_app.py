@@ -13,7 +13,8 @@ app = ServerApp()
 # TODO: in default_config the num_supernodes is 2 but it says chosen 2 out of 4 clients make sure to invesitgate why is there 2 variables in the template  
 # TODO: Make sure frontend sends the correct updates to default-yaml
 # since the keys have been adjusted to refelect the convention
-# TODO: When invoking make sure to add an update to the file path configuration.
+# TODO: When invoking make sure to add an update to the file path configuration.#
+# TODO: Context objects in the client and server classes contains run id , node id , so adjust it such that we persist them to the db.
 @app.lifespan()
 def lifespan(app: ServerApp):
     print("Server is starting...")
@@ -34,16 +35,13 @@ def main(grid: Grid, context: Context) -> None:
     train_config = {
         "file_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
         "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
-        "num_partitions": 4,
-        "partition_id": 0,
-        "run_id": 5,
+        "num_partitions": len(list(grid.get_node_ids())),
     }
     
     # Create evaluation configuration to send to clients
     eval_config = {
         "csv_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
         "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
-        "run_id": 5,
     }
     
     # Load global model with ConfigManager

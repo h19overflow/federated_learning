@@ -21,6 +21,7 @@ disable_progress_bar()
 
 app = ClientApp()
 
+
 @app.train()
 def train(msg: Message, context: Context):
     # Initialize trainer with config
@@ -28,24 +29,22 @@ def train(msg: Message, context: Context):
         config_path=r"federated_pneumonia_detection\config\default_config.yaml"
     )
     config = centerlized_trainer.config
-    
+
     # Get configs from message (safely handle missing key with defaults)
-    train_configs = msg.content.get("configs", {
-        "file_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
-        "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
-        "num_partitions": 4,
-        "partition_id": 0,
-        "run_id": 5,
-    })
-    configs = train_configs
+    configs = msg.content.get(
+        "config",
+        {
+            "file_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
+            "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
+            "num_partitions": 2,
+        },
+    )
+
     full_dataset = pd.read_csv(configs["file_path"])
     partioner = CustomPartitioner(full_dataset, configs["num_partitions"])
 
-    partion_df = partioner.load_partition(configs["partition_id"])
-    
-    # Add filename column if it doesn't exist (required by XRayDataModule)
-    if 'filename' not in partion_df.columns and 'patientId' in partion_df.columns:
-        partion_df['filename'] = partion_df.apply(lambda x: str(x['patientId']) + '.png', axis=1)
+    partition_id = context.node_id % configs["num_partitions"]
+    partion_df = partioner.load_partition(partition_id)
 
     train_df, val_df = train_test_split(partion_df, test_size=0.2, random_state=42)
 
@@ -60,7 +59,7 @@ def train(msg: Message, context: Context):
         centerlized_trainer._build_model_and_callbacks(
             train_df=train_df,
             experiment_name="federated_pneumonia_detection",
-            run_id=configs["run_id"],
+            run_id=context.run_id,
             is_federated=True,
         )
     )
@@ -78,9 +77,6 @@ def train(msg: Message, context: Context):
         model=model,
         metrics_collector=metrics_collector,
     )
-    config = msg.content.get("configs", {})
-    current_round = config["server-round"]  # Gets the current round number
-    current_client_id = context.node.id
     metrics_history = filter_list_of_dicts(
         results["metrics_history"],
         [
@@ -105,14 +101,6 @@ def train(msg: Message, context: Context):
             "metrics": metric_record,
         }
     )
-    if os.path.exists(os.path.join(config.logs_dir, 'metrics_output')):
-        with open(os.path.join(config.logs_dir, 'metrics_output', f'metrics_{current_round}_{current_client_id}.json'), 'w') as f:
-            json.dump(metrics_history, f)
-    else: 
-        os.makedirs(os.path.join(config.logs_dir, 'metrics_output'), exist_ok=True)
-        with open(os.path.join(config.logs_dir, 'metrics_output', f'metrics_{current_round}_{current_client_id}.json'), 'w') as f:
-            json.dump(metrics_history, f)
-    print(f"Metrics saved to: {os.path.join(config.logs_dir, 'metrics_output', 'metrics.json')}")
     return Message(content=content, reply_to=msg)
 
 
@@ -122,34 +110,41 @@ def evaluate(msg: Message, context: Context):
         config_path=r"federated_pneumonia_detection\config\default_config.yaml",
     )
     # Get configs from message (safely handle missing key with defaults)
-    eval_configs = msg.content.get("configs", {
-        "csv_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
-        "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
-        "run_id": 5,
-    })
+    eval_configs = msg.content.get(
+        "config",
+        {
+            "csv_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
+            "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
+        },
+    )
     configs = eval_configs
 
     train_df, val_df = centerlized_trainer._prepare_dataset(
         csv_path=configs["csv_path"],
         image_dir=configs["image_dir"],
     )
-    
+
     # Add filename column if it doesn't exist (required by XRayDataModule)
-    if 'filename' not in train_df.columns and 'patientId' in train_df.columns:
-        train_df['filename'] = train_df.apply(lambda x: str(x['patientId']) + '.png', axis=1)
-    if 'filename' not in val_df.columns and 'patientId' in val_df.columns:
-        val_df['filename'] = val_df.apply(lambda x: str(x['patientId']) + '.png', axis=1)
-    
+    if "filename" not in train_df.columns and "patientId" in train_df.columns:
+        train_df["filename"] = train_df.apply(
+            lambda x: str(x["patientId"]) + ".png", axis=1
+        )
+    if "filename" not in val_df.columns and "patientId" in val_df.columns:
+        val_df["filename"] = val_df.apply(
+            lambda x: str(x["patientId"]) + ".png", axis=1
+        )
+
     data_module = centerlized_trainer._create_data_module(
         train_df=train_df, val_df=val_df, image_dir=configs["image_dir"]
     )
+    data_module.setup(stage="validate")
     val_loader = data_module.val_dataloader()
 
     model, callbacks, metrics_collector = (
         centerlized_trainer._build_model_and_callbacks(
             train_df=train_df,
             experiment_name="federated_pneumonia_detection",
-            run_id=configs["run_id"],
+            run_id=context.run_id,
             is_federated=False,
         )
     )
@@ -160,12 +155,14 @@ def evaluate(msg: Message, context: Context):
         is_federated=False,
     )
     results = trainer.test(model, val_loader)
-    loss = results[0]["test_loss"]
-    accuracy = results[0]["test_accuracy"]
-    precision = results[0]["test_precision"]
-    recall = results[0]["test_recall"]
-    f1 = results[0]["test_f1"]
-    auroc = results[0]["test_auroc"]
+    result_dict = results[0] if results else {}
+
+    loss = result_dict.get("test_loss") or result_dict.get("loss", 0.0)
+    accuracy = result_dict.get("test_accuracy") or result_dict.get("accuracy", 0.0)
+    precision = result_dict.get("test_precision") or result_dict.get("precision", 0.0)
+    recall = result_dict.get("test_recall") or result_dict.get("recall", 0.0)
+    f1 = result_dict.get("test_f1") or result_dict.get("f1", 0.0)
+    auroc = result_dict.get("test_auroc") or result_dict.get("auroc", 0.0)
     metric_record = MetricRecord(
         {
             "test_loss": loss,
@@ -174,6 +171,7 @@ def evaluate(msg: Message, context: Context):
             "test_recall": recall,
             "test_f1": f1,
             "test_auroc": auroc,
+            "num-examples": len(val_df),
         }
     )
     content = RecordDict(
