@@ -20,13 +20,11 @@ experiment:
   learning_rate: 0.001
   local_epochs: 4
   lower_percentile: 5.0
-  max-epochs: 20
+  max-epochs: 2
   min_lr: 1.0e-07
   monitor_metric: val_loss
   num-server-rounds: 2
   num_classes: 1
-  num_clients: 2
-  num_rounds: 3
   num_workers: 0
   options:
     num-supernodes: 2
@@ -35,10 +33,12 @@ experiment:
   prefetch_factor: 2
   reduce_lr_factor: 0.5
   reduce_lr_patience: 3
+  seed: 42
   upper_percentile: 95.0
   use_custom_preprocessing: false
   use_imagenet_norm: true
   validate_images_on_init: true
+  validation_split: 0.2
   weight_decay: 0.0001
 logging:
   file_logging: true

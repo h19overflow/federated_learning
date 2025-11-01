@@ -1,9 +1,7 @@
 from datasets.utils.logging import disable_progress_bar
 from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict
 from flwr.clientapp import ClientApp
-from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import (
-    LitResNet,
-)
+
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import (
     CentralizedTrainer,
 )
@@ -13,7 +11,6 @@ from federated_pneumonia_detection.src.control.federated_new_version.partioner i
 from federated_pneumonia_detection.src.control.dl_model.utils.model.xray_data_module import (
     XRayDataModule,
 )
-from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from typing import Any
@@ -28,7 +25,6 @@ def train(msg: Message, context: Context):
     centerlized_trainer = CentralizedTrainer(
         config_path=r"federated_pneumonia_detection\config\default_config.yaml"
     )
-    constants = centerlized_trainer.constants
     config = centerlized_trainer.config
     
     # Get configs from message (safely handle missing key with defaults)
@@ -41,7 +37,6 @@ def train(msg: Message, context: Context):
     })
     configs = train_configs
     full_dataset = pd.read_csv(configs["file_path"])
-    # TODO: Partition the data based on the passed configuration
     partioner = CustomPartitioner(full_dataset, configs["num_partitions"])
 
     partion_df = partioner.load_partition(configs["partition_id"])
@@ -55,7 +50,6 @@ def train(msg: Message, context: Context):
     data_module = XRayDataModule(
         train_df=train_df,
         val_df=val_df,
-        constants=constants,
         config=config,
         image_dir=configs["image_dir"],
     )
@@ -65,6 +59,7 @@ def train(msg: Message, context: Context):
             train_df=train_df,
             experiment_name="federated_pneumonia_detection",
             run_id=configs["run_id"],
+            is_federated=True,
         )
     )
 
@@ -95,6 +90,7 @@ def train(msg: Message, context: Context):
             "val_auroc",
         ],
     )
+    metrics_history["num_examples"] = len(train_df)
     model_record = ArrayRecord(model.state_dict())
     metric_record = MetricRecord(metrics_history)
     content = RecordDict(
@@ -111,9 +107,6 @@ def evaluate(msg: Message, context: Context):
     centerlized_trainer = CentralizedTrainer(
         config_path=r"federated_pneumonia_detection\config\default_config.yaml",
     )
-    constants = centerlized_trainer.constants
-    config = centerlized_trainer.config
-    
     # Get configs from message (safely handle missing key with defaults)
     eval_configs = msg.content.get("configs", {
         "csv_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",

@@ -13,7 +13,6 @@ from .data_processing import (
     get_data_statistics,
     DataProcessor  # Deprecated but kept for compatibility
 )
-from .config_loader import ConfigLoader
 from .image_transforms import (
     TransformBuilder,
     XRayPreprocessor,
@@ -31,9 +30,6 @@ __all__ = [
     'get_image_directory_path',
     'get_data_statistics',
     'DataProcessor',  # Deprecated
-
-    # Configuration
-    'ConfigLoader',
 
     # Image transforms
     'TransformBuilder',

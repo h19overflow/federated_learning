@@ -1,7 +1,6 @@
-from flwr.app import ArrayRecord, ConfigRecord, Context
+from flwr.app import ArrayRecord, Context
 from flwr.serverapp import ServerApp, Grid
 from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import ConfigurableFedAvg
-from torch.compiler import config
 from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import (
     LitResNet,
 )
@@ -11,17 +10,7 @@ from federated_pneumonia_detection.src.control.federated_new_version.toml_adjust
 from federated_pneumonia_detection.config.config_manager import ConfigManager
 
 app = ServerApp()
-
-# TODO: File "C:\Users\User\Projects\FYP2\federated_pneumonia_detection\src\utils\config_loader.py", line 144, in create_experiment_config
-#     return ExperimentConfig(
-#            ^^^^^^^^^^^^^^^^^
-#   File "<string>", line 45, in __init__
-#   File "C:\Users\User\Projects\FYP2\federated_pneumonia_detection\models\experiment_config.py", line 81, in __post_init__
-#     self._validate_parameters()
-#   File "C:\Users\User\Projects\FYP2\federated_pneumonia_detection\models\experiment_config.py", line 107, in _validate_parameters
-#     raise ValueError("Clients per round cannot exceed total number of clients")
-# ValueError: Clients per round cannot exceed total number of clients
-# 2025-11-01 15:29:07 - datasets - INFO - PyTorch version 2.8.0+cu128 available. - config.py - 54
+# TODO: in default_config the num_supernodes is 2 but it says chosen 2 out of 4 clients make sure to invesitgate why is there 2 variables in the template  
 # TODO: Make sure frontend sends the correct updates to default-yaml
 # since the keys have been adjusted to refelect the convention
 # TODO: When invoking make sure to add an update to the file path configuration.
@@ -38,9 +27,6 @@ def lifespan(app: ServerApp):
 @app.main()
 def main(grid: Grid, context: Context) -> None:
     """Main entry point for the ServerApp."""
-    config_manager = ConfigManager(
-        config_path=r"federated_pneumonia_detection\config\default_config.yaml"
-    )
 
     num_rounds: int = context.run_config["num-server-rounds"]  # Read run config
     
@@ -60,14 +46,9 @@ def main(grid: Grid, context: Context) -> None:
         "run_id": 5,
     }
     
-    # Load global model with required arguments
-    from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
-    config_loader = ConfigLoader()
-    consifgs = config_loader.load_config()
-    constants = config_loader.create_system_constants(consifgs)
-    config = config_loader.create_experiment_config(consifgs)
-    
-    global_model = LitResNet(constants=constants, config=config)
+    # Load global model with ConfigManager
+    config = ConfigManager()
+    global_model = LitResNet(config=config)
     arrays = ArrayRecord(global_model.state_dict())
 
     # Initialize ConfigurableFedAvg strategy with configs

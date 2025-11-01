@@ -4,7 +4,7 @@ Provides comprehensive training, validation, and metrics tracking with configura
 """
 
 import logging
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, TYPE_CHECKING
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,8 +12,9 @@ import pytorch_lightning as pl
 import torchmetrics
 from torchvision.models import ResNet50_Weights
 
-from federated_pneumonia_detection.models.system_constants import SystemConstants
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+if TYPE_CHECKING:
+    from federated_pneumonia_detection.config.config_manager import ConfigManager
+
 from federated_pneumonia_detection.src.entities.resnet_with_custom_head import ResNetWithCustomHead
 
 
@@ -27,8 +28,7 @@ class LitResNet(pl.LightningModule):
 
     def __init__(
         self,
-        constants: SystemConstants,
-        config: ExperimentConfig,
+        config: Optional['ConfigManager'] = None,
         base_model_weights: Optional[ResNet50_Weights] = None,
         class_weights_tensor: Optional[torch.Tensor] = None,
         num_classes: int = 1,
@@ -38,8 +38,7 @@ class LitResNet(pl.LightningModule):
         Initialize Lightning module.
 
         Args:
-            constants: SystemConstants for configuration
-            config: ExperimentConfig for training parameters
+            config: ConfigManager for configuration
             base_model_weights: Optional ResNet50 weights
             class_weights_tensor: Optional class weights for loss calculation
             num_classes: Number of output classes (1 for binary)
@@ -50,7 +49,10 @@ class LitResNet(pl.LightningModule):
         """
         super().__init__()
 
-        self.constants = constants
+        if config is None:
+            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            config = ConfigManager()
+
         self.config = config
         self.num_classes = num_classes
         self.monitor_metric = monitor_metric
@@ -58,7 +60,7 @@ class LitResNet(pl.LightningModule):
 
         # Save hyperparameters (excluding non-serializable objects)
         self.save_hyperparameters(ignore=[
-            "constants", "config", "base_model_weights", "class_weights_tensor"
+            "config", "base_model_weights", "class_weights_tensor"
         ])
 
         # Validate configuration
@@ -66,12 +68,11 @@ class LitResNet(pl.LightningModule):
 
         # Initialize model
         self.model = ResNetWithCustomHead(
-            constants=constants,
-            config=config,
+            config=self.config,
             base_model_weights=base_model_weights,
             num_classes=num_classes,
-            dropout_rate=getattr(config, 'dropout_rate', 0.5),
-            fine_tune_layers_count=getattr(config, 'fine_tune_layers_count', 0)
+            dropout_rate=self.config.get('experiment.dropout_rate', 0.5),
+            fine_tune_layers_count=self.config.get('experiment.fine_tune_layers_count', 0)
         )
 
         # Store class weights
@@ -87,13 +88,15 @@ class LitResNet(pl.LightningModule):
 
     def _validate_config(self) -> None:
         """Validate configuration parameters."""
-        if self.config.learning_rate <= 0:
+        lr = self.config.get('experiment.learning_rate', 0)
+        if lr <= 0:
             raise ValueError("Learning rate must be positive")
 
-        if self.config.weight_decay < 0:
+        wd = self.config.get('experiment.weight_decay', -1)
+        if wd < 0:
             raise ValueError("Weight decay must be non-negative")
 
-        if not hasattr(self.config, 'early_stopping_patience'):
+        if not self.config.has_key('experiment.early_stopping_patience'):
             self.logger_obj.warning("early_stopping_patience not found in config, using default")
 
     def _setup_metrics(self) -> None:
@@ -264,15 +267,15 @@ class LitResNet(pl.LightningModule):
         # Setup optimizer
         optimizer = optim.AdamW(
             self.parameters(),
-            lr=self.config.learning_rate,
-            weight_decay=self.config.weight_decay,)
+            lr=self.config.get('experiment.learning_rate', 0),
+            weight_decay=self.config.get('experiment.weight_decay', 0),)
         # Setup learning rate scheduler
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
             mode='min' if 'loss' in self.monitor_metric else 'max',
-            factor=self.config.reduce_lr_factor,
-            patience=self.config.reduce_lr_patience,
-            min_lr=self.config.min_lr,
+            factor=self.config.get('experiment.reduce_lr_factor', 0.1),
+            patience=self.config.get('experiment.reduce_lr_patience', 3),
+            min_lr=self.config.get('experiment.min_lr', 1e-6),
         )
 
         return {
@@ -304,8 +307,8 @@ class LitResNet(pl.LightningModule):
         model_info.update({
             'lightning_module': 'LitResNet',
             'optimizer': 'AdamW',
-            'learning_rate': self.config.learning_rate,
-            'weight_decay': self.config.weight_decay,
+            'learning_rate': self.config.get('experiment.learning_rate', 0),
+            'weight_decay': self.config.get('experiment.weight_decay', 0),
             'scheduler': 'ReduceLROnPlateau',
             'monitor_metric': self.monitor_metric,
             'class_weighted_loss': self.class_weights_tensor is not None,

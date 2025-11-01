@@ -4,8 +4,6 @@ Custom Flower strategy that sends training and evaluation configurations to clie
 
 from typing import Optional, Dict, Any
 from flwr.serverapp.strategy import FedAvg
-from flwr.app import Message, ConfigRecord
-
 
 class ConfigurableFedAvg(FedAvg):
     """

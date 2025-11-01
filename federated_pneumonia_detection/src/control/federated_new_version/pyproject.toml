@@ -31,7 +31,7 @@ clientapp = "federated_pneumonia_detection.src.control.federated_new_version.cor
 
 [tool.flwr.app.config]
 num-server-rounds = 2
-max-epochs = 20
+max-epochs = 2
 
 [tool.flwr.federations]
 default = "local-simulation"

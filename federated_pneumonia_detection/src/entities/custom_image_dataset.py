@@ -3,7 +3,7 @@ Custom PyTorch Dataset for X-ray image loading and processing.
 Handles image file loading, transformations, and label management with comprehensive error handling.
 """
 
-from typing import Tuple, Optional, Union, Callable
+from typing import Tuple, Optional, Union, Callable, TYPE_CHECKING
 from pathlib import Path
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 import torch
@@ -12,7 +12,8 @@ import pandas as pd
 from PIL import Image
 import numpy as np
 
-from federated_pneumonia_detection.models.system_constants import SystemConstants
+if TYPE_CHECKING:
+    from federated_pneumonia_detection.config.config_manager import ConfigManager
 
 
 class CustomImageDataset(Dataset):
@@ -27,7 +28,9 @@ class CustomImageDataset(Dataset):
         self,
         dataframe: pd.DataFrame,
         image_dir: Union[str, Path],
-        constants: SystemConstants,
+        config: Optional['ConfigManager'] = None,
+        filename_column: Optional[str] = None,
+        target_column: Optional[str] = None,
         transform: Optional[Callable] = None,
         color_mode: str = "RGB",
         validate_images: bool = True,
@@ -36,9 +39,11 @@ class CustomImageDataset(Dataset):
         Initialize the dataset with validation and error handling.
 
         Args:
-            dataframe: DataFrame containing 'filename' and 'Target' columns
+            dataframe: DataFrame containing filename and target columns
             image_dir: Directory containing image files
-            constants: SystemConstants for configuration
+            config: ConfigManager for configuration
+            filename_column: Column name for filenames (uses config if None)
+            target_column: Column name for targets (uses config if None)
             transform: Optional transform pipeline to apply to images
             color_mode: 'RGB' or 'L' for color mode
             validate_images: Whether to validate image files during initialization
@@ -47,11 +52,19 @@ class CustomImageDataset(Dataset):
             ValueError: If dataframe is invalid or required columns missing
             FileNotFoundError: If image directory doesn't exist
         """
+        if config is None:
+            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            config = ConfigManager()
+        
         self.logger = get_logger(__name__)
-        self.constants = constants
+        self.config = config
         self.transform = transform
         self.color_mode = color_mode.upper()
         self.image_dir = Path(image_dir)
+        
+        # Get column names from config if not provided
+        self.filename_column = filename_column or config.get('columns.filename', 'filename')
+        self.target_column = target_column or config.get('columns.target', 'Target')
 
         # Validate inputs
         self._validate_inputs(dataframe, image_dir)
@@ -63,8 +76,8 @@ class CustomImageDataset(Dataset):
             self.labels = np.array([])
             self.valid_indices = np.array([])
         else:
-            self.filenames = dataframe[constants.FILENAME_COLUMN].values
-            self.labels = dataframe[constants.TARGET_COLUMN].astype(float).values
+            self.filenames = dataframe[self.filename_column].values
+            self.labels = dataframe[self.target_column].astype(float).values
 
             # Validate images if requested
             if validate_images:
@@ -92,14 +105,14 @@ class CustomImageDataset(Dataset):
             raise ValueError(f"Image directory path is not a directory: {image_dir}")
 
         if self.color_mode not in ["RGB", "L"]:
-            self.logger.error(f"Color mode must be 'RGB' or 'L'")
-            raise ValueError("color_mode must be 'RGB' or 'L'")
+            self.logger.error("Color mode must be 'RGB' or 'L'")
+            raise ValueError("Color mode must be 'RGB' or 'L'")
 
         # Check required columns if dataframe is not empty
         if not dataframe.empty:
             required_columns = [
-                self.constants.FILENAME_COLUMN,
-                self.constants.TARGET_COLUMN,
+                self.filename_column,
+                self.target_column,
             ]
             missing_columns = [
                 col for col in required_columns if col not in dataframe.columns

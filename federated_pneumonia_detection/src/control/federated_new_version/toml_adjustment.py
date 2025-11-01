@@ -32,9 +32,9 @@ def update_flwr_config(
             data["tool"]["flwr"]["app"]["config"]["num-server-rounds"] = value
         elif key == "max_epochs":
             data["tool"]["flwr"]["app"]["config"]["max-epochs"] = value
-        elif key == "options_num_supernodes":
-            data["tool"]["flwr"]["federations"]["local-simulation"][
-                "options.num-supernodes"
+        elif key == "num_supernodes":
+            data["tool"]["flwr"]["federations"]["local-simulation"]["options"][
+                "num-supernodes"
             ] = value
 
     # Write back to file

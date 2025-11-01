@@ -4,13 +4,14 @@ Provides configurable transform pipelines and custom preprocessing functions.
 """
 
 import logging
-from typing import Optional, Callable
+from typing import Optional, Callable, TYPE_CHECKING
 import numpy as np
 from PIL import Image
 import torchvision.transforms as transforms
 
-from federated_pneumonia_detection.models.system_constants import SystemConstants
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+if TYPE_CHECKING:
+    from federated_pneumonia_detection.config.config_manager import ConfigManager
+
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 
 
@@ -182,15 +183,17 @@ class TransformBuilder:
     Provides flexible and extensible transform pipeline creation.
     """
 
-    def __init__(self, constants: SystemConstants, config: ExperimentConfig):
+    def __init__(self, config: Optional['ConfigManager'] = None):
         """
         Initialize transform builder.
 
         Args:
-            constants: SystemConstants for configuration
-            config: ExperimentConfig for parameters
+            config: ConfigManager for configuration
         """
-        self.constants = constants
+        if config is None:
+            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            config = ConfigManager()
+        
         self.config = config
         self.preprocessor = XRayPreprocessor()
         self.logger = get_logger(__name__)
@@ -198,7 +201,7 @@ class TransformBuilder:
     def build_training_transforms(
         self,
         enable_augmentation: bool = True,
-        augmentation_strength: float = 1.0,
+        augmentation_strength: Optional[float] = None,
         custom_preprocessing: Optional[dict] = None,
     ) -> transforms.Compose:
         """
@@ -212,8 +215,12 @@ class TransformBuilder:
         Returns:
             Composed transform pipeline
         """
+        if augmentation_strength is None:
+            augmentation_strength = self.config.get('experiment.augmentation_strength', 1.0)
+        
+        img_size = tuple(self.config.get('system.img_size', [224, 224]))
+        
         transform_list = []
-        img_size = self.constants.IMG_SIZE
 
         # Resize and augmentation
         if enable_augmentation:
@@ -267,7 +274,7 @@ class TransformBuilder:
             Composed transform pipeline
         """
         transform_list = []
-        img_size = self.constants.IMG_SIZE
+        img_size = tuple(self.config.get('system.img_size', [224, 224]))
 
         # Simple resize and crop for validation
         transform_list.extend(
@@ -300,7 +307,7 @@ class TransformBuilder:
             List of transform pipelines
         """
         transforms_list = []
-        img_size = self.constants.IMG_SIZE
+        img_size = tuple(self.config.get('system.img_size', [224, 224]))
 
         for i in range(num_augmentations):
             transform_list = []
@@ -370,7 +377,7 @@ class TransformBuilder:
             Custom transform pipeline
         """
         transform_list = []
-        img_size = self.constants.IMG_SIZE
+        img_size = tuple(self.config.get('system.img_size', [224, 224]))
 
         # Resize strategy
         if resize_strategy == "resize_crop":
@@ -424,19 +431,17 @@ class TransformBuilder:
 
 # Convenience functions for backward compatibility and ease of use
 def get_transforms(
-    constants: SystemConstants,
-    config: ExperimentConfig,
+    config: Optional['ConfigManager'],
     is_training: bool = True,
     use_custom_preprocessing: bool = False,
-    augmentation_strength: float = 1.0,
+    augmentation_strength: Optional[float] = None,
     **kwargs,
 ) -> transforms.Compose:
     """
     Get transform pipeline using the builder pattern.
 
     Args:
-        constants: SystemConstants instance
-        config: ExperimentConfig instance
+        config: ConfigManager instance
         is_training: Whether transforms are for training
         use_custom_preprocessing: Whether to apply custom X-ray preprocessing
         augmentation_strength: Strength of data augmentation
@@ -445,7 +450,7 @@ def get_transforms(
     Returns:
         Transform pipeline
     """
-    builder = TransformBuilder(constants, config)
+    builder = TransformBuilder(config)
 
     preprocessing_config = None
     if use_custom_preprocessing:
@@ -473,12 +478,14 @@ def get_transforms(
 
 
 def create_preprocessing_function(
+    config: Optional['ConfigManager'],
     contrast_stretch: bool = True, **kwargs
 ) -> Callable[[Image.Image], Image.Image]:
     """
     Create standalone preprocessing function for X-ray images.
 
     Args:
+        config: ConfigManager instance
         contrast_stretch: Whether to apply contrast stretching
         **kwargs: Additional preprocessing parameters
 

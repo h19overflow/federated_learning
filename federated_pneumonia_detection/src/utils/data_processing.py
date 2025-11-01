@@ -5,19 +5,21 @@ Provides CSV loading, train/validation splitting, and data preparation utilities
 
 import os
 import logging
-from typing import Tuple, Optional, Union
+import warnings
+from typing import Tuple, Optional, Union, TYPE_CHECKING
 from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from federated_pneumonia_detection.models.system_constants import SystemConstants
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+
+if TYPE_CHECKING:
+    from federated_pneumonia_detection.config.config_manager import ConfigManager
 
 
 def load_metadata(
     metadata_path: Union[str, Path],
-    constants: SystemConstants,
+    config_or_constants: Optional[Union['ConfigManager']] = None,
     logger: Optional[logging.Logger] = None,
 ) -> pd.DataFrame:
     """
@@ -25,7 +27,7 @@ def load_metadata(
 
     Args:
         metadata_path: Path to metadata CSV file
-        constants: SystemConstants for column configuration
+            config_or_constants: ConfigManager
         logger: Optional logger instance
 
     Returns:
@@ -51,23 +53,73 @@ def load_metadata(
         logger.error(f"Failed to load metadata file: {e}")
         raise ValueError(f"Failed to load metadata file: {e}")
 
-    # Validate required columns
-    if constants.PATIENT_ID_COLUMN not in df.columns:
-        logger.error(f"Missing column: {constants.PATIENT_ID_COLUMN}")
-        raise ValueError(f"Missing column: {constants.PATIENT_ID_COLUMN}")
+    # Handle both ConfigManager and old SystemConstants
+    if config_or_constants is None:
+        from federated_pneumonia_detection.config.config_manager import ConfigManager
+        config = ConfigManager()
+    elif hasattr(config_or_constants, 'get'):  # ConfigManager
+        config = config_or_constants
+    else:  # Old SystemConstants
+        warnings.warn(
+            "Passing SystemConstants to load_metadata is deprecated. "
+            "Use ConfigManager instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        # Convert old constants to config access pattern
+        constants = config_or_constants
+        patient_id_col = constants.PATIENT_ID_COLUMN
+        target_col = constants.TARGET_COLUMN
+        filename_col = constants.FILENAME_COLUMN
+        image_ext = constants.IMAGE_EXTENSION
+    
+        # Validate required columns
+        if patient_id_col not in df.columns:
+            logger.error(f"Missing column: {patient_id_col}")
+            raise ValueError(f"Missing column: {patient_id_col}")
 
-    if constants.TARGET_COLUMN not in df.columns:
-        logger.error(f"Missing column: {constants.TARGET_COLUMN}")
-        raise ValueError(f"Missing column: {constants.TARGET_COLUMN}")
+        if target_col not in df.columns:
+            logger.error(f"Missing column: {target_col}")
+            raise ValueError(f"Missing column: {target_col}")
+
+        # Prepare filename column
+        df = df.copy()
+        df[filename_col] = df[patient_id_col].astype(str) + image_ext
+        df[target_col] = df[target_col].astype(int).astype(str)
+
+        # Basic validation
+        if df.empty:
+            logger.error("DataFrame is empty")
+            raise ValueError("DataFrame is empty")
+
+        required_columns = [patient_id_col, target_col, filename_col]
+        for col in required_columns:
+            if df[col].isna().any():
+                logger.error(f"Missing values found in column: {col}")
+                raise ValueError(f"Missing values found in column: {col}")
+
+        logger.info(f"Metadata prepared successfully: {len(df)} samples")
+        return df
+
+    # New ConfigManager path
+    patient_id_col = config.get('columns.patient_id')
+    target_col = config.get('columns.target')
+    filename_col = config.get('columns.filename')
+    image_ext = config.get('system.image_extension')
+
+    # Validate required columns
+    if patient_id_col not in df.columns:
+        logger.error(f"Missing column: {patient_id_col}")
+        raise ValueError(f"Missing column: {patient_id_col}")
+
+    if target_col not in df.columns:
+        logger.error(f"Missing column: {target_col}")
+        raise ValueError(f"Missing column: {target_col}")
 
     # Prepare filename column
     df = df.copy()
-    df[constants.FILENAME_COLUMN] = (
-        df[constants.PATIENT_ID_COLUMN].astype(str) + constants.IMAGE_EXTENSION
-    )
-
-    # Ensure target column is consistent type
-    df[constants.TARGET_COLUMN] = df[constants.TARGET_COLUMN].astype(int).astype(str)
+    df[filename_col] = df[patient_id_col].astype(str) + image_ext
+    df[target_col] = df[target_col].astype(int).astype(str)
 
     # Basic validation
     if df.empty:
@@ -75,11 +127,7 @@ def load_metadata(
         raise ValueError("DataFrame is empty")
 
     # Check for missing values in critical columns
-    required_columns = [
-        constants.PATIENT_ID_COLUMN,
-        constants.TARGET_COLUMN,
-        constants.FILENAME_COLUMN,
-    ]
+    required_columns = [patient_id_col, target_col, filename_col]
 
     for col in required_columns:
         if df[col].isna().any():
@@ -200,17 +248,16 @@ def create_train_val_split(
 
 
 def load_and_split_data(
-    constants: SystemConstants,
-    config: ExperimentConfig,
+    config_or_constants: Optional[Union['ConfigManager']] = None,
     metadata_path: Optional[Union[str, Path]] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Complete data loading and splitting pipeline.
 
     Args:
-        constants: SystemConstants for configuration
-        config: ExperimentConfig for processing parameters
-        metadata_path: Optional custom metadata path (uses constants if None)
+        config_or_constants: ConfigManager (new) or SystemConstants (deprecated)
+        config_or_experiment: ConfigManager (new) or ExperimentConfig (deprecated)
+        metadata_path: Optional custom metadata path
 
     Returns:
         Tuple of (train_df, val_df) DataFrames
@@ -219,29 +266,66 @@ def load_and_split_data(
         FileNotFoundError: If metadata file doesn't exist
         ValueError: If data processing fails
     """
-    logger = logging.getLogger(__name__)
+    logger = get_logger(__name__)
 
     try:
-        # Determine metadata path
-        if metadata_path is None:
-            metadata_path = os.path.join(
-                constants.BASE_PATH, constants.METADATA_FILENAME
+        # Handle ConfigManager vs old objects
+        if config_or_constants is None:
+            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            config = ConfigManager()
+        elif hasattr(config_or_constants, 'get'):  # ConfigManager
+            config = config_or_constants
+        else:  # Old SystemConstants
+            constants = config_or_constants
+            sample_frac = config.get('experiment.sample_fraction', 0.1)
+            val_split = config.get('experiment.validation_split', 0.2)
+            seed = config.get('experiment.seed', 42)
+
+            # Use old path
+            if metadata_path is None:
+                metadata_path = os.path.join(
+                    constants.BASE_PATH, constants.METADATA_FILENAME
+                )
+
+            df = load_metadata(metadata_path, constants, logger)
+            df_sample = sample_dataframe(
+                df, sample_frac, constants.TARGET_COLUMN, seed, logger
+            )
+            train_df, val_df = create_train_val_split(
+                df_sample,
+                val_split,
+                constants.TARGET_COLUMN,
+                seed,
+                logger,
             )
 
-        # Load metadata
-        df = load_metadata(metadata_path, constants, logger)
+            logger.info(
+                f"Data processing completed: {len(train_df)} train, {len(val_df)} validation samples"
+            )
+            return train_df, val_df
 
-        # Sample data if needed
+        # New ConfigManager path
+        if metadata_path is None:
+            base_path = config.get('paths.base_path', '.')
+            metadata_filename = config.get('paths.metadata_filename', 'Train_metadata.csv')
+            metadata_path = os.path.join(base_path, metadata_filename)
+
+        df = load_metadata(metadata_path, config, logger)
+        
+        sample_frac = config.get('experiment.sample_fraction', 0.1)
+        val_split = config.get('experiment.validation_split', 0.2)
+        seed = config.get('experiment.seed', 42)
+        target_column = config.get('columns.target', 'Target')
+
         df_sample = sample_dataframe(
-            df, config.sample_fraction, constants.TARGET_COLUMN, config.seed, logger
+            df, sample_frac, target_column, seed, logger
         )
 
-        # Create train/validation split
         train_df, val_df = create_train_val_split(
             df_sample,
-            config.validation_split,
-            constants.TARGET_COLUMN,
-            config.seed,
+            val_split,
+            target_column,
+            seed,
             logger,
         )
 
@@ -256,13 +340,14 @@ def load_and_split_data(
 
 
 def validate_image_paths(
-    constants: SystemConstants, logger: Optional[logging.Logger] = None
+    config_or_constants: Optional[Union['ConfigManager']] = None,
+    logger: Optional[logging.Logger] = None
 ) -> bool:
     """
     Validate that image directories exist.
 
     Args:
-        constants: SystemConstants containing path configuration
+        config_or_constants: ConfigManager (new) or SystemConstants (deprecated)
         logger: Optional logger instance
 
     Returns:
@@ -271,8 +356,34 @@ def validate_image_paths(
     if logger is None:
         logger = get_logger(__name__)
 
-    main_images_path = os.path.join(constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER)
-    image_dir_path = os.path.join(main_images_path, constants.IMAGES_SUBFOLDER)
+    if config_or_constants is None:
+        from federated_pneumonia_detection.config.config_manager import ConfigManager
+        config = ConfigManager()
+    elif hasattr(config_or_constants, 'get'):  # ConfigManager
+        config = config_or_constants
+    else:  # Old SystemConstants
+        constants = config_or_constants
+        main_images_path = os.path.join(constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER)
+        image_dir_path = os.path.join(main_images_path, constants.IMAGES_SUBFOLDER)
+
+        if not os.path.exists(main_images_path):
+            logger.error(f"Main images folder not found: {main_images_path}")
+            return False
+
+        if not os.path.exists(image_dir_path):
+            logger.error(f"Images directory not found: {image_dir_path}")
+            return False
+
+        logger.info("Image paths validated successfully")
+        return True
+
+    # New ConfigManager path
+    base_path = config.get('paths.base_path', '.')
+    main_images_folder = config.get('paths.main_images_folder', 'Images')
+    images_subfolder = config.get('paths.images_subfolder', 'Images')
+    
+    main_images_path = os.path.join(base_path, main_images_folder)
+    image_dir_path = os.path.join(main_images_path, images_subfolder)
 
     if not os.path.exists(main_images_path):
         logger.error(f"Main images folder not found: {main_images_path}")
@@ -286,19 +397,37 @@ def validate_image_paths(
     return True
 
 
-def get_image_directory_path(constants: SystemConstants) -> str:
+def get_image_directory_path(
+    config_or_constants: Optional[Union['ConfigManager']] = None
+) -> str:
     """
     Get the full path to the image directory.
 
     Args:
-        constants: SystemConstants containing path configuration
+        config_or_constants: ConfigManager (new) or SystemConstants (deprecated)
 
     Returns:
         Full path to image directory
     """
     logger = get_logger(__name__)
-    main_images_path = os.path.join(constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER)
-    return os.path.join(main_images_path, constants.IMAGES_SUBFOLDER)
+    
+    if config_or_constants is None:
+        from federated_pneumonia_detection.config.config_manager import ConfigManager
+        config = ConfigManager()
+    elif hasattr(config_or_constants, 'get'):  # ConfigManager
+        config = config_or_constants
+    else:  # Old SystemConstants
+        constants = config_or_constants
+        main_images_path = os.path.join(constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER)
+        return os.path.join(main_images_path, constants.IMAGES_SUBFOLDER)
+
+    # New ConfigManager path
+    base_path = config.get('paths.base_path', '.')
+    main_images_folder = config.get('paths.main_images_folder', 'Images')
+    images_subfolder = config.get('paths.images_subfolder', 'Images')
+    
+    main_images_path = os.path.join(base_path, main_images_folder)
+    return os.path.join(main_images_path, images_subfolder)
 
 
 def get_data_statistics(df: pd.DataFrame, target_column: str) -> dict:
@@ -337,17 +466,13 @@ class DataProcessor:
     DEPRECATED: Use the standalone functions instead.
     """
 
-    def __init__(self, constants: SystemConstants):
-        """Initialize with system constants."""
-        self.constants = constants
+    def __init__(self, config: 'ConfigManager'):
+        """Initialize with config."""
+        self.config = config
         self.logger = get_logger(__name__)
-        self.logger.warning(
-            "DataProcessor class is deprecated. "
-            "Use load_and_split_data() function instead."
-        )
 
     def load_and_process_data(
-        self, config: ExperimentConfig
+        self, config: 'ConfigManager'
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Load and process data using the new function-based approach."""
         return load_and_split_data(self.constants, config)
@@ -359,30 +484,30 @@ class DataProcessor:
     def get_image_paths(self) -> Tuple[str, str]:
         """Get image paths."""
         main_images_path = os.path.join(
-            self.constants.BASE_PATH, self.constants.MAIN_IMAGES_FOLDER
+            self.config.get('paths.base_path', '.'), self.config.get('paths.main_images_folder', 'Images')
         )
-        image_dir_path = get_image_directory_path(self.constants)
+        image_dir_path = get_image_directory_path(self.config)
         return main_images_path, image_dir_path
 
     # Private methods for backward compatibility with tests
     def _load_metadata(self) -> pd.DataFrame:
         """Load metadata (backward compatibility wrapper)."""
         metadata_path = os.path.join(
-            self.constants.BASE_PATH, self.constants.METADATA_FILENAME
+            self.config.get('paths.base_path', '.'), self.config.get('paths.metadata_filename', 'Train_metadata.csv')
         )
-        return load_metadata(metadata_path, self.constants, self.logger)
+        return load_metadata(metadata_path, self.config, self.logger)
 
     def _prepare_filenames(self, df: pd.DataFrame) -> pd.DataFrame:
         """Prepare filenames (backward compatibility wrapper)."""
         df = df.copy()
-        if self.constants.PATIENT_ID_COLUMN not in df.columns:
-            raise ValueError(f"Missing column: {self.constants.PATIENT_ID_COLUMN}")
-        df[self.constants.FILENAME_COLUMN] = (
-            df[self.constants.PATIENT_ID_COLUMN].astype(str)
-            + self.constants.IMAGE_EXTENSION
+        if self.config.get('columns.patient_id') not in df.columns:
+            raise ValueError(f"Missing column: {self.config.get('columns.patient_id')}")
+        df[self.config.get('columns.filename')] = (
+            df[self.config.get('columns.patient_id')].astype(str)
+            + self.config.get('system.image_extension')
         )
-        df[self.constants.TARGET_COLUMN] = (
-            df[self.constants.TARGET_COLUMN].astype(int).astype(str)
+        df[self.config.get('columns.target')] = (
+            df[self.config.get('columns.target')].astype(int).astype(str)
         )
         return df
 
@@ -393,9 +518,9 @@ class DataProcessor:
             raise ValueError("DataFrame is empty")
 
         required_columns = [
-            self.constants.PATIENT_ID_COLUMN,
-            self.constants.TARGET_COLUMN,
-            self.constants.FILENAME_COLUMN,
+            self.config.get('columns.patient_id'),
+            self.config.get('columns.target'),
+            self.config.get('columns.filename'),
         ]
 
         missing_cols = [col for col in required_columns if col not in df.columns]
@@ -413,7 +538,7 @@ class DataProcessor:
     ) -> pd.DataFrame:
         """Sample data (backward compatibility wrapper)."""
         return sample_dataframe(
-            df, sample_fraction, self.constants.TARGET_COLUMN, seed, self.logger
+            df, sample_fraction, self.config.get('columns.target'), seed, self.logger
         )
 
     def _create_train_val_split(
@@ -421,5 +546,5 @@ class DataProcessor:
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Create train/val split (backward compatibility wrapper)."""
         return create_train_val_split(
-            df, validation_split, self.constants.TARGET_COLUMN, seed, self.logger
+            df, validation_split, self.config.get('columns.target'), seed, self.logger
         )

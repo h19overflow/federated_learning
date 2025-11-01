@@ -3,14 +3,15 @@ ResNet50 V2 with custom classification head for pneumonia detection.
 Provides configurable backbone freezing and fine-tuning capabilities.
 """
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 import torch
 import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import ResNet50_Weights
 
-from federated_pneumonia_detection.models.system_constants import SystemConstants
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+if TYPE_CHECKING:
+    from federated_pneumonia_detection.config.config_manager import ConfigManager
+
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 
 
@@ -24,8 +25,7 @@ class ResNetWithCustomHead(nn.Module):
 
     def __init__(
         self,
-        constants: SystemConstants,
-        config: ExperimentConfig,
+        config: Optional['ConfigManager'] = None,
         base_model_weights: Optional[ResNet50_Weights] = None,
         num_classes: int = 1,
         dropout_rate: Optional[float] = None,
@@ -36,8 +36,7 @@ class ResNetWithCustomHead(nn.Module):
         Initialize ResNet50 with custom classification head.
 
         Args:
-            constants: SystemConstants for configuration
-            config: ExperimentConfig for model parameters
+            config: ConfigManager for configuration
             base_model_weights: Optional weights for ResNet50 backbone
             num_classes: Number of output classes (1 for binary classification)
             dropout_rate: Optional dropout rate override
@@ -49,7 +48,10 @@ class ResNetWithCustomHead(nn.Module):
         """
         super().__init__()
 
-        self.constants = constants
+        if config is None:
+            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            config = ConfigManager()
+
         self.config = config
         self.logger = get_logger(__name__)
 
@@ -58,12 +60,12 @@ class ResNetWithCustomHead(nn.Module):
         self.dropout_rate = (
             dropout_rate
             if dropout_rate is not None
-            else getattr(config, "dropout_rate", 0.5)
+            else config.get("experiment.dropout_rate", 0.5)
         )
         self.fine_tune_layers_count = (
             fine_tune_layers_count
             if fine_tune_layers_count is not None
-            else getattr(config, "fine_tune_layers_count", 0)
+            else config.get("experiment.fine_tune_layers_count", 0)
         )
 
         # Validate parameters
@@ -269,7 +271,7 @@ class ResNetWithCustomHead(nn.Module):
             "trainable_ratio": trainable_params / total_params
             if total_params > 0
             else 0.0,
-            "input_size": self.constants.IMG_SIZE,
+            "input_size": tuple(self.config.get("system.img_size", [224, 224])),
             "architecture": str(self.classifier),
         }
 

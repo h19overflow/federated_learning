@@ -4,14 +4,16 @@ Provides checkpoint management, early stopping, and monitoring functionality.
 """
 import os
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 import torch
 import numpy as np
 from sklearn.utils import class_weight
-from federated_pneumonia_detection.models.system_constants import SystemConstants
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+
+if TYPE_CHECKING:
+    from federated_pneumonia_detection.config.config_manager import ConfigManager
+
 from federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector import MetricsCollectorCallback
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
 
@@ -179,13 +181,13 @@ def prepare_trainer_and_callbacks_pl(
     class_column: str = 'Target',
     checkpoint_dir: str = 'checkpoints_pl',
     model_filename: str = 'best_model',
-    constants: Optional[SystemConstants] = None,
-    config: Optional[ExperimentConfig] = None,
+    config: Optional['ConfigManager'] = None,
     metrics_dir: Optional[str] = None,
     experiment_name: str = "pneumonia_detection",
     run_id: Optional[int] = None,
     enable_db_persistence: bool = True,
     websocket_sender: Optional[MetricsWebSocketSender] = None,
+    is_federated: bool = False,
 ) -> Dict[str, Any]:
     """
     Prepare PyTorch Lightning trainer callbacks and configuration.
@@ -195,17 +197,21 @@ def prepare_trainer_and_callbacks_pl(
         class_column: Column name containing class labels
         checkpoint_dir: Directory to save model checkpoints
         model_filename: Base filename for saved models
-        constants: System constants for configuration
-        config: Experiment configuration
+        config: ConfigManager instance
         metrics_dir: Optional directory to save metrics (defaults to checkpoint_dir/metrics)
         experiment_name: Name of the experiment for metrics tracking
         run_id: Optional database run ID for metrics persistence
         enable_db_persistence: Whether to persist metrics to database
         websocket_sender: Optional MetricsWebSocketSender instance for frontend communication
+        is_federated: If True, uses local_epochs; if False, uses epochs
 
     Returns:
         Dictionary containing callbacks and trainer configuration
     """
+    if config is None:
+        from federated_pneumonia_detection.config.config_manager import ConfigManager
+        config = ConfigManager()
+
     logger = logging.getLogger(__name__)
 
     # Create checkpoint directory
@@ -216,10 +222,11 @@ def prepare_trainer_and_callbacks_pl(
         websocket_sender = MetricsWebSocketSender(websocket_uri="ws://localhost:8765")
         logger.info("[Training Callbacks] Created default WebSocket sender")
 
-    # Setup default values from config or fallbacks
-    patience = config.early_stopping_patience if config else 7
-    min_delta = getattr(config, 'early_stopping_min_delta', 0.001)
-    max_epochs = config.epochs if config else 50
+    # Setup default values from config
+    patience = config.get('experiment.early_stopping_patience', 7)
+    min_delta = config.get('experiment.early_stopping_min_delta', 0.001)
+    max_epochs = config.get('experiment.local_epochs', 50) if is_federated else config.get('experiment.epochs', 50)
+    training_mode = "federated" if is_federated else "centralized"
 
     logger.info(f"[Trainer Setup] max_epochs={max_epochs}, early_stopping_patience={patience}, min_delta={min_delta}")
 
@@ -267,7 +274,7 @@ def prepare_trainer_and_callbacks_pl(
         save_dir=metrics_dir,
         experiment_name=experiment_name,
         run_id=run_id,
-        training_mode="centralized",
+        training_mode=training_mode,
         enable_db_persistence=True,
         websocket_uri="ws://localhost:8765"
     )
@@ -296,7 +303,7 @@ def prepare_trainer_and_callbacks_pl(
         'enable_checkpointing': True,
         'enable_progress_bar': True,
         'enable_model_summary': True,
-        'deterministic': True if constants and constants.SEED is not None else False
+        'deterministic': True if config.get('system.seed') is not None else False
     }
 
     logger.info(f"Prepared trainer with {len(callbacks)} callbacks")
@@ -315,28 +322,35 @@ def prepare_trainer_and_callbacks_pl(
 
 
 def create_trainer_from_config(
-    constants: SystemConstants,
-    config: ExperimentConfig,
+    config: Optional['ConfigManager'],
     callbacks: List[pl.Callback]
 ) -> pl.Trainer:
     """
     Create PyTorch Lightning trainer with proper configuration.
 
     Args:
-        constants: System constants
-        config: Experiment configuration
+        config: ConfigManager instance
         callbacks: List of callbacks to use
 
     Returns:
         Configured PyTorch Lightning trainer
     """
+    if config is None:
+        from federated_pneumonia_detection.config.config_manager import ConfigManager
+        config = ConfigManager()
+
     # Set deterministic training if seed is provided
-    if constants.SEED is not None:
-        pl.seed_everything(constants.SEED, workers=True)
+    seed = config.get('system.seed')
+    if seed is not None:
+        pl.seed_everything(seed, workers=True)
+
+    epochs = config.get('experiment.epochs', 50)
+    gradient_clip_val = config.get('experiment.gradient_clip_val', 1.0)
+    accumulate_grad_batches = config.get('experiment.accumulate_grad_batches', 1)
 
     trainer = pl.Trainer(
         callbacks=callbacks,
-        max_epochs=config.epochs,
+        max_epochs=epochs,
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
         devices=1 if torch.cuda.is_available() else 'auto',
         precision='16-mixed' if torch.cuda.is_available() else 32,
@@ -344,9 +358,9 @@ def create_trainer_from_config(
         enable_checkpointing=True,
         enable_progress_bar=True,
         enable_model_summary=True,
-        deterministic=constants.SEED is not None,
-        gradient_clip_val=getattr(config, 'gradient_clip_val', 1.0),
-        accumulate_grad_batches=getattr(config, 'accumulate_grad_batches', 1)
+        deterministic=seed is not None,
+        gradient_clip_val=gradient_clip_val,
+        accumulate_grad_batches=accumulate_grad_batches
     )
 
     logging.getLogger(__name__).info(f"Trainer created with {len(callbacks)} callbacks")

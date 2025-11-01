@@ -6,7 +6,7 @@ Orchestrates complete training workflow from zip file or directory to trained mo
 import os
 import logging
 import json
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, TYPE_CHECKING
 from pathlib import Path
 
 import pandas as pd
@@ -14,7 +14,7 @@ import pandas as pd
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
+from federated_pneumonia_detection.config.config_manager import ConfigManager
 from federated_pneumonia_detection.src.control.dl_model.utils.model.training_callbacks import (
     prepare_trainer_and_callbacks_pl,
     create_trainer_from_config,
@@ -30,7 +30,6 @@ from federated_pneumonia_detection.src.utils.data_processing import (
     create_train_val_split,
     sample_dataframe,
 )
-from federated_pneumonia_detection.models.system_constants import SystemConstants
 from .utils import DataSourceExtractor
 
 
@@ -59,30 +58,24 @@ class CentralizedTrainer:
         self.logger = self._setup_logging()
 
         # Load configuration
-        config_loader = ConfigLoader()
         try:
             if config_path:
-                # Load config as dictionary first
                 self.logger.info(f"Loading configuration from: {config_path}")
-                config_dict = config_loader.load_config(config_path)
-                self.constants = config_loader.create_system_constants(config_dict)
-                self.config = config_loader.create_experiment_config(config_dict)
-
-                # Log key configuration values
-                self.logger.info(f"Configuration loaded - Epochs: {self.config.epochs}, "
-                                 f"Batch Size: {self.config.batch_size}, "
-                                 f"Learning Rate: {self.config.learning_rate}, "
-                                 f"Weight Decay: {self.config.weight_decay}, "
-                                 f"Fine-tune Layers: {self.config.fine_tune_layers_count}")
+                self.config = ConfigManager(config_path)
             else:
-                self.logger.info("No config path provided, using defaults")
-                self.constants = config_loader.create_system_constants()
-                self.config = config_loader.create_experiment_config()
+                self.logger.info("Using default configuration")
+                self.config = ConfigManager()
+
+            # Log key configuration values
+            self.logger.info(f"Configuration loaded - Epochs: {self.config.get('experiment.epochs')}, "
+                             f"Batch Size: {self.config.get('experiment.batch_size')}, "
+                             f"Learning Rate: {self.config.get('experiment.learning_rate')}, "
+                             f"Weight Decay: {self.config.get('experiment.weight_decay')}, "
+                             f"Fine-tune Layers: {self.config.get('experiment.fine_tune_layers_count')}")
         except Exception as e:
             self.logger.warning(f"Configuration loading failed: {e}. Using defaults.")
             # Fallback to default configuration
-            self.constants = config_loader.create_system_constants()
-            self.config = config_loader.create_experiment_config()
+            self.config = ConfigManager()
 
         # Create directories
         os.makedirs(self.checkpoint_dir, exist_ok=True)
@@ -180,10 +173,10 @@ class CentralizedTrainer:
             "checkpoint_dir": self.checkpoint_dir,
             "logs_dir": self.logs_dir,
             "config": {
-                "epochs": self.config.epochs,
-                "learning_rate": self.config.learning_rate,
-                "batch_size": self.config.batch_size,
-                "validation_split": self.config.validation_split,
+                "epochs": self.config.get('experiment.epochs'),
+                "learning_rate": self.config.get('experiment.learning_rate'),
+                "batch_size": self.config.get('experiment.batch_size'),
+                "validation_split": self.config.get('experiment.validation_split'),
             },
             "temp_dir_active": self.data_source_extractor.temp_extract_dir is not None,
         }
@@ -193,6 +186,7 @@ class CentralizedTrainer:
             train_df: pd.DataFrame,
             experiment_name: str = "pneumonia_detection",
             run_id: Optional[int] = None,
+            is_federated: bool = False,
     ) -> Tuple[LitResNet, list, Any]:
         """
         Build model and training callbacks.
@@ -200,35 +194,31 @@ class CentralizedTrainer:
         Args:
             train_df: Training dataframe for computing class weights
             experiment_name: Name for the experiment
+            run_id: Optional database run ID for metrics persistence
+            is_federated: If True, uses local_epochs (max-epochs); if False, uses epochs
 
         Returns:
             Tuple of (model, callbacks, metrics_collector)
         """
         self.logger.info("Setting up model and callbacks...")
-        try:
-            callback_config = prepare_trainer_and_callbacks_pl(
-                train_df_for_weights=train_df,
-                class_column=self.constants.TARGET_COLUMN,
-                checkpoint_dir=self.checkpoint_dir,
-                model_filename="pneumonia_model",
-                constants=self.constants,
-                config=self.config,
-                metrics_dir=os.path.join(self.logs_dir, "metrics"),
-                experiment_name=experiment_name,
-                run_id=run_id,
-                enable_db_persistence=True,
-            )
-        except Exception as e:
-            self.logger.error(f"Failed to build model and callbacks: {e}")
-        try:
-            model = LitResNet(
-                constants=self.constants,
-                config=self.config,
-                class_weights_tensor=callback_config["class_weights"],
-                monitor_metric="val_recall",
-            )
-        except Exception as e:
-            self.logger.error(f"Failed to create model: {e}")
+        callback_config = prepare_trainer_and_callbacks_pl(
+            train_df_for_weights=train_df,
+            class_column=self.config.get('columns.target'),
+            checkpoint_dir=self.checkpoint_dir,
+            model_filename="pneumonia_model",
+            config=self.config,
+            metrics_dir=os.path.join(self.logs_dir, "metrics"),
+            experiment_name=experiment_name,
+            run_id=run_id,
+            enable_db_persistence=True,
+            is_federated=is_federated,
+        )
+        
+        model = LitResNet(
+            config=self.config,
+            class_weights_tensor=callback_config["class_weights"],
+            monitor_metric="val_recall",
+        )
 
         return model, callback_config["callbacks"], callback_config["metrics_collector"]
 
@@ -253,7 +243,6 @@ class CentralizedTrainer:
             tb_logger = None
         try:
             trainer = create_trainer_from_config(
-                constants=self.constants,
                 config=self.config,
                 callbacks=callbacks,
             )
@@ -348,7 +337,7 @@ class CentralizedTrainer:
             self, csv_path: str, image_dir: str
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Prepare training and validation datasets.
+        Load and prepare training dataset.
 
         Args:
             csv_path: Path to metadata CSV file
@@ -358,39 +347,27 @@ class CentralizedTrainer:
             Tuple of (train_df, val_df)
         """
 
-        # Create temporary constants with extracted paths
-        temp_constants = SystemConstants(
-            BASE_PATH=str(Path(csv_path).parent),
-            METADATA_FILENAME=Path(csv_path).name,
-            MAIN_IMAGES_FOLDER="",
-            IMAGES_SUBFOLDER="",
-            PATIENT_ID_COLUMN=self.constants.PATIENT_ID_COLUMN,
-            TARGET_COLUMN=self.constants.TARGET_COLUMN,
-            FILENAME_COLUMN=self.constants.FILENAME_COLUMN,
-            IMAGE_EXTENSION=self.constants.IMAGE_EXTENSION,
-            SEED=self.constants.SEED,
-        )
-
-        # Load metadata
-        df = load_metadata(csv_path, temp_constants, self.logger)
+        # Load metadata using ConfigManager directly
+        df = load_metadata(csv_path, self.config, self.logger)
         self.logger.info(f"Loaded metadata: {len(df)} samples from {csv_path}")
 
         # Sample data if needed
-        if self.config.sample_fraction < 1.0:
+        target_col = self.config.get('columns.target')
+        if self.config.get('system.sample_fraction') < 1.0:
             df = sample_dataframe(
                 df,
-                self.config.sample_fraction,
-                temp_constants.TARGET_COLUMN,
-                self.config.seed,
+                self.config.get('system.sample_fraction'),
+                target_col,
+                self.config.get('system.seed'),
                 self.logger,
             )
 
         # Create train/val split
         train_df, val_df = create_train_val_split(
             df,
-            self.config.validation_split,
-            temp_constants.TARGET_COLUMN,
-            self.config.seed,
+            self.config.get('experiment.validation_split'),
+            target_col,
+            self.config.get('experiment.seed'),
             self.logger,
         )
 
@@ -418,7 +395,6 @@ class CentralizedTrainer:
         data_module = XRayDataModule(
             train_df=train_df,
             val_df=val_df,
-            constants=self.constants,
             config=self.config,
             image_dir=image_dir,
             validate_images_on_init=False,

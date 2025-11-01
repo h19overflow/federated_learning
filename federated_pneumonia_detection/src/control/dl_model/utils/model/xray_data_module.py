@@ -4,7 +4,7 @@ Orchestrates dataset creation, data loading, and batch management with comprehen
 """
 
 import logging
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Dict, Any, TYPE_CHECKING
 from pathlib import Path
 
 import torch
@@ -12,8 +12,10 @@ import pandas as pd
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 import numpy as np
-from federated_pneumonia_detection.models.system_constants import SystemConstants
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+
+if TYPE_CHECKING:
+    from federated_pneumonia_detection.config.config_manager import ConfigManager
+
 from federated_pneumonia_detection.src.entities.custom_image_dataset import CustomImageDataset
 from federated_pneumonia_detection.src.utils.image_transforms import TransformBuilder
 
@@ -30,15 +32,14 @@ class XRayDataModule(pl.LightningDataModule):
         self,
         train_df: pd.DataFrame,
         val_df: pd.DataFrame,
-        constants: SystemConstants,
-        config: ExperimentConfig,
-        image_dir: Union[str, Path],
+        config: Optional['ConfigManager'] = None,
+        image_dir: Union[str, Path] = None,
         test_df: Optional[pd.DataFrame] = None,
-        color_mode: str = 'RGB',
-        pin_memory: bool = True,
-        persistent_workers: bool = False,
-        prefetch_factor: int = 2,
-        validate_images_on_init: bool = True,
+        color_mode: Optional[str] = None,
+        pin_memory: Optional[bool] = None,
+        persistent_workers: Optional[bool] = None,
+        prefetch_factor: Optional[int] = None,
+        validate_images_on_init: Optional[bool] = None,
         custom_preprocessing_config: Optional[Dict[str, Any]] = None
     ):
         """
@@ -47,42 +48,51 @@ class XRayDataModule(pl.LightningDataModule):
         Args:
             train_df: DataFrame containing training data
             val_df: DataFrame containing validation data
-            constants: SystemConstants for configuration
-            config: ExperimentConfig for parameters
+            config: ConfigManager for configuration
             image_dir: Directory containing image files
             test_df: Optional DataFrame for test data
-            color_mode: 'RGB' or 'L' for color mode
-            pin_memory: Whether to use pinned memory for DataLoader
-            persistent_workers: Whether to keep workers alive between epochs
-            prefetch_factor: Number of batches to prefetch per worker
-            validate_images_on_init: Whether to validate images during initialization
+            color_mode: 'RGB' or 'L' for color mode (uses config default if None)
+            pin_memory: Whether to use pinned memory (uses config if None)
+            persistent_workers: Whether to keep workers alive (uses config if None)
+            prefetch_factor: Number of batches to prefetch (uses config if None)
+            validate_images_on_init: Whether to validate images (uses config if None)
             custom_preprocessing_config: Custom preprocessing parameters
         """
         super().__init__()
 
-        self.save_hyperparameters(ignore=['train_df', 'val_df', 'test_df'])
+        if config is None:
+            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            config = ConfigManager()
 
-        # Store configuration
-        self.constants = constants
         self.config = config
+        self.save_hyperparameters(ignore=['train_df', 'val_df', 'test_df', 'config'])
+
+        # Store dataframes
         self.train_df = train_df.copy() if not train_df.empty else train_df
         self.val_df = val_df.copy() if not val_df.empty else val_df
         self.test_df = test_df.copy() if test_df is not None and not test_df.empty else None
-        self.image_dir = Path(image_dir)
-        self.color_mode = color_mode.upper()
-        self.validate_images_on_init = validate_images_on_init
+        self.image_dir = Path(image_dir) if image_dir else Path('.')
+        
+        # Get configuration values with defaults from config
+        self.color_mode = (color_mode or self.config.get('experiment.color_mode', 'RGB')).upper()
+        num_workers = self.config.get('experiment.num_workers', 4)
+        self.validate_images_on_init = validate_images_on_init if validate_images_on_init is not None else self.config.get('experiment.validate_images_on_init', True)
+        
+        # Column names from config
+        self.filename_column = self.config.get('columns.filename', 'filename')
+        self.target_column = self.config.get('columns.target', 'Target')
 
         # DataLoader configuration
-        self.pin_memory = pin_memory and torch.cuda.is_available()
-        self.persistent_workers = persistent_workers and config.num_workers > 0
-        self.prefetch_factor = prefetch_factor if config.num_workers > 0 else 2
+        self.pin_memory = (pin_memory if pin_memory is not None else self.config.get('experiment.pin_memory', True)) and torch.cuda.is_available()
+        self.persistent_workers = (persistent_workers if persistent_workers is not None else self.config.get('experiment.persistent_workers', False)) and num_workers > 0
+        self.prefetch_factor = prefetch_factor if prefetch_factor is not None else (self.config.get('experiment.prefetch_factor', 2) if num_workers > 0 else 2)
 
         # Custom preprocessing
         self.custom_preprocessing_config = custom_preprocessing_config or {}
 
         # Initialize components
         self.logger = logging.getLogger(__name__)
-        self.transform_builder = TransformBuilder(constants, config)
+        self.transform_builder = TransformBuilder(config=self.config)
 
         # Datasets (will be created in setup())
         self.train_dataset: Optional[CustomImageDataset] = None
@@ -111,7 +121,7 @@ class XRayDataModule(pl.LightningDataModule):
         # Validate required columns
         for name, df in [('train', self.train_df), ('val', self.val_df)]:
             if not df.empty:
-                required_cols = [self.constants.FILENAME_COLUMN, self.constants.TARGET_COLUMN]
+                required_cols = [self.filename_column, self.target_column]
                 missing_cols = [col for col in required_cols if col not in df.columns]
                 if missing_cols:
                     raise ValueError(f"Missing columns in {name} DataFrame: {missing_cols}")
@@ -124,8 +134,9 @@ class XRayDataModule(pl.LightningDataModule):
             stage: 'fit', 'validate', 'test', or None
         """
         # Set seeds for reproducibility
-        torch.manual_seed(self.config.seed)
-        np.random.seed(self.config.seed)
+        seed = self.config.get('experiment.seed', 42)
+        torch.manual_seed(seed)
+        np.random.seed(seed)
 
         # Create transforms
         train_transforms = self._create_training_transforms()
@@ -187,7 +198,7 @@ class XRayDataModule(pl.LightningDataModule):
         dataset = CustomImageDataset(
             dataframe=dataframe,
             image_dir=self.image_dir,
-            constants=self.constants,
+            config=self.config,
             transform=transforms,
             color_mode=self.color_mode,
             validate_images=self.validate_images_on_init
@@ -234,15 +245,15 @@ class XRayDataModule(pl.LightningDataModule):
 
         # Build dataloader kwargs based on num_workers
         loader_kwargs = {
-            'batch_size': self.config.batch_size,
+            'batch_size': self.config.get('experiment.batch_size', 32),
             'shuffle': True,
-            'num_workers': self.config.num_workers,
+            'num_workers': self.config.get('experiment.num_workers', 4),
             'pin_memory': self.pin_memory,
             'drop_last': False,
         }
 
         # Only set these parameters when using multiprocessing (num_workers > 0)
-        if self.config.num_workers > 0:
+        if self.config.get('experiment.num_workers', 4) > 0:
             loader_kwargs['persistent_workers'] = self.persistent_workers
             loader_kwargs['prefetch_factor'] = self.prefetch_factor
             loader_kwargs['worker_init_fn'] = self._worker_init_fn
@@ -261,15 +272,15 @@ class XRayDataModule(pl.LightningDataModule):
 
         # Build dataloader kwargs based on num_workers
         loader_kwargs = {
-            'batch_size': self.config.batch_size,
+            'batch_size': self.config.get('experiment.batch_size', 32),
             'shuffle': False,
-            'num_workers': self.config.num_workers,
+            'num_workers': self.config.get('experiment.num_workers', 4),
             'pin_memory': self.pin_memory,
             'drop_last': False,
         }
 
         # Only set these parameters when using multiprocessing (num_workers > 0)
-        if self.config.num_workers > 0:
+        if self.config.get('experiment.num_workers', 4) > 0:
             loader_kwargs['persistent_workers'] = self.persistent_workers
             loader_kwargs['prefetch_factor'] = self.prefetch_factor
             loader_kwargs['worker_init_fn'] = self._worker_init_fn
@@ -288,15 +299,15 @@ class XRayDataModule(pl.LightningDataModule):
 
         # Build dataloader kwargs based on num_workers
         loader_kwargs = {
-            'batch_size': self.config.batch_size,
+            'batch_size': self.config.get('experiment.batch_size', 32),
             'shuffle': False,
-            'num_workers': self.config.num_workers,
+            'num_workers': self.config.get('experiment.num_workers', 4),
             'pin_memory': self.pin_memory,
             'drop_last': False,
         }
 
         # Only set these parameters when using multiprocessing (num_workers > 0)
-        if self.config.num_workers > 0:
+        if self.config.get('experiment.num_workers', 4) > 0:
             loader_kwargs['persistent_workers'] = self.persistent_workers
             loader_kwargs['prefetch_factor'] = self.prefetch_factor
             loader_kwargs['worker_init_fn'] = self._worker_init_fn
