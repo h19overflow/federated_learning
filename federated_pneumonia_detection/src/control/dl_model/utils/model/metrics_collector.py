@@ -9,7 +9,8 @@ from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_file_persister import MetricsFilePersister
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
-
+# TODO: pass the federated flag and upon completion save the metrics with the new schema that would connect to a run at least and a client 
+# it's already being passed as training_mode so we can just adjust the behaviour and branch based on federated or not
 class MetricsCollectorCallback(pl.Callback):
     """
     Comprehensive metrics collector that saves all training metrics across epochs.

@@ -1,5 +1,6 @@
 from flwr.app import ArrayRecord, Context
 from flwr.serverapp import ServerApp, Grid
+from pathlib import Path
 from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import ConfigurableFedAvg
 from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import (
     LitResNet,
@@ -7,12 +8,10 @@ from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet i
 from federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment import (
     update_flwr_config,
 )
+from federated_pneumonia_detection.src.control.federated_new_version.core.utils import read_configs_to_toml
 from federated_pneumonia_detection.config.config_manager import ConfigManager
 
 app = ServerApp()
-# TODO: in default_config the num_supernodes is 2 but it says chosen 2 out of 4 clients make sure to invesitgate why is there 2 variables in the template  
-# TODO: Make sure frontend sends the correct updates to default-yaml
-# since the keys have been adjusted to refelect the convention
 # TODO: When invoking make sure to add an update to the file path configuration.#
 # TODO: Context objects in the client and server classes contains run id , node id , so adjust it such that we persist them to the db.
 @app.lifespan()
@@ -45,8 +44,8 @@ def main(grid: Grid, context: Context) -> None:
     }
     
     # Load global model with ConfigManager
-    config = ConfigManager()
-    global_model = LitResNet(config=config)
+    config_manager = ConfigManager(config_path=str(Path(__file__).parent.parent.parent.parent.parent / "config" / "default_config.yaml"))
+    global_model = LitResNet(config=config_manager)
     arrays = ArrayRecord(global_model.state_dict())
 
     # Initialize ConfigurableFedAvg strategy with configs
@@ -69,24 +68,3 @@ def main(grid: Grid, context: Context) -> None:
     state_dict = result.arrays.to_torch_state_dict()
 
 
-# Helper function
-def read_configs_to_toml() -> dict:
-    from pathlib import Path
-    # Navigate from core/server_app.py -> federated_pneumonia_detection/config/default_config.yaml
-    config_dir = Path(__file__).parent.parent.parent.parent.parent / "config" / "default_config.yaml"
-    config_manager = ConfigManager(config_path=str(config_dir))
-    flwr_configs = {}
-    if config_manager.has_key("experiment.num-server-rounds"):
-        flwr_configs["num_server_rounds"] = config_manager.get(
-            "experiment.num-server-rounds"
-        )
-    if config_manager.has_key("experiment.max-epochs"):
-        flwr_configs["max_epochs"] = config_manager.get("experiment.max-epochs")
-    if config_manager.has_key("experiment.options.num-supernodes"):
-        flwr_configs["num_supernodes"] = config_manager.get(
-            "experiment.options.num-supernodes"
-        )
-    else:
-        print("No num-supernodes found in config")
-    print(f"Loaded flwr_configs: {flwr_configs}")
-    return flwr_configs
