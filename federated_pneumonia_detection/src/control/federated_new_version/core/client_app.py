@@ -24,19 +24,31 @@ app = ClientApp()
 
 @app.train()
 def train(msg: Message, context: Context):
-    configs = ConfigLoader()
-    constants = configs.create_system_constants()
-    config = configs.create_experiment_config()
+    # Initialize trainer with config
     centerlized_trainer = CentralizedTrainer(
-        config_path=r"federated_pneumonia_detection\config\default_config.yaml",
-        results_dir=r"federated_pneumonia_detection\results",
+        config_path=r"federated_pneumonia_detection\config\default_config.yaml"
     )
-    configs = msg.content["configs"]
+    constants = centerlized_trainer.constants
+    config = centerlized_trainer.config
+    
+    # Get configs from message (safely handle missing key with defaults)
+    train_configs = msg.content.get("configs", {
+        "file_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
+        "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
+        "num_partitions": 4,
+        "partition_id": 0,
+        "run_id": 5,
+    })
+    configs = train_configs
     full_dataset = pd.read_csv(configs["file_path"])
     # TODO: Partition the data based on the passed configuration
     partioner = CustomPartitioner(full_dataset, configs["num_partitions"])
 
     partion_df = partioner.load_partition(configs["partition_id"])
+    
+    # Add filename column if it doesn't exist (required by XRayDataModule)
+    if 'filename' not in partion_df.columns and 'patientId' in partion_df.columns:
+        partion_df['filename'] = partion_df.apply(lambda x: str(x['patientId']) + '.png', axis=1)
 
     train_df, val_df = train_test_split(partion_df, test_size=0.2, random_state=42)
 
@@ -96,17 +108,31 @@ def train(msg: Message, context: Context):
 
 @app.evaluate()
 def evaluate(msg: Message, context: Context):
-    model = LitResNet.load_state_dict(msg.content["model"].to_torch_state_dict())
     centerlized_trainer = CentralizedTrainer(
         config_path=r"federated_pneumonia_detection\config\default_config.yaml",
-        results_dir=r"federated_pneumonia_detection\results",
     )
-    configs = msg.content["configs"]
+    constants = centerlized_trainer.constants
+    config = centerlized_trainer.config
+    
+    # Get configs from message (safely handle missing key with defaults)
+    eval_configs = msg.content.get("configs", {
+        "csv_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
+        "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
+        "run_id": 5,
+    })
+    configs = eval_configs
 
     train_df, val_df = centerlized_trainer._prepare_dataset(
         csv_path=configs["csv_path"],
         image_dir=configs["image_dir"],
     )
+    
+    # Add filename column if it doesn't exist (required by XRayDataModule)
+    if 'filename' not in train_df.columns and 'patientId' in train_df.columns:
+        train_df['filename'] = train_df.apply(lambda x: str(x['patientId']) + '.png', axis=1)
+    if 'filename' not in val_df.columns and 'patientId' in val_df.columns:
+        val_df['filename'] = val_df.apply(lambda x: str(x['patientId']) + '.png', axis=1)
+    
     data_module = centerlized_trainer._create_data_module(
         train_df=train_df, val_df=val_df, image_dir=configs["image_dir"]
     )

@@ -29,12 +29,12 @@ def update_flwr_config(
     # Update nested config values
     for key, value in kwargs.items():
         if key == "num_server_rounds":
-            data["tool"]["flwr"]["app"]["config"]["num_server_rounds"] = value
+            data["tool"]["flwr"]["app"]["config"]["num-server-rounds"] = value
         elif key == "max_epochs":
-            data["tool"]["flwr"]["app"]["config"]["max_epochs"] = value
+            data["tool"]["flwr"]["app"]["config"]["max-epochs"] = value
         elif key == "options_num_supernodes":
             data["tool"]["flwr"]["federations"]["local-simulation"][
-                "options_num_supernodes"
+                "options.num-supernodes"
             ] = value
 
     # Write back to file

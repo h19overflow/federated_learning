@@ -161,10 +161,9 @@ class ConfigLoader:
             reduce_lr_factor=experiment_config.get("reduce_lr_factor", 0.5),
             min_lr=experiment_config.get("min_lr", 1e-7),
             # Federated Learning parameters
-            num_rounds=experiment_config.get("num_rounds", 10),
-            num_clients=experiment_config.get("num_clients", 5),
-            clients_per_round=experiment_config.get("clients_per_round", 3),
-            local_epochs=experiment_config.get("local_epochs", 1),
+            num_rounds=experiment_config.get("num-server-rounds", 10),
+            num_clients=experiment_config.get("options", {}).get("num-supernodes", 5),
+            local_epochs=experiment_config.get("max-epochs", 1),
             # System parameters
             seed=system_config.get("seed", 42),
             device=experiment_config.get("device", "auto"),

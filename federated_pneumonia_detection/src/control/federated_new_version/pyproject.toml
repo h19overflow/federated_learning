@@ -5,7 +5,7 @@ requires = [
 build-backend = "hatchling.build"
 
 [project]
-name = "pytorchlightning_example"
+name = "core"
 version = "1.0.0"
 description = "Federated Learning with PyTorch Lightning and Flower (Quickstart Example)"
 license = "Apache-2.0"
@@ -26,21 +26,18 @@ packages = [
 publisher = "flwrlabs"
 
 [tool.flwr.app.components]
-serverapp = "server_app:app"
-clientapp = "client_app:app"
+serverapp = "federated_pneumonia_detection.src.control.federated_new_version.core.server_app:app"
+clientapp = "federated_pneumonia_detection.src.control.federated_new_version.core.client_app:app"
 
 [tool.flwr.app.config]
-num-server-rounds = 5
-max-epochs = 1
-num_server_rounds = 20
-max_epochs = 20
+num-server-rounds = 2
+max-epochs = 20
 
 [tool.flwr.federations]
 default = "local-simulation"
 
 [tool.flwr.federations.local-simulation]
-"options.num-supernodes" = 4
-options_num_supernodes = 20
+"options.num-supernodes" = 2
 
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 4

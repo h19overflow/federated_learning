@@ -40,7 +40,6 @@ class ExperimentConfig:
     # Federated Learning parameters
     num_rounds: int = 2
     num_clients: int = 2
-    clients_per_round: int = 2
     local_epochs: int = 15
 
     # System parameters
@@ -102,9 +101,6 @@ class ExperimentConfig:
 
         if self.num_clients <= 0:
             raise ValueError("Number of clients must be positive")
-
-        if self.clients_per_round > self.num_clients:
-            raise ValueError("Clients per round cannot exceed total number of clients")
 
         # Validate image processing parameters
         if self.color_mode not in ['RGB', 'L']:

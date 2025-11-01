@@ -23,13 +23,13 @@ experiment:
   max-epochs: 20
   min_lr: 1.0e-07
   monitor_metric: val_loss
-  num-server-rounds: 20
+  num-server-rounds: 2
   num_classes: 1
   num_clients: 2
   num_rounds: 3
   num_workers: 0
   options:
-    num-supernodes: 20
+    num-supernodes: 2
   persistent_workers: false
   pin_memory: true
   prefetch_factor: 2

@@ -138,6 +138,20 @@ class LitResNet(pl.LightningModule):
         """Forward pass through the model."""
         return self.model(x)
 
+    def state_dict(self, destination=None, prefix='', keep_vars=False):
+        """Override state_dict to exclude loss function parameters."""
+        state = super().state_dict(destination, prefix, keep_vars)
+        # Remove loss function entries that shouldn't be serialized
+        keys_to_remove = [k for k in state.keys() if 'loss_fn' in k]
+        for key in keys_to_remove:
+            state.pop(key, None)
+        return state
+
+    def load_state_dict(self, state_dict, strict=True):
+        """Override load_state_dict to handle missing loss function parameters."""
+        # Always use strict=False to allow missing loss_fn parameters
+        return super().load_state_dict(state_dict, strict=False)
+
     def _calculate_loss(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """Calculate loss based on task type."""
         if self.num_classes == 1:
