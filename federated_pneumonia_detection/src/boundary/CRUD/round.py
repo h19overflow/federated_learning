@@ -115,3 +115,40 @@ class RoundCRUD:
                 session.commit()
                 return True
             return False
+
+    def get_or_create_round(self, db_session, client_id: int, round_number: int) -> int:
+        """
+        Get existing round or create it if not exists.
+        Works with an existing database session.
+        
+        Args:
+            db_session: SQLAlchemy session
+            client_id: Client ID to associate round with
+            round_number: Round number
+            
+        Returns:
+            round_id: The ID of the round (existing or newly created)
+        """
+        # Check if round already exists
+        existing_round = db_session.query(Round).filter(
+            Round.client_id == client_id,
+            Round.round_number == round_number
+        ).first()
+        
+        if existing_round:
+            return existing_round.id
+        
+        # Create new round
+        new_round = Round(
+            client_id=client_id,
+            round_number=round_number,
+            start_time=datetime.utcnow(),
+            round_metadata={'created_at_utc': datetime.utcnow().isoformat()}
+        )
+        db_session.add(new_round)
+        db_session.flush()
+        
+        return new_round.id
+
+
+round_crud = RoundCRUD()

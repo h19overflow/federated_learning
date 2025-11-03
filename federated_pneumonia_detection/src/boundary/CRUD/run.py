@@ -68,7 +68,8 @@ class RunCRUD(BaseCRUD[Run]):
         return query.order_by(self.model.end_time.desc()).all()
 
     def persist_metrics(
-        self, db: Session, run_id: int, epoch_metrics: List[Dict[str, Any]]
+        self, db: Session, run_id: int, epoch_metrics: List[Dict[str, Any]],
+        federated_context: Optional[Dict[str, Any]] = None
     ) -> None:
         """
         Persist collected metrics to database.
@@ -77,9 +78,28 @@ class RunCRUD(BaseCRUD[Run]):
             db: Database session
             run_id: Run ID to associate metrics with
             epoch_metrics: List of epoch metric dictionaries
+            federated_context: Optional dict with 'client_id' and 'round_number' for federated mode
         """
         try:
             metrics_to_persist = []
+            
+            # Extract federated context if provided
+            client_id = None
+            round_id = None
+            if federated_context:
+                client_id = federated_context.get('client_id')
+                round_number = federated_context.get('round_number', 0)
+                
+                # If in federated mode, create/get round for this client
+                if client_id is not None:
+                    from federated_pneumonia_detection.src.boundary.CRUD.round import round_crud
+                    round_id = round_crud.get_or_create_round(
+                        db, client_id, round_number
+                    )
+                    self.logger.info(
+                        f"[persist_metrics] Federated context: "
+                        f"client_id={client_id}, round_id={round_id}"
+                    )
 
             for epoch_data in epoch_metrics:
                 epoch = epoch_data.get('epoch', 0)
@@ -106,13 +126,21 @@ class RunCRUD(BaseCRUD[Run]):
                         dataset_type = 'other'
                         metric_name = key
 
-                    metrics_to_persist.append({
+                    metric_dict = {
                         'run_id': run_id,
                         'metric_name': metric_name,
                         'metric_value': float(value),
                         'step': epoch,
                         'dataset_type': dataset_type
-                    })
+                    }
+                    
+                    # Add federated context if applicable
+                    if client_id is not None:
+                        metric_dict['client_id'] = client_id
+                    if round_id is not None:
+                        metric_dict['round_id'] = round_id
+
+                    metrics_to_persist.append(metric_dict)
 
             # Bulk create metrics for efficiency
             if metrics_to_persist:
@@ -120,7 +148,8 @@ class RunCRUD(BaseCRUD[Run]):
                 db.commit()
                 self.logger.info(
                     f"Persisted {len(metrics_to_persist)} metrics to database "
-                    f"for run_id={run_id}"
+                    f"for run_id={run_id}" +
+                    (f", client_id={client_id}, round_id={round_id}" if client_id else "")
                 )
 
         except Exception as e:

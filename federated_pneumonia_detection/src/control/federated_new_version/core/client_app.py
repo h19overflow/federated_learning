@@ -28,6 +28,15 @@ def train(msg: Message, context: Context):
     # Initialize trainer and config
     centerlized_trainer, config = _load_trainer_and_config()
 
+    # Extract client_id and round_number from Flower context for federated metrics tracking
+    client_id = context.node_id
+    round_number = (
+        context.state.current_round if hasattr(context.state, "current_round") else 0
+    )
+    centerlized_trainer.logger.info(
+        f"[Federated Train] Starting training for client_id={client_id}, round={round_number}"
+    )
+
     # Get configs from message (safely handle missing key with defaults)
     configs = msg.content.get(
         "config",
@@ -52,9 +61,14 @@ def train(msg: Message, context: Context):
         image_dir=configs["image_dir"],
     )
 
-    # Build model and trainer
+    # Build model and trainer with client_id and round_number for federated context
     model, callbacks, metrics_collector = _build_model_components(
-        centerlized_trainer, train_df, context, is_federated=True
+        centerlized_trainer,
+        train_df,
+        context,
+        is_federated=True,
+        client_id=client_id,
+        round_number=round_number,
     )
     model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
     trainer = _build_trainer_component(

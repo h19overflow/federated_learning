@@ -2,11 +2,16 @@
 Training callbacks and utilities for PyTorch Lightning model training.
 Provides checkpoint management, early stopping, and monitoring functionality.
 """
+
 import os
 import logging
 from typing import Optional, List, Dict, Any, TYPE_CHECKING
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
+from pytorch_lightning.callbacks import (
+    ModelCheckpoint,
+    EarlyStopping,
+    LearningRateMonitor,
+)
 import torch
 import numpy as np
 from sklearn.utils import class_weight
@@ -14,8 +19,12 @@ from sklearn.utils import class_weight
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector import MetricsCollectorCallback
-from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
+from federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector import (
+    MetricsCollectorCallback,
+)
+from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
+    MetricsWebSocketSender,
+)
 
 
 class EarlyStoppingSignalCallback(pl.Callback):
@@ -55,7 +64,9 @@ class EarlyStoppingSignalCallback(pl.Callback):
         for callback in trainer.callbacks:
             if isinstance(callback, EarlyStopping):
                 self.early_stop_callback = callback
-                self.logger.info(f"[EarlyStoppingSignal] Found EarlyStopping callback with patience={callback.patience}")
+                self.logger.info(
+                    f"[EarlyStoppingSignal] Found EarlyStopping callback with patience={callback.patience}"
+                )
                 break
 
         if self.websocket_sender:
@@ -117,7 +128,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
                 epoch=current_epoch,
                 best_metric_value=float(best_value) if best_value else 0.0,
                 metric_name=metric_name,
-                patience=self.early_stop_callback.patience
+                patience=self.early_stop_callback.patience,
             )
 
             self.logger.info(
@@ -125,7 +136,10 @@ class EarlyStoppingSignalCallback(pl.Callback):
             )
 
         except Exception as e:
-            self.logger.error(f"[Early Stopping Signal] ❌ Failed to signal early stopping: {e}", exc_info=True)
+            self.logger.error(
+                f"[Early Stopping Signal] ❌ Failed to signal early stopping: {e}",
+                exc_info=True,
+            )
 
 
 class HighestValRecallCallback(pl.Callback):
@@ -138,7 +152,7 @@ class HighestValRecallCallback(pl.Callback):
 
     def on_validation_epoch_end(self, trainer, pl_module):
         """Track the highest validation recall."""
-        current_recall = trainer.callback_metrics.get('val_recall', 0.0)
+        current_recall = trainer.callback_metrics.get("val_recall", 0.0)
         if isinstance(current_recall, torch.Tensor):
             current_recall = current_recall.item()
 
@@ -146,7 +160,10 @@ class HighestValRecallCallback(pl.Callback):
             self.best_recall = current_recall
             self.logger.info(f"New best validation recall: {self.best_recall:.4f}")
 
-def compute_class_weights_for_pl(train_df, class_column: str = 'Target') -> Optional[torch.Tensor]:
+
+def compute_class_weights_for_pl(
+    train_df, class_column: str = "Target"
+) -> Optional[torch.Tensor]:
     """
     Compute balanced class weights for PyTorch Lightning training.
 
@@ -163,31 +180,34 @@ def compute_class_weights_for_pl(train_df, class_column: str = 'Target') -> Opti
 
         if len(unique_labels) == 2:
             weights = class_weight.compute_class_weight(
-                'balanced',
-                classes=unique_labels,
-                y=labels
+                "balanced", classes=unique_labels, y=labels
             )
             return torch.tensor(weights, dtype=torch.float)
         else:
-            logging.getLogger(__name__).warning(f"Expected 2 classes, found {len(unique_labels)}")
+            logging.getLogger(__name__).warning(
+                f"Expected 2 classes, found {len(unique_labels)}"
+            )
             return None
 
     except Exception as e:
         logging.getLogger(__name__).error(f"Failed to compute class weights: {e}")
         return None
 
+
 def prepare_trainer_and_callbacks_pl(
     train_df_for_weights,
-    class_column: str = 'Target',
-    checkpoint_dir: str = 'checkpoints_pl',
-    model_filename: str = 'best_model',
-    config: Optional['ConfigManager'] = None,
+    class_column: str = "Target",
+    checkpoint_dir: str = "checkpoints_pl",
+    model_filename: str = "best_model",
+    config: Optional["ConfigManager"] = None,
     metrics_dir: Optional[str] = None,
     experiment_name: str = "pneumonia_detection",
     run_id: Optional[int] = None,
     enable_db_persistence: bool = True,
     websocket_sender: Optional[MetricsWebSocketSender] = None,
     is_federated: bool = False,
+    client_id: Optional[int] = None,
+    round_number: int = 0,
 ) -> Dict[str, Any]:
     """
     Prepare PyTorch Lightning trainer callbacks and configuration.
@@ -204,12 +224,15 @@ def prepare_trainer_and_callbacks_pl(
         enable_db_persistence: Whether to persist metrics to database
         websocket_sender: Optional MetricsWebSocketSender instance for frontend communication
         is_federated: If True, uses local_epochs; if False, uses epochs
+        client_id: Optional client ID for federated learning context
+        round_number: Round number for federated learning
 
     Returns:
         Dictionary containing callbacks and trainer configuration
     """
     if config is None:
         from federated_pneumonia_detection.config.config_manager import ConfigManager
+
         config = ConfigManager()
 
     logger = logging.getLogger(__name__)
@@ -223,12 +246,22 @@ def prepare_trainer_and_callbacks_pl(
         logger.info("[Training Callbacks] Created default WebSocket sender")
 
     # Setup default values from config
-    patience = config.get('experiment.early_stopping_patience', 7)
-    min_delta = config.get('experiment.early_stopping_min_delta', 0.001)
-    max_epochs = config.get('experiment.max-epochs', 50) if is_federated else config.get('experiment.epochs', 50)
+    patience = config.get("experiment.early_stopping_patience", 7)
+    min_delta = config.get("experiment.early_stopping_min_delta", 0.001)
+    max_epochs = (
+        config.get("experiment.max-epochs", 50)
+        if is_federated
+        else config.get("experiment.epochs", 50)
+    )
     training_mode = "federated" if is_federated else "centralized"
 
-    logger.info(f"[Trainer Setup] max_epochs={max_epochs}, early_stopping_patience={patience}, min_delta={min_delta}")
+    logger.info(
+        f"[Trainer Setup] max_epochs={max_epochs}, early_stopping_patience={patience}, min_delta={min_delta}"
+    )
+    if is_federated and client_id is not None:
+        logger.info(
+            f"[Trainer Setup] Federated mode with client_id={client_id}, round={round_number}"
+        )
 
     # Compute class weights
     class_weights = compute_class_weights_for_pl(train_df_for_weights, class_column)
@@ -236,9 +269,9 @@ def prepare_trainer_and_callbacks_pl(
     # ModelCheckpoint callback - save best model based on validation recall
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir,
-        filename=f'{model_filename}_{{epoch:02d}}_{{val_recall:.3f}}',
-        monitor='val_recall',
-        mode='max',
+        filename=f"{model_filename}_{{epoch:02d}}_{{val_recall:.3f}}",
+        monitor="val_recall",
+        mode="max",
         save_top_k=3,
         save_last=True,
         auto_insert_metric_name=False,
@@ -246,8 +279,8 @@ def prepare_trainer_and_callbacks_pl(
     )
     # EarlyStopping callback - stop training when validation recall stops improving
     early_stop_callback = EarlyStopping(
-        monitor='val_recall',
-        mode='max',
+        monitor="val_recall",
+        mode="max",
         patience=patience,
         min_delta=min_delta,
         verbose=True,
@@ -255,13 +288,14 @@ def prepare_trainer_and_callbacks_pl(
         log_rank_zero_only=True,
     )
 
-    logger.info(f"[EarlyStopping] Monitoring 'val_recall' with patience={patience}, min_delta={min_delta}")
+    logger.info(
+        f"[EarlyStopping] Monitoring 'val_recall' with patience={patience}, min_delta={min_delta}"
+    )
 
     # Learning rate monitor
     lr_monitor = LearningRateMonitor(
-        logging_interval='epoch',
+        logging_interval="epoch",
         log_momentum=True,
-        
     )
 
     # Custom highest recall tracker
@@ -269,18 +303,22 @@ def prepare_trainer_and_callbacks_pl(
 
     # Metrics collector - save all training metrics
     if metrics_dir is None:
-        metrics_dir = os.path.join(checkpoint_dir, 'metrics')
+        metrics_dir = os.path.join(checkpoint_dir, "metrics")
     metrics_collector = MetricsCollectorCallback(
         save_dir=metrics_dir,
         experiment_name=experiment_name,
         run_id=run_id,
         training_mode=training_mode,
         enable_db_persistence=True,
-        websocket_uri="ws://localhost:8765"
+        websocket_uri="ws://localhost:8765",
+        client_id=client_id,
+        round_number=round_number,
     )
 
     # Early stopping signal callback - notify frontend when early stopping occurs
-    early_stopping_signal = EarlyStoppingSignalCallback(websocket_sender=websocket_sender)
+    early_stopping_signal = EarlyStoppingSignalCallback(
+        websocket_sender=websocket_sender
+    )
 
     # Compile callbacks list
     callbacks = [
@@ -289,21 +327,21 @@ def prepare_trainer_and_callbacks_pl(
         early_stopping_signal,  # Must come after early_stop_callback
         lr_monitor,
         highest_recall_callback,
-        metrics_collector
+        metrics_collector,
     ]
 
     # Trainer configuration
     trainer_config = {
-        'callbacks': callbacks,
-        'max_epochs': max_epochs,
-        'accelerator': 'gpu' if torch.cuda.is_available() else 'cpu',
-        'devices': 1 if torch.cuda.is_available() else 'auto',
-        'precision': '16-mixed' if torch.cuda.is_available() else 32,
-        'log_every_n_steps': 50,
-        'enable_checkpointing': True,
-        'enable_progress_bar': True,
-        'enable_model_summary': True,
-        'deterministic': True if config.get('system.seed') is not None else False
+        "callbacks": callbacks,
+        "max_epochs": max_epochs,
+        "accelerator": "gpu" if torch.cuda.is_available() else "cpu",
+        "devices": 1 if torch.cuda.is_available() else "auto",
+        "precision": "16-mixed" if torch.cuda.is_available() else 32,
+        "log_every_n_steps": 50,
+        "enable_checkpointing": True,
+        "enable_progress_bar": True,
+        "enable_model_summary": True,
+        "deterministic": True if config.get("system.seed") is not None else False,
     }
 
     logger.info(f"Prepared trainer with {len(callbacks)} callbacks")
@@ -312,17 +350,17 @@ def prepare_trainer_and_callbacks_pl(
     logger.info(f"Class weights computed: {class_weights is not None}")
 
     return {
-        'callbacks': callbacks,
-        'trainer_config': trainer_config,
-        'class_weights': class_weights,
-        'checkpoint_dir': checkpoint_dir,
-        'metrics_collector': metrics_collector,
-        'early_stopping_signal': early_stopping_signal
+        "callbacks": callbacks,
+        "trainer_config": trainer_config,
+        "class_weights": class_weights,
+        "checkpoint_dir": checkpoint_dir,
+        "metrics_collector": metrics_collector,
+        "early_stopping_signal": early_stopping_signal,
     }
 
 
 def create_trainer_from_config(
-    config: Optional['ConfigManager'],
+    config: Optional["ConfigManager"],
     callbacks: List[pl.Callback],
     is_federated: bool = False,
 ) -> pl.Trainer:
@@ -339,30 +377,35 @@ def create_trainer_from_config(
     """
     if config is None:
         from federated_pneumonia_detection.config.config_manager import ConfigManager
+
         config = ConfigManager()
 
     # Set deterministic training if seed is provided
-    seed = config.get('system.seed')
+    seed = config.get("system.seed")
     if seed is not None:
         pl.seed_everything(seed, workers=True)
 
-    epochs = config.get('experiment.max-epochs', 50) if is_federated else config.get('experiment.epochs', 50)
-    gradient_clip_val = config.get('experiment.gradient_clip_val', 1.0)
-    accumulate_grad_batches = config.get('experiment.accumulate_grad_batches', 1)
+    epochs = (
+        config.get("experiment.max-epochs", 50)
+        if is_federated
+        else config.get("experiment.epochs", 50)
+    )
+    gradient_clip_val = config.get("experiment.gradient_clip_val", 1.0)
+    accumulate_grad_batches = config.get("experiment.accumulate_grad_batches", 1)
 
     trainer = pl.Trainer(
         callbacks=callbacks,
         max_epochs=epochs,
-        accelerator='gpu' if torch.cuda.is_available() else 'cpu',
-        devices=1 if torch.cuda.is_available() else 'auto',
-        precision='16-mixed' if torch.cuda.is_available() else 32,
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
+        devices=1 if torch.cuda.is_available() else "auto",
+        precision="16-mixed" if torch.cuda.is_available() else 32,
         log_every_n_steps=10,
         enable_checkpointing=True,
         enable_progress_bar=True,
         enable_model_summary=True,
         deterministic=seed is not None,
         gradient_clip_val=gradient_clip_val,
-        accumulate_grad_batches=accumulate_grad_batches
+        accumulate_grad_batches=accumulate_grad_batches,
     )
 
     logging.getLogger(__name__).info(f"Trainer created with {len(callbacks)} callbacks")

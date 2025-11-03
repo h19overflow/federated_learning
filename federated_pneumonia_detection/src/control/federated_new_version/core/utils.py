@@ -61,14 +61,23 @@ def _build_model_components(
     train_df,
     context: Context,
     is_federated: bool,
+    client_id: int = None,
+    round_number: int = 0,
 ):
-    """Build model, callbacks, and metrics collector."""
+    """Build model, callbacks, and metrics collector with federated context."""
+    if is_federated and client_id is not None:
+        centerlized_trainer.logger.info(
+            f"[Utils] Building components for federated client_id={client_id}, round={round_number}"
+        )
+
     model, callbacks, metrics_collector = (
         centerlized_trainer._build_model_and_callbacks(
             train_df=train_df,
             experiment_name="federated_pneumonia_detection",
             run_id=context.run_id,
             is_federated=is_federated,
+            client_id=client_id,
+            round_number=round_number,
         )
     )
     return model, callbacks, metrics_collector
@@ -123,7 +132,11 @@ def _create_metric_record_dict(
 
 def read_configs_to_toml() -> dict:
     """Read and convert YAML config to dictionary format."""
-    config_dir = Path(__file__).parent.parent.parent.parent.parent / "config" / "default_config.yaml"
+    config_dir = (
+        Path(__file__).parent.parent.parent.parent.parent
+        / "config"
+        / "default_config.yaml"
+    )
     config_manager = ConfigManager(config_path=str(config_dir))
     flwr_configs = {}
     if config_manager.has_key("experiment.num-server-rounds"):
@@ -140,4 +153,3 @@ def read_configs_to_toml() -> dict:
         print("No num-supernodes found in config")
     print(f"Loaded flwr_configs: {flwr_configs}")
     return flwr_configs
-

@@ -6,6 +6,7 @@ experiment:
   adaptive_histogram: false
   augmentation_strength: 1.0
   batch_size: 32
+  clients_per_round: 2
   clip_limit: 2.0
   color_mode: RGB
   contrast_stretch: true
@@ -18,13 +19,15 @@ experiment:
   fine_tune_layers_count: 5
   freeze_backbone: true
   learning_rate: 0.001
-  local_epochs: 4
+  local_epochs: 2
   lower_percentile: 5.0
   max-epochs: 2
   min_lr: 1.0e-07
   monitor_metric: val_loss
   num-server-rounds: 2
   num_classes: 1
+  num_clients: 2
+  num_rounds: 2
   num_workers: 0
   options:
     num-supernodes: 2

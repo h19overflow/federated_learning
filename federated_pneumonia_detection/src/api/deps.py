@@ -9,7 +9,6 @@ from federated_pneumonia_detection.src.boundary.CRUD.run_configuration import (
     RunConfigurationCRUD,
 )
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD
-from federated_pneumonia_detection.src.boundary.CRUD.run_artifact import RunArtifactCRUD
 
 
 def get_db() -> Session:
@@ -41,6 +40,3 @@ def get_run_metric_crud() -> RunMetricCRUD:
     return RunMetricCRUD()
 
 
-def get_run_artifact_crud() -> RunArtifactCRUD:
-    """Get the run artifact CRUD"""
-    return RunArtifactCRUD()

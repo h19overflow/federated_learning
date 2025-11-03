@@ -40,10 +40,10 @@ class CentralizedTrainer:
     """
 
     def __init__(
-            self,
-            config_path: Optional[str] = None,
-            checkpoint_dir: str = "results/checkpoints",
-            logs_dir: str = "results/training_logs",
+        self,
+        config_path: Optional[str] = None,
+        checkpoint_dir: str = "results/checkpoints",
+        logs_dir: str = "results/training_logs",
     ):
         """
         Initialize centralized trainer.
@@ -67,11 +67,13 @@ class CentralizedTrainer:
                 self.config = ConfigManager()
 
             # Log key configuration values
-            self.logger.info(f"Configuration loaded - Epochs: {self.config.get('experiment.epochs')}, "
-                             f"Batch Size: {self.config.get('experiment.batch_size')}, "
-                             f"Learning Rate: {self.config.get('experiment.learning_rate')}, "
-                             f"Weight Decay: {self.config.get('experiment.weight_decay')}, "
-                             f"Fine-tune Layers: {self.config.get('experiment.fine_tune_layers_count')}")
+            self.logger.info(
+                f"Configuration loaded - Epochs: {self.config.get('experiment.epochs')}, "
+                f"Batch Size: {self.config.get('experiment.batch_size')}, "
+                f"Learning Rate: {self.config.get('experiment.learning_rate')}, "
+                f"Weight Decay: {self.config.get('experiment.weight_decay')}, "
+                f"Fine-tune Layers: {self.config.get('experiment.fine_tune_layers_count')}"
+            )
         except Exception as e:
             self.logger.warning(f"Configuration loading failed: {e}. Using defaults.")
             # Fallback to default configuration
@@ -89,11 +91,11 @@ class CentralizedTrainer:
             raise
 
     def train(
-            self,
-            source_path: str,
-            experiment_name: str = "pneumonia_detection",
-            csv_filename: Optional[str] = None,
-            run_id: Optional[int] = None,
+        self,
+        source_path: str,
+        experiment_name: str = "pneumonia_detection",
+        csv_filename: Optional[str] = None,
+        run_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Complete training workflow from zip file or directory.
@@ -173,20 +175,22 @@ class CentralizedTrainer:
             "checkpoint_dir": self.checkpoint_dir,
             "logs_dir": self.logs_dir,
             "config": {
-                "epochs": self.config.get('experiment.epochs'),
-                "learning_rate": self.config.get('experiment.learning_rate'),
-                "batch_size": self.config.get('experiment.batch_size'),
-                "validation_split": self.config.get('experiment.validation_split'),
+                "epochs": self.config.get("experiment.epochs"),
+                "learning_rate": self.config.get("experiment.learning_rate"),
+                "batch_size": self.config.get("experiment.batch_size"),
+                "validation_split": self.config.get("experiment.validation_split"),
             },
             "temp_dir_active": self.data_source_extractor.temp_extract_dir is not None,
         }
 
     def _build_model_and_callbacks(
-            self,
-            train_df: pd.DataFrame,
-            experiment_name: str = "pneumonia_detection",
-            run_id: Optional[int] = None,
-            is_federated: bool = False,
+        self,
+        train_df: pd.DataFrame,
+        experiment_name: str = "pneumonia_detection",
+        run_id: Optional[int] = None,
+        is_federated: bool = False,
+        client_id: Optional[int] = None,
+        round_number: int = 0,
     ) -> Tuple[LitResNet, list, Any]:
         """
         Build model and training callbacks.
@@ -196,14 +200,21 @@ class CentralizedTrainer:
             experiment_name: Name for the experiment
             run_id: Optional database run ID for metrics persistence
             is_federated: If True, uses local_epochs (max-epochs); if False, uses epochs
+            client_id: Optional client ID for federated learning context
+            round_number: Round number for federated learning
 
         Returns:
             Tuple of (model, callbacks, metrics_collector)
         """
         self.logger.info("Setting up model and callbacks...")
+        if is_federated and client_id is not None:
+            self.logger.info(
+                f"[CentralizedTrainer] Federated mode enabled for client_id={client_id}, round={round_number}"
+            )
+
         callback_config = prepare_trainer_and_callbacks_pl(
             train_df_for_weights=train_df,
-            class_column=self.config.get('columns.target'),
+            class_column=self.config.get("columns.target"),
             checkpoint_dir=self.checkpoint_dir,
             model_filename="pneumonia_model",
             config=self.config,
@@ -212,8 +223,10 @@ class CentralizedTrainer:
             run_id=run_id,
             enable_db_persistence=True,
             is_federated=is_federated,
+            client_id=client_id,
+            round_number=round_number,
         )
-        
+
         model = LitResNet(
             config=self.config,
             class_weights_tensor=callback_config["class_weights"],
@@ -222,7 +235,9 @@ class CentralizedTrainer:
 
         return model, callback_config["callbacks"], callback_config["metrics_collector"]
 
-    def _build_trainer(self, callbacks: list, experiment_name: str, is_federated: bool = False) -> pl.Trainer:
+    def _build_trainer(
+        self, callbacks: list, experiment_name: str, is_federated: bool = False
+    ) -> pl.Trainer:
         """
         Build PyTorch Lightning trainer.
 
@@ -257,7 +272,7 @@ class CentralizedTrainer:
         return trainer
 
     def _collect_training_results(
-            self, trainer: pl.Trainer, model: LitResNet, metrics_collector: Any
+        self, trainer: pl.Trainer, model: LitResNet, metrics_collector: Any
     ) -> Dict[str, Any]:
         """
         Collect and organize training results.
@@ -325,18 +340,20 @@ class CentralizedTrainer:
         self.logger.info(
             f"Training results collected: {len(metrics_history)} epochs tracked"
         )
-        
-        self.logger.info(f"Saving metrics to: results/centralized/metrics_output/metrics.json")
 
-        output_path = os.path.join(self.logs_dir, 'metrics_output', 'metrics.json')
+        self.logger.info(
+            f"Saving metrics to: results/centralized/metrics_output/metrics.json"
+        )
+
+        output_path = os.path.join(self.logs_dir, "metrics_output", "metrics.json")
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(results, f)
 
         return results
 
     def _prepare_dataset(
-            self, csv_path: str, image_dir: str
+        self, csv_path: str, image_dir: str
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Load and prepare training dataset.
@@ -354,22 +371,22 @@ class CentralizedTrainer:
         self.logger.info(f"Loaded metadata: {len(df)} samples from {csv_path}")
 
         # Sample data if needed
-        target_col = self.config.get('columns.target')
-        if self.config.get('system.sample_fraction') < 1.0:
+        target_col = self.config.get("columns.target")
+        if self.config.get("system.sample_fraction") < 1.0:
             df = sample_dataframe(
                 df,
-                self.config.get('system.sample_fraction'),
+                self.config.get("system.sample_fraction"),
                 target_col,
-                self.config.get('system.seed'),
+                self.config.get("system.seed"),
                 self.logger,
             )
 
         # Create train/val split
         train_df, val_df = create_train_val_split(
             df,
-            self.config.get('experiment.validation_split'),
+            self.config.get("experiment.validation_split"),
             target_col,
-            self.config.get('experiment.seed'),
+            self.config.get("experiment.seed"),
             self.logger,
         )
 
@@ -379,7 +396,7 @@ class CentralizedTrainer:
         return train_df, val_df
 
     def _create_data_module(
-            self, train_df: pd.DataFrame, val_df: pd.DataFrame, image_dir: str
+        self, train_df: pd.DataFrame, val_df: pd.DataFrame, image_dir: str
     ) -> XRayDataModule:
         """
         Create PyTorch Lightning DataModule.
