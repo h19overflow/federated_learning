@@ -9,8 +9,7 @@ from federated_pneumonia_detection.src.api.endpoints.configuration_settings impo
 )
 from federated_pneumonia_detection.src.api.endpoints.experiments import (
     centralized_endpoints,
-    # federated_endpoints,
-    # comparison_endpoints,
+    federated_endpoints,
     status_endpoints,
 )
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import router as runs_endpoints_router
@@ -148,8 +147,14 @@ async def startup_event():
     logger.info("WebSocket server startup initiated in background thread")
 app.include_router(configuration_endpoints.router)
 app.include_router(centralized_endpoints.router)
-# app.include_router(federated_endpoints.router)
+app.include_router(federated_endpoints.router)
 # app.include_router(comparison_endpoints.router)
 app.include_router(status_endpoints.router)
 app.include_router(runs_endpoints_router)
 app.include_router(chat_router)
+
+
+
+
+
+# C:\Users\User\Projects\FYP2\federated_pneumonia_detection\config\default_config.yaml

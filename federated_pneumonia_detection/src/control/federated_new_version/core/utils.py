@@ -63,18 +63,19 @@ def _build_model_components(
     is_federated: bool,
     client_id: int = None,
     round_number: int = 0,
+    run_id: int = None,
 ):
     """Build model, callbacks, and metrics collector with federated context."""
     if is_federated and client_id is not None:
         centerlized_trainer.logger.info(
-            f"[Utils] Building components for federated client_id={client_id}, round={round_number}"
+            f"[Utils] Building components for federated client_id={client_id}, round={round_number}, run_id={run_id}"
         )
 
     model, callbacks, metrics_collector = (
         centerlized_trainer._build_model_and_callbacks(
             train_df=train_df,
             experiment_name="federated_pneumonia_detection",
-            run_id=context.run_id,
+            run_id=run_id,  # Use passed run_id instead of context.run_id
             is_federated=is_federated,
             client_id=client_id,
             round_number=round_number,

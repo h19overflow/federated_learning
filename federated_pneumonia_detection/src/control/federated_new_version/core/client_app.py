@@ -61,6 +61,12 @@ def train(msg: Message, context: Context):
         image_dir=configs["image_dir"],
     )
 
+    # Extract run_id from configs (sent by server)
+    run_id = configs.get("run_id", None)
+    centerlized_trainer.logger.info(
+        f"[Federated Train] Using run_id={run_id} from server config"
+    )
+
     # Build model and trainer with client_id and round_number for federated context
     model, callbacks, metrics_collector = _build_model_components(
         centerlized_trainer,
@@ -69,6 +75,7 @@ def train(msg: Message, context: Context):
         is_federated=True,
         client_id=client_id,
         round_number=round_number,
+        run_id=run_id,  # Pass run_id from server config
     )
     model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
     trainer = _build_trainer_component(
