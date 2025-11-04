@@ -30,11 +30,9 @@ class Run(Base):
     wandb_id = Column(String(255), nullable=True)
     source_path = Column(String(1024), nullable=True)
 
-    configuration = relationship(
-        "RunConfiguration", back_populates="run", uselist=False
-    )
     metrics = relationship("RunMetric", back_populates="run")
     clients = relationship("Client", back_populates="run")
+    server_evaluations = relationship("ServerEvaluation", back_populates="run")
 
 
 class Client(Base):
@@ -71,29 +69,6 @@ class Round(Base):
     client = relationship("Client", back_populates="rounds")
 
 
-class RunConfiguration(Base):
-    __tablename__ = "run_configurations"
-
-    id = Column(Integer, primary_key=True)
-    run_id = Column(Integer, ForeignKey("runs.id"), nullable=False)
-
-    # Shared configuration (used by both modes)
-    learning_rate = Column(Float, nullable=False)
-    epochs = Column(Integer, nullable=False)
-    weight_decay = Column(Float, nullable=True)
-    batch_size = Column(Integer, nullable=False)
-    seed = Column(Integer, nullable=True)
-
-    # Federated-specific configuration (NULL for centralized)
-    num_rounds = Column(Integer, nullable=True)
-    num_clients = Column(Integer, nullable=True)
-    clients_per_round = Column(Integer, nullable=True)
-    local_epochs = Column(Integer, nullable=True)
-    partition_strategy = Column(String(50), nullable=True)
-
-    run = relationship("Run", back_populates="configuration")
-
-
 class RunMetric(Base):
     __tablename__ = "run_metrics"
 
@@ -120,6 +95,42 @@ class RunMetric(Base):
     run = relationship("Run", back_populates="metrics")
     client = relationship("Client")
     round = relationship("Round")
+
+
+class ServerEvaluation(Base):
+    """
+    Server-side evaluation metrics for federated learning.
+    Stores centralized evaluation of the global model after each round.
+    """
+
+    __tablename__ = "server_evaluations"
+
+    id = Column(Integer, primary_key=True)
+    run_id = Column(Integer, ForeignKey("runs.id"), nullable=False)
+    round_number = Column(Integer, nullable=False)
+
+    # Core evaluation metrics
+    loss = Column(Float, nullable=False)
+    accuracy = Column(Float, nullable=True)
+    precision = Column(Float, nullable=True)
+    recall = Column(Float, nullable=True)
+    f1_score = Column(Float, nullable=True)
+    auroc = Column(Float, nullable=True)
+
+    # Confusion matrix components
+    true_positives = Column(Integer, nullable=True)
+    true_negatives = Column(Integer, nullable=True)
+    false_positives = Column(Integer, nullable=True)
+    false_negatives = Column(Integer, nullable=True)
+
+    # Additional metadata
+    num_samples = Column(Integer, nullable=True)
+    evaluation_time = Column(TIMESTAMP, nullable=False)
+
+    # Store any additional metrics as JSON
+    additional_metrics = Column(JSON, nullable=True)
+
+    run = relationship("Run", back_populates="server_evaluations")
 
 
 def create_tables():

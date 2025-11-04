@@ -5,7 +5,6 @@ from flwr.clientapp import ClientApp
 from federated_pneumonia_detection.src.control.dl_model.utils.model.xray_data_module import (
     XRayDataModule,
 )
-import pandas as pd
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
     filter_list_of_dicts,
     _load_trainer_and_config,
@@ -25,6 +24,12 @@ app = ClientApp()
 
 @app.train()
 def train(msg: Message, context: Context):
+    """Train the model on client data.
+
+    Following Flower conventions:
+    - Returns model updates (ArrayRecord) and metrics (MetricRecord)
+    - Includes num_examples in metrics for proper weighted aggregation
+    """
     # Initialize trainer and config
     centerlized_trainer, config = _load_trainer_and_config()
 
@@ -77,25 +82,25 @@ def train(msg: Message, context: Context):
         round_number=round_number,
         run_id=run_id,  # Pass run_id from server config
     )
-    
+
     # Load global model weights from server
     global_state_dict = msg.content["arrays"].to_torch_state_dict()
     model.load_state_dict(global_state_dict)
-    
+
     # Debug: Log model state before training
     first_param_name = list(model.state_dict().keys())[0]
     first_param_before = model.state_dict()[first_param_name].clone()
     centerlized_trainer.logger.info(
         f"[Client Train] BEFORE training - first param '{first_param_name}' mean: {first_param_before.mean().item():.6f}"
     )
-    
+
     trainer = _build_trainer_component(
         centerlized_trainer, callbacks, is_federated=True
     )
 
     # Train model and collect results
     trainer.fit(model, data_module)
-    
+
     # Debug: Log model state after training
     first_param_after = model.state_dict()[first_param_name]
     centerlized_trainer.logger.info(
@@ -110,7 +115,10 @@ def train(msg: Message, context: Context):
         metrics_collector=metrics_collector,
     )
 
-    # Filter and prepare metrics
+    # Number of training examples (CRITICAL for weighted aggregation)
+    num_examples = len(train_df)
+
+    # Filter and prepare metrics - IMPORTANT: num-examples at root level for aggregation
     metrics_history = filter_list_of_dicts(
         results["metrics_history"],
         [
@@ -126,14 +134,22 @@ def train(msg: Message, context: Context):
             "val_auroc",
         ],
     )
-    metrics_history["num_examples"] = len(train_df)
 
-    # Create and return response
+    # Add num-examples at the root level for Flower's weighted aggregation
+    # CRITICAL: Must be "num-examples" with HYPHEN, not underscore!
+    metrics_history["num-examples"] = num_examples
+
+    centerlized_trainer.logger.info(
+        f"[Client Train] Completed training with {num_examples} examples"
+    )
+
+    # Create and return response following Flower conventions
+    # CRITICAL: Keys MUST be "arrays" and "metrics" for FedAvg to work
     model_record = ArrayRecord(model.state_dict())
     metric_record = MetricRecord(metrics_history)
     content = RecordDict(
         {
-            "model": model_record,
+            "arrays": model_record,  # MUST be "arrays" not "model"
             "metrics": metric_record,
         }
     )
@@ -142,7 +158,19 @@ def train(msg: Message, context: Context):
 
 @app.evaluate()
 def evaluate(msg: Message, context: Context):
+    """Evaluate the global model on client's local validation set.
+
+    Following Flower conventions:
+    - Returns evaluation metrics (MetricRecord)
+    - Includes num_examples for proper weighted aggregation of metrics
+    """
     centerlized_trainer, _ = _load_trainer_and_config()
+
+    # Extract client_id for logging
+    client_id = context.node_id
+    centerlized_trainer.logger.info(
+        f"[Federated Evaluate] Starting evaluation for client_id={client_id}"
+    )
 
     # Get configs from message (safely handle missing key with defaults)
     eval_configs = msg.content.get(
@@ -175,18 +203,18 @@ def evaluate(msg: Message, context: Context):
     model, callbacks, metrics_collector = _build_model_components(
         centerlized_trainer, train_df, context, is_federated=False
     )
-    
+
     # Load global model weights
     global_state_dict = msg.content["arrays"].to_torch_state_dict()
     model.load_state_dict(global_state_dict)
-    
+
     # Debug: Check model state to verify it's changing between rounds
     first_param_name = list(model.state_dict().keys())[0]
     first_param_value = model.state_dict()[first_param_name]
     centerlized_trainer.logger.info(
         f"[Client Evaluate] Loaded model - first param '{first_param_name}' mean: {first_param_value.mean().item():.6f}"
     )
-    
+
     trainer = _build_trainer_component(
         centerlized_trainer, callbacks, is_federated=False
     )
@@ -194,27 +222,29 @@ def evaluate(msg: Message, context: Context):
     # Evaluate and extract metrics
     results = trainer.test(model, val_loader)
     result_dict = results[0] if results else {}
-    
+
     # Debug: Print what metrics are actually returned
     centerlized_trainer.logger.info(
         f"[Client Evaluate] Raw result_dict keys: {list(result_dict.keys())}"
     )
-    centerlized_trainer.logger.info(
-        f"[Client Evaluate] Raw result_dict: {result_dict}"
-    )
-    
+    centerlized_trainer.logger.info(f"[Client Evaluate] Raw result_dict: {result_dict}")
+
     loss, accuracy, precision, recall, f1, auroc = _extract_metrics_from_result(
         result_dict
     )
 
-    # Create metric record
+    # Number of evaluation examples (CRITICAL for weighted aggregation)
+    num_examples = len(val_df)
+
+    # Create metric record - IMPORTANT: num_examples for weighted averaging
     metric_dict = _create_metric_record_dict(
-        loss, accuracy, precision, recall, f1, auroc, len(val_df)
+        loss, accuracy, precision, recall, f1, auroc, num_examples
     )
-    
+
     centerlized_trainer.logger.info(
-        f"[Client Evaluate] Extracted metrics: loss={loss}, acc={accuracy}, prec={precision}, rec={recall}, f1={f1}, auroc={auroc}"
+        f"[Client Evaluate] Extracted metrics: loss={loss}, acc={accuracy}, prec={precision}, rec={recall}, f1={f1}, auroc={auroc}, num_examples={num_examples}"
     )
+
     metric_record = MetricRecord(metric_dict)
     content = RecordDict(
         {

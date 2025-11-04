@@ -1,0 +1,18 @@
+{
+  "train_metrics_clientapp": {
+    "1": "{'epoch': 1.0, 'val_loss': 0.9136245250701904, 'val_acc': 0.7333333492279053, 'val_precision': 0.6033333539962769, 'val_recall': 0.455754354596138, 'val_f1': 0.4931163936853409, 'val_auroc': 0.7449883818626404, 'train_loss': 0.8319809138774872, 'train_acc': 0.6941666603088379, 'train_f1': 0.5923241674900055}",
+    "2": "{'epoch': 1.0, 'val_loss': 0.8181038498878479, 'val_acc': 0.7100000083446503, 'val_precision': 0.5652174055576324, 'val_recall': 0.6937254965305328, 'val_f1': 0.6218068599700928, 'val_auroc': 0.7999460697174072, 'train_loss': 0.7648661732673645, 'train_acc': 0.7450000047683716, 'train_f1': 0.6286985576152802}",
+    "3": "{'epoch': 1.0, 'val_loss': 0.8167707026004791, 'val_acc': 0.7166666686534882, 'val_precision': 0.5654377788305283, 'val_recall': 0.7333333492279053, 'val_f1': 0.6381345987319946, 'val_auroc': 0.8026189506053925, 'train_loss': 0.6878295838832855, 'train_acc': 0.7574999928474426, 'train_f1': 0.6446615159511566}"
+  },
+  "evaluate_metrics_clientapp": {
+    "1": "{'test_loss': 0.8143101930618286, 'test_accuracy': 0.8666666746139526, 'test_precision': 1.0, 'test_recall': 0.5, 'test_f1': 0.6666666865348816, 'test_auroc': 0.7272728085517883}",
+    "2": "{'test_loss': 0.7847412824630737, 'test_accuracy': 0.6000000238418579, 'test_precision': 0.375, 'test_recall': 0.75, 'test_f1': 0.5, 'test_auroc': 0.7954545021057129}",
+    "3": "{'test_loss': 0.7548220753669739, 'test_accuracy': 0.6666666865348816, 'test_precision': 0.4285714328289032, 'test_recall': 0.75, 'test_f1': 0.5454545617103577, 'test_auroc': 0.7954545021057129}"
+  },
+  "evaluate_metrics_serverapp": {
+    "0": "{'server_loss': 0.709276270866394, 'server_accuracy': 0.0, 'server_precision': 0.25, 'server_recall': 1.0, 'server_f1': 0.4000000059604645, 'server_auroc': 0.3579259216785431}",
+    "1": "{'server_loss': 0.5376473546028138, 'server_accuracy': 0.0, 'server_precision': 0.4864864945411682, 'server_recall': 0.23999999463558197, 'server_f1': 0.3214285671710968, 'server_auroc': 0.7640296220779419}",
+    "2": "{'server_loss': 0.5455302103360494, 'server_accuracy': 0.0, 'server_precision': 0.4453781545162201, 'server_recall': 0.7066666483879089, 'server_f1': 0.5463917255401611, 'server_auroc': 0.8118519186973572}",
+    "3": "{'server_loss': 0.5387242698669433, 'server_accuracy': 0.0, 'server_precision': 0.46212121844291687, 'server_recall': 0.8133333325386047, 'server_f1': 0.5893719792366028, 'server_auroc': 0.8242963552474976}"
+  }
+}

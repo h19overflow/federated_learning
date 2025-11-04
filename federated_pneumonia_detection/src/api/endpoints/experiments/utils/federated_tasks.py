@@ -83,6 +83,24 @@ def run_federated_training_task(
         task_logger.info(f"  Old num-server-rounds: {old_rounds}")
         task_logger.info(f"  New num-server-rounds: {num_server_rounds}")
 
+        # CRITICAL: Update pyproject.toml BEFORE starting Flower
+        # This ensures Flower reads the correct config values from the TOML file
+        task_logger.info("\n⚙️ Synchronizing config to pyproject.toml...")
+        from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
+            read_configs_to_toml,
+        )
+        from federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment import (
+            update_flwr_config,
+        )
+
+        flwr_configs = read_configs_to_toml()
+        if flwr_configs:
+            task_logger.info(f"  Configs to sync: {flwr_configs}")
+            update_flwr_config(**flwr_configs)
+            task_logger.info("  ✅ pyproject.toml updated successfully")
+        else:
+            task_logger.warning("  ⚠️ No configs found to sync")
+
         # Prepare environment for rf.ps1 execution
         task_logger.info("\nPreparing federated training environment...")
         project_root = Path(__file__).parent.parent.parent.parent.parent.absolute()
@@ -98,6 +116,29 @@ def run_federated_training_task(
         task_logger.info("\n" + "=" * 80)
         task_logger.info("STARTING FEDERATED TRAINING PROCESS")
         task_logger.info("=" * 80)
+
+        # CRITICAL FIX: Ensure subprocess inherits all environment variables
+        # This includes database credentials from .env file
+        task_logger.info(
+            "Setting up subprocess environment with database credentials..."
+        )
+        env = (
+            os.environ.copy()
+        )  # Copy current environment (includes .env vars if FastAPI loaded them)
+
+        # Verify critical env vars are present
+        required_vars = [
+            "POSTGRES_DB_URI",
+            "POSTGRES_DB",
+            "POSTGRES_USER",
+            "POSTGRES_PASSWORD",
+        ]
+        missing_vars = [var for var in required_vars if var not in env]
+        if missing_vars:
+            task_logger.warning(f"⚠️ Missing environment variables: {missing_vars}")
+            task_logger.warning("Database persistence may fail!")
+        else:
+            task_logger.info(f"✅ All required environment variables present")
 
         ps_cmd = [
             "powershell",
@@ -117,6 +158,7 @@ def run_federated_training_task(
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
+            env=env,  # CRITICAL: Pass environment to subprocess
         )
 
         task_logger.info(f"Process started with PID: {process.pid}")

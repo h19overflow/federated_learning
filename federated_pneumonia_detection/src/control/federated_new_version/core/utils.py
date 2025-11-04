@@ -12,6 +12,15 @@ from federated_pneumonia_detection.src.control.federated_new_version.partioner i
 )
 from federated_pneumonia_detection.config.config_manager import ConfigManager
 
+from federated_pneumonia_detection.src.utils.loggers.logger import setup_logger
+from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
+    server_evaluation_crud,
+)
+from typing import Dict
+
+logger = setup_logger(__name__)
+
 
 def filter_list_of_dicts(data: list[dict[str, Any]], fields: list[str]):
     """
@@ -107,30 +116,55 @@ def _prepare_evaluation_dataframe(df):
 
 def _extract_metrics_from_result(result_dict: dict):
     """Extract and map metrics from result dictionary.
-    
+
     Note: Uses 'is not None' check instead of 'or' to handle legitimate 0.0 values.
     Handles both 'test_acc' and 'test_accuracy' naming conventions.
     """
-    loss = result_dict.get("test_loss") if result_dict.get("test_loss") is not None else result_dict.get("loss", 0.0)
-    
+    loss = (
+        result_dict.get("test_loss")
+        if result_dict.get("test_loss") is not None
+        else result_dict.get("loss", 0.0)
+    )
+
     # Handle both test_acc and test_accuracy
     accuracy = result_dict.get("test_accuracy")
     if accuracy is None:
         accuracy = result_dict.get("test_acc")
     if accuracy is None:
         accuracy = result_dict.get("accuracy", 0.0)
-    
-    precision = result_dict.get("test_precision") if result_dict.get("test_precision") is not None else result_dict.get("precision", 0.0)
-    recall = result_dict.get("test_recall") if result_dict.get("test_recall") is not None else result_dict.get("recall", 0.0)
-    f1 = result_dict.get("test_f1") if result_dict.get("test_f1") is not None else result_dict.get("f1", 0.0)
-    auroc = result_dict.get("test_auroc") if result_dict.get("test_auroc") is not None else result_dict.get("auroc", 0.0)
+
+    precision = (
+        result_dict.get("test_precision")
+        if result_dict.get("test_precision") is not None
+        else result_dict.get("precision", 0.0)
+    )
+    recall = (
+        result_dict.get("test_recall")
+        if result_dict.get("test_recall") is not None
+        else result_dict.get("recall", 0.0)
+    )
+    f1 = (
+        result_dict.get("test_f1")
+        if result_dict.get("test_f1") is not None
+        else result_dict.get("f1", 0.0)
+    )
+    auroc = (
+        result_dict.get("test_auroc")
+        if result_dict.get("test_auroc") is not None
+        else result_dict.get("auroc", 0.0)
+    )
     return loss, accuracy, precision, recall, f1, auroc
 
 
 def _create_metric_record_dict(
     loss, accuracy, precision, recall, f1, auroc, num_examples: int
 ):
-    """Create metric record dictionary with all metrics."""
+    """Create metric record dictionary with all metrics.
+
+    Following Flower conventions:
+    - 'num-examples' key (with HYPHEN) is used for weighted aggregation
+    - This key must be present for FedAvg to properly weight client contributions
+    """
     return {
         "test_loss": loss,
         "test_accuracy": accuracy,
@@ -138,30 +172,190 @@ def _create_metric_record_dict(
         "test_recall": recall,
         "test_f1": f1,
         "test_auroc": auroc,
-        "num-examples": num_examples,
+        "num-examples": num_examples,  # CRITICAL: Must be "num-examples" with HYPHEN!
     }
 
 
 def read_configs_to_toml() -> dict:
-    """Read and convert YAML config to dictionary format."""
+    """Read federated learning configs from default_config.yaml and prepare for pyproject.toml.
+
+    This function extracts Flower-specific configuration values from the YAML config
+    and returns them in a format suitable for updating pyproject.toml.
+
+    Returns:
+        dict: Configuration dictionary with keys: num_server_rounds, max_epochs, num_supernodes
+
+    Note:
+        These configs correspond to:
+        - num_server_rounds -> [tool.flwr.app.config] num-server-rounds
+        - max_epochs -> [tool.flwr.app.config] max-epochs
+        - num_supernodes -> [tool.flwr.federations.local-simulation.options] num-supernodes
+    """
     config_dir = (
         Path(__file__).parent.parent.parent.parent.parent
         / "config"
         / "default_config.yaml"
     )
-    config_manager = ConfigManager(config_path=str(config_dir))
+
+    print(f"[Config Reader] Reading from: {config_dir}")
+
+    try:
+        config_manager = ConfigManager(config_path=str(config_dir))
+    except Exception as e:
+        print(f"[Config Reader] ❌ Failed to load config: {e}")
+        return {}
+
     flwr_configs = {}
+
+    # Read num-server-rounds (number of federated learning rounds)
     if config_manager.has_key("experiment.num-server-rounds"):
         flwr_configs["num_server_rounds"] = config_manager.get(
             "experiment.num-server-rounds"
         )
+        print(
+            f"[Config Reader] ✓ num-server-rounds: {flwr_configs['num_server_rounds']}"
+        )
+    else:
+        print("[Config Reader] ⚠️ experiment.num-server-rounds not found in config")
+
+    # Read max-epochs (local training epochs per round)
     if config_manager.has_key("experiment.max-epochs"):
         flwr_configs["max_epochs"] = config_manager.get("experiment.max-epochs")
+        print(f"[Config Reader] ✓ max-epochs: {flwr_configs['max_epochs']}")
+    elif config_manager.has_key("experiment.local_epochs"):
+        # Fallback to local_epochs if max-epochs not found
+        flwr_configs["max_epochs"] = config_manager.get("experiment.local_epochs")
+        print(
+            f"[Config Reader] ✓ max-epochs (from local_epochs): {flwr_configs['max_epochs']}"
+        )
+    else:
+        print(
+            "[Config Reader] ⚠️ experiment.max-epochs or experiment.local_epochs not found"
+        )
+
+    # Read num-supernodes (number of clients in simulation)
     if config_manager.has_key("experiment.options.num-supernodes"):
         flwr_configs["num_supernodes"] = config_manager.get(
             "experiment.options.num-supernodes"
         )
+        print(f"[Config Reader] ✓ num-supernodes: {flwr_configs['num_supernodes']}")
+    elif config_manager.has_key("experiment.num_clients"):
+        # Fallback to num_clients if num-supernodes not found
+        flwr_configs["num_supernodes"] = config_manager.get("experiment.num_clients")
+        print(
+            f"[Config Reader] ✓ num-supernodes (from num_clients): {flwr_configs['num_supernodes']}"
+        )
     else:
-        print("No num-supernodes found in config")
-    print(f"Loaded flwr_configs: {flwr_configs}")
+        print(
+            "[Config Reader] ⚠️ experiment.options.num-supernodes or experiment.num_clients not found"
+        )
+
+    print(f"[Config Reader] Final configs to write to pyproject.toml: {flwr_configs}")
     return flwr_configs
+
+
+def _convert_metric_record_to_dict(data):
+    """Convert MetricRecord objects and nested structures to plain dicts/lists."""
+    if isinstance(data, dict):
+        return {str(k): _convert_metric_record_to_dict(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [_convert_metric_record_to_dict(item) for item in data]
+    elif isinstance(data, (int, float, str, bool, type(None))):
+        return data
+    else:
+        return str(data)
+
+
+def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> None:
+    """
+    Persist server-side evaluation metrics to database.
+
+    Args:
+        run_id: Database run ID
+        server_metrics: Dictionary mapping round number to MetricRecord
+    """
+    # Verify database connection before attempting persistence
+    logger.info("=" * 80)
+    logger.info("DATABASE PERSISTENCE - Server Evaluations")
+    logger.info("=" * 80)
+
+    try:
+        # Test database connection first
+        from federated_pneumonia_detection.config.settings import Settings
+
+        settings_obj = Settings()
+        db_uri = settings_obj.get_postgres_db_uri()
+        logger.info(f"Database URI configured: {db_uri[:20]}... (truncated)")
+    except Exception as e:
+        logger.error(
+            f"❌ CRITICAL: Failed to load database settings: {e}", exc_info=True
+        )
+        logger.error("Check if .env file is loaded and environment variables are set!")
+        return
+
+    db = None
+    try:
+        db = get_session()
+        logger.info(f"✅ Database session created successfully")
+        logger.info(f"Processing {len(server_metrics)} server evaluation rounds...")
+
+        for round_num, metric_record in server_metrics.items():
+            logger.info(f"  Processing round {round_num}...")
+
+            # Convert MetricRecord to dict if needed
+            if hasattr(metric_record, "__dict__"):
+                metrics_dict = dict(metric_record)
+            else:
+                metrics_dict = metric_record
+
+            # Extract metrics with 'server_' prefix (from server_evaluation.py)
+            extracted_metrics = {
+                "loss": metrics_dict.get("server_loss", 0.0),
+                "accuracy": metrics_dict.get("server_accuracy"),
+                "precision": metrics_dict.get("server_precision"),
+                "recall": metrics_dict.get("server_recall"),
+                "f1_score": metrics_dict.get("server_f1"),
+                "auroc": metrics_dict.get("server_auroc"),
+            }
+
+            logger.debug(f"    Extracted metrics: {extracted_metrics}")
+
+            # Create server evaluation record
+            server_evaluation_crud.create_evaluation(
+                db=db,
+                run_id=run_id,
+                round_number=round_num,
+                metrics=extracted_metrics,
+                num_samples=metrics_dict.get("num_samples"),
+            )
+            logger.info(f"  ✅ Persisted server evaluation for round {round_num}")
+
+        db.commit()
+        logger.info("=" * 80)
+        logger.info(f"✅ SUCCESS: Persisted {len(server_metrics)} server evaluations")
+        logger.info("=" * 80)
+    except Exception as e:
+        logger.error("=" * 80)
+        logger.error(f"❌ CRITICAL ERROR: Failed to persist server evaluations")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {e}", exc_info=True)
+        logger.error("=" * 80)
+        if db:
+            db.rollback()
+    finally:
+        if db:
+            db.close()
+            logger.info("Database session closed")
+
+def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> None:
+    """
+    Persist server-side evaluation metrics to database.
+
+    Args:
+        run_id: Database run ID
+        server_metrics: Dictionary mapping round number to MetricRecord
+    """
+    # Verify database connection before attempting persistence
+    logger.info("=" * 80)
+    logger.info("DATABASE PERSISTENCE - Server Evaluations")
+    logger.info("=" * 80)

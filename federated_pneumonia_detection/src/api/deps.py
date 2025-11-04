@@ -5,9 +5,6 @@ from federated_pneumonia_detection.config.config_manager import (
     ConfigManager,
 )
 from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
-from federated_pneumonia_detection.src.boundary.CRUD.run_configuration import (
-    RunConfigurationCRUD,
-)
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD
 
 
@@ -28,11 +25,6 @@ def get_config() -> ConfigManager:
 def get_experiment_crud() -> RunCRUD:
     """Get the experiment CRUD"""
     return RunCRUD()
-
-
-def get_run_configuration_crud() -> RunConfigurationCRUD:
-    """Get the run configuration CRUD"""
-    return RunConfigurationCRUD()
 
 
 def get_run_metric_crud() -> RunMetricCRUD:

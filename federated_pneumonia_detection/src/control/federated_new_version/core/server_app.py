@@ -1,15 +1,13 @@
 from flwr.app import ArrayRecord, Context
 from flwr.serverapp import ServerApp, Grid
-from pathlib import Path
 from datetime import datetime
+from typing import Dict, Any
+import logging
 from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
     ConfigurableFedAvg,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import (
     LitResNet,
-)
-from federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment import (
-    update_flwr_config,
 )
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
     read_configs_to_toml,
@@ -20,9 +18,18 @@ from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_met
 )
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+
 from federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation import (
     create_central_evaluate_fn,
 )
+from federated_pneumonia_detection.src.utils.loggers.logger import setup_logger
+from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
+    _convert_metric_record_to_dict,
+    _persist_server_evaluations,
+)
+
+# Setup logger for server app
+logger = setup_logger(__name__)
 
 app = ServerApp()
 
@@ -31,23 +38,57 @@ app = ServerApp()
 # TODO: Context objects in the client and server classes contains run id , node id , so adjust it such that we persist them to the db.
 @app.lifespan()
 def lifespan(app: ServerApp):
-    print("Server is starting...")
+    """Lifecycle management for ServerApp.
+
+    Note: Configuration sync should happen BEFORE Flower starts (in federated_tasks.py).
+    This lifespan hook runs after Flower has already loaded pyproject.toml,
+    so we just verify and log the configuration here.
+    """
+    logger.info("=" * 80)
+    logger.info("SERVER LIFESPAN: Starting up...")
+    logger.info("=" * 80)
+
+    # Verify configuration is in sync
+    logger.info("Verifying configuration synchronization...")
     flwr_configs = read_configs_to_toml()
+
     if flwr_configs:
-        update_flwr_config(**flwr_configs)
+        logger.info(f"✅ Configuration verified: {flwr_configs}")
+        logger.info(
+            "NOTE: Config should have been synced to pyproject.toml before Flower started"
+        )
+    else:
+        logger.warning("⚠️ No federated configs found in default_config.yaml")
+
     yield
-    print("Server is stopping...")
+
+    logger.info("=" * 80)
+    logger.info("SERVER LIFESPAN: Shutting down...")
+    logger.info("=" * 80)
 
 
 @app.main()
 def main(grid: Grid, context: Context) -> None:
-    """Main entry point for the ServerApp."""
+    """Main entry point for the ServerApp.
+
+    Following Flower conventions:
+    - Initialize global model and convert to ArrayRecord
+    - Configure FedAvg strategy with proper parameters
+    - Use strategy.start() to run federated learning
+    - Provide optional evaluate_fn for server-side evaluation
+    """
 
     num_rounds: int = context.run_config["num-server-rounds"]  # Read run config
     num_clients: int = len(list(grid.get_node_ids()))
 
+    logger.info("=" * 80)
+    logger.info("FEDERATED LEARNING SESSION STARTING")
+    logger.info("=" * 80)
+    logger.info(f"Configuration: {num_clients} clients, {num_rounds} rounds")
+    logger.info(f"Context run_config: {context.run_config}")
+
     # Create the run in database BEFORE training starts
-    print("[Server] Creating federated training run in database...")
+    logger.info("Creating federated training run in database...")
     db = get_session()
     try:
         run_data = {
@@ -57,12 +98,13 @@ def main(grid: Grid, context: Context) -> None:
             "wandb_id": f"federated_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             "source_path": "federated_training",
         }
+        logger.debug(f"Run data to create: {run_data}")
         new_run = run_crud.create(db, **run_data)
         db.commit()
         run_id = new_run.id
-        print(f"[Server] ✅ Created run with id={run_id}")
+        logger.info(f"✅ Successfully created run with id={run_id}")
     except Exception as e:
-        print(f"[Server] ❌ Failed to create run: {e}")
+        logger.error(f"❌ Failed to create run in database: {e}", exc_info=True)
         db.rollback()
         run_id = None
     finally:
@@ -85,29 +127,46 @@ def main(grid: Grid, context: Context) -> None:
     # Load global model with ConfigManager
     config_manager = ConfigManager(
         config_path=str(
-            Path(__file__).parent.parent.parent.parent.parent
-            / "config"
-            / "default_config.yaml"
+            r"C:\Users\User\Projects\FYP2\federated_pneumonia_detection\config\default_config.yaml"
         )
     )
     global_model = LitResNet(config=config_manager)
     arrays = ArrayRecord(global_model.state_dict())
 
     # Initialize WebSocket sender to broadcast training mode
+    logger.info("Initializing WebSocket sender for real-time metrics...")
     ws_sender = MetricsWebSocketSender("ws://localhost:8765")
 
     # Signal to frontend that this is federated training
-    print(
-        f"[Server] Starting federated training with {num_clients} clients for {num_rounds} rounds"
+    logger.info(
+        f"Broadcasting training mode: {num_clients} clients, {num_rounds} rounds"
     )
     ws_sender.send_training_mode(
         is_federated=True, num_rounds=num_rounds, num_clients=num_clients
     )
 
+    # Create centralized evaluation function for server-side evaluation
+    # This evaluates the global model on a held-out test set after each round
+    # IMPORTANT: Must be created BEFORE strategy initialization
+    logger.info("Creating server-side evaluation function...")
+    central_evaluate_fn = create_central_evaluate_fn(
+        config_manager=config_manager,
+        csv_path=train_config["file_path"],
+        image_dir=train_config["image_dir"],
+    )
+    logger.info("✅ Server evaluation function created")
+
     # Initialize ConfigurableFedAvg strategy with configs
+    # Following Flower conventions:
+    # - fraction_train: fraction of available clients to use for training each round
+    # - fraction_evaluate: fraction of available clients to use for evaluation each round
+    # - train_config/eval_config: passed to clients via Message.content["config"]
+    # - FedAvg uses 'num_examples' key from client metrics for weighted aggregation
+    # - evaluate_fn: server-side evaluation function (NEW in Flower 1.0+)
+    logger.info("Initializing FedAvg strategy...")
     strategy = ConfigurableFedAvg(
-        fraction_train=1,
-        fraction_evaluate=1,
+        fraction_train=1.0,  # Use all available clients for training
+        fraction_evaluate=1.0,  # Use all available clients for evaluation
         train_config=train_config,
         eval_config=eval_config,
         websocket_uri="ws://localhost:8765",
@@ -116,102 +175,75 @@ def main(grid: Grid, context: Context) -> None:
 
     # Set total rounds for progress tracking in strategy
     strategy.set_total_rounds(num_rounds)
-
-    # Create centralized evaluation function for server-side evaluation
-    # This evaluates the global model on a held-out test set after each round
-    central_evaluate_fn = create_central_evaluate_fn(
-        config_manager=config_manager,
-        csv_path=train_config["file_path"],
-        image_dir=train_config["image_dir"],
+    logger.info(
+        "Strategy configured: FedAvg with weighted aggregation by num_examples + server evaluation"
     )
 
     # Start strategy, run FedAvg for `num_rounds`
-    # The strategy will automatically broadcast metrics after each round via aggregate_evaluate
-    # Server-side evaluation will run after each round using central_evaluate_fn
-    print(f"[Server] Starting federated learning for {num_rounds} rounds")
+    # Following Flower conventions:
+    # 1. strategy.start() orchestrates the entire federated learning process
+    # 2. Each round: configure_train -> clients train -> aggregate_fit (weighted by num_examples)
+    # 3. Each round: configure_evaluate -> clients evaluate -> aggregate_evaluate (weighted by num_examples)
+    # 4. Optional: evaluate_fn runs server-side evaluation on centralized test set
+    # 5. Returns Result object with final model and metrics history
+    logger.info("=" * 80)
+    logger.info(f"STARTING FEDERATED LEARNING: {num_rounds} rounds")
+    logger.info("Aggregation method: FedAvg with weighted averaging by num_examples")
+    logger.info("Server evaluation: ENABLED (centralized test set)")
+    logger.info("=" * 80)
+
     result = strategy.start(
         grid=grid,
         initial_arrays=arrays,
         num_rounds=num_rounds,
-        evaluate_fn=central_evaluate_fn,  # Enable server-side centralized evaluation
+        evaluate_fn=central_evaluate_fn,  # Pass evaluate_fn to start() method
     )
-    print("[Server] Federated learning completed successfully")
+    all_results = {}
 
-    # Persist all federated metrics from Result object to database
-    if run_id:
-        print("[Server] Persisting federated metrics from Result object...")
-        db = get_session()
-        try:
-            # Persist client-side aggregated evaluation metrics
-            if result.evaluate_metrics_clientapp:
-                for (
-                    round_num,
-                    metric_record,
-                ) in result.evaluate_metrics_clientapp.items():
-                    # Use strategy's extraction method to normalize metric names
-                    normalized_metrics = strategy._extract_round_metrics(
-                        dict(metric_record)
-                    )
+    if result.train_metrics_clientapp:
+        all_results["train_metrics_clientapp"] = _convert_metric_record_to_dict(
+            result.train_metrics_clientapp
+        )
 
-                    # Convert to flattened dict with global_ prefix
-                    flattened_metrics = {"epoch": round_num}
-                    for metric_name, metric_value in normalized_metrics.items():
-                        flattened_metrics[f"global_{metric_name}"] = float(metric_value)
+    if result.evaluate_metrics_clientapp:
+        all_results["evaluate_metrics_clientapp"] = _convert_metric_record_to_dict(
+            result.evaluate_metrics_clientapp
+        )
 
-                    print(
-                        f"[Server] Round {round_num} client-aggregated metrics: {flattened_metrics}"
-                    )
+    if result.evaluate_metrics_serverapp:
+        all_results["evaluate_metrics_serverapp"] = _convert_metric_record_to_dict(
+            result.evaluate_metrics_serverapp
+        )
 
-                    # Persist metrics for this round
-                    run_crud.persist_metrics(
-                        db=db,
-                        run_id=run_id,
-                        epoch_metrics=[flattened_metrics],
-                        federated_context={
-                            "is_global": True,
-                            "round": round_num,
-                            "source": "client_aggregated",
-                        },
-                    )
+    # Save all results to JSON
+    with open(f"results_{run_id}.json", "w") as f:
+        import json
 
-            # Persist server-side centralized evaluation metrics
-            if result.evaluate_metrics_serverapp:
-                for (
-                    round_num,
-                    metric_record,
-                ) in result.evaluate_metrics_serverapp.items():
-                    # Server metrics already have server_ prefix
-                    flattened_metrics = {"epoch": round_num}
-                    for metric_name, metric_value in metric_record.items():
-                        flattened_metrics[metric_name] = float(metric_value)
+        json.dump(all_results, f, indent=2)
 
-                    print(
-                        f"[Server] Round {round_num} server-evaluated metrics: {flattened_metrics}"
-                    )
+    # Persist server evaluation metrics to database
+    if result.evaluate_metrics_serverapp and run_id:
+        logger.info("Persisting server evaluation metrics to database...")
+        _persist_server_evaluations(run_id, result.evaluate_metrics_serverapp)
+    else:
+        logger.error(
+            f"⚠️ Skipping server evaluation persistence: "
+            f"evaluate_metrics_serverapp={bool(result.evaluate_metrics_serverapp)}, "
+            f"run_id={run_id}"
+        )
 
-                    # Persist server-side metrics
-                    run_crud.persist_metrics(
-                        db=db,
-                        run_id=run_id,
-                        epoch_metrics=[flattened_metrics],
-                        federated_context={
-                            "is_global": True,
-                            "round": round_num,
-                            "source": "server_centralized",
-                        },
-                    )
-
-            db.commit()
-            print(
-                f"[Server] ✅ Persisted metrics for client-side: {len(result.evaluate_metrics_clientapp)}, "
-                f"server-side: {len(result.evaluate_metrics_serverapp)} rounds"
-            )
-        except Exception as e:
-            print(f"[Server] ❌ Error persisting metrics: {e}")
-            db.rollback()
-        finally:
-            db.close()
-
-    # Save final model to disk
-    print("\nSaving final model to disk...")
-    _ = result.arrays.to_torch_state_dict()  # Future: Save model checkpoint
+    # Send training_end event to frontend now that ALL rounds are complete
+    logger.info(
+        "All federated rounds complete. Sending training_end event to frontend..."
+    )
+    ws_sender.send_metrics(
+        {
+            "run_id": run_id,
+            "status": "completed",
+            "experiment_name": f"federated_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            "total_rounds": num_rounds,
+            "training_mode": "federated",
+        },
+        "training_end",
+    )
+    logger.info(f"✅ Training complete notification sent (run_id={run_id})")

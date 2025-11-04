@@ -2,6 +2,7 @@
 Federated rounds metrics endpoint.
 
 Provides endpoint to fetch federated round metrics for visualization.
+This endpoint fetches SERVER-SIDE evaluation metrics (centralized test set evaluation).
 """
 
 from fastapi import APIRouter, HTTPException
@@ -9,6 +10,9 @@ from typing import Dict, Any, List
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
+    server_evaluation_crud,
+)
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 
 router = APIRouter()
@@ -20,7 +24,8 @@ async def get_federated_rounds(run_id: int) -> Dict[str, Any]:
     """
     Get federated round metrics for visualization.
 
-    Fetches global aggregated metrics per round for federated training runs.
+    Fetches server-side evaluation metrics per round for federated training runs.
+    These are centralized evaluations performed by the server on a held-out test set.
 
     Args:
         run_id: Database run ID
@@ -33,7 +38,7 @@ async def get_federated_rounds(run_id: int) -> Dict[str, Any]:
             "rounds": [
                 {
                     "round": 1,
-                    "metrics": {"accuracy": 0.92, "loss": 0.35, ...}
+                    "metrics": {"accuracy": 0.92, "loss": 0.35, "precision": 0.91, ...}
                 }
             ]
         }
@@ -41,7 +46,7 @@ async def get_federated_rounds(run_id: int) -> Dict[str, Any]:
     db = get_session()
 
     try:
-        run = run_crud.get_with_metrics(db, run_id)
+        run = run_crud.get(db, run_id)
 
         if not run:
             raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
@@ -57,47 +62,46 @@ async def get_federated_rounds(run_id: int) -> Dict[str, Any]:
                 "rounds": [],
             }
 
-        # Extract global metrics (those prefixed with 'global_')
-        federated_rounds = {}
-        num_clients = 0
-
-        # Debug: Log all metrics for this run
-        logger.info(
-            f"[FederatedRounds] Run {run_id} - Total metrics: {len(run.metrics)}"
-        )
-        logger.info(
-            f"[FederatedRounds] Run {run_id} - Training mode: {run.training_mode}"
+        # Fetch server evaluations from the dedicated server_evaluation table
+        server_evaluations = server_evaluation_crud.get_by_run(
+            db, run_id, order_by_round=True
         )
 
-        global_metrics_count = 0
-        for metric in run.metrics:
-            if metric.metric_name.startswith("global_"):
-                global_metrics_count += 1
-                round_num = metric.step  # 'step' field is used as round number
-                metric_base_name = metric.metric_name.replace("global_", "")
-
-                if round_num not in federated_rounds:
-                    federated_rounds[round_num] = {}
-
-                federated_rounds[round_num][metric_base_name] = metric.metric_value
-
         logger.info(
-            f"[FederatedRounds] Run {run_id} - Found {global_metrics_count} global metrics"
-        )
-        logger.info(
-            f"[FederatedRounds] Run {run_id} - Extracted {len(federated_rounds)} rounds"
+            f"[FederatedRounds] Run {run_id} - Found {len(server_evaluations)} server evaluations"
         )
 
         # Get number of clients (count unique client IDs)
+        num_clients = 0
         if run.clients:
             num_clients = len(run.clients)
 
-        # Format response
+        # Format response - extract metrics from server evaluations
         rounds_list = []
-        for round_num in sorted(federated_rounds.keys()):
+        for eval_record in server_evaluations:
+            metrics_dict = {
+                "loss": eval_record.loss,
+            }
+
+            # Add optional metrics if they exist
+            if eval_record.accuracy is not None:
+                metrics_dict["accuracy"] = eval_record.accuracy
+            if eval_record.precision is not None:
+                metrics_dict["precision"] = eval_record.precision
+            if eval_record.recall is not None:
+                metrics_dict["recall"] = eval_record.recall
+            if eval_record.f1_score is not None:
+                metrics_dict["f1"] = eval_record.f1_score
+            if eval_record.auroc is not None:
+                metrics_dict["auroc"] = eval_record.auroc
+
             rounds_list.append(
-                {"round": round_num, "metrics": federated_rounds[round_num]}
+                {"round": eval_record.round_number, "metrics": metrics_dict}
             )
+
+        logger.info(
+            f"[FederatedRounds] Run {run_id} - Returning {len(rounds_list)} rounds with server evaluation metrics"
+        )
 
         return {
             "is_federated": True,
@@ -109,7 +113,9 @@ async def get_federated_rounds(run_id: int) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching federated rounds for run {run_id}: {e}")
+        logger.error(
+            f"Error fetching federated rounds for run {run_id}: {e}", exc_info=True
+        )
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch federated rounds: {str(e)}"
         )

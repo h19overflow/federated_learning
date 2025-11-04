@@ -214,6 +214,10 @@ class MetricsCollectorCallback(pl.Callback):
 
         Note: Using on_fit_end instead of on_train_end ensures that the final
         validation epoch is included in the saved metrics.
+
+        IMPORTANT: In federated mode, clients should NOT send training_end events
+        because they only complete one round of local training. The server will
+        send the final training_end event when all rounds are complete.
         """
         self.training_end_time = datetime.now()
         self.metadata["end_time"] = self.training_end_time.isoformat()
@@ -231,7 +235,8 @@ class MetricsCollectorCallback(pl.Callback):
         )
 
         # Send training completion to frontend with run_id and summary
-        if self.ws_sender and self.run_id:
+        # BUT: Skip this in federated mode - only server should signal completion
+        if self.ws_sender and self.run_id and not self.federated_mode:
             self.ws_sender.send_metrics(
                 {
                     "run_id": self.run_id,
@@ -248,6 +253,11 @@ class MetricsCollectorCallback(pl.Callback):
             )
             self.logger.info(
                 f"Training complete notification sent (run_id={self.run_id})"
+            )
+        elif self.federated_mode:
+            self.logger.info(
+                f"[Federated Mode] Client training complete for round {self.current_round}. "
+                "Server will send final training_end event when all rounds complete."
             )
 
     def _extract_metrics(self, trainer, pl_module, stage: str) -> Dict[str, Any]:

@@ -1,6 +1,10 @@
 """
-
 Custom Flower strategy that sends training and evaluation configurations to clients.
+
+Follows Flower conventions for:
+- Weighted aggregation using num_examples
+- Proper metric aggregation
+- Configuration passing to clients
 """
 
 from typing import Optional, Dict, Any
@@ -36,17 +40,24 @@ class ConfigurableFedAvg(FedAvg):
             websocket_uri: WebSocket URI for sending metrics
             run_id: Database run ID for persisting metrics
             **kwargs: Additional arguments passed to FedAvg
+
+        Note:
+            By default, FedAvg uses 'num_examples' key for weighted aggregation.
+            This is automatically handled by the parent class.
         """
         super().__init__(**kwargs)
         self.train_config = train_config or {}
         self.eval_config = eval_config or {}
         self.ws_sender = MetricsWebSocketSender(websocket_uri)
         self.run_id = run_id
+        self.total_rounds = 0
 
     def configure_train(
         self, server_round: int, arrays: ArrayRecord, config: ConfigRecord, grid: Grid
     ) -> Iterable[Message]:
         """Configure the next round of federated training with custom configs.
+
+
 
         Args:
             server_round: Current round of federated learning
@@ -58,7 +69,11 @@ class ConfigurableFedAvg(FedAvg):
             Iterable of messages to be sent to selected client nodes for training
         """
         # Merge custom train config into the base config
-        config.update(self.train_config)
+        # Filter out None values as Flower's ConfigRecord doesn't accept them
+        filtered_train_config = {
+            k: v for k, v in self.train_config.items() if v is not None
+        }
+        config.update(filtered_train_config)
         # Call parent class to configure training with updated config
         return super().configure_train(server_round, arrays, config, grid)
 
@@ -77,7 +92,11 @@ class ConfigurableFedAvg(FedAvg):
             Iterable of messages to be sent to selected client nodes for evaluation
         """
         # Merge custom eval config into the base config
-        config.update(self.eval_config)
+        # Filter out None values as Flower's ConfigRecord doesn't accept them
+        filtered_eval_config = {
+            k: v for k, v in self.eval_config.items() if v is not None
+        }
+        config.update(filtered_eval_config)
         # Call parent class to configure evaluation with updated config
         return super().configure_evaluate(server_round, arrays, config, grid)
 
@@ -89,6 +108,11 @@ class ConfigurableFedAvg(FedAvg):
         """
         Aggregate evaluation metrics from multiple clients and broadcast to frontend.
 
+        Following Flower conventions:
+        - Parent class (FedAvg) performs weighted averaging using 'num_examples' key
+        - Clients must include 'num_examples' in their MetricRecord for proper weighting
+        - The weighted average is computed as: sum(metric * num_examples) / sum(num_examples)
+
         Args:
             server_round: Current round number
             replies: Iterable of reply messages from clients after evaluation
@@ -96,11 +120,26 @@ class ConfigurableFedAvg(FedAvg):
         Returns:
             Aggregated MetricRecord (dict-like) or None if aggregation failed
         """
-        # Call parent's aggregate_evaluate to get aggregated metrics
-        aggregated_metrics = super().aggregate_evaluate(server_round, replies)
+        # Convert to list for logging
+        replies_list = list(replies)
+
+        # Log client responses for debugging
+        print(f"[Strategy] Aggregating evaluation from {len(replies_list)} clients")
+        for i, reply in enumerate(replies_list):
+            if "metrics" in reply.content:
+                metrics = dict(reply.content["metrics"])
+                num_examples = metrics.get(
+                    "num-examples", "NOT_FOUND"
+                )  # Note: hyphen not underscore!
+                print(f"[Strategy] Client {i}: num-examples={num_examples}")
+
+        # Call parent's aggregate_evaluate to get weighted aggregated metrics
+        # Parent class uses 'num_examples' key by default for weighted averaging
+        aggregated_metrics = super().aggregate_evaluate(server_round, replies_list)
 
         # Extract and broadcast metrics via WebSocket
         if aggregated_metrics:
+            print(f"[Strategy] Aggregated metrics: {dict(aggregated_metrics)}")
             round_metrics = self._extract_round_metrics(aggregated_metrics)
 
             # Get total rounds from config (set during strategy initialization or from context)
@@ -110,6 +149,8 @@ class ConfigurableFedAvg(FedAvg):
             self.ws_sender.send_round_metrics(
                 round_num=server_round, total_rounds=total_rounds, metrics=round_metrics
             )
+        else:
+            print(f"[Strategy] Warning: No aggregated metrics for round {server_round}")
 
         return aggregated_metrics
 
