@@ -106,13 +106,24 @@ def _prepare_evaluation_dataframe(df):
 
 
 def _extract_metrics_from_result(result_dict: dict):
-    """Extract and map metrics from result dictionary."""
-    loss = result_dict.get("test_loss") or result_dict.get("loss", 0.0)
-    accuracy = result_dict.get("test_accuracy") or result_dict.get("accuracy", 0.0)
-    precision = result_dict.get("test_precision") or result_dict.get("precision", 0.0)
-    recall = result_dict.get("test_recall") or result_dict.get("recall", 0.0)
-    f1 = result_dict.get("test_f1") or result_dict.get("f1", 0.0)
-    auroc = result_dict.get("test_auroc") or result_dict.get("auroc", 0.0)
+    """Extract and map metrics from result dictionary.
+    
+    Note: Uses 'is not None' check instead of 'or' to handle legitimate 0.0 values.
+    Handles both 'test_acc' and 'test_accuracy' naming conventions.
+    """
+    loss = result_dict.get("test_loss") if result_dict.get("test_loss") is not None else result_dict.get("loss", 0.0)
+    
+    # Handle both test_acc and test_accuracy
+    accuracy = result_dict.get("test_accuracy")
+    if accuracy is None:
+        accuracy = result_dict.get("test_acc")
+    if accuracy is None:
+        accuracy = result_dict.get("accuracy", 0.0)
+    
+    precision = result_dict.get("test_precision") if result_dict.get("test_precision") is not None else result_dict.get("precision", 0.0)
+    recall = result_dict.get("test_recall") if result_dict.get("test_recall") is not None else result_dict.get("recall", 0.0)
+    f1 = result_dict.get("test_f1") if result_dict.get("test_f1") is not None else result_dict.get("f1", 0.0)
+    auroc = result_dict.get("test_auroc") if result_dict.get("test_auroc") is not None else result_dict.get("auroc", 0.0)
     return loss, accuracy, precision, recall, f1, auroc
 
 
