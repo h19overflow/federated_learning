@@ -77,13 +77,33 @@ def train(msg: Message, context: Context):
         round_number=round_number,
         run_id=run_id,  # Pass run_id from server config
     )
-    model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
+    
+    # Load global model weights from server
+    global_state_dict = msg.content["arrays"].to_torch_state_dict()
+    model.load_state_dict(global_state_dict)
+    
+    # Debug: Log model state before training
+    first_param_name = list(model.state_dict().keys())[0]
+    first_param_before = model.state_dict()[first_param_name].clone()
+    centerlized_trainer.logger.info(
+        f"[Client Train] BEFORE training - first param '{first_param_name}' mean: {first_param_before.mean().item():.6f}"
+    )
+    
     trainer = _build_trainer_component(
         centerlized_trainer, callbacks, is_federated=True
     )
 
     # Train model and collect results
     trainer.fit(model, data_module)
+    
+    # Debug: Log model state after training
+    first_param_after = model.state_dict()[first_param_name]
+    centerlized_trainer.logger.info(
+        f"[Client Train] AFTER training - first param '{first_param_name}' mean: {first_param_after.mean().item():.6f}"
+    )
+    centerlized_trainer.logger.info(
+        f"[Client Train] Parameter change: {(first_param_after - first_param_before).abs().mean().item():.6f}"
+    )
     results = centerlized_trainer._collect_training_results(
         trainer=trainer,
         model=model,
@@ -155,7 +175,18 @@ def evaluate(msg: Message, context: Context):
     model, callbacks, metrics_collector = _build_model_components(
         centerlized_trainer, train_df, context, is_federated=False
     )
-    model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
+    
+    # Load global model weights
+    global_state_dict = msg.content["arrays"].to_torch_state_dict()
+    model.load_state_dict(global_state_dict)
+    
+    # Debug: Check model state to verify it's changing between rounds
+    first_param_name = list(model.state_dict().keys())[0]
+    first_param_value = model.state_dict()[first_param_name]
+    centerlized_trainer.logger.info(
+        f"[Client Evaluate] Loaded model - first param '{first_param_name}' mean: {first_param_value.mean().item():.6f}"
+    )
+    
     trainer = _build_trainer_component(
         centerlized_trainer, callbacks, is_federated=False
     )
@@ -163,6 +194,15 @@ def evaluate(msg: Message, context: Context):
     # Evaluate and extract metrics
     results = trainer.test(model, val_loader)
     result_dict = results[0] if results else {}
+    
+    # Debug: Print what metrics are actually returned
+    centerlized_trainer.logger.info(
+        f"[Client Evaluate] Raw result_dict keys: {list(result_dict.keys())}"
+    )
+    centerlized_trainer.logger.info(
+        f"[Client Evaluate] Raw result_dict: {result_dict}"
+    )
+    
     loss, accuracy, precision, recall, f1, auroc = _extract_metrics_from_result(
         result_dict
     )
@@ -170,6 +210,10 @@ def evaluate(msg: Message, context: Context):
     # Create metric record
     metric_dict = _create_metric_record_dict(
         loss, accuracy, precision, recall, f1, auroc, len(val_df)
+    )
+    
+    centerlized_trainer.logger.info(
+        f"[Client Evaluate] Extracted metrics: loss={loss}, acc={accuracy}, prec={precision}, rec={recall}, f1={f1}, auroc={auroc}"
     )
     metric_record = MetricRecord(metric_dict)
     content = RecordDict(

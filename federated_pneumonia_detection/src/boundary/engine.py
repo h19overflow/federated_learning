@@ -7,7 +7,6 @@ from sqlalchemy import (
     ForeignKey,
     TIMESTAMP,
     JSON,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 from federated_pneumonia_detection.config.settings import Settings

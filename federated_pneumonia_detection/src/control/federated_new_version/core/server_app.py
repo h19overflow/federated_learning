@@ -20,6 +20,9 @@ from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_met
 )
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation import (
+    create_central_evaluate_fn,
+)
 
 app = ServerApp()
 
@@ -114,13 +117,100 @@ def main(grid: Grid, context: Context) -> None:
     # Set total rounds for progress tracking in strategy
     strategy.set_total_rounds(num_rounds)
 
+    # Create centralized evaluation function for server-side evaluation
+    # This evaluates the global model on a held-out test set after each round
+    central_evaluate_fn = create_central_evaluate_fn(
+        config_manager=config_manager,
+        csv_path=train_config["file_path"],
+        image_dir=train_config["image_dir"],
+    )
+
     # Start strategy, run FedAvg for `num_rounds`
     # The strategy will automatically broadcast metrics after each round via aggregate_evaluate
+    # Server-side evaluation will run after each round using central_evaluate_fn
+    print(f"[Server] Starting federated learning for {num_rounds} rounds")
     result = strategy.start(
         grid=grid,
         initial_arrays=arrays,
         num_rounds=num_rounds,
+        evaluate_fn=central_evaluate_fn,  # Enable server-side centralized evaluation
     )
+    print("[Server] Federated learning completed successfully")
+
+    # Persist all federated metrics from Result object to database
+    if run_id:
+        print("[Server] Persisting federated metrics from Result object...")
+        db = get_session()
+        try:
+            # Persist client-side aggregated evaluation metrics
+            if result.evaluate_metrics_clientapp:
+                for (
+                    round_num,
+                    metric_record,
+                ) in result.evaluate_metrics_clientapp.items():
+                    # Use strategy's extraction method to normalize metric names
+                    normalized_metrics = strategy._extract_round_metrics(
+                        dict(metric_record)
+                    )
+
+                    # Convert to flattened dict with global_ prefix
+                    flattened_metrics = {"epoch": round_num}
+                    for metric_name, metric_value in normalized_metrics.items():
+                        flattened_metrics[f"global_{metric_name}"] = float(metric_value)
+
+                    print(
+                        f"[Server] Round {round_num} client-aggregated metrics: {flattened_metrics}"
+                    )
+
+                    # Persist metrics for this round
+                    run_crud.persist_metrics(
+                        db=db,
+                        run_id=run_id,
+                        epoch_metrics=[flattened_metrics],
+                        federated_context={
+                            "is_global": True,
+                            "round": round_num,
+                            "source": "client_aggregated",
+                        },
+                    )
+
+            # Persist server-side centralized evaluation metrics
+            if result.evaluate_metrics_serverapp:
+                for (
+                    round_num,
+                    metric_record,
+                ) in result.evaluate_metrics_serverapp.items():
+                    # Server metrics already have server_ prefix
+                    flattened_metrics = {"epoch": round_num}
+                    for metric_name, metric_value in metric_record.items():
+                        flattened_metrics[metric_name] = float(metric_value)
+
+                    print(
+                        f"[Server] Round {round_num} server-evaluated metrics: {flattened_metrics}"
+                    )
+
+                    # Persist server-side metrics
+                    run_crud.persist_metrics(
+                        db=db,
+                        run_id=run_id,
+                        epoch_metrics=[flattened_metrics],
+                        federated_context={
+                            "is_global": True,
+                            "round": round_num,
+                            "source": "server_centralized",
+                        },
+                    )
+
+            db.commit()
+            print(
+                f"[Server] ✅ Persisted metrics for client-side: {len(result.evaluate_metrics_clientapp)}, "
+                f"server-side: {len(result.evaluate_metrics_serverapp)} rounds"
+            )
+        except Exception as e:
+            print(f"[Server] ❌ Error persisting metrics: {e}")
+            db.rollback()
+        finally:
+            db.close()
 
     # Save final model to disk
     print("\nSaving final model to disk...")
