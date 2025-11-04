@@ -299,14 +299,32 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
         logger.info(f"✅ Database session created successfully")
         logger.info(f"Processing {len(server_metrics)} server evaluation rounds...")
 
-        for round_num, metric_record in server_metrics.items():
-            logger.info(f"  Processing round {round_num}...")
+        for round_num_str, metric_record in server_metrics.items():
+            # Convert round number to int (Flower uses int keys, but may be converted to string)
+            round_num = int(round_num_str)
+            logger.info(f"  Processing round {round_num} (key={round_num_str})...")
 
             # Convert MetricRecord to dict if needed
             if hasattr(metric_record, "__dict__"):
                 metrics_dict = dict(metric_record)
+            elif isinstance(metric_record, str):
+                # If it's a string representation, parse it
+                import ast
+
+                try:
+                    metrics_dict = ast.literal_eval(metric_record)
+                    logger.info(
+                        f"    Parsed string metrics: {list(metrics_dict.keys())}"
+                    )
+                except Exception as parse_err:
+                    logger.error(f"    Failed to parse metric string: {parse_err}")
+                    metrics_dict = {}
             else:
                 metrics_dict = metric_record
+
+            logger.info(
+                f"    Metrics dict type: {type(metrics_dict)}, keys: {list(metrics_dict.keys()) if isinstance(metrics_dict, dict) else 'N/A'}"
+            )
 
             # Extract metrics with 'server_' prefix (from server_evaluation.py)
             extracted_metrics = {
@@ -318,7 +336,7 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
                 "auroc": metrics_dict.get("server_auroc"),
             }
 
-            logger.debug(f"    Extracted metrics: {extracted_metrics}")
+            logger.info(f"    Extracted metrics: {extracted_metrics}")
 
             # Create server evaluation record
             server_evaluation_crud.create_evaluation(
@@ -346,16 +364,3 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
         if db:
             db.close()
             logger.info("Database session closed")
-
-def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> None:
-    """
-    Persist server-side evaluation metrics to database.
-
-    Args:
-        run_id: Database run ID
-        server_metrics: Dictionary mapping round number to MetricRecord
-    """
-    # Verify database connection before attempting persistence
-    logger.info("=" * 80)
-    logger.info("DATABASE PERSISTENCE - Server Evaluations")
-    logger.info("=" * 80)
