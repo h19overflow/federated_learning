@@ -164,8 +164,7 @@ def _build_federated_details(
                 details += f"  - AUROC: {eval.auroc:.4f}\n"
             if eval.num_samples:
                 details += f"  - Samples: {eval.num_samples}\n"
-            if eval.confusion_matrix:
-                details += f"  - Confusion Matrix: {eval.confusion_matrix}\n"
+
 
     return details
 

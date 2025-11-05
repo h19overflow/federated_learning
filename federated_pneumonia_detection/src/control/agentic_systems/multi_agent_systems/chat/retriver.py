@@ -17,6 +17,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 load_dotenv()
+from langchain_community.document_loaders.pdf import PyPDFium2Loader
+
 # TODO: Add axriv MCP server in order to access different research papers, make sure it's functional and really helps.
 
 class QueryEngine:
