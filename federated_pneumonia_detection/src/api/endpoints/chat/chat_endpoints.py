@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import (
     QueryEngine,
 )
+from .chat_utils import enhance_query_with_run_context
 import logging
 import uuid
 
@@ -26,6 +27,8 @@ except Exception as e:
 class ChatMessage(BaseModel):
     query: str
     session_id: Optional[str] = None
+    run_id: Optional[int] = None
+    training_mode: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
@@ -43,10 +46,10 @@ class ChatHistoryResponse(BaseModel):
 async def query_chat(message: ChatMessage) -> ChatResponse:
     """
     Query the retrieval-augmented generation system with a user message.
-    Supports session-based conversation history.
+    Supports session-based conversation history and run-specific context.
 
     Args:
-        message: ChatMessage containing the user query and optional session_id
+        message: ChatMessage containing the user query, optional session_id, and optional run context
 
     Returns:
         ChatResponse with answer, source documents, and session_id
@@ -60,17 +63,24 @@ async def query_chat(message: ChatMessage) -> ChatResponse:
         # Generate session_id if not provided
         session_id = message.session_id or str(uuid.uuid4())
 
+        # Enhance query with run context if provided
+        enhanced_query = message.query
+        if message.run_id is not None:
+            enhanced_query = enhance_query_with_run_context(
+                message.query, message.run_id
+            )
+
         # Use query_with_history for session-based queries
-        result = query_engine.query_with_history(message.query, session_id)
+        result = query_engine.query_with_history(enhanced_query, session_id)
 
         sources = []
         if "context" in result:
-            sources = [doc.metadata.get("source", "Unknown") for doc in result["context"]]
+            sources = [
+                doc.metadata.get("source", "Unknown") for doc in result["context"]
+            ]
 
         return ChatResponse(
-            answer=result.get("answer", ""),
-            sources=sources,
-            session_id=session_id
+            answer=result.get("answer", ""), sources=sources, session_id=session_id
         )
     except Exception as e:
         logger.error(f"Error processing query: {e}")
@@ -96,13 +106,14 @@ async def get_chat_history(session_id: str) -> ChatHistoryResponse:
     try:
         history = query_engine.get_history(session_id)
         formatted_history = [
-            {"user": user_msg, "assistant": ai_msg}
-            for user_msg, ai_msg in history
+            {"user": user_msg, "assistant": ai_msg} for user_msg, ai_msg in history
         ]
         return ChatHistoryResponse(history=formatted_history, session_id=session_id)
     except Exception as e:
         logger.error(f"Error retrieving history: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving history: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving history: {str(e)}"
+        )
 
 
 @router.delete("/history/{session_id}")
