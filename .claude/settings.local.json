@@ -15,7 +15,15 @@
       "Bash(where:*)",
       "Bash(/c/Users/User/AppData/Local/Microsoft/WindowsApps/python.exe sample_dataset.py)",
       "Bash(npm run build:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "WebSearch",
+      "WebFetch(domain:flower.ai)",
+      "WebFetch(domain:github.com)",
+      "Bash(git worktree:*)",
+      "Bash(git submodule:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(git check-ignore:*)"
     ],
     "deny": [],
     "ask": []
