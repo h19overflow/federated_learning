@@ -64,15 +64,21 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				medical: {
-					DEFAULT: '#0A9396',
-					dark: '#005F73',
-					light: '#94D2BD'
+					DEFAULT: 'hsl(172, 63%, 22%)',
+					dark: 'hsl(172, 63%, 18%)',
+					light: 'hsl(172, 45%, 35%)',
+					mint: 'hsl(168, 40%, 90%)',
+					sage: 'hsl(165, 20%, 96%)'
 				},
 				status: {
-					success: '#52B788',
-					warning: '#E9C46A',
-					error: '#E76F51',
-					info: '#4CC9F0'
+					success: 'hsl(152, 60%, 42%)',
+					warning: 'hsl(35, 70%, 50%)',
+					error: 'hsl(0, 72%, 51%)',
+					info: 'hsl(210, 60%, 50%)'
+				},
+				trust: {
+					blue: 'hsl(210, 100%, 96%)',
+					teal: 'hsl(172, 40%, 92%)'
 				}
 			},
 			borderRadius: {

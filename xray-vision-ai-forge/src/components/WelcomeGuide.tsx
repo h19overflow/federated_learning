@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,14 +8,14 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Upload, 
-  Settings, 
-  Play, 
+import {
+  Upload,
+  Settings,
+  Play,
   BarChart3,
   CheckCircle2,
   ArrowRight,
+  ArrowLeft,
   X
 } from 'lucide-react';
 
@@ -23,145 +23,187 @@ interface WelcomeGuideProps {
   onClose: () => void;
 }
 
+/**
+ * Welcome Guide component for onboarding new users
+ * Redesigned with Clinical Clarity theme - glass morphism, teal accents
+ */
 const WelcomeGuide = ({ onClose }: WelcomeGuideProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [open, setOpen] = useState(true);
 
   const steps = [
     {
-      title: 'Welcome to XRay Vision AI Forge! 👋',
+      title: 'Welcome to XRay Vision AI Forge',
       description: 'Your platform for training pneumonia detection models using state-of-the-art machine learning',
       content: (
-        <div className="space-y-4">
-          <p className="text-muted-foreground">
+        <div className="space-y-5">
+          <p className="text-[hsl(215_15%_45%)] leading-relaxed">
             This platform helps you train deep learning models for pneumonia detection from chest X-rays.
             You can choose between traditional centralized training or privacy-preserving federated learning.
           </p>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-semibold text-blue-900 mb-2">What you'll learn:</h4>
-            <ul className="list-disc list-inside space-y-1 text-sm text-blue-800">
-              <li>How to upload and prepare your dataset</li>
-              <li>Configure training parameters</li>
-              <li>Monitor training in real-time</li>
-              <li>Analyze and compare results</li>
+          <div className="bg-[hsl(210_100%_97%)] border border-[hsl(210_60%_85%)] rounded-xl p-5">
+            <h4 className="font-semibold text-[hsl(210_70%_30%)] mb-3">What you'll learn:</h4>
+            <ul className="space-y-2 text-sm text-[hsl(210_50%_35%)]">
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[hsl(210_80%_50%)]" />
+                How to upload and prepare your dataset
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[hsl(210_80%_50%)]" />
+                Configure training parameters
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[hsl(210_80%_50%)]" />
+                Monitor training in real-time
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[hsl(210_80%_50%)]" />
+                Analyze and compare results
+              </li>
             </ul>
           </div>
         </div>
       ),
-      icon: <CheckCircle2 className="h-12 w-12 text-medical" />,
+      icon: <CheckCircle2 className="h-10 w-10 text-[hsl(172_63%_28%)]" />,
     },
     {
-      title: 'Step 1: Upload Dataset 📁',
+      title: 'Step 1: Upload Dataset',
       description: 'Start by uploading your chest X-ray dataset',
       content: (
-        <div className="space-y-4">
-          <div className="flex items-start gap-4 bg-gray-50 p-4 rounded-lg">
-            <Upload className="h-8 w-8 text-medical flex-shrink-0 mt-1" />
+        <div className="space-y-5">
+          <div className="flex items-start gap-4 bg-[hsl(168_25%_97%)] p-5 rounded-xl border border-[hsl(168_20%_92%)]">
+            <div className="p-2.5 rounded-xl bg-[hsl(172_40%_92%)]">
+              <Upload className="h-6 w-6 text-[hsl(172_63%_28%)]" />
+            </div>
             <div className="flex-1">
-              <h4 className="font-semibold mb-2">Dataset Format</h4>
-              <p className="text-sm text-muted-foreground mb-3">
+              <h4 className="font-semibold text-[hsl(172_43%_20%)] mb-2">Dataset Format</h4>
+              <p className="text-sm text-[hsl(215_15%_45%)] mb-3">
                 Upload a ZIP file containing:
               </p>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• <strong>Images folder:</strong> X-ray images organized by class</li>
-                <li>• <strong>Metadata CSV:</strong> Image labels and information</li>
+              <ul className="text-sm text-[hsl(215_15%_45%)] space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)] mt-1.5" />
+                  <span><strong className="text-[hsl(172_43%_20%)]">Images folder:</strong> X-ray images organized by class</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)] mt-1.5" />
+                  <span><strong className="text-[hsl(172_43%_20%)]">Metadata CSV:</strong> Image labels and information</span>
+                </li>
               </ul>
             </div>
           </div>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-sm text-yellow-900">
-              <strong>Tip:</strong> Configure the train/validation split to control how much data is used for training vs. testing.
+          <div className="bg-[hsl(35_60%_96%)] border border-[hsl(35_50%_80%)] rounded-xl p-4">
+            <p className="text-sm text-[hsl(35_50%_30%)]">
+              <strong className="text-[hsl(35_70%_35%)]">Tip:</strong> Configure the train/validation split to control how much data is used for training vs. testing.
             </p>
           </div>
         </div>
       ),
-      icon: <Upload className="h-12 w-12 text-medical" />,
+      icon: <Upload className="h-10 w-10 text-[hsl(172_63%_28%)]" />,
     },
     {
-      title: 'Step 2: Configure Experiment ⚙️',
+      title: 'Step 2: Configure Experiment',
       description: 'Set up your training parameters',
       content: (
-        <div className="space-y-4">
-          <div className="flex items-start gap-4 bg-gray-50 p-4 rounded-lg">
-            <Settings className="h-8 w-8 text-medical flex-shrink-0 mt-1" />
+        <div className="space-y-5">
+          <div className="flex items-start gap-4 bg-[hsl(168_25%_97%)] p-5 rounded-xl border border-[hsl(168_20%_92%)]">
+            <div className="p-2.5 rounded-xl bg-[hsl(172_40%_92%)]">
+              <Settings className="h-6 w-6 text-[hsl(172_63%_28%)]" />
+            </div>
             <div className="flex-1">
-              <h4 className="font-semibold mb-2">Training Modes</h4>
-              <div className="space-y-3">
+              <h4 className="font-semibold text-[hsl(172_43%_20%)] mb-3">Training Modes</h4>
+              <div className="space-y-4">
                 <div className="text-sm">
-                  <strong className="text-medical">Centralized:</strong>
-                  <p className="text-muted-foreground">Traditional training on a single machine</p>
+                  <strong className="text-[hsl(172_63%_28%)]">Centralized</strong>
+                  <p className="text-[hsl(215_15%_45%)]">Traditional training on a single machine</p>
                 </div>
                 <div className="text-sm">
-                  <strong className="text-medical">Federated:</strong>
-                  <p className="text-muted-foreground">Distributed training across multiple clients while preserving privacy</p>
-                </div>
-                <div className="text-sm">
-                  <strong className="text-medical">Both:</strong>
-                  <p className="text-muted-foreground">Compare both approaches side-by-side</p>
+                  <strong className="text-[hsl(172_63%_28%)]">Federated</strong>
+                  <p className="text-[hsl(215_15%_45%)]">Distributed training across multiple clients while preserving privacy</p>
                 </div>
               </div>
             </div>
           </div>
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-            <p className="text-sm text-purple-900">
-              <strong>New to ML?</strong> Start with the default values - they're optimized for most use cases!
+          <div className="bg-[hsl(168_40%_95%)] border border-[hsl(168_35%_80%)] rounded-xl p-4">
+            <p className="text-sm text-[hsl(168_35%_30%)]">
+              <strong className="text-[hsl(168_45%_25%)]">New to ML?</strong> Start with the default values - they're optimized for most use cases!
             </p>
           </div>
         </div>
       ),
-      icon: <Settings className="h-12 w-12 text-medical" />,
+      icon: <Settings className="h-10 w-10 text-[hsl(172_63%_28%)]" />,
     },
     {
-      title: 'Step 3: Monitor Training 🚀',
+      title: 'Step 3: Monitor Training',
       description: 'Watch your model learn in real-time',
       content: (
-        <div className="space-y-4">
-          <div className="flex items-start gap-4 bg-gray-50 p-4 rounded-lg">
-            <Play className="h-8 w-8 text-medical flex-shrink-0 mt-1" />
+        <div className="space-y-5">
+          <div className="flex items-start gap-4 bg-[hsl(168_25%_97%)] p-5 rounded-xl border border-[hsl(168_20%_92%)]">
+            <div className="p-2.5 rounded-xl bg-[hsl(172_40%_92%)]">
+              <Play className="h-6 w-6 text-[hsl(172_63%_28%)]" />
+            </div>
             <div className="flex-1">
-              <h4 className="font-semibold mb-2">Real-time Monitoring</h4>
-              <ul className="text-sm text-muted-foreground space-y-2">
-                <li>• <strong>Live metrics:</strong> Track loss, accuracy, and other metrics</li>
-                <li>• <strong>Progress bars:</strong> See epoch and round progress</li>
-                <li>• <strong>Federated updates:</strong> Watch global model aggregation</li>
-                <li>• <strong>Status messages:</strong> Get detailed training updates</li>
+              <h4 className="font-semibold text-[hsl(172_43%_20%)] mb-3">Real-time Monitoring</h4>
+              <ul className="text-sm text-[hsl(215_15%_45%)] space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)] mt-1.5" />
+                  <span><strong className="text-[hsl(172_43%_20%)]">Live metrics:</strong> Track loss, accuracy, and other metrics</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)] mt-1.5" />
+                  <span><strong className="text-[hsl(172_43%_20%)]">Progress bars:</strong> See epoch and round progress</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)] mt-1.5" />
+                  <span><strong className="text-[hsl(172_43%_20%)]">Status messages:</strong> Get detailed training updates</span>
+                </li>
               </ul>
             </div>
           </div>
-          <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
-            <p className="text-sm text-teal-900">
-              <strong>Pro tip:</strong> Training can take a while. Feel free to minimize the window - we'll keep you updated!
+          <div className="bg-[hsl(172_40%_96%)] border border-[hsl(172_40%_80%)] rounded-xl p-4">
+            <p className="text-sm text-[hsl(172_35%_30%)]">
+              <strong className="text-[hsl(172_43%_22%)]">Pro tip:</strong> Training can take a while. Feel free to minimize the window - we'll keep you updated!
             </p>
           </div>
         </div>
       ),
-      icon: <Play className="h-12 w-12 text-medical" />,
+      icon: <Play className="h-10 w-10 text-[hsl(172_63%_28%)]" />,
     },
     {
-      title: 'Step 4: Analyze Results 📊',
-      description: 'Understand your model\'s performance',
+      title: 'Step 4: Analyze Results',
+      description: "Understand your model's performance",
       content: (
-        <div className="space-y-4">
-          <div className="flex items-start gap-4 bg-gray-50 p-4 rounded-lg">
-            <BarChart3 className="h-8 w-8 text-medical flex-shrink-0 mt-1" />
+        <div className="space-y-5">
+          <div className="flex items-start gap-4 bg-[hsl(168_25%_97%)] p-5 rounded-xl border border-[hsl(168_20%_92%)]">
+            <div className="p-2.5 rounded-xl bg-[hsl(172_40%_92%)]">
+              <BarChart3 className="h-6 w-6 text-[hsl(172_63%_28%)]" />
+            </div>
             <div className="flex-1">
-              <h4 className="font-semibold mb-2">Comprehensive Analytics</h4>
-              <ul className="text-sm text-muted-foreground space-y-2">
-                <li>• <strong>Performance metrics:</strong> Accuracy, precision, recall, F1-score, AUROC</li>
-                <li>• <strong>Training curves:</strong> Visualize loss and accuracy over time</li>
-                <li>• <strong>Confusion matrix:</strong> See classification patterns</li>
-                <li>• <strong>ROC curve:</strong> Evaluate model discrimination ability</li>
+              <h4 className="font-semibold text-[hsl(172_43%_20%)] mb-3">Comprehensive Analytics</h4>
+              <ul className="text-sm text-[hsl(215_15%_45%)] space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)] mt-1.5" />
+                  <span><strong className="text-[hsl(172_43%_20%)]">Performance metrics:</strong> Accuracy, precision, recall, F1-score, AUROC</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)] mt-1.5" />
+                  <span><strong className="text-[hsl(172_43%_20%)]">Training curves:</strong> Visualize loss and accuracy over time</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)] mt-1.5" />
+                  <span><strong className="text-[hsl(172_43%_20%)]">Confusion matrix:</strong> See classification patterns</span>
+                </li>
               </ul>
             </div>
           </div>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <p className="text-sm text-green-900">
-              <strong>Ready to start?</strong> Click "Get Started" to begin your first experiment!
+          <div className="bg-[hsl(172_50%_95%)] border border-[hsl(172_50%_80%)] rounded-xl p-4">
+            <p className="text-sm text-[hsl(172_40%_28%)]">
+              <strong className="text-[hsl(172_50%_22%)]">Ready to start?</strong> Click "Get Started" to begin your first experiment!
             </p>
           </div>
         </div>
       ),
-      icon: <BarChart3 className="h-12 w-12 text-medical" />,
+      icon: <BarChart3 className="h-10 w-10 text-[hsl(172_63%_28%)]" />,
     },
   ];
 
@@ -185,7 +227,7 @@ const WelcomeGuide = ({ onClose }: WelcomeGuideProps) => {
 
   const handleClose = () => {
     setOpen(false);
-    setTimeout(onClose, 200); // Wait for animation
+    setTimeout(onClose, 200);
   };
 
   const handleSkip = () => {
@@ -196,14 +238,21 @@ const WelcomeGuide = ({ onClose }: WelcomeGuideProps) => {
     <Dialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen) handleClose();
     }}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white/95 backdrop-blur-xl border-[hsl(168_20%_90%)] rounded-2xl shadow-xl"
+        style={{ animation: 'fadeIn 0.3s ease-out' }}
+      >
         <DialogHeader>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              {currentStepData.icon}
+              <div className="p-3 rounded-2xl bg-[hsl(172_40%_94%)]">
+                {currentStepData.icon}
+              </div>
               <div>
-                <DialogTitle className="text-2xl">{currentStepData.title}</DialogTitle>
-                <DialogDescription className="mt-2">
+                <DialogTitle className="text-2xl font-semibold text-[hsl(172_43%_15%)]">
+                  {currentStepData.title}
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-[hsl(215_15%_50%)]">
                   {currentStepData.description}
                 </DialogDescription>
               </div>
@@ -212,50 +261,63 @@ const WelcomeGuide = ({ onClose }: WelcomeGuideProps) => {
               variant="ghost"
               size="icon"
               onClick={handleSkip}
-              className="absolute right-4 top-4"
+              className="absolute right-4 top-4 rounded-full hover:bg-[hsl(168_25%_94%)] text-[hsl(215_15%_55%)] hover:text-[hsl(172_43%_25%)]"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </DialogHeader>
 
-        <div className="py-4">
+        <div className="py-4" style={{ animation: 'fadeIn 0.3s ease-out' }}>
           {currentStepData.content}
         </div>
 
         {/* Progress indicator */}
         <div className="flex justify-center gap-2 py-4">
           {steps.map((_, index) => (
-            <div
+            <button
               key={index}
-              className={`h-2 rounded-full transition-all ${
+              onClick={() => setCurrentStep(index)}
+              className={`rounded-full transition-all duration-300 ${
                 index === currentStep
-                  ? 'w-8 bg-medical'
+                  ? 'w-8 h-2 bg-[hsl(172_63%_28%)]'
                   : index < currentStep
-                  ? 'w-2 bg-medical/50'
-                  : 'w-2 bg-gray-300'
+                    ? 'w-2 h-2 bg-[hsl(172_50%_50%)]'
+                    : 'w-2 h-2 bg-[hsl(210_15%_85%)]'
               }`}
             />
           ))}
         </div>
 
-        <DialogFooter className="flex justify-between items-center sm:justify-between">
+        <DialogFooter className="flex justify-between items-center sm:justify-between gap-4">
           <div className="flex gap-2">
             {!isFirstStep && (
-              <Button variant="outline" onClick={handlePrevious}>
+              <Button
+                variant="outline"
+                onClick={handlePrevious}
+                className="rounded-xl border-[hsl(172_30%_80%)] text-[hsl(172_43%_25%)] hover:bg-[hsl(168_25%_94%)]"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Previous
               </Button>
             )}
           </div>
           <div className="flex gap-2">
             {!isLastStep && (
-              <Button variant="ghost" onClick={handleSkip}>
+              <Button
+                variant="ghost"
+                onClick={handleSkip}
+                className="rounded-xl text-[hsl(215_15%_50%)] hover:bg-[hsl(168_25%_94%)] hover:text-[hsl(172_43%_25%)]"
+              >
                 Skip Tour
               </Button>
             )}
-            <Button onClick={handleNext} className="bg-medical hover:bg-medical-dark">
+            <Button
+              onClick={handleNext}
+              className="rounded-xl bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white shadow-md shadow-[hsl(172_63%_22%)]/20 transition-all hover:shadow-lg hover:-translate-y-0.5"
+            >
               {isLastStep ? (
-                <>Get Started</>
+                'Get Started'
               ) : (
                 <>
                   Next <ArrowRight className="ml-2 h-4 w-4" />
@@ -270,4 +332,3 @@ const WelcomeGuide = ({ onClose }: WelcomeGuideProps) => {
 };
 
 export default WelcomeGuide;
-

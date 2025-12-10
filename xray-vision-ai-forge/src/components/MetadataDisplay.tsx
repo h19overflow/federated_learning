@@ -4,6 +4,7 @@
  * Purpose: Display experiment metadata in a clean, intuitive format
  * Dependencies: lucide-react for icons, shadcn/ui components
  * Role: Renders metadata key-value pairs with proper formatting and icons
+ * Redesigned with Clinical Clarity theme - teal accents, soft backgrounds
  */
 
 import React from 'react';
@@ -27,6 +28,7 @@ import {
   Cpu,
   HardDrive
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface MetadataDisplayProps {
   metadata: Record<string, any>;
@@ -94,17 +96,17 @@ const formatKey = (key: string): string => {
  */
 const formatValue = (value: any): React.ReactNode => {
   if (value === null || value === undefined) {
-    return <span className="text-muted-foreground italic">Not set</span>;
+    return <span className="text-[hsl(215_15%_55%)] italic">Not set</span>;
   }
 
   if (typeof value === 'boolean') {
     return value ? (
-      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+      <Badge variant="outline" className="bg-[hsl(172_40%_95%)] text-[hsl(172_63%_25%)] border-[hsl(172_40%_80%)]">
         <CheckCircle2 className="h-3 w-3 mr-1" />
         True
       </Badge>
     ) : (
-      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+      <Badge variant="outline" className="bg-[hsl(0_50%_97%)] text-[hsl(0_60%_45%)] border-[hsl(0_40%_80%)]">
         <XCircle className="h-3 w-3 mr-1" />
         False
       </Badge>
@@ -114,9 +116,9 @@ const formatValue = (value: any): React.ReactNode => {
   if (typeof value === 'number') {
     // Format numbers with appropriate precision
     if (Number.isInteger(value)) {
-      return <span className="font-mono font-semibold text-medical-dark">{value.toLocaleString()}</span>;
+      return <span className="font-mono font-semibold text-[hsl(172_43%_20%)]">{value.toLocaleString()}</span>;
     }
-    return <span className="font-mono font-semibold text-medical-dark">{value.toFixed(4)}</span>;
+    return <span className="font-mono font-semibold text-[hsl(172_43%_20%)]">{value.toFixed(4)}</span>;
   }
 
   if (typeof value === 'string') {
@@ -126,38 +128,42 @@ const formatValue = (value: any): React.ReactNode => {
       try {
         const date = new Date(value);
         return (
-          <span className="text-sm">
+          <span className="text-sm text-[hsl(172_43%_25%)]">
             {date.toLocaleDateString()} {date.toLocaleTimeString()}
           </span>
         );
       } catch {
-        return <span className="text-sm">{value}</span>;
+        return <span className="text-sm text-[hsl(172_43%_25%)]">{value}</span>;
       }
     }
 
     // Check if it's a long string (truncate if needed)
     if (value.length > 100) {
       return (
-        <span className="text-sm break-words" title={value}>
+        <span className="text-sm break-words text-[hsl(172_43%_25%)]" title={value}>
           {value.substring(0, 100)}...
         </span>
       );
     }
 
-    return <span className="text-sm">{value}</span>;
+    return <span className="text-sm text-[hsl(172_43%_25%)]">{value}</span>;
   }
 
   if (Array.isArray(value)) {
     if (value.length === 0) {
-      return <span className="text-muted-foreground italic">Empty array</span>;
+      return <span className="text-[hsl(215_15%_55%)] italic">Empty array</span>;
     }
 
     // If array contains primitives, show as badges
     if (value.every(v => typeof v === 'string' || typeof v === 'number')) {
       return (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5">
           {value.map((item, idx) => (
-            <Badge key={idx} variant="secondary" className="text-xs">
+            <Badge
+              key={idx}
+              variant="secondary"
+              className="text-xs bg-[hsl(168_25%_94%)] text-[hsl(172_43%_25%)] border-0"
+            >
               {String(item)}
             </Badge>
           ))}
@@ -167,7 +173,7 @@ const formatValue = (value: any): React.ReactNode => {
 
     // For complex arrays, show count
     return (
-      <Badge variant="outline" className="text-xs">
+      <Badge variant="outline" className="text-xs border-[hsl(168_20%_85%)] text-[hsl(215_15%_45%)]">
         {value.length} items
       </Badge>
     );
@@ -178,7 +184,7 @@ const formatValue = (value: any): React.ReactNode => {
     return <NestedMetadata data={value} depth={1} />;
   }
 
-  return <span className="text-sm">{String(value)}</span>;
+  return <span className="text-sm text-[hsl(172_43%_25%)]">{String(value)}</span>;
 };
 
 /**
@@ -187,14 +193,14 @@ const formatValue = (value: any): React.ReactNode => {
 const NestedMetadata: React.FC<{ data: Record<string, any>; depth: number }> = ({ data, depth }) => {
   // Limit nesting depth to prevent overly deep rendering
   if (depth > 2) {
-    return <span className="text-xs text-muted-foreground italic">Complex object</span>;
+    return <span className="text-xs text-[hsl(215_15%_55%)] italic">Complex object</span>;
   }
 
   return (
-    <div className={`space-y-2 ${depth > 0 ? 'pl-4 border-l-2 border-gray-200' : ''}`}>
+    <div className={cn('space-y-2', depth > 0 && 'pl-4 border-l-2 border-[hsl(172_30%_88%)]')}>
       {Object.entries(data).map(([key, value]) => (
         <div key={key} className="flex items-start justify-between gap-3 text-sm">
-          <span className="text-muted-foreground font-medium min-w-[120px]">
+          <span className="text-[hsl(215_15%_50%)] font-medium min-w-[120px]">
             {formatKey(key)}:
           </span>
           <span className="flex-1 text-right">{formatValue(value)}</span>
@@ -251,10 +257,12 @@ export const MetadataDisplay: React.FC<MetadataDisplayProps> = ({
 }) => {
   if (!metadata || Object.keys(metadata).length === 0) {
     return (
-      <Card>
+      <Card className="rounded-2xl border-[hsl(210_15%_92%)]">
         <CardContent className="p-8 text-center">
-          <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-muted-foreground">No metadata available</p>
+          <div className="p-3 rounded-2xl bg-[hsl(168_25%_95%)] w-fit mx-auto mb-4">
+            <FileText className="h-10 w-10 text-[hsl(215_15%_55%)]" />
+          </div>
+          <p className="text-[hsl(215_15%_55%)]">No metadata available</p>
         </CardContent>
       </Card>
     );
@@ -275,23 +283,25 @@ export const MetadataDisplay: React.FC<MetadataDisplayProps> = ({
 
   if (shouldUseFlatView) {
     return (
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden rounded-2xl border-[hsl(210_15%_92%)] shadow-sm">
         <CardContent className="p-0">
-          <div className="bg-gradient-to-r from-medical/10 to-medical-dark/10 px-6 py-4 border-b">
-            <h3 className="text-lg font-semibold text-medical-dark flex items-center">
-              <Settings className="h-5 w-5 mr-2" />
+          <div className="bg-gradient-to-r from-[hsl(168_25%_97%)] to-white px-6 py-4 border-b border-[hsl(168_20%_92%)]">
+            <h3 className="text-lg font-semibold text-[hsl(172_43%_18%)] flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-[hsl(172_40%_92%)]">
+                <Settings className="h-5 w-5 text-[hsl(172_63%_30%)]" />
+              </div>
               {title}
             </h3>
           </div>
           <div className="p-6 space-y-4">
             {Object.entries(metadata).map(([key, value]) => (
-              <div key={key} className="flex items-start gap-4 pb-3 border-b border-gray-100 last:border-0">
-                <div className="text-medical-dark/70 mt-1">
+              <div key={key} className="flex items-start gap-4 pb-4 border-b border-[hsl(168_20%_94%)] last:border-0 last:pb-0">
+                <div className="p-2 rounded-lg bg-[hsl(168_25%_95%)] text-[hsl(172_40%_40%)]">
                   {getMetadataIcon(key)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-700 mb-1">{formatKey(key)}</p>
-                  <div className="text-gray-900">{formatValue(value)}</div>
+                  <p className="text-sm font-medium text-[hsl(215_15%_45%)] mb-1">{formatKey(key)}</p>
+                  <div className="text-[hsl(172_43%_20%)]">{formatValue(value)}</div>
                 </div>
               </div>
             ))}
@@ -305,22 +315,22 @@ export const MetadataDisplay: React.FC<MetadataDisplayProps> = ({
   return (
     <div className="space-y-4">
       {categorizedData.map(([category, values]) => (
-        <Card key={category} className="overflow-hidden">
+        <Card key={category} className="overflow-hidden rounded-2xl border-[hsl(210_15%_92%)] shadow-sm">
           <CardContent className="p-0">
-            <div className="bg-gradient-to-r from-medical/10 to-medical-dark/10 px-6 py-3 border-b">
-              <h4 className="text-md font-semibold text-medical-dark">
+            <div className="bg-gradient-to-r from-[hsl(168_25%_97%)] to-white px-6 py-3 border-b border-[hsl(168_20%_92%)]">
+              <h4 className="text-md font-semibold text-[hsl(172_43%_18%)]">
                 {categoryLabels[category] || formatKey(category)}
               </h4>
             </div>
             <div className="p-6 space-y-4">
               {Object.entries(values).map(([key, value]) => (
-                <div key={key} className="flex items-start gap-4 pb-3 border-b border-gray-100 last:border-0">
-                  <div className="text-medical-dark/70 mt-1">
+                <div key={key} className="flex items-start gap-4 pb-4 border-b border-[hsl(168_20%_94%)] last:border-0 last:pb-0">
+                  <div className="p-2 rounded-lg bg-[hsl(168_25%_95%)] text-[hsl(172_40%_40%)]">
                     {getMetadataIcon(key)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-700 mb-1">{formatKey(key)}</p>
-                    <div className="text-gray-900">{formatValue(value)}</div>
+                    <p className="text-sm font-medium text-[hsl(215_15%_45%)] mb-1">{formatKey(key)}</p>
+                    <div className="text-[hsl(172_43%_20%)]">{formatValue(value)}</div>
                   </div>
                 </div>
               ))}

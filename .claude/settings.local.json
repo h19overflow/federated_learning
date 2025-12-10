@@ -23,7 +23,10 @@
       "Bash(git submodule:*)",
       "Bash(git rm:*)",
       "Bash(git add:*)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Skill(frontend-design:frontend-design)"
     ],
     "deny": [],
     "ask": []

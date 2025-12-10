@@ -17,7 +17,7 @@ experiment:
   edge_strength: 1.0
   epochs: 10
   file-path: C:\Users\User\AppData\Local\Temp\tmphswfc0av\extracted\Training_Sample_5pct\stage2_train_metadata.csv
-  fine_tune_layers_count: 5
+  fine_tune_layers_count: 7
   freeze_backbone: true
   image-dir: C:\Users\User\AppData\Local\Temp\tmphswfc0av\extracted\Training_Sample_5pct\Images
   learning_rate: 0.001

@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { MessageSquare, Send, Trash2, Loader2, X, Sparkles, BarChart, Activity, Zap } from 'lucide-react';
+import { MessageSquare, Send, Trash2, Loader2, X, BarChart, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/services/api';
 
@@ -47,7 +46,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const runPickerRef = useRef<HTMLDivElement>(null);
-  
+
   // Slash command state
   const [showRunPicker, setShowRunPicker] = useState(false);
   const [availableRuns, setAvailableRuns] = useState<RunSummary[]>([]);
@@ -60,7 +59,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     const storedSessionId = localStorage.getItem('chat_session_id');
     if (storedSessionId) {
       setSessionId(storedSessionId);
-      // Load history for existing session
       loadHistory(storedSessionId);
     } else {
       const newSessionId = generateSessionId();
@@ -83,7 +81,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
 
-  // Load available runs when slash command is detected
   const fetchAvailableRuns = async () => {
     try {
       setLoadingRuns(true);
@@ -122,14 +119,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     };
     setSelectedRun(runContext);
     setShowRunPicker(false);
-    
-    // Add a system message to indicate run selection
+
     setMessages(prev => [...prev, {
       role: 'assistant',
-      content: `📊 Now discussing Run #${run.id} (${run.training_mode} training). You can ask me about its metrics, performance, or training details.`,
+      content: `Now discussing Run #${run.id} (${run.training_mode} training). You can ask me about its metrics, performance, or training details.`,
       runContext,
     }]);
-    
+
     setInput('');
     inputRef.current?.focus();
   };
@@ -137,8 +133,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInput(value);
-    
-    // Detect slash command
+
     if (value === '/') {
       setShowRunPicker(true);
       setHighlightedRunIndex(0);
@@ -156,13 +151,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     const userMessage = input.trim();
     setInput('');
     setShowRunPicker(false);
-    
+
     const newMessage: Message = {
       role: 'user',
       content: userMessage,
       runContext: selectedRun || undefined,
     };
-    
+
     setMessages(prev => [...prev, newMessage]);
     setIsLoading(true);
 
@@ -171,8 +166,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         query: userMessage,
         session_id: sessionId,
       };
-      
-      // Include run context if a run is selected
+
       if (selectedRun) {
         requestBody.run_id = selectedRun.runId;
         requestBody.training_mode = selectedRun.trainingMode;
@@ -196,7 +190,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         { role: 'assistant', content: data.answer, runContext: selectedRun || undefined },
       ]);
 
-      // Update session ID if it changed
       if (data.session_id && data.session_id !== sessionId) {
         setSessionId(data.session_id);
         localStorage.setItem('chat_session_id', data.session_id);
@@ -212,7 +205,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       ]);
     } finally {
       setIsLoading(false);
-      // Focus with a small delay to ensure state updates complete
       setTimeout(() => {
         inputRef.current?.focus();
       }, 0);
@@ -231,7 +223,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       setSessionId(newSessionId);
       localStorage.setItem('chat_session_id', newSessionId);
 
-      // Focus input after clearing
       setTimeout(() => {
         inputRef.current?.focus();
       }, 0);
@@ -251,13 +242,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    // Handle arrow navigation in run picker
     if (showRunPicker && availableRuns.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setHighlightedRunIndex((prev) => {
           const newIndex = prev < availableRuns.length - 1 ? prev + 1 : prev;
-          // Scroll highlighted item into view
           setTimeout(() => {
             const runItem = runPickerRef.current?.querySelector(`[data-run-index="${newIndex}"]`);
             runItem?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -269,7 +258,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         e.preventDefault();
         setHighlightedRunIndex((prev) => {
           const newIndex = prev > 0 ? prev - 1 : prev;
-          // Scroll highlighted item into view
           setTimeout(() => {
             const runItem = runPickerRef.current?.querySelector(`[data-run-index="${newIndex}"]`);
             runItem?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -288,8 +276,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         return;
       }
     }
-    
-    // Normal message sending
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -298,234 +285,263 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   return (
     <>
+      {/* Floating Action Button - Apple Style */}
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-4 rounded-full h-14 w-14 shadow-xl hover:shadow-2xl bg-medical hover:bg-medical-dark text-white transition-all duration-300 hover:scale-110 animate-pulse"
+          className="fixed bottom-6 right-6 rounded-2xl h-14 w-14 shadow-xl shadow-[hsl(172_63%_22%)]/25 hover:shadow-2xl hover:shadow-[hsl(172_63%_22%)]/35 bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white transition-all duration-300 hover:scale-105"
           size="icon"
         >
           <MessageSquare className="h-6 w-6" />
         </Button>
       )}
+
+      {/* Sidebar Container */}
       <div className={cn(
-        "flex flex-col shadow-2xl border-l bg-gradient-to-b from-card via-card to-card text-card-foreground overflow-hidden transition-all duration-300 ease-in-out",
+        "flex flex-col border-l border-[hsl(210_15%_92%)] bg-white overflow-hidden transition-all duration-300 ease-out",
         "h-full",
         isOpen ? "w-96 opacity-100" : "w-0 opacity-0 pointer-events-none"
       )}>
-      {/* Header with Gradient Background */}
-      <div className="bg-gradient-to-r from-medical to-medical-dark text-white p-4 shadow-md">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-              <MessageSquare className="h-5 w-5" />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <h2 className="font-bold text-lg">AI Assistant</h2>
-              <p className="text-xs text-white/70">Powered by AI</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClearChat}
-              title="Clear chat"
-              className="hover:bg-white/20 text-white transition-colors duration-200"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-              title="Close chat"
-              className="hover:bg-white/20 text-white transition-colors duration-200"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
 
-      {/* Selected Run Context Badge */}
-      {selectedRun && (
-        <div className="px-4 pt-4 pb-2">
-          <div className="bg-medical/10 border border-medical/30 rounded-lg p-3 flex items-start gap-2">
-            <BarChart className="h-5 w-5 text-medical flex-shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-sm font-semibold text-medical">Run #{selectedRun.runId}</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedRun(null)}
-                  className="h-6 w-6 p-0 hover:bg-medical/20"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
+        {/* Header - Clean Apple Style */}
+        <div className="bg-[hsl(168_25%_98%)] border-b border-[hsl(210_15%_92%)] p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[hsl(172_63%_22%)] flex items-center justify-center shadow-md shadow-[hsl(172_63%_22%)]/20">
+                <MessageSquare className="h-5 w-5 text-white" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                {selectedRun.trainingMode}
-              </p>
+              <div className="flex flex-col">
+                <h2 className="font-semibold text-[hsl(172_43%_15%)] text-lg tracking-tight">Assistant</h2>
+                <p className="text-xs text-[hsl(215_15%_50%)]">AI-powered insights</p>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Instructions / Welcome State */}
-      {messages.length === 0 && (
-        <div className="flex-1 flex flex-col items-center justify-center px-4 text-center">
-          <div className="mb-4 p-3 bg-medical/10 rounded-full">
-            <Sparkles className="h-8 w-8 text-medical" />
-          </div>
-          <h3 className="font-semibold text-foreground mb-2">Welcome!</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-            Ask me anything about federated learning, pneumonia detection, or how to use this application.
-          </p>
-          <div className="bg-gradient-to-r from-medical/5 to-blue-500/5 rounded-lg p-3 border border-medical/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4 text-medical" />
-              <p className="text-xs font-semibold text-medical">Pro Tip</p>
-            </div>
-            <p className="text-xs text-muted-foreground text-left">
-              Type <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-xs font-mono">/</kbd> to select a training run and get real-time insights about its metrics, performance, and more!
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Messages */}
-      <ScrollArea ref={scrollAreaRef} className={cn("flex-1", messages.length > 0 && "p-4")}>
-        <div className="space-y-3">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={cn(
-                'flex animate-in fade-in slide-in-from-bottom-2 duration-300',
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              )}
-            >
-              <div
-                className={cn(
-                  'max-w-[80%] rounded-2xl px-4 py-2.5 shadow-sm transition-all duration-200 hover:shadow-md',
-                  message.role === 'user'
-                    ? 'bg-gradient-to-br from-medical to-medical-dark text-white rounded-br-sm'
-                    : 'bg-gray-100 dark:bg-gray-800 text-foreground rounded-bl-sm'
-                )}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClearChat}
+                title="Clear chat"
+                className="h-9 w-9 rounded-xl text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)] transition-all"
               >
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-              </div>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                title="Close chat"
+                className="h-9 w-9 rounded-xl text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)] transition-all"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-          ))}
-          {isLoading && (
-            <div className="flex justify-start animate-in fade-in duration-300">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="h-2 w-2 bg-medical rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="h-2 w-2 bg-medical rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="h-2 w-2 bg-medical rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-                <p className="text-sm text-muted-foreground ml-1">Thinking...</p>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-      </ScrollArea>
 
-      {/* Input Section */}
-      <div className="border-t bg-white dark:bg-card">
-        {/* Run Picker Dropdown */}
-        {showRunPicker && (
-          <div ref={runPickerRef} className="border-b bg-gray-50 max-h-64 overflow-y-auto">
-            <div className="p-3 border-b bg-white">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-medical" />
-                <p className="text-sm font-semibold text-foreground">Select a Training Run</p>
+        {/* Selected Run Context Badge */}
+        {selectedRun && (
+          <div className="px-4 pt-4 pb-2">
+            <div className="bg-[hsl(172_40%_95%)] border border-[hsl(172_30%_88%)] rounded-2xl p-4 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[hsl(172_63%_22%)] flex items-center justify-center flex-shrink-0">
+                <BarChart className="h-5 w-5 text-white" />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Use arrow keys to navigate, Enter to select
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-sm font-semibold text-[hsl(172_43%_20%)]">Run #{selectedRun.runId}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedRun(null)}
+                    className="h-6 w-6 p-0 rounded-lg hover:bg-[hsl(172_30%_88%)] text-[hsl(215_15%_45%)]"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-[hsl(215_15%_50%)]">
+                  {selectedRun.trainingMode} training
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Welcome State - Apple Style */}
+        {messages.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+            <div className="mb-6 w-16 h-16 rounded-2xl bg-[hsl(172_40%_94%)] flex items-center justify-center">
+              <svg className="w-8 h-8 text-[hsl(172_63%_28%)]" viewBox="0 0 32 32" fill="none">
+                <path d="M16 4v24M4 16h24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                <circle cx="16" cy="16" r="12" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
+              </svg>
+            </div>
+            <h3 className="font-semibold text-[hsl(172_43%_15%)] text-xl mb-2">Welcome</h3>
+            <p className="text-sm text-[hsl(215_15%_50%)] leading-relaxed mb-6 max-w-xs">
+              Ask me anything about federated learning, pneumonia detection, or your training runs.
+            </p>
+
+            {/* Pro Tip Card */}
+            <div className="w-full bg-[hsl(168_25%_98%)] rounded-2xl p-4 border border-[hsl(168_20%_92%)]">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded-md bg-[hsl(172_63%_22%)] flex items-center justify-center">
+                  <Activity className="h-3 w-3 text-white" />
+                </div>
+                <p className="text-xs font-semibold text-[hsl(172_43%_20%)]">Quick Tip</p>
+              </div>
+              <p className="text-xs text-[hsl(215_15%_50%)] text-left leading-relaxed">
+                Type <kbd className="px-1.5 py-0.5 bg-white border border-[hsl(210_15%_88%)] rounded-md text-xs font-mono text-[hsl(172_63%_28%)]">/</kbd> to select a training run and get real-time insights about its metrics.
               </p>
             </div>
-            {loadingRuns ? (
-              <div className="p-6 flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-medical" />
+          </div>
+        )}
+
+        {/* Messages Area */}
+        <ScrollArea ref={scrollAreaRef} className={cn("flex-1", messages.length > 0 && "px-4 pt-4")}>
+          <div className="space-y-4 pb-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={cn(
+                  'flex',
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
+                )}
+                style={{
+                  animation: 'fadeIn 0.3s ease-out forwards',
+                  animationDelay: `${index * 0.05}s`,
+                  opacity: 0
+                }}
+              >
+                <div
+                  className={cn(
+                    'max-w-[85%] px-4 py-3 transition-all duration-200',
+                    message.role === 'user'
+                      ? 'bg-[hsl(172_63%_22%)] text-white rounded-2xl rounded-br-md shadow-md shadow-[hsl(172_63%_22%)]/15'
+                      : 'bg-[hsl(168_25%_96%)] text-[hsl(172_43%_15%)] rounded-2xl rounded-bl-md border border-[hsl(168_20%_92%)]'
+                  )}
+                >
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                </div>
               </div>
-            ) : availableRuns.length === 0 ? (
-              <div className="p-6 text-center">
-                <p className="text-sm text-muted-foreground">No training runs found</p>
-                <p className="text-xs text-muted-foreground mt-1">Start a training run first</p>
-              </div>
-            ) : (
-              <div className="divide-y">
-                {availableRuns.map((run, index) => (
-                  <button
-                    key={run.id}
-                    data-run-index={index}
-                    onClick={() => handleSelectRun(run)}
-                    className={cn(
-                      "w-full p-3 transition-colors text-left flex items-center gap-3 group",
-                      index === highlightedRunIndex
-                        ? "bg-medical/10 border-l-4 border-medical"
-                        : "hover:bg-medical/5"
-                    )}
-                  >
-                    <div className={cn(
-                      "h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                      run.training_mode === 'federated' 
-                        ? "bg-blue-100 text-blue-600" 
-                        : "bg-green-100 text-green-600"
-                    )}>
-                      <BarChart className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-semibold text-foreground">Run #{run.id}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {run.training_mode} • {formatRunTime(run.start_time)}
-                      </p>
-                      {run.best_val_recall > 0 && (
-                        <p className="text-xs text-medical font-medium mt-1">
-                          Best Recall: {(run.best_val_recall * 100).toFixed(2)}%
-                        </p>
-                      )}
-                    </div>
-                    <div className={cn(
-                      "transition-opacity",
-                      index === highlightedRunIndex ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    )}>
-                      <Send className="h-4 w-4 text-medical" />
-                    </div>
-                  </button>
-                ))}
+            ))}
+
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-[hsl(168_25%_96%)] border border-[hsl(168_20%_92%)] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-3">
+                  <div className="flex gap-1.5">
+                    <div className="h-2 w-2 bg-[hsl(172_63%_35%)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="h-2 w-2 bg-[hsl(172_63%_35%)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="h-2 w-2 bg-[hsl(172_63%_35%)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <p className="text-sm text-[hsl(215_15%_50%)]">Thinking...</p>
+                </div>
               </div>
             )}
           </div>
-        )}
-        
-        {/* Input Field */}
-        <div className="p-4">
-          <div className="flex gap-2">
-            <Input
-              ref={inputRef}
-              value={input}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyPress}
-              placeholder={selectedRun ? `Ask about Run #${selectedRun.runId}...` : "Type / to select a run or ask anything..."}
-              disabled={isLoading}
-              className="flex-1 rounded-full border-2 border-gray-200 hover:border-medical focus:border-medical focus:ring-0 transition-colors duration-200 px-4 py-2"
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={isLoading || !input.trim()}
-              size="icon"
-              className="rounded-full bg-medical hover:bg-medical-dark text-white transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md hover:shadow-lg"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+        </ScrollArea>
+
+        {/* Input Section */}
+        <div className="border-t border-[hsl(210_15%_92%)] bg-white">
+          {/* Run Picker Dropdown */}
+          {showRunPicker && (
+            <div ref={runPickerRef} className="border-b border-[hsl(210_15%_92%)] bg-[hsl(168_25%_98%)] max-h-72 overflow-y-auto">
+              <div className="p-4 border-b border-[hsl(210_15%_92%)] bg-white sticky top-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-[hsl(172_40%_94%)] flex items-center justify-center">
+                    <Activity className="h-4 w-4 text-[hsl(172_63%_28%)]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[hsl(172_43%_15%)]">Select a Training Run</p>
+                    <p className="text-xs text-[hsl(215_15%_55%)]">
+                      Arrow keys to navigate, Enter to select
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {loadingRuns ? (
+                <div className="p-8 flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-[hsl(172_63%_35%)]" />
+                  <p className="text-sm text-[hsl(215_15%_50%)]">Loading runs...</p>
+                </div>
+              ) : availableRuns.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-[hsl(210_15%_95%)] flex items-center justify-center">
+                    <BarChart className="h-6 w-6 text-[hsl(215_15%_55%)]" />
+                  </div>
+                  <p className="text-sm font-medium text-[hsl(172_43%_20%)]">No training runs found</p>
+                  <p className="text-xs text-[hsl(215_15%_55%)] mt-1">Start a training run first</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[hsl(210_15%_94%)]">
+                  {availableRuns.map((run, index) => (
+                    <button
+                      key={run.id}
+                      data-run-index={index}
+                      onClick={() => handleSelectRun(run)}
+                      className={cn(
+                        "w-full p-4 transition-all duration-200 text-left flex items-center gap-3 group",
+                        index === highlightedRunIndex
+                          ? "bg-[hsl(172_40%_94%)] border-l-4 border-[hsl(172_63%_35%)]"
+                          : "hover:bg-[hsl(168_25%_96%)] border-l-4 border-transparent"
+                      )}
+                    >
+                      <div className={cn(
+                        "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors",
+                        run.training_mode === 'federated'
+                          ? "bg-[hsl(210_60%_92%)] text-[hsl(210_60%_40%)]"
+                          : "bg-[hsl(152_50%_92%)] text-[hsl(152_60%_35%)]"
+                      )}>
+                        <BarChart className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-[hsl(172_43%_15%)]">Run #{run.id}</p>
+                        <p className="text-xs text-[hsl(215_15%_50%)] truncate mt-0.5">
+                          {run.training_mode} • {formatRunTime(run.start_time)}
+                        </p>
+                        {run.best_val_recall > 0 && (
+                          <p className="text-xs text-[hsl(152_60%_35%)] font-medium mt-1">
+                            Best Recall: {(run.best_val_recall * 100).toFixed(2)}%
+                          </p>
+                        )}
+                      </div>
+                      <div className={cn(
+                        "transition-all duration-200",
+                        index === highlightedRunIndex ? "opacity-100 scale-100" : "opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100"
+                      )}>
+                        <div className="w-8 h-8 rounded-lg bg-[hsl(172_63%_22%)] flex items-center justify-center">
+                          <Send className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Input Field */}
+          <div className="p-4">
+            <div className="flex gap-3">
+              <Input
+                ref={inputRef}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyPress}
+                placeholder={selectedRun ? `Ask about Run #${selectedRun.runId}...` : "Type / to select a run..."}
+                disabled={isLoading}
+                className="flex-1 rounded-xl border-2 border-[hsl(210_15%_90%)] hover:border-[hsl(172_40%_80%)] focus:border-[hsl(172_63%_35%)] focus:ring-0 transition-colors duration-200 px-4 py-2.5 bg-[hsl(168_25%_99%)] placeholder:text-[hsl(215_15%_60%)]"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={isLoading || !input.trim()}
+                size="icon"
+                className="h-11 w-11 rounded-xl bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white transition-all duration-200 hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 shadow-md shadow-[hsl(172_63%_22%)]/20 hover:shadow-lg hover:shadow-[hsl(172_63%_22%)]/30"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );
