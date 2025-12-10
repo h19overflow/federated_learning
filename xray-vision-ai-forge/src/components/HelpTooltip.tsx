@@ -19,6 +19,7 @@ interface HelpTooltipProps {
 
 /**
  * Reusable help tooltip component for providing contextual information
+ * Redesigned with Clinical Clarity theme - glass morphism style
  */
 const HelpTooltip = ({
   content,
@@ -38,10 +39,11 @@ const HelpTooltip = ({
             type="button"
             className={cn(
               'inline-flex items-center justify-center',
-              'text-muted-foreground hover:text-foreground',
-              'transition-colors',
-              'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-              'rounded-full',
+              'text-[hsl(215_15%_55%)] hover:text-[hsl(172_63%_35%)]',
+              'transition-all duration-200',
+              'focus:outline-none focus:ring-2 focus:ring-[hsl(172_63%_35%)]/30 focus:ring-offset-2',
+              'rounded-full p-0.5',
+              'hover:bg-[hsl(172_40%_95%)]',
               className
             )}
             onClick={(e) => e.preventDefault()}
@@ -50,11 +52,24 @@ const HelpTooltip = ({
             <span className="sr-only">Help information</span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side={side} className="max-w-xs p-4">
-          {title && (
-            <div className="font-semibold mb-2 text-sm">{title}</div>
+        <TooltipContent
+          side={side}
+          className={cn(
+            'max-w-xs p-4 rounded-xl',
+            'bg-white/95 backdrop-blur-md',
+            'border border-[hsl(168_20%_90%)]',
+            'shadow-lg shadow-[hsl(172_40%_85%)]/20'
           )}
-          <div className="text-sm text-muted-foreground">{content}</div>
+          style={{ animation: 'fadeIn 0.15s ease-out' }}
+        >
+          {title && (
+            <div className="font-semibold mb-2 text-sm text-[hsl(172_43%_20%)]">
+              {title}
+            </div>
+          )}
+          <div className="text-sm text-[hsl(215_15%_40%)] leading-relaxed">
+            {content}
+          </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -62,4 +77,3 @@ const HelpTooltip = ({
 };
 
 export default HelpTooltip;
-

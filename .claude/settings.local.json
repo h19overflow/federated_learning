@@ -21,8 +21,15 @@
       "Bash(git stash:*)",
       "Bash(git pull:*)",
       "Bash(git add:*)",
+<<<<<<< HEAD
       "Bash(cat:*)",
       "Bash(docker-compose ps:*)"
+=======
+      "Bash(git check-ignore:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Skill(frontend-design:frontend-design)"
+>>>>>>> 6032913cee671e0ea5eb465ac71746d59c915daf
     ],
     "deny": [],
     "ask": []

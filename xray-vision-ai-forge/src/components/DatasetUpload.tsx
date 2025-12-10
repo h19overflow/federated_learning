@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Check, X, Upload, Loader, Info, FileArchive, Image, AlertTriangle, CheckCircle2, FolderOpen, FileText } from 'lucide-react';
+import { Check, X, Upload, Loader, Info, FileArchive, Image, AlertTriangle, CheckCircle2, FolderOpen, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import InstructionCard from './InstructionCard';
 import HelpTooltip from './HelpTooltip';
 import JSZip from 'jszip';
 import Papa from 'papaparse';
+
 interface DatasetUploadProps {
   onComplete: (data: {
     file: File | null;
@@ -42,6 +43,7 @@ interface ValidationResult {
   warnings: string[];
   errors: string[];
 }
+
 const DatasetUpload = ({
   onComplete,
   initialData
@@ -65,8 +67,6 @@ const DatasetUpload = ({
       if (initialData.file) {
         setFile(initialData.file);
         setUploadStatus('success');
-
-        // Simulate having dataset summary
         setDatasetSummary({
           totalImages: 5000,
           classes: ['NORMAL', 'PNEUMONIA']
@@ -77,13 +77,14 @@ const DatasetUpload = ({
       }
     }
   }, [initialData]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       validateAndSetFile(e.target.files[0]);
     }
   };
+
   const validateAndSetFile = (file: File) => {
-    // Validate file type (ZIP only)
     if (!file.name.endsWith('.zip')) {
       toast.error('Please upload a ZIP file containing your dataset');
       return;
@@ -91,8 +92,9 @@ const DatasetUpload = ({
     setFile(file);
     validateDataset(file);
   };
+
   const updateValidationStep = (stepId: string, updates: Partial<ValidationStep>) => {
-    setValidationSteps(prev => 
+    setValidationSteps(prev =>
       prev.map(step => step.id === stepId ? { ...step, ...updates } : step)
     );
   };
@@ -103,7 +105,6 @@ const DatasetUpload = ({
     setValidationResult(null);
     setShowValidationDetails(true);
 
-    // Initialize validation steps
     const steps: ValidationStep[] = [
       { id: 'zip', name: 'Reading ZIP file', status: 'pending' },
       { id: 'structure', name: 'Checking folder structure', status: 'pending' },
@@ -118,32 +119,31 @@ const DatasetUpload = ({
       // Step 1: Read ZIP file
       updateValidationStep('zip', { status: 'processing' });
       const zip = await JSZip.loadAsync(file);
-      updateValidationStep('zip', { 
-        status: 'success', 
-        message: `Loaded ${Object.keys(zip.files).length} files` 
+      updateValidationStep('zip', {
+        status: 'success',
+        message: `Loaded ${Object.keys(zip.files).length} files`
       });
 
       // Step 2: Check structure
       updateValidationStep('structure', { status: 'processing' });
       const allFiles = Object.keys(zip.files);
       const folders = allFiles.filter(f => zip.files[f].dir);
-      updateValidationStep('structure', { 
-        status: 'success', 
+      updateValidationStep('structure', {
+        status: 'success',
         message: `Found ${folders.length} directories`,
         details: folders.slice(0, 10)
       });
 
-      // Step 3: Find Images directory (case-insensitive, can be nested)
+      // Step 3: Find Images directory
       updateValidationStep('images', { status: 'processing' });
       let imagesFolder = '';
       const imageFolderPattern = /images\//i;
-      
+
       for (const path of allFiles) {
         if (imageFolderPattern.test(path) && zip.files[path].dir) {
           imagesFolder = path;
           break;
         }
-        // Also check if any parent folder is named 'Images'
         const parts = path.split('/');
         const imagesFolderIndex = parts.findIndex(p => p.toLowerCase() === 'images');
         if (imagesFolderIndex !== -1 && !imagesFolder) {
@@ -153,60 +153,59 @@ const DatasetUpload = ({
       }
 
       if (!imagesFolder) {
-        updateValidationStep('images', { 
-          status: 'error', 
-          message: 'Images directory not found in ZIP file' 
+        updateValidationStep('images', {
+          status: 'error',
+          message: 'Images directory not found in ZIP file'
         });
         throw new Error('Images directory not found. Please ensure your ZIP contains a folder named "Images"');
       }
 
-      // Get all image files in the Images folder
       const imageExtensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif'];
-      const imageFiles = allFiles.filter(path => 
-        path.startsWith(imagesFolder) && 
+      const imageFiles = allFiles.filter(path =>
+        path.startsWith(imagesFolder) &&
         !zip.files[path].dir &&
         imageExtensions.some(ext => path.toLowerCase().endsWith(ext))
       );
 
-      updateValidationStep('images', { 
-        status: 'success', 
+      updateValidationStep('images', {
+        status: 'success',
         message: `Found ${imageFiles.length} images in "${imagesFolder}"`,
         details: imageFiles.slice(0, 5).map(f => f.replace(imagesFolder, ''))
       });
 
-      // Step 4: Find CSV file (can be nested)
+      // Step 4: Find CSV file
       updateValidationStep('csv', { status: 'processing' });
       let csvFile = '';
-      const csvFiles = allFiles.filter(path => 
+      const csvFiles = allFiles.filter(path =>
         path.toLowerCase().endsWith('.csv') && !zip.files[path].dir
       );
 
       if (csvFiles.length === 0) {
-        updateValidationStep('csv', { 
-          status: 'error', 
-          message: 'No CSV file found in ZIP' 
+        updateValidationStep('csv', {
+          status: 'error',
+          message: 'No CSV file found in ZIP'
         });
         throw new Error('CSV file not found. Please include a metadata CSV file in your ZIP');
       }
 
       if (csvFiles.length > 1) {
-        updateValidationStep('csv', { 
-          status: 'warning', 
+        updateValidationStep('csv', {
+          status: 'warning',
           message: `Found ${csvFiles.length} CSV files, using: ${csvFiles[0]}`,
           details: csvFiles
         });
       }
 
       csvFile = csvFiles[0];
-      updateValidationStep('csv', { 
-        status: 'success', 
-        message: `Found CSV: ${csvFile}` 
+      updateValidationStep('csv', {
+        status: 'success',
+        message: `Found CSV: ${csvFile}`
       });
 
       // Step 5: Validate CSV format
       updateValidationStep('csvFormat', { status: 'processing' });
       const csvContent = await zip.files[csvFile].async('text');
-      
+
       const parseResult = await new Promise<Papa.ParseResult<any>>((resolve) => {
         Papa.parse(csvContent, {
           header: true,
@@ -218,8 +217,8 @@ const DatasetUpload = ({
       if (parseResult.errors.length > 0) {
         const criticalErrors = parseResult.errors.filter(e => e.type === 'FieldMismatch');
         if (criticalErrors.length > 0) {
-          updateValidationStep('csvFormat', { 
-            status: 'warning', 
+          updateValidationStep('csvFormat', {
+            status: 'warning',
             message: `CSV has ${criticalErrors.length} parsing warnings`,
             details: criticalErrors.slice(0, 3).map(e => e.message)
           });
@@ -228,21 +227,18 @@ const DatasetUpload = ({
 
       const headers = parseResult.meta.fields || [];
       const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
-      
-      // Check for patientId column (required)
+
       const patientIdIndex = normalizedHeaders.indexOf('patientid');
-      
+
       if (patientIdIndex === -1) {
-        updateValidationStep('csvFormat', { 
-          status: 'error', 
+        updateValidationStep('csvFormat', {
+          status: 'error',
           message: `Missing required column: patientId`,
           details: [`Found columns: ${headers.join(', ')}`]
         });
         throw new Error(`CSV must contain "patientId" column. Found: ${headers.join(', ')}`);
       }
 
-      // Check for target/label column (optional, but recommended)
-      // Do NOT use PredictionString as it contains bounding box data, not class labels
       let targetIndex = normalizedHeaders.indexOf('target');
       if (targetIndex === -1) {
         targetIndex = normalizedHeaders.indexOf('label');
@@ -255,14 +251,14 @@ const DatasetUpload = ({
       }
 
       if (targetIndex === -1) {
-        updateValidationStep('csvFormat', { 
-          status: 'warning', 
+        updateValidationStep('csvFormat', {
+          status: 'warning',
           message: `No target/label column found. Valid CSV with ${parseResult.data.length} records`,
           details: [`Columns: ${headers.join(', ')}`, 'Note: Target column is recommended but not required']
         });
       } else {
-        updateValidationStep('csvFormat', { 
-          status: 'success', 
+        updateValidationStep('csvFormat', {
+          status: 'success',
           message: `Valid CSV with ${parseResult.data.length} records`,
           details: [`Columns: ${headers.join(', ')}`]
         });
@@ -270,122 +266,74 @@ const DatasetUpload = ({
 
       // Step 6: Match Patient IDs with images
       updateValidationStep('matching', { status: 'processing' });
-      
+
       const csvPatientIds = parseResult.data
         .map((row: any) => {
           const keys = Object.keys(row);
           return row[keys[patientIdIndex]];
         })
         .filter(Boolean)
-        .map(id => String(id).trim()); // Ensure string and trim whitespace
+        .map(id => String(id).trim());
 
-      // Extract image filenames without extensions and paths
-      // Handle both forward and backslashes, and get just the filename
       const imageFileNames = imageFiles.map(path => {
         const fileName = path.split('/').pop()?.split('\\').pop() || '';
-        return fileName.replace(/\.[^/.]+$/, ''); // Remove extension
+        return fileName.replace(/\.[^/.]+$/, '');
       });
-      
-      // Also create a version with full relative paths from Images folder for reference
+
       const imageFileNamesWithPath = imageFiles.map(path => {
         const relativePath = path.replace(imagesFolder, '');
         return relativePath.replace(/\.[^/.]+$/, '');
       });
 
-      // Create a map of lowercase image names for faster lookup
       const imageNamesLower = imageFileNames.map(name => name.toLowerCase());
-      
-      // Find matches with improved logic
+
       const matchedImages: string[] = [];
       const unmatchedPatientIds: string[] = [];
-      
+
       csvPatientIds.forEach(patientId => {
         const patientIdStr = String(patientId).toLowerCase().trim();
-        
-        // Try multiple matching strategies
+
         const found = imageNamesLower.some((imgName, index) => {
           const imgLower = imgName.toLowerCase();
-          
-          // Strategy 1: Exact match
+
           if (imgLower === patientIdStr) return true;
-          
-          // Strategy 2: Image name contains patient ID
           if (imgLower.includes(patientIdStr)) return true;
-          
-          // Strategy 3: Patient ID contains image name (for short IDs)
           if (patientIdStr.includes(imgLower)) return true;
-          
-          // Strategy 4: Remove common separators and try again
+
           const cleanPatientId = patientIdStr.replace(/[-_\s]/g, '');
           const cleanImgName = imgLower.replace(/[-_\s]/g, '');
           if (cleanImgName === cleanPatientId) return true;
           if (cleanImgName.includes(cleanPatientId)) return true;
           if (cleanPatientId.includes(cleanImgName)) return true;
-          
+
           return false;
         });
-        
+
         if (found) {
           matchedImages.push(patientId);
         } else {
           unmatchedPatientIds.push(patientId);
         }
       });
-      
-      // Extensive debugging - log to console
-      console.log('=== MATCHING DEBUG INFO ===');
-      console.log('Total CSV Patient IDs:', csvPatientIds.length);
-      console.log('Total Image Files:', imageFiles.length);
-      console.log('\nFirst 10 Patient IDs from CSV:');
-      csvPatientIds.slice(0, 10).forEach((id, i) => console.log(`  ${i+1}. "${id}"`));
-      console.log('\nFirst 10 Image Files (full ZIP paths):');
-      imageFiles.slice(0, 10).forEach((path, i) => console.log(`  ${i+1}. ${path}`));
-      console.log('\nFirst 10 Image Names (filename only, no extension):');
-      imageFileNames.slice(0, 10).forEach((name, i) => console.log(`  ${i+1}. "${name}"`));
-      console.log('\nFirst 10 Image Paths (relative to Images folder):');
-      imageFileNamesWithPath.slice(0, 10).forEach((path, i) => console.log(`  ${i+1}. "${path}"`));
-      console.log('\n✅ Matched Count:', matchedImages.length);
-      console.log('❌ Unmatched Count:', unmatchedPatientIds.length);
-      if (unmatchedPatientIds.length > 0 && unmatchedPatientIds.length <= 10) {
-        console.log('\nAll Unmatched Patient IDs:');
-        unmatchedPatientIds.forEach((id, i) => console.log(`  ${i+1}. "${id}"`));
-      } else if (unmatchedPatientIds.length > 10) {
-        console.log('\nFirst 20 Unmatched Patient IDs:');
-        unmatchedPatientIds.slice(0, 20).forEach((id, i) => console.log(`  ${i+1}. "${id}"`));
-      }
-      if (matchedImages.length > 0 && matchedImages.length <= 10) {
-        console.log('\nAll Matched Patient IDs:');
-        matchedImages.forEach((id, i) => console.log(`  ${i+1}. "${id}"`));
-      } else if (matchedImages.length > 10) {
-        console.log('\nFirst 20 Matched Patient IDs:');
-        matchedImages.slice(0, 20).forEach((id, i) => console.log(`  ${i+1}. "${id}"`));
-      }
-      console.log('========================\n');
 
-      // Get unique values from Target column (if available)
+      // Get unique values from Target column
       let targetValues: string[] = [];
       let targetColumnName = '';
-      
+
       if (targetIndex !== -1) {
-        // Get the actual column name
         targetColumnName = headers[targetIndex];
-        
-        // Get all unique values from the target column
+
         const uniqueValues = [...new Set(
           parseResult.data
             .map((row: any) => {
               const keys = Object.keys(row);
               const value = row[keys[targetIndex]];
-              // Convert to string and trim
               return value ? String(value).trim() : '';
             })
-            .filter(Boolean) // Remove empty values
+            .filter(Boolean)
         )];
-        
-        // Limit to first 10 unique values to avoid display issues
+
         targetValues = uniqueValues.slice(0, 10);
-        
-        console.log(`Target column "${targetColumnName}" has ${uniqueValues.length} unique values:`, uniqueValues.slice(0, 20));
       }
 
       const warnings: string[] = [];
@@ -401,56 +349,49 @@ const DatasetUpload = ({
       }
 
       if (matchedImages.length === 0) {
-        // Check if this might be a case where images have different IDs than patient records
         const ratio = imageFiles.length / csvPatientIds.length;
-        
+
         if (ratio > 1.5) {
-          // Likely multiple images per patient with different naming
           warnings.push(`Patient IDs don't match image filenames. You may have multiple images per patient.`);
           warnings.push(`Found ${imageFiles.length} images for ${csvPatientIds.length} patient records (${ratio.toFixed(1)}x ratio)`);
-          
+
           const debugDetails = [
             `CSV records: ${csvPatientIds.length}`,
             `Image files: ${imageFiles.length}`,
-            `⚠️ No direct ID matches, but continuing (might be multiple images per patient)`,
             `First 3 Patient IDs: ${csvPatientIds.slice(0, 3).join(', ')}`,
             `First 3 Image Names: ${imageFileNames.slice(0, 3).join(', ')}`
           ];
-          
-          updateValidationStep('matching', { 
-            status: 'warning', 
+
+          updateValidationStep('matching', {
+            status: 'warning',
             message: `Patient IDs don't match image names, but ${imageFiles.length} images found`,
             details: debugDetails
           });
-          
-          // Use image count as matched count for summary purposes
+
           matchedImages.push(...csvPatientIds);
         } else {
-          // This is a real error
           errors.push('No matching images found for any patient ID');
-          
+
           const debugDetails = [
             `CSV records: ${csvPatientIds.length}`,
             `Image files: ${imageFiles.length}`,
-            `❌ NO MATCHES FOUND`,
             `First 3 Patient IDs: ${csvPatientIds.slice(0, 3).join(', ')}`,
             `First 3 Image Names: ${imageFileNames.slice(0, 3).join(', ')}`,
             `Check browser console for full debug output`
           ];
-          
-          updateValidationStep('matching', { 
-            status: 'error', 
+
+          updateValidationStep('matching', {
+            status: 'error',
             message: 'No matches found between CSV and images',
             details: debugDetails
           });
-          
+
           throw new Error('Patient IDs in CSV do not match any image files. Check console for details.');
         }
       }
 
       const matchPercentage = (matchedImages.length / csvPatientIds.length * 100).toFixed(1);
-      
-      // Add sample data to details for debugging
+
       const matchingDetails = [
         `CSV records: ${csvPatientIds.length}`,
         `Image files: ${imageFiles.length}`,
@@ -459,9 +400,9 @@ const DatasetUpload = ({
         `Sample Patient IDs: ${csvPatientIds.slice(0, 3).join(', ')}`,
         `Sample Image Names: ${imageFileNames.slice(0, 3).join(', ')}`
       ];
-      
-      updateValidationStep('matching', { 
-        status: unmatchedPatientIds.length > csvPatientIds.length * 0.1 ? 'warning' : 'success', 
+
+      updateValidationStep('matching', {
+        status: unmatchedPatientIds.length > csvPatientIds.length * 0.1 ? 'warning' : 'success',
         message: `${matchedImages.length} matches found (${matchPercentage}%)`,
         details: matchingDetails
       });
@@ -483,12 +424,12 @@ const DatasetUpload = ({
 
       setValidationResult(result);
       setDatasetSummary({
-        totalImages: imageFiles.length, // Use actual image count
-        classes: targetValues // Use target values instead of "classes"
+        totalImages: imageFiles.length,
+        classes: targetValues
       });
 
       setUploading(false);
-      
+
       if (errors.length === 0) {
         setUploadStatus('success');
         toast.success('Dataset validated successfully!');
@@ -504,13 +445,16 @@ const DatasetUpload = ({
       toast.error(error instanceof Error ? error.message : 'Failed to validate dataset');
     }
   };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(true);
   };
+
   const handleDragLeave = () => {
     setDragOver(false);
   };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -518,6 +462,7 @@ const DatasetUpload = ({
       validateAndSetFile(e.dataTransfer.files[0]);
     }
   };
+
   const handleSubmit = () => {
     onComplete({
       file,
@@ -525,419 +470,535 @@ const DatasetUpload = ({
     });
   };
 
-  // Show a message if we're loading from a saved experiment but don't have the actual file
   const isRestoredExperiment = initialData && initialData.trainSplit && !initialData.file && !file;
-  return <div className="animate-fade-in space-y-6">
+
+  return (
+    <div className="space-y-8" style={{ animation: 'fadeIn 0.5s ease-out' }}>
       {/* Instructions Card */}
-      <InstructionCard 
-        variant="guide" 
+      <InstructionCard
+        variant="guide"
         title="Dataset Requirements"
         className="max-w-4xl mx-auto"
       >
-        <div className="space-y-2">
-          <p className="font-medium">Your dataset ZIP file must contain:</p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li><strong>Images folder:</strong> A directory named "Images" (case-insensitive, can be nested) containing chest X-ray images</li>
-            <li><strong>Metadata CSV:</strong> A CSV file with required column:
-              <ul className="list-circle list-inside ml-6 mt-1 text-sm">
-                <li><code className="bg-gray-100 px-1 rounded">patientId</code> - Unique identifier matching image filenames (required)</li>
-                <li><code className="bg-gray-100 px-1 rounded">Target</code> or <code className="bg-gray-100 px-1 rounded">Label</code> - Class label (optional, e.g., NORMAL, PNEUMONIA)</li>
-              </ul>
+        <div className="space-y-3">
+          <p className="font-medium text-[hsl(172_43%_20%)]">Your dataset ZIP file must contain:</p>
+          <ul className="space-y-2 ml-1">
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_28%)] mt-2 flex-shrink-0" />
+              <span><strong className="text-[hsl(172_43%_20%)]">Images folder:</strong> A directory named "Images" containing chest X-ray images</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_28%)] mt-2 flex-shrink-0" />
+              <div>
+                <strong className="text-[hsl(172_43%_20%)]">Metadata CSV:</strong> A CSV file with columns:
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <code className="px-2 py-1 rounded-lg bg-[hsl(168_25%_94%)] text-[hsl(172_43%_20%)] text-xs font-medium">patientId</code>
+                  <span className="text-[hsl(215_15%_50%)] text-xs">required</span>
+                  <code className="px-2 py-1 rounded-lg bg-[hsl(168_25%_94%)] text-[hsl(172_43%_20%)] text-xs font-medium">Target / Label</code>
+                  <span className="text-[hsl(215_15%_50%)] text-xs">optional</span>
+                </div>
+              </div>
             </li>
           </ul>
-          <p className="mt-3 text-xs">
-            <strong>Supported format:</strong> .zip files only. Maximum recommended size: 5GB
-          </p>
-          <p className="mt-2 text-xs text-gray-600">
-            <strong>Note:</strong> The system will automatically validate your dataset structure, CSV format, and attempt to match Patient IDs with image files. If you have multiple images per patient, the system will detect this and proceed with a warning.
+          <p className="text-xs text-[hsl(215_15%_50%)] pt-2 border-t border-[hsl(168_20%_90%)]">
+            <strong>Supported format:</strong> .zip files only | <strong>Maximum recommended:</strong> 5GB
           </p>
         </div>
       </InstructionCard>
 
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl text-medical-dark flex items-center gap-2">
-                <FileArchive className="h-6 w-6" />
-                Upload Dataset
-              </CardTitle>
-              <CardDescription className="mt-2">
-                Upload your chest X-ray dataset to begin training
-              </CardDescription>
-            </div>
-            <HelpTooltip
-              title="Dataset Format"
-              content={
-                <div className="space-y-2">
-                  <p>Your ZIP file should follow this structure:</p>
-                  <pre className="text-xs bg-gray-800 text-gray-100 p-2 rounded mt-2 overflow-x-auto">
+      {/* Main Upload Card */}
+      <div className="w-full max-w-4xl mx-auto">
+        <div className="bg-white rounded-[2rem] border border-[hsl(210_15%_92%)] shadow-lg shadow-[hsl(172_40%_85%)]/20 overflow-hidden">
+          {/* Header */}
+          <div className="px-8 py-6 border-b border-[hsl(210_15%_94%)] bg-gradient-to-r from-[hsl(168_25%_98%)] to-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-[hsl(172_40%_94%)]">
+                  <FileArchive className="h-6 w-6 text-[hsl(172_63%_28%)]" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold text-[hsl(172_43%_15%)] tracking-tight">
+                    Upload Dataset
+                  </h2>
+                  <p className="text-[hsl(215_15%_50%)] mt-1">
+                    Upload your chest X-ray dataset to begin training
+                  </p>
+                </div>
+              </div>
+              <HelpTooltip
+                title="Dataset Format"
+                content={
+                  <div className="space-y-3">
+                    <p className="text-[hsl(172_43%_20%)]">Your ZIP file should follow this structure:</p>
+                    <pre className="text-xs bg-[hsl(172_30%_12%)] text-[hsl(168_15%_90%)] p-3 rounded-xl overflow-x-auto font-mono">
 {`dataset.zip/
 ├── Images/
 │   ├── patient001.jpeg
 │   ├── patient002.jpeg
 │   └── ...
 └── metadata.csv`}
-                  </pre>
-                  <p className="mt-2 text-xs">The metadata CSV must include:</p>
-                  <ul className="text-xs space-y-1 mt-1">
-                    <li>• <strong>patientId</strong> column (required)</li>
-                    <li>• <strong>Target</strong> or <strong>Label</strong> column (optional)</li>
-                  </ul>
-                </div>
-              }
-              iconClassName="h-5 w-5"
-            />
+                    </pre>
+                  </div>
+                }
+                iconClassName="h-5 w-5"
+              />
+            </div>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* File Upload Area */}
-          <div className={cn("upload-area rounded-lg p-8 text-center cursor-pointer transition-all", dragOver ? "dragover" : "", uploadStatus === 'success' ? "border-status-success" : "")} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => document.getElementById('fileInput')?.click()}>
-            <input type="file" id="fileInput" className="hidden" onChange={handleFileChange} accept=".zip" />
-            
-            {isRestoredExperiment && <div className="space-y-3">
-                <Info className="h-12 w-12 mx-auto text-muted-foreground rounded" />
-                <p className="text-lg font-medium">Upload a dataset.</p>
-                <p className="text-muted-foreground mt-1 text-2xl">No data set Recorded in current session.    upload a new dataset.</p>
-                <Button variant="outline" className="mt-2 text-lg bg-teal-700 hover:bg-teal-600 text-slate-50 text-left my-[39px]">Select New  Zip File</Button>
-              </div>}
-            
-            {!isRestoredExperiment && uploadStatus === 'idle' && <div className="space-y-3">
-                <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
-                <div>
-                  <p className="text-lg font-medium">Drop your dataset ZIP file here</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    ZIP file should contain chest X-ray images and a metadata CSV
-                  </p>
+
+          {/* Content */}
+          <div className="p-8 space-y-8">
+            {/* Upload Area */}
+            <div
+              className={cn(
+                "relative rounded-2xl border-2 border-dashed p-10 text-center cursor-pointer transition-all duration-300",
+                dragOver
+                  ? "border-[hsl(172_63%_35%)] bg-[hsl(168_40%_97%)] scale-[1.01]"
+                  : uploadStatus === 'success'
+                    ? "border-[hsl(172_63%_35%)] bg-[hsl(168_35%_97%)]"
+                    : uploadStatus === 'error'
+                      ? "border-[hsl(0_72%_51%)] bg-[hsl(0_60%_98%)]"
+                      : "border-[hsl(210_15%_88%)] bg-[hsl(168_25%_98%)] hover:border-[hsl(172_40%_70%)] hover:bg-[hsl(168_30%_97%)]"
+              )}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('fileInput')?.click()}
+            >
+              <input type="file" id="fileInput" className="hidden" onChange={handleFileChange} accept=".zip" />
+
+              {isRestoredExperiment && (
+                <div className="space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-[hsl(168_25%_94%)] flex items-center justify-center">
+                    <Info className="h-8 w-8 text-[hsl(215_15%_55%)]" />
+                  </div>
+                  <p className="text-xl font-semibold text-[hsl(172_43%_15%)]">Upload a dataset</p>
+                  <p className="text-[hsl(215_15%_50%)]">No dataset recorded in current session</p>
+                  <Button className="mt-4 bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white rounded-xl px-6 py-2.5 shadow-md shadow-[hsl(172_63%_22%)]/20">
+                    Select ZIP File
+                  </Button>
                 </div>
-                <Button variant="outline" className="mt-2">
-                  Select File
-                </Button>
-              </div>}
-            
-            {uploadStatus === 'uploading' && <div className="space-y-3">
-                <Loader className="h-12 w-12 mx-auto text-medical animate-spin" />
-                <p className="text-lg font-medium">Processing your dataset...</p>
-                <div className="w-full bg-muted rounded-full h-2 max-w-xs mx-auto overflow-hidden">
-                  <div className="progress-animation h-full rounded-full"></div>
+              )}
+
+              {!isRestoredExperiment && uploadStatus === 'idle' && (
+                <div className="space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-[hsl(172_40%_94%)] flex items-center justify-center">
+                    <Upload className="h-8 w-8 text-[hsl(172_63%_35%)]" />
+                  </div>
+                  <div>
+                    <p className="text-xl font-semibold text-[hsl(172_43%_15%)]">Drop your dataset ZIP file here</p>
+                    <p className="text-[hsl(215_15%_50%)] mt-2">
+                      ZIP file should contain chest X-ray images and a metadata CSV
+                    </p>
+                  </div>
+                  <Button variant="outline" className="mt-2 rounded-xl border-[hsl(172_30%_80%)] text-[hsl(172_43%_25%)] hover:bg-[hsl(168_25%_94%)]">
+                    Select File
+                  </Button>
                 </div>
-              </div>}
-            
-            {!isRestoredExperiment && uploadStatus === 'success' && <div className="space-y-3">
-                <Check className="h-12 w-12 mx-auto text-status-success" />
-                <p className="text-lg font-medium">Dataset uploaded successfully</p>
-                <p className="text-sm text-muted-foreground">{file?.name}</p>
-              </div>}
-            
-            {uploadStatus === 'error' && <div className="space-y-3">
-                <X className="h-12 w-12 mx-auto text-status-error" />
-                <p className="text-lg font-medium">Validation failed</p>
-                <p className="text-sm text-destructive">{file?.name}</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (file) validateDataset(file);
-                  }}
-                >
-                  Retry Validation
-                </Button>
-              </div>}
-          </div>
-          
-          {/* Validation Steps Progress */}
-          {validationSteps.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-lg p-5 animate-fade-in">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium flex items-center gap-2">
-                  <Loader className={cn("h-5 w-5", uploading ? "animate-spin text-medical" : "text-gray-400")} />
-                  Validation Progress
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowValidationDetails(!showValidationDetails)}
-                  className="text-xs"
-                >
-                  {showValidationDetails ? 'Hide Details' : 'Show Details'}
-                </Button>
-              </div>
-              
-              <div className="space-y-3">
-                {validationSteps.map((step) => (
-                  <div key={step.id} className="flex items-start gap-3">
-                    <div className="mt-0.5">
-                      {step.status === 'pending' && (
-                        <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
-                      )}
-                      {step.status === 'processing' && (
-                        <Loader className="h-5 w-5 animate-spin text-medical" />
-                      )}
-                      {step.status === 'success' && (
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                      )}
-                      {step.status === 'warning' && (
-                        <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                      )}
-                      {step.status === 'error' && (
-                        <X className="h-5 w-5 text-red-500" />
-                      )}
+              )}
+
+              {uploadStatus === 'uploading' && (
+                <div className="space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-[hsl(172_40%_94%)] flex items-center justify-center">
+                    <Loader className="h-8 w-8 text-[hsl(172_63%_35%)] animate-spin" />
+                  </div>
+                  <p className="text-xl font-semibold text-[hsl(172_43%_15%)]">Processing your dataset...</p>
+                  <div className="w-full bg-[hsl(168_25%_92%)] rounded-full h-2 max-w-xs mx-auto overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-[hsl(172_63%_35%)] to-[hsl(172_63%_28%)] animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                </div>
+              )}
+
+              {!isRestoredExperiment && uploadStatus === 'success' && (
+                <div className="space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-[hsl(172_50%_92%)] flex items-center justify-center">
+                    <Check className="h-8 w-8 text-[hsl(172_63%_28%)]" />
+                  </div>
+                  <p className="text-xl font-semibold text-[hsl(172_43%_15%)]">Dataset uploaded successfully</p>
+                  <p className="text-[hsl(215_15%_50%)]">{file?.name}</p>
+                </div>
+              )}
+
+              {uploadStatus === 'error' && (
+                <div className="space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-[hsl(0_60%_95%)] flex items-center justify-center">
+                    <X className="h-8 w-8 text-[hsl(0_72%_51%)]" />
+                  </div>
+                  <p className="text-xl font-semibold text-[hsl(172_43%_15%)]">Validation failed</p>
+                  <p className="text-[hsl(0_72%_45%)]">{file?.name}</p>
+                  <Button
+                    variant="outline"
+                    className="mt-2 rounded-xl border-[hsl(0_50%_80%)] text-[hsl(0_72%_45%)] hover:bg-[hsl(0_50%_97%)]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (file) validateDataset(file);
+                    }}
+                  >
+                    Retry Validation
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Validation Steps Progress */}
+            {validationSteps.length > 0 && (
+              <div className="bg-[hsl(168_25%_98%)] border border-[hsl(168_20%_92%)] rounded-2xl p-6" style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3">
+                    <div className={cn(
+                      "p-2 rounded-xl",
+                      uploading ? "bg-[hsl(172_40%_94%)]" : "bg-[hsl(168_20%_94%)]"
+                    )}>
+                      <Loader className={cn(
+                        "h-5 w-5",
+                        uploading ? "animate-spin text-[hsl(172_63%_35%)]" : "text-[hsl(215_15%_55%)]"
+                      )} />
                     </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <p className={cn(
-                        "text-sm font-medium",
-                        step.status === 'success' && "text-green-700",
-                        step.status === 'warning' && "text-yellow-700",
-                        step.status === 'error' && "text-red-700",
-                        step.status === 'processing' && "text-medical",
-                        step.status === 'pending' && "text-gray-500"
-                      )}>
-                        {step.name}
-                      </p>
-                      
-                      {step.message && (
+                    Validation Progress
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowValidationDetails(!showValidationDetails)}
+                    className="text-xs text-[hsl(172_43%_30%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(168_25%_94%)] rounded-lg"
+                  >
+                    {showValidationDetails ? (
+                      <>Hide Details <ChevronUp className="ml-1 h-4 w-4" /></>
+                    ) : (
+                      <>Show Details <ChevronDown className="ml-1 h-4 w-4" /></>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {validationSteps.map((step, index) => (
+                    <div
+                      key={step.id}
+                      className="flex items-start gap-4"
+                      style={{
+                        animation: 'fadeIn 0.3s ease-out',
+                        animationDelay: `${index * 0.05}s`
+                      }}
+                    >
+                      <div className="mt-0.5">
+                        {step.status === 'pending' && (
+                          <div className="h-6 w-6 rounded-full border-2 border-[hsl(210_15%_85%)] bg-white" />
+                        )}
+                        {step.status === 'processing' && (
+                          <div className="h-6 w-6 rounded-full bg-[hsl(172_40%_94%)] flex items-center justify-center">
+                            <Loader className="h-4 w-4 animate-spin text-[hsl(172_63%_35%)]" />
+                          </div>
+                        )}
+                        {step.status === 'success' && (
+                          <div className="h-6 w-6 rounded-full bg-[hsl(172_50%_92%)] flex items-center justify-center">
+                            <CheckCircle2 className="h-4 w-4 text-[hsl(172_63%_28%)]" />
+                          </div>
+                        )}
+                        {step.status === 'warning' && (
+                          <div className="h-6 w-6 rounded-full bg-[hsl(35_60%_92%)] flex items-center justify-center">
+                            <AlertTriangle className="h-4 w-4 text-[hsl(35_70%_45%)]" />
+                          </div>
+                        )}
+                        {step.status === 'error' && (
+                          <div className="h-6 w-6 rounded-full bg-[hsl(0_60%_95%)] flex items-center justify-center">
+                            <X className="h-4 w-4 text-[hsl(0_72%_51%)]" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
                         <p className={cn(
-                          "text-xs mt-1",
-                          step.status === 'error' ? "text-red-600" : 
-                          step.status === 'warning' ? "text-yellow-600" : 
-                          "text-gray-600"
+                          "text-sm font-medium",
+                          step.status === 'success' && "text-[hsl(172_43%_25%)]",
+                          step.status === 'warning' && "text-[hsl(35_70%_40%)]",
+                          step.status === 'error' && "text-[hsl(0_72%_45%)]",
+                          step.status === 'processing' && "text-[hsl(172_63%_28%)]",
+                          step.status === 'pending' && "text-[hsl(215_15%_55%)]"
                         )}>
-                          {step.message}
+                          {step.name}
                         </p>
-                      )}
-                      
-                      {showValidationDetails && step.details && step.details.length > 0 && (
-                        <ul className="mt-2 text-xs text-gray-500 space-y-1 pl-3">
-                          {step.details.map((detail, idx) => (
-                            <li key={idx} className="flex items-start gap-1">
-                              <span className="text-gray-400">•</span>
-                              <span className="break-all">{detail}</span>
+
+                        {step.message && (
+                          <p className={cn(
+                            "text-xs mt-1",
+                            step.status === 'error' ? "text-[hsl(0_60%_50%)]" :
+                            step.status === 'warning' ? "text-[hsl(35_60%_45%)]" :
+                            "text-[hsl(215_15%_55%)]"
+                          )}>
+                            {step.message}
+                          </p>
+                        )}
+
+                        {showValidationDetails && step.details && step.details.length > 0 && (
+                          <ul className="mt-2 text-xs text-[hsl(215_15%_55%)] space-y-1 pl-3 border-l-2 border-[hsl(168_20%_90%)]">
+                            {step.details.map((detail, idx) => (
+                              <li key={idx} className="break-all">
+                                {detail}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Validation Results Summary */}
+            {validationResult && (
+              <div
+                className={cn(
+                  "rounded-2xl p-6 border",
+                  validationResult.isValid
+                    ? "bg-[hsl(172_40%_97%)] border-[hsl(172_40%_85%)]"
+                    : "bg-[hsl(0_50%_98%)] border-[hsl(0_50%_85%)]"
+                )}
+                style={{ animation: 'fadeIn 0.4s ease-out' }}
+              >
+                <div className="flex items-start gap-4">
+                  {validationResult.isValid ? (
+                    <div className="p-3 rounded-xl bg-[hsl(172_50%_92%)]">
+                      <CheckCircle2 className="h-6 w-6 text-[hsl(172_63%_28%)]" />
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-[hsl(0_60%_95%)]">
+                      <X className="h-6 w-6 text-[hsl(0_72%_51%)]" />
+                    </div>
+                  )}
+
+                  <div className="flex-1">
+                    <h3 className={cn(
+                      "text-xl font-semibold mb-4",
+                      validationResult.isValid ? "text-[hsl(172_43%_20%)]" : "text-[hsl(0_72%_40%)]"
+                    )}>
+                      {validationResult.isValid ? 'Dataset Validation Successful' : 'Dataset Validation Failed'}
+                    </h3>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                      <div className="bg-white/60 backdrop-blur p-4 rounded-xl border border-[hsl(168_20%_92%)]">
+                        <p className="text-xs text-[hsl(215_15%_55%)] uppercase tracking-wide">Images Found</p>
+                        <p className="text-2xl font-semibold text-[hsl(172_43%_20%)] mt-1">{validationResult.totalImages}</p>
+                      </div>
+                      <div className="bg-white/60 backdrop-blur p-4 rounded-xl border border-[hsl(168_20%_92%)]">
+                        <p className="text-xs text-[hsl(215_15%_55%)] uppercase tracking-wide">CSV Records</p>
+                        <p className="text-2xl font-semibold text-[hsl(172_43%_20%)] mt-1">{validationResult.csvRecords}</p>
+                      </div>
+                      <div className="bg-white/60 backdrop-blur p-4 rounded-xl border border-[hsl(168_20%_92%)]">
+                        <p className="text-xs text-[hsl(215_15%_55%)] uppercase tracking-wide">Matched</p>
+                        <p className="text-2xl font-semibold text-[hsl(172_63%_28%)] mt-1">{validationResult.matchedImages}</p>
+                      </div>
+                      <div className="bg-white/60 backdrop-blur p-4 rounded-xl border border-[hsl(168_20%_92%)]">
+                        <p className="text-xs text-[hsl(215_15%_55%)] uppercase tracking-wide">
+                          {validationResult.targetColumnName || 'Target Values'}
+                        </p>
+                        <p className="text-2xl font-semibold text-[hsl(172_43%_20%)] mt-1">
+                          {validationResult.targetValues.length > 0 ? validationResult.targetValues.length : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {validationResult.warnings.length > 0 && (
+                      <div className="mb-4 p-4 rounded-xl bg-[hsl(35_60%_96%)] border border-[hsl(35_50%_85%)]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertTriangle className="h-4 w-4 text-[hsl(35_70%_45%)]" />
+                          <p className="text-sm font-medium text-[hsl(35_70%_35%)]">Warnings</p>
+                        </div>
+                        <ul className="text-sm text-[hsl(35_60%_40%)] space-y-1">
+                          {validationResult.warnings.map((warning, idx) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(35_70%_50%)] mt-2 flex-shrink-0" />
+                              {warning}
                             </li>
                           ))}
                         </ul>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Validation Results Summary */}
-          {validationResult && (
-            <div className={cn(
-              "border rounded-lg p-5 animate-fade-in",
-              validationResult.isValid ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
-            )}>
-              <div className="flex items-start gap-3">
-                {validationResult.isValid ? (
-                  <CheckCircle2 className="h-6 w-6 text-green-600 mt-0.5" />
-                ) : (
-                  <X className="h-6 w-6 text-red-600 mt-0.5" />
-                )}
-                
-                <div className="flex-1">
-                  <h3 className={cn(
-                    "text-lg font-semibold mb-2",
-                    validationResult.isValid ? "text-green-800" : "text-red-800"
-                  )}>
-                    {validationResult.isValid ? 'Dataset Validation Successful' : 'Dataset Validation Failed'}
-                  </h3>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div className="bg-white/50 p-3 rounded-md">
-                      <p className="text-xs text-gray-600">Images Found</p>
-                      <p className="text-xl font-semibold text-gray-900">{validationResult.totalImages}</p>
-                    </div>
-                    <div className="bg-white/50 p-3 rounded-md">
-                      <p className="text-xs text-gray-600">CSV Records</p>
-                      <p className="text-xl font-semibold text-gray-900">{validationResult.csvRecords}</p>
-                    </div>
-                    <div className="bg-white/50 p-3 rounded-md">
-                      <p className="text-xs text-gray-600">Matched</p>
-                      <p className="text-xl font-semibold text-green-600">{validationResult.matchedImages}</p>
-                    </div>
-                    <div className="bg-white/50 p-3 rounded-md">
-                      <p className="text-xs text-gray-600">
-                        {validationResult.targetColumnName ? `${validationResult.targetColumnName} Values` : 'Target Values'}
-                      </p>
-                      <p className="text-xl font-semibold text-gray-900">
-                        {validationResult.targetValues.length > 0 ? validationResult.targetValues.length : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {validationResult.warnings.length > 0 && (
-                    <div className="mb-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                        <p className="text-sm font-medium text-yellow-800">Warnings:</p>
                       </div>
-                      <ul className="text-sm text-yellow-700 space-y-1 pl-6">
-                        {validationResult.warnings.map((warning, idx) => (
-                          <li key={idx} className="list-disc">{warning}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {validationResult.errors.length > 0 && (
-                    <div className="mb-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <X className="h-4 w-4 text-red-600" />
-                        <p className="text-sm font-medium text-red-800">Errors:</p>
+                    )}
+
+                    {validationResult.errors.length > 0 && (
+                      <div className="mb-4 p-4 rounded-xl bg-[hsl(0_60%_97%)] border border-[hsl(0_50%_85%)]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <X className="h-4 w-4 text-[hsl(0_72%_51%)]" />
+                          <p className="text-sm font-medium text-[hsl(0_72%_40%)]">Errors</p>
+                        </div>
+                        <ul className="text-sm text-[hsl(0_60%_45%)] space-y-1">
+                          {validationResult.errors.map((error, idx) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(0_72%_51%)] mt-2 flex-shrink-0" />
+                              {error}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <ul className="text-sm text-red-700 space-y-1 pl-6">
-                        {validationResult.errors.map((error, idx) => (
-                          <li key={idx} className="list-disc">{error}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {validationResult.unmatchedPatientIds.length > 0 && (
-                    <details className="mt-3">
-                      <summary className="text-sm font-medium text-gray-700 cursor-pointer hover:text-gray-900">
-                        View unmatched Patient IDs ({validationResult.unmatchedPatientIds.length})
-                      </summary>
-                      <div className="mt-2 p-3 bg-white/50 rounded text-xs text-gray-600 max-h-32 overflow-y-auto">
-                        {validationResult.unmatchedPatientIds.join(', ')}
-                      </div>
-                    </details>
-                  )}
-                  
-                  <div className="mt-4 pt-4 border-t border-gray-300">
-                      <div className="flex items-start gap-2">
-                        <FolderOpen className="h-4 w-4 text-gray-500 mt-0.5" />
-                        <div className="text-xs text-gray-600">
+                    )}
+
+                    {validationResult.unmatchedPatientIds.length > 0 && (
+                      <details className="mt-4">
+                        <summary className="text-sm font-medium text-[hsl(215_15%_45%)] cursor-pointer hover:text-[hsl(172_43%_25%)] transition-colors">
+                          View unmatched Patient IDs ({validationResult.unmatchedPatientIds.length})
+                        </summary>
+                        <div className="mt-2 p-3 bg-white/60 rounded-xl text-xs text-[hsl(215_15%_55%)] max-h-32 overflow-y-auto font-mono">
+                          {validationResult.unmatchedPatientIds.join(', ')}
+                        </div>
+                      </details>
+                    )}
+
+                    {/* File info */}
+                    <div className="mt-5 pt-5 border-t border-[hsl(168_20%_90%)]">
+                      <div className="flex items-start gap-3">
+                        <FolderOpen className="h-4 w-4 text-[hsl(215_15%_55%)] mt-0.5" />
+                        <div className="text-xs text-[hsl(215_15%_55%)] space-y-1">
                           <p><strong>Images folder:</strong> {validationResult.imagesFolder}</p>
-                          <p className="mt-1"><strong>CSV file:</strong> {validationResult.csvFile}</p>
+                          <p><strong>CSV file:</strong> {validationResult.csvFile}</p>
                           {validationResult.targetColumnName && (
-                            <p className="mt-1">
-                              <strong>{validationResult.targetColumnName} unique values ({validationResult.targetValues.length}):</strong>{' '}
-                              {validationResult.targetValues.length > 0 
-                                ? validationResult.targetValues.length <= 10
-                                  ? validationResult.targetValues.join(', ')
-                                  : `${validationResult.targetValues.slice(0, 10).join(', ')} ... (showing first 10)`
-                                : 'None'}
-                            </p>
-                          )}
-                          {!validationResult.targetColumnName && (
-                            <p className="mt-1">
-                              <strong>Target column:</strong> Not found (Target, Label, Class, or Category column missing)
+                            <p>
+                              <strong>{validationResult.targetColumnName} values:</strong>{' '}
+                              {validationResult.targetValues.length <= 10
+                                ? validationResult.targetValues.join(', ')
+                                : `${validationResult.targetValues.slice(0, 10).join(', ')} ...`}
                             </p>
                           )}
                         </div>
                       </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {/* Dataset Summary (shown only after successful upload) */}
-          {(datasetSummary || isRestoredExperiment) && <div className="bg-muted/50 p-4 rounded-lg animate-fade-in">
-              <h3 className="text-lg font-medium flex items-center gap-2">
-                <Info className="h-5 w-5 text-medical" />
-                Dataset Summary
-              </h3>
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white p-3 rounded-md shadow-sm">
-                  <p className="text-sm text-muted-foreground">Total Images</p>
-                  <p className="text-2xl font-semibold text-medical-dark">{datasetSummary?.totalImages || 5000}</p>
-                </div>
-                <div className="bg-white p-3 rounded-md shadow-sm">
-                  <p className="text-sm text-muted-foreground">Target Values</p>
-                  <p className="text-2xl font-semibold text-medical-dark">
-                    {datasetSummary?.classes && datasetSummary.classes.length > 0 
-                      ? datasetSummary.classes.length 
-                      : 'N/A'
-                    }
-                    {datasetSummary?.classes && datasetSummary.classes.length > 0 && datasetSummary.classes.length <= 5 && (
-                      <span className="text-sm font-normal text-muted-foreground ml-2 block mt-1">
-                        ({datasetSummary.classes.join(', ')})
-                      </span>
-                    )}
-                    {datasetSummary?.classes && datasetSummary.classes.length > 5 && (
-                      <span className="text-xs font-normal text-muted-foreground ml-2 block mt-1">
-                        (First 5: {datasetSummary.classes.slice(0, 5).join(', ')})
-                      </span>
-                    )}
-                    {(!datasetSummary?.classes || datasetSummary.classes.length === 0) && (
-                      <span className="text-xs font-normal text-muted-foreground ml-2 block mt-1">
-                        No target column found
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>}
-          
-          {/* Train/Validation Split Slider */}
-          <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium flex items-center gap-2">
-                <Image className="h-5 w-5 text-medical" />
-                Train/Validation Split
-              </h3>
-              <HelpTooltip
-                content={
-                  <div className="space-y-2">
-                    <p><strong>Training Set:</strong> Used to train the model's weights</p>
-                    <p><strong>Validation Set:</strong> Used to evaluate model performance during training</p>
-                    <p className="text-xs mt-2 pt-2 border-t">
-                      Recommended: 80/20 split. Higher training percentage gives more data for learning,
-                      but less data for validation.
+            )}
+
+            {/* Dataset Summary */}
+            {(datasetSummary || isRestoredExperiment) && (
+              <div
+                className="bg-[hsl(168_25%_98%)] rounded-2xl p-6 border border-[hsl(168_20%_92%)]"
+                style={{ animation: 'fadeIn 0.4s ease-out' }}
+              >
+                <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-xl bg-[hsl(172_40%_94%)]">
+                    <Info className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                  </div>
+                  Dataset Summary
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white p-5 rounded-xl border border-[hsl(210_15%_92%)] shadow-sm">
+                    <p className="text-xs text-[hsl(215_15%_55%)] uppercase tracking-wide">Total Images</p>
+                    <p className="text-3xl font-semibold text-[hsl(172_43%_20%)] mt-1">{datasetSummary?.totalImages || 5000}</p>
+                  </div>
+                  <div className="bg-white p-5 rounded-xl border border-[hsl(210_15%_92%)] shadow-sm">
+                    <p className="text-xs text-[hsl(215_15%_55%)] uppercase tracking-wide">Target Values</p>
+                    <p className="text-3xl font-semibold text-[hsl(172_43%_20%)] mt-1">
+                      {datasetSummary?.classes && datasetSummary.classes.length > 0
+                        ? datasetSummary.classes.length
+                        : 'N/A'
+                      }
                     </p>
+                    {datasetSummary?.classes && datasetSummary.classes.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {datasetSummary.classes.slice(0, 5).map((cls, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 rounded-lg bg-[hsl(168_25%_94%)] text-[hsl(172_43%_25%)] text-xs font-medium"
+                          >
+                            {cls}
+                          </span>
+                        ))}
+                        {datasetSummary.classes.length > 5 && (
+                          <span className="px-2 py-1 text-[hsl(215_15%_55%)] text-xs">
+                            +{datasetSummary.classes.length - 5} more
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                }
-              />
-            </div>
-            <div className="flex flex-col space-y-3">
-              <div className="flex justify-between text-sm font-medium">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                  <span>Training: {trainSplit}%</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span>Validation: {100 - trainSplit}%</span>
                 </div>
               </div>
-              <Slider 
-                value={[trainSplit]} 
-                min={50} 
-                max={90} 
-                step={5} 
-                className="w-full" 
-                onValueChange={values => setTrainSplit(values[0])} 
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>More validation</span>
-                <span>More training</span>
+            )}
+
+            {/* Train/Validation Split Slider */}
+            <div className="bg-[hsl(168_25%_98%)] rounded-2xl p-6 border border-[hsl(168_20%_92%)]">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-[hsl(172_40%_94%)]">
+                    <Image className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                  </div>
+                  Train/Validation Split
+                </h3>
+                <HelpTooltip
+                  content={
+                    <div className="space-y-2">
+                      <p><strong className="text-[hsl(172_43%_20%)]">Training Set:</strong> Used to train the model's weights</p>
+                      <p><strong className="text-[hsl(172_43%_20%)]">Validation Set:</strong> Used to evaluate model performance during training</p>
+                      <p className="text-xs mt-2 pt-2 border-t border-[hsl(168_20%_90%)]">
+                        Recommended: 80/20 split for most datasets.
+                      </p>
+                    </div>
+                  }
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-[hsl(172_63%_35%)]" />
+                    <span className="text-sm font-medium text-[hsl(172_43%_20%)]">Training: {trainSplit}%</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-[hsl(210_60%_50%)]" />
+                    <span className="text-sm font-medium text-[hsl(172_43%_20%)]">Validation: {100 - trainSplit}%</span>
+                  </div>
+                </div>
+
+                {/* Custom styled slider track */}
+                <div className="relative py-2">
+                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 rounded-full overflow-hidden bg-[hsl(210_40%_85%)]">
+                    <div
+                      className="h-full bg-gradient-to-r from-[hsl(172_63%_35%)] to-[hsl(172_63%_28%)] rounded-full"
+                      style={{ width: `${trainSplit}%` }}
+                    />
+                  </div>
+                  <Slider
+                    value={[trainSplit]}
+                    min={50}
+                    max={90}
+                    step={5}
+                    className="relative z-10 [&_[role=slider]]:bg-white [&_[role=slider]]:border-2 [&_[role=slider]]:border-[hsl(172_63%_35%)] [&_[role=slider]]:shadow-md [&_[role=slider]]:w-5 [&_[role=slider]]:h-5"
+                    onValueChange={values => setTrainSplit(values[0])}
+                  />
+                </div>
+
+                <div className="flex justify-between text-xs text-[hsl(215_15%_55%)]">
+                  <span>More validation data</span>
+                  <span>More training data</span>
+                </div>
               </div>
             </div>
+
+            {/* Pro tip */}
+            {(datasetSummary || isRestoredExperiment) && (
+              <InstructionCard variant="tip" className="animate-fade-in">
+                <p>
+                  <strong>Pro tip:</strong> Start with the default 80/20 split.
+                  {datasetSummary && datasetSummary.totalImages < 500 && (
+                    <> Since your dataset is smaller, consider using 70/30 for better validation accuracy.</>
+                  )}
+                </p>
+              </InstructionCard>
+            )}
           </div>
 
-          {/* Helpful tip */}
-          {(datasetSummary || isRestoredExperiment) && (
-            <InstructionCard variant="tip" className="animate-fade-in">
-              <p>
-                <strong>Pro tip:</strong> Start with the default 80/20 split. 
-                If your dataset is small ({datasetSummary && datasetSummary.totalImages < 500 && 'like this one'}), 
-                consider using 70/30 to have more validation data for better performance assessment.
-              </p>
-            </InstructionCard>
-          )}
-        </CardContent>
-        <CardFooter>
-          <Button onClick={handleSubmit} disabled={!isRestoredExperiment && uploadStatus !== 'success'} className="ml-auto bg-medical hover:bg-medical-dark text-lg">
-            Continue
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>;
+          {/* Footer */}
+          <div className="px-8 py-6 border-t border-[hsl(210_15%_94%)] bg-[hsl(168_25%_99%)]">
+            <Button
+              onClick={handleSubmit}
+              disabled={!isRestoredExperiment && uploadStatus !== 'success'}
+              className="ml-auto flex bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white text-base px-8 py-6 rounded-xl shadow-lg shadow-[hsl(172_63%_22%)]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[hsl(172_63%_22%)]/30 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-lg"
+            >
+              Continue
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
+
 export default DatasetUpload;
