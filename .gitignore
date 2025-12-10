@@ -15,11 +15,17 @@ Test/
 Training/
 data/
 !federated_pneumonia_detection/src/control/dl_model/utils/data/
+!Training_Sample_5pct/
+!Training_Sample_5pct/Images/
+!Training_Sample_5pct/Masks/
 *.png
 *.jpg
 *.jpeg
 *.dcm
 *.zip
+!Training_Sample_5pct/**/*.png
+!Training_Sample_5pct/**/*.jpg
+!Training_Sample_5pct/**/*.jpeg
 
 
 # Model checkpoints and outputs
