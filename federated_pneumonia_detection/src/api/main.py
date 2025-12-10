@@ -137,7 +137,7 @@ def _start_websocket_server():
             logger.info(f"Starting WebSocket server on ws://{host}:{port}")
 
             async with websockets.serve(handler, host, port):
-                logger.info("✓ WebSocket metrics server is running")
+                logger.info("[OK] WebSocket metrics server is running")
                 # Keep server running
                 await asyncio.Future()
 

@@ -296,13 +296,13 @@ async def backfill_server_evaluations(run_id: int) -> Dict[str, Any]:
                 num_samples=metrics_dict.get("num_samples"),
             )
             logger.info(
-                f"[Backfill] ✅ Persisted server evaluation for round {round_num}"
+                f"[Backfill] [OK] Persisted server evaluation for round {round_num}"
             )
             rounds_processed += 1
 
         db.commit()
         logger.info(
-            f"[Backfill] ✅ SUCCESS: Backfilled {rounds_processed} server evaluations"
+            f"[Backfill] [OK] SUCCESS: Backfilled {rounds_processed} server evaluations"
         )
 
         return {

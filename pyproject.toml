@@ -38,4 +38,5 @@ dependencies = [
     "psycopg2>=2.9.11",
     "tomli-w>=1.2.0",
     "tomli>=2.3.0",
+    "sentence-transformers>=5.1.2",
 ]

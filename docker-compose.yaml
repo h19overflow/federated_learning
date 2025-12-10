@@ -29,22 +29,5 @@ services:
       db:
         condition: service_healthy
 
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: always
-    environment:
-      DATABASE_URL: "postgresql://postgres:postgres@db:5432/federated_pneumonia_detection"
-      PYTHONUNBUFFERED: 1`
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./app:/app
-    depends_on:
-      db:
-        condition: service_healthy
-    command: python app.py
-
 volumes:
   db_data:

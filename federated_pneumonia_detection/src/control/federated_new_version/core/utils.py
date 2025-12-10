@@ -202,7 +202,7 @@ def read_configs_to_toml() -> dict:
     try:
         config_manager = ConfigManager(config_path=str(config_dir))
     except Exception as e:
-        print(f"[Config Reader] ❌ Failed to load config: {e}")
+        print(f"[Config Reader] [ERROR] Failed to load config: {e}")
         return {}
 
     flwr_configs = {}
@@ -213,24 +213,24 @@ def read_configs_to_toml() -> dict:
             "experiment.num-server-rounds"
         )
         print(
-            f"[Config Reader] ✓ num-server-rounds: {flwr_configs['num_server_rounds']}"
+            f"[Config Reader] [OK] num-server-rounds: {flwr_configs['num_server_rounds']}"
         )
     else:
-        print("[Config Reader] ⚠️ experiment.num-server-rounds not found in config")
+        print("[Config Reader] [WARN] experiment.num-server-rounds not found in config")
 
     # Read max-epochs (local training epochs per round)
     if config_manager.has_key("experiment.max-epochs"):
         flwr_configs["max_epochs"] = config_manager.get("experiment.max-epochs")
-        print(f"[Config Reader] ✓ max-epochs: {flwr_configs['max_epochs']}")
+        print(f"[Config Reader] [OK] max-epochs: {flwr_configs['max_epochs']}")
     elif config_manager.has_key("experiment.local_epochs"):
         # Fallback to local_epochs if max-epochs not found
         flwr_configs["max_epochs"] = config_manager.get("experiment.local_epochs")
         print(
-            f"[Config Reader] ✓ max-epochs (from local_epochs): {flwr_configs['max_epochs']}"
+            f"[Config Reader] [OK] max-epochs (from local_epochs): {flwr_configs['max_epochs']}"
         )
     else:
         print(
-            "[Config Reader] ⚠️ experiment.max-epochs or experiment.local_epochs not found"
+            "[Config Reader] [WARN] experiment.max-epochs or experiment.local_epochs not found"
         )
 
     # Read num-supernodes (number of clients in simulation)
@@ -238,16 +238,16 @@ def read_configs_to_toml() -> dict:
         flwr_configs["num_supernodes"] = config_manager.get(
             "experiment.options.num-supernodes"
         )
-        print(f"[Config Reader] ✓ num-supernodes: {flwr_configs['num_supernodes']}")
+        print(f"[Config Reader] [OK] num-supernodes: {flwr_configs['num_supernodes']}")
     elif config_manager.has_key("experiment.num_clients"):
         # Fallback to num_clients if num-supernodes not found
         flwr_configs["num_supernodes"] = config_manager.get("experiment.num_clients")
         print(
-            f"[Config Reader] ✓ num-supernodes (from num_clients): {flwr_configs['num_supernodes']}"
+            f"[Config Reader] [OK] num-supernodes (from num_clients): {flwr_configs['num_supernodes']}"
         )
     else:
         print(
-            "[Config Reader] ⚠️ experiment.options.num-supernodes or experiment.num_clients not found"
+            "[Config Reader] [WARN] experiment.options.num-supernodes or experiment.num_clients not found"
         )
 
     print(f"[Config Reader] Final configs to write to pyproject.toml: {flwr_configs}")
@@ -288,7 +288,7 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
         logger.info(f"Database URI configured: {db_uri[:20]}... (truncated)")
     except Exception as e:
         logger.error(
-            f"❌ CRITICAL: Failed to load database settings: {e}", exc_info=True
+            f"[ERROR] CRITICAL: Failed to load database settings: {e}", exc_info=True
         )
         logger.error("Check if .env file is loaded and environment variables are set!")
         return
@@ -296,7 +296,7 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
     db = None
     try:
         db = get_session()
-        logger.info(f"✅ Database session created successfully")
+        logger.info(f"[OK] Database session created successfully")
         logger.info(f"Processing {len(server_metrics)} server evaluation rounds...")
 
         for round_num_str, metric_record in server_metrics.items():
@@ -346,15 +346,15 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
                 metrics=extracted_metrics,
                 num_samples=metrics_dict.get("num_samples"),
             )
-            logger.info(f"  ✅ Persisted server evaluation for round {round_num}")
+            logger.info(f"  [OK] Persisted server evaluation for round {round_num}")
 
         db.commit()
         logger.info("=" * 80)
-        logger.info(f"✅ SUCCESS: Persisted {len(server_metrics)} server evaluations")
+        logger.info(f"[OK] SUCCESS: Persisted {len(server_metrics)} server evaluations")
         logger.info("=" * 80)
     except Exception as e:
         logger.error("=" * 80)
-        logger.error(f"❌ CRITICAL ERROR: Failed to persist server evaluations")
+        logger.error(f"[ERROR] CRITICAL ERROR: Failed to persist server evaluations")
         logger.error(f"Error type: {type(e).__name__}")
         logger.error(f"Error message: {e}", exc_info=True)
         logger.error("=" * 80)

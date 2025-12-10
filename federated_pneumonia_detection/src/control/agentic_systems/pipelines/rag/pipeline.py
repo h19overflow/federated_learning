@@ -61,7 +61,7 @@ def pipeline(postgres_url: str, file_path: str):
 
 
 if __name__ == "__main__":
-    directory_path = r"C:\Users\User\Projects\FYP2\federated_pneumonia_detection\src\control\agentic_systems\pipelines\rag\input"
+    directory_path = os.path.join(os.path.dirname(__file__), "input")
 
     for file in os.listdir(directory_path):
         get_logger(__name__).info(f"Processing file: {file}")

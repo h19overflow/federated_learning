@@ -132,12 +132,12 @@ class EarlyStoppingSignalCallback(pl.Callback):
             )
 
             self.logger.info(
-                f"[Early Stopping Signal] ✅ Successfully signaled at epoch {current_epoch}"
+                f"[Early Stopping Signal] [OK] Successfully signaled at epoch {current_epoch}"
             )
 
         except Exception as e:
             self.logger.error(
-                f"[Early Stopping Signal] ❌ Failed to signal early stopping: {e}",
+                f"[Early Stopping Signal] [ERROR] Failed to signal early stopping: {e}",
                 exc_info=True,
             )
 

@@ -62,8 +62,8 @@ def run_federated_training_task(
 
         # Update configuration with uploaded data paths
         task_logger.info("\nUpdating configuration...")
-        config_path = r"C:\Users\User\Projects\FYP2\federated_pneumonia_detection\config\default_config.yaml"
-        config_manager = ConfigManager(config_path=config_path)
+        config_path = Path(__file__).parent.parent.parent.parent.parent.parent / "config" / "default_config.yaml"
+        config_manager = ConfigManager(config_path=str(config_path))
 
         # Store current config for logging
         old_file_path = config_manager.get("experiment.file-path", "N/A")
@@ -85,7 +85,7 @@ def run_federated_training_task(
 
         # CRITICAL: Update pyproject.toml BEFORE starting Flower
         # This ensures Flower reads the correct config values from the TOML file
-        task_logger.info("\n⚙️ Synchronizing config to pyproject.toml...")
+        task_logger.info("\n[CONFIG] Synchronizing config to pyproject.toml...")
         from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
             read_configs_to_toml,
         )
@@ -97,9 +97,9 @@ def run_federated_training_task(
         if flwr_configs:
             task_logger.info(f"  Configs to sync: {flwr_configs}")
             update_flwr_config(**flwr_configs)
-            task_logger.info("  ✅ pyproject.toml updated successfully")
+            task_logger.info("  [OK] pyproject.toml updated successfully")
         else:
-            task_logger.warning("  ⚠️ No configs found to sync")
+            task_logger.warning("  [WARN] No configs found to sync")
 
         # Prepare environment for rf.ps1 execution
         task_logger.info("\nPreparing federated training environment...")
@@ -135,10 +135,10 @@ def run_federated_training_task(
         ]
         missing_vars = [var for var in required_vars if var not in env]
         if missing_vars:
-            task_logger.warning(f"⚠️ Missing environment variables: {missing_vars}")
+            task_logger.warning(f"[WARN] Missing environment variables: {missing_vars}")
             task_logger.warning("Database persistence may fail!")
         else:
-            task_logger.info(f"✅ All required environment variables present")
+            task_logger.info(f"[OK] All required environment variables present")
 
         ps_cmd = [
             "powershell",

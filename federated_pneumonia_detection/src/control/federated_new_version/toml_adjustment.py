@@ -47,10 +47,10 @@ def update_flwr_config(
         with open(pyproject_path, "rb") as f:
             data = tomllib.load(f)
     except FileNotFoundError:
-        print(f"[TOML Update] ❌ pyproject.toml not found at {pyproject_path}")
+        print(f"[TOML Update] [ERROR] pyproject.toml not found at {pyproject_path}")
         return
     except Exception as e:
-        print(f"[TOML Update] ❌ Failed to read pyproject.toml: {e}")
+        print(f"[TOML Update] [ERROR] Failed to read pyproject.toml: {e}")
         return
 
     # Track what was updated
@@ -71,9 +71,9 @@ def update_flwr_config(
                 ] = value
                 updates_made.append(f"num-supernodes={value}")
             else:
-                print(f"[TOML Update] ⚠️ Unknown config key: {key}")
+                print(f"[TOML Update] [WARN] Unknown config key: {key}")
         except KeyError as e:
-            print(f"[TOML Update] ❌ Failed to update {key}: Missing key path {e}")
+            print(f"[TOML Update] [ERROR] Failed to update {key}: Missing key path {e}")
             continue
 
     # Write back to file
@@ -82,11 +82,11 @@ def update_flwr_config(
             tomli_w.dump(data, f)
 
         if updates_made:
-            print(f"[TOML Update] ✅ Successfully updated: {', '.join(updates_made)}")
+            print(f"[TOML Update] [OK] Successfully updated: {', '.join(updates_made)}")
         else:
-            print("[TOML Update] ⚠️ No updates were made")
+            print("[TOML Update] [WARN] No updates were made")
     except Exception as e:
-        print(f"[TOML Update] ❌ Failed to write pyproject.toml: {e}")
+        print(f"[TOML Update] [ERROR] Failed to write pyproject.toml: {e}")
 
 
 if __name__ == "__main__":

@@ -53,12 +53,12 @@ def lifespan(app: ServerApp):
     flwr_configs = read_configs_to_toml()
 
     if flwr_configs:
-        logger.info(f"✅ Configuration verified: {flwr_configs}")
+        logger.info(f"[OK] Configuration verified: {flwr_configs}")
         logger.info(
             "NOTE: Config should have been synced to pyproject.toml before Flower started"
         )
     else:
-        logger.warning("⚠️ No federated configs found in default_config.yaml")
+        logger.warning("[WARN] No federated configs found in default_config.yaml")
 
     yield
 
@@ -102,9 +102,9 @@ def main(grid: Grid, context: Context) -> None:
         new_run = run_crud.create(db, **run_data)
         db.commit()
         run_id = new_run.id
-        logger.info(f"✅ Successfully created run with id={run_id}")
+        logger.info(f"[OK] Successfully created run with id={run_id}")
     except Exception as e:
-        logger.error(f"❌ Failed to create run in database: {e}", exc_info=True)
+        logger.error(f"[ERROR] Failed to create run in database: {e}", exc_info=True)
         db.rollback()
         run_id = None
     finally:
@@ -154,7 +154,7 @@ def main(grid: Grid, context: Context) -> None:
         csv_path=train_config["file_path"],
         image_dir=train_config["image_dir"],
     )
-    logger.info("✅ Server evaluation function created")
+    logger.info("[OK] Server evaluation function created")
 
     # Initialize ConfigurableFedAvg strategy with configs
     # Following Flower conventions:
@@ -227,7 +227,7 @@ def main(grid: Grid, context: Context) -> None:
         _persist_server_evaluations(run_id, result.evaluate_metrics_serverapp)
     else:
         logger.error(
-            f"⚠️ Skipping server evaluation persistence: "
+            f"[WARN] Skipping server evaluation persistence: "
             f"evaluate_metrics_serverapp={bool(result.evaluate_metrics_serverapp)}, "
             f"run_id={run_id}"
         )
@@ -246,4 +246,4 @@ def main(grid: Grid, context: Context) -> None:
         },
         "training_end",
     )
-    logger.info(f"✅ Training complete notification sent (run_id={run_id})")
+    logger.info(f"[OK] Training complete notification sent (run_id={run_id})")

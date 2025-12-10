@@ -60,14 +60,14 @@ def build_run_context(
         # Add instructions for AI
         context_info += _build_ai_instructions()
 
-        logger.info(f"✓ Built comprehensive run context (run_id={run_id})")
+        logger.info(f"[OK] Built comprehensive run context (run_id={run_id})")
         logger.info(f"Context length: {len(context_info)} characters")
 
         return context_info
 
     except Exception as e:
         logger.error(
-            f"❌ Error building run context for run_id={run_id}: {e}",
+            f"[ERROR] Error building run context for run_id={run_id}: {e}",
             exc_info=True,
         )
         return None
