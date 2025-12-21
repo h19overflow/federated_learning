@@ -16,22 +16,17 @@ experiment:
   edge_enhancement: false
   edge_strength: 1.0
   epochs: 10
-<<<<<<< HEAD
-  file-path: C:\Users\Adonis\AppData\Local\Temp\tmp4aq2vfpc\extracted\Training_Sample_5pct\stage2_train_metadata.csv
+  file-path: C:\Users\User\AppData\Local\Temp\tmpyg9xql84\extracted\Training_Sample_5pct\stage2_train_metadata.csv
   fine_tune_layers_count: 5
-=======
-  file-path: C:\Users\User\AppData\Local\Temp\tmphswfc0av\extracted\Training_Sample_5pct\stage2_train_metadata.csv
-  fine_tune_layers_count: 7
->>>>>>> 6032913cee671e0ea5eb465ac71746d59c915daf
   freeze_backbone: true
-  image-dir: C:\Users\Adonis\AppData\Local\Temp\tmp4aq2vfpc\extracted\Training_Sample_5pct\Images
+  image-dir: C:\Users\User\AppData\Local\Temp\tmpyg9xql84\extracted\Training_Sample_5pct\Images
   learning_rate: 0.001
-  local_epochs: 1
+  local_epochs: 2
   lower_percentile: 5.0
   max-epochs: 2
   min_lr: 1.0e-07
   monitor_metric: val_loss
-  num-server-rounds: 3
+  num-server-rounds: 2
   num_classes: 1
   num_clients: 2
   num_rounds: 2

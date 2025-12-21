@@ -173,11 +173,16 @@ def _build_ai_instructions() -> str:
     """Build AI instructions section."""
     instructions = "\n" + "=" * 60 + "\n"
     instructions += "INSTRUCTIONS FOR AI:\n"
-    instructions += "Use the above detailed information to answer the user's question.\n , never mentionn the status of the run , just answer the question based on the data provided"
-    instructions += (
-        "Provide specific numbers, trends, and insights based on this data.\n"
-    )
-    instructions += "If the user asks about comparisons, note what data is available.\n"
+    instructions += "Use the above detailed information to answer the user's question.\n"
+    instructions += "Never mention the status of the run, just answer based on the data provided.\n"
+    instructions += "Provide specific numbers, trends, and insights based on this data.\n"
+    instructions += "If the user asks about comparisons, note what data is available.\n\n"
+    instructions += "FORMAT YOUR RESPONSE USING MARKDOWN:\n"
+    instructions += "- Use **bold** for key metrics and important values\n"
+    instructions += "- Use bullet points or numbered lists for multiple items\n"
+    instructions += "- Use `code` formatting for percentages, numbers, and metric names\n"
+    instructions += "- Use tables when comparing metrics across rounds or clients\n"
+    instructions += "- Use ### headings to organize sections in longer responses\n"
     instructions += "=" * 60 + "\n\n"
     return instructions
 

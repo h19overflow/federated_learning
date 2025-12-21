@@ -1,17 +1,17 @@
 from langchain_community.retrievers import BM25Retriever
 from langchain_postgres import PGVector
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.retrievers import EnsembleRetriever
+from langchain_classic.retrievers import EnsembleRetriever
 from federated_pneumonia_detection.config.settings import Settings
 from dotenv import load_dotenv
 from federated_pneumonia_detection.src.boundary.CRUD.fetch_documents import (
     fetch_all_documents,
 )
 from langchain_core.prompts import ChatPromptTemplate
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.chains import create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_huggingface import HuggingFaceEmbeddings
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, AsyncGenerator, Any
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -42,7 +42,7 @@ class QueryEngine:
             logger.error(f"Error initializing the vectorstore: {e}")
             raise e
         try:
-            self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite")
+            self.llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview")
         except Exception as e:
             logger.error(f"Error initializing the llm: {e}")
             raise e
@@ -65,7 +65,7 @@ class QueryEngine:
         try:
             self.ensemble_retriever = EnsembleRetriever(
                 retrievers=[self.bm25_retriever, self.vector_store_retriever],
-                llm=ChatGoogleGenerativeAI(model="gemini-2.0-flash"),
+                llm=ChatGoogleGenerativeAI(model="gemini-3-flash-preview"),
                 weights=[0.5, 0.5]
             )
         except Exception as e:
@@ -143,20 +143,34 @@ class QueryEngine:
 
     def get_prompts(self, include_history: bool = False):
         try:
+            markdown_instructions = (
+                "Format your response using Markdown for better readability:\n"
+                "- Use **bold** for key terms and important metrics\n"
+                "- Use bullet points or numbered lists for multiple items\n"
+                "- Use `code` formatting for technical values, percentages, or numbers\n"
+                "- Use ### headings to organize longer responses\n"
+                "- Use tables when comparing multiple metrics or values\n"
+                "- Keep responses well-structured and scannable\n\n"
+            )
+
             if include_history:
                 system_prompt = (
-                    "Use the given context and conversation history to answer the question. "
-                    "If you don't know the answer, say you don't know. "
-                    "Use three sentence maximum and keep the answer concise. "
-                    "Previous conversation: {history}\n"
-                    "Context: {context}"
+                    "You are a helpful AI assistant specializing in federated learning and medical imaging. "
+                    "Use the given context and conversation history to answer the question accurately.\n\n"
+                    f"{markdown_instructions}"
+                    "If you don't know the answer, clearly state that you don't have enough information.\n"
+                    "Provide detailed, informative responses while keeping them well-organized.\n\n"
+                    "Previous conversation:\n{history}\n\n"
+                    "Context:\n{context}"
                 )
             else:
                 system_prompt = (
-                    "Use the given context to answer the question. "
-                    "If you don't know the answer, say you don't know. "
-                    "Use three sentence maximum and keep the answer concise. "
-                    "Context: {context}"
+                    "You are a helpful AI assistant specializing in federated learning and medical imaging. "
+                    "Use the given context to answer the question accurately.\n\n"
+                    f"{markdown_instructions}"
+                    "If you don't know the answer, clearly state that you don't have enough information.\n"
+                    "Provide detailed, informative responses while keeping them well-organized.\n\n"
+                    "Context:\n{context}"
                 )
             prompt = ChatPromptTemplate.from_messages(
                 [
@@ -218,6 +232,59 @@ class QueryEngine:
         except Exception as e:
             logger.error(f"Error querying with history: {e}")
             raise e
+
+    async def query_with_history_stream(
+        self, query: str, session_id: str
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Stream query results token by token with conversation history context.
+
+        Uses synchronous retrieval followed by async LLM streaming to avoid
+        async database engine issues with the ensemble retriever.
+
+        Args:
+            query: User query
+            session_id: Session ID for conversation tracking
+
+        Yields:
+            Dict with type and content for each streamed chunk
+        """
+        try:
+            # Retrieve documents synchronously (BM25 + PGVector ensemble)
+            retrieved_docs = self.ensemble_retriever.invoke(query)
+
+            # Format retrieved documents as context
+            context = "\n\n".join(doc.page_content for doc in retrieved_docs)
+
+            # Get conversation history
+            history_context = self.format_history_for_context(session_id)
+
+            # Build the prompt with context and history
+            prompt = self.get_prompts(include_history=bool(history_context))
+
+            # Create messages for the LLM
+            if history_context:
+                messages = prompt.format_messages(
+                    context=context, history=history_context, input=query
+                )
+            else:
+                messages = prompt.format_messages(context=context, input=query)
+
+            full_response = ""
+
+            # Stream only the LLM response
+            async for chunk in self.llm.astream(messages):
+                if hasattr(chunk, "content") and chunk.content:
+                    full_response += chunk.content
+                    yield {"type": "token", "content": chunk.content}
+
+            # After streaming completes, save to history
+            self.add_to_history(session_id, query, full_response)
+            yield {"type": "done", "session_id": session_id}
+
+        except Exception as e:
+            logger.error(f"Error streaming query with history: {e}")
+            yield {"type": "error", "message": str(e)}
 
 
 if __name__ == "__main__":

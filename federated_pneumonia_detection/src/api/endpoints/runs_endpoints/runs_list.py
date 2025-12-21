@@ -61,28 +61,33 @@ async def list_all_runs() -> Dict[str, Any]:
                 server_evals = server_evaluation_crud.get_by_run(db, run.id)
                 num_clients = len(run.clients) if run.clients else 0
 
+                # Filter out round 0 (initial evaluation) - only count actual training rounds
+                # Flower uses round 0 for initial model evaluation before training starts
+                training_rounds = [e for e in server_evals if e.round_number > 0]
+                num_training_rounds = len(training_rounds)
+
                 logger.info(
                     f"[ListRuns] Run {run.id} (federated): "
-                    f"Found {len(server_evals)} server evaluations, {num_clients} clients"
+                    f"Found {len(server_evals)} server evaluations ({num_training_rounds} training rounds), {num_clients} clients"
                 )
 
                 summary["federated_info"] = {
-                    "num_rounds": len(server_evals),
+                    "num_rounds": num_training_rounds,
                     "num_clients": num_clients,
-                    "has_server_evaluation": len(server_evals) > 0,
+                    "has_server_evaluation": len(training_rounds) > 0,
                 }
 
-                # Get best metrics from server evaluations
-                if server_evals:
+                # Get best metrics from training rounds (excluding round 0)
+                if training_rounds:
                     best_accuracy = max(
-                        (e.accuracy for e in server_evals if e.accuracy is not None),
+                        (e.accuracy for e in training_rounds if e.accuracy is not None),
                         default=None,
                     )
                     best_recall = max(
-                        (e.recall for e in server_evals if e.recall is not None),
+                        (e.recall for e in training_rounds if e.recall is not None),
                         default=None,
                     )
-                    latest_eval = server_evals[-1]
+                    latest_eval = training_rounds[-1]
 
                     summary["federated_info"]["best_accuracy"] = best_accuracy
                     summary["federated_info"]["best_recall"] = best_recall
@@ -97,7 +102,7 @@ async def list_all_runs() -> Dict[str, Any]:
                     )
                 else:
                     logger.warning(
-                        f"[ListRuns] Run {run.id}: No server evaluations found!"
+                        f"[ListRuns] Run {run.id}: No training round evaluations found!"
                     )
             else:
                 summary["federated_info"] = None

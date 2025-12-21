@@ -1,6 +1,7 @@
 # >   uvicorn federated_pneumonia_detection.src.api.main:app --reload --host 127.0.0.1 --port 8001
 import logging
 import threading
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from federated_pneumonia_detection.src.api.endpoints.configuration_settings import (
@@ -19,6 +20,9 @@ from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import (
 from federated_pneumonia_detection.src.api.endpoints.chat import (
     chat_router,
 )
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
+    MCPManager,
+)
 import os
 from pathlib import Path
 
@@ -33,9 +37,45 @@ logger.info(f"Loaded environment from: {env_path}")
 
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # or ':16:8'
 
+# Get MCP manager singleton
+mcp_manager = MCPManager.get_instance()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    FastAPI lifespan handler for startup/shutdown.
+
+    Manages WebSocket server and MCP manager lifecycle.
+    """
+    # Startup
+    websocket_thread = threading.Thread(
+        target=_start_websocket_server, daemon=True, name="WebSocket-Server-Thread"
+    )
+    websocket_thread.start()
+    logger.info("WebSocket server startup initiated in background thread")
+
+    # Initialize MCP manager for arxiv tools
+    try:
+        await mcp_manager.initialize()
+        logger.info("MCP manager initialized")
+    except Exception as e:
+        logger.warning(f"MCP manager initialization failed (arxiv unavailable): {e}")
+
+    yield
+
+    # Shutdown
+    try:
+        await mcp_manager.shutdown()
+        logger.info("MCP manager shutdown complete")
+    except Exception as e:
+        logger.error(f"Error during MCP manager shutdown: {e}")
+
+
 app = FastAPI(
     title="Federated Pneumonia Detection API",
     description="API for the Federated Pneumonia Detection system",
+    lifespan=lifespan,
 )
 
 # Configure CORS for frontend integration
@@ -152,17 +192,6 @@ def _start_websocket_server():
         logger.error(f"Failed to start WebSocket server: {e}")
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Start WebSocket server when FastAPI app starts."""
-    # Start WebSocket server in background thread
-    websocket_thread = threading.Thread(
-        target=_start_websocket_server, daemon=True, name="WebSocket-Server-Thread"
-    )
-    websocket_thread.start()
-    logger.info("WebSocket server startup initiated in background thread")
-
-
 app.include_router(configuration_endpoints.router)
 app.include_router(centralized_endpoints.router)
 app.include_router(federated_endpoints.router)
@@ -172,4 +201,11 @@ app.include_router(runs_endpoints_router)
 app.include_router(chat_router)
 
 
-# C:\Users\User\Projects\FYP2\federated_pneumonia_detection\config\default_config.yaml
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "federated_pneumonia_detection.src.api.main:app",
+        host="127.0.0.1",
+        port=8001,
+    )

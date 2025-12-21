@@ -1,5 +1,5 @@
 from sqlalchemy import MetaData, Table
-from langchain.schema import Document  # Assumes Document class in langchain.schema
+from langchain_core.documents import Document
 from federated_pneumonia_detection.src.boundary.engine import get_engine, get_session
 import logging
 
