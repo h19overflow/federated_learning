@@ -110,15 +110,24 @@ def create_central_evaluate_fn(
                 logits = model(images)
                 loss = model._calculate_loss(logits, labels)
 
-                # Get predictions
+                # Get predictions (probabilities for binary classification)
                 preds = model._get_predictions(logits)
                 targets = model._prepare_targets_for_metrics(labels)
 
+                # For binary classification, threshold probabilities to get class predictions
+                if model.num_classes == 1:
+                    preds_binary = (preds > 0.5).int().squeeze()
+                    targets_flat = targets.squeeze()
+                else:
+                    preds_binary = preds.argmax(dim=1)
+                    targets_flat = targets
+
                 # Accumulate metrics
                 total_loss += loss.item() * len(labels)
-                total_correct += (preds == targets).sum().item()
+                total_correct += (preds_binary == targets_flat).sum().item()
                 total_samples += len(labels)
 
+                # Store probabilities for AUROC, thresholded preds for other metrics
                 all_preds.extend(preds.cpu().numpy())
                 all_targets.extend(targets.cpu().numpy())
 

@@ -330,6 +330,7 @@ export type WebSocketMessageType =
   | 'client_training_start'
   | 'client_progress'
   | 'client_complete'
+  | 'early_stopping'
   | 'status'
   | 'error'
   | 'pong';
@@ -452,6 +453,15 @@ export interface TrainingEndData {
   total_epochs: number;
   training_duration?: string;
   reason?: string;
+}
+
+export interface EarlyStoppingData {
+  epoch: number;
+  best_metric_value: number;
+  metric_name: string;
+  patience: number;
+  reason?: string;
+  timestamp?: string;
 }
 
 export interface TrainingModeData {

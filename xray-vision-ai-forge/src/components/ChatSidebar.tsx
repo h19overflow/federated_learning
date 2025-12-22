@@ -1,10 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Send, Trash2, Loader2, X, BarChart, Activity } from 'lucide-react';
+import { Markdown } from '@/components/ui/markdown';
+import { MessageSquare, Send, Trash2, Loader2, X, BarChart, Activity, GripVertical, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/services/api';
+
+const MIN_WIDTH = 320;
+const MAX_WIDTH = 800;
+const DEFAULT_WIDTH = 384; // w-96
 
 interface Message {
   role: 'user' | 'assistant';
@@ -43,9 +48,12 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
   const [isOpen, setIsOpen] = useState(true);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [isResizing, setIsResizing] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const runPickerRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Slash command state
   const [showRunPicker, setShowRunPicker] = useState(false);
@@ -53,6 +61,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [selectedRun, setSelectedRun] = useState<RunContext | null>(null);
   const [loadingRuns, setLoadingRuns] = useState(false);
   const [highlightedRunIndex, setHighlightedRunIndex] = useState(0);
+
+  // Arxiv toggle state
+  const [arxivEnabled, setArxivEnabled] = useState(false);
+  const [arxivAvailable, setArxivAvailable] = useState(false);
 
   // Generate session ID on mount
   useEffect(() => {
@@ -67,6 +79,24 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     }
   }, []);
 
+  // Check arxiv availability on mount
+  useEffect(() => {
+    const checkArxivStatus = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/chat/arxiv/status`);
+        if (res.ok) {
+          const data = await res.json();
+          setArxivAvailable(data.available);
+        } else {
+          setArxivAvailable(false);
+        }
+      } catch {
+        setArxivAvailable(false);
+      }
+    };
+    checkArxivStatus();
+  }, [apiUrl]);
+
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -76,6 +106,46 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       }
     }
   }, [messages]);
+
+  // Resize handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return;
+
+    const newWidth = window.innerWidth - e.clientX;
+    if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
+      setWidth(newWidth);
+    } else if (newWidth < MIN_WIDTH / 2) {
+      // If dragged too far right, close the sidebar
+      setIsOpen(false);
+      setIsResizing(false);
+    }
+  }, [isResizing]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  // Attach global mouse events for resize
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, handleMouseMove, handleMouseUp]);
 
   const generateSessionId = (): string => {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -158,13 +228,19 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       runContext: selectedRun || undefined,
     };
 
-    setMessages(prev => [...prev, newMessage]);
+    // Add user message and empty assistant placeholder
+    setMessages(prev => [
+      ...prev,
+      newMessage,
+      { role: 'assistant', content: '', runContext: selectedRun || undefined },
+    ]);
     setIsLoading(true);
 
     try {
       const requestBody: any = {
         query: userMessage,
         session_id: sessionId,
+        arxiv_enabled: arxivEnabled,
       };
 
       if (selectedRun) {
@@ -172,7 +248,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         requestBody.training_mode = selectedRun.trainingMode;
       }
 
-      const response = await fetch(`${apiUrl}/chat/query`, {
+      // Use streaming endpoint
+      const response = await fetch(`${apiUrl}/chat/query/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,25 +261,74 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         throw new Error(`API error: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: data.answer, runContext: selectedRun || undefined },
-      ]);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
-      if (data.session_id && data.session_id !== sessionId) {
-        setSessionId(data.session_id);
-        localStorage.setItem('chat_session_id', data.session_id);
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // Keep incomplete line in buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'token') {
+                // Append token to the last message
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const lastMsg = updated[updated.length - 1];
+                  if (lastMsg.role === 'assistant') {
+                    lastMsg.content += data.content;
+                  }
+                  return updated;
+                });
+              } else if (data.type === 'session') {
+                // Update session ID if different
+                if (data.session_id && data.session_id !== sessionId) {
+                  setSessionId(data.session_id);
+                  localStorage.setItem('chat_session_id', data.session_id);
+                }
+              } else if (data.type === 'error') {
+                console.error('Stream error:', data.message);
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const lastMsg = updated[updated.length - 1];
+                  if (lastMsg.role === 'assistant') {
+                    lastMsg.content = 'Sorry, I encountered an error while processing your query. Please try again.';
+                  }
+                  return updated;
+                });
+              }
+              // 'done' type means streaming completed successfully
+            } catch (e) {
+              console.error('Error parsing SSE data:', e);
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Sorry, I encountered an error while processing your query. Please try again.',
-        },
-      ]);
+      setMessages(prev => {
+        const updated = [...prev];
+        const lastMsg = updated[updated.length - 1];
+        if (lastMsg.role === 'assistant') {
+          lastMsg.content = 'Sorry, I encountered an error while processing your query. Please try again.';
+        }
+        return updated;
+      });
     } finally {
       setIsLoading(false);
       setTimeout(() => {
@@ -288,7 +414,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       {/* Floating Action Button - Apple Style */}
       {!isOpen && (
         <Button
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            setWidth(DEFAULT_WIDTH);
+            setIsOpen(true);
+          }}
           className="fixed bottom-6 right-6 rounded-2xl h-14 w-14 shadow-xl shadow-[hsl(172_63%_22%)]/25 hover:shadow-2xl hover:shadow-[hsl(172_63%_22%)]/35 bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white transition-all duration-300 hover:scale-105"
           size="icon"
         >
@@ -297,11 +426,34 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       )}
 
       {/* Sidebar Container */}
-      <div className={cn(
-        "flex flex-col border-l border-[hsl(210_15%_92%)] bg-white overflow-hidden transition-all duration-300 ease-out",
-        "h-full",
-        isOpen ? "w-96 opacity-100" : "w-0 opacity-0 pointer-events-none"
-      )}>
+      <div
+        ref={sidebarRef}
+        className={cn(
+          "flex flex-col border-l border-[hsl(210_15%_92%)] bg-white overflow-hidden relative",
+          "h-full",
+          isOpen ? "opacity-100" : "w-0 opacity-0 pointer-events-none",
+          !isResizing && "transition-all duration-300 ease-out"
+        )}
+        style={{ width: isOpen ? width : 0 }}
+      >
+        {/* Resize Handle */}
+        <div
+          onMouseDown={handleMouseDown}
+          className={cn(
+            "absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 group",
+            "hover:bg-[hsl(172_63%_35%)] transition-colors",
+            isResizing && "bg-[hsl(172_63%_35%)]"
+          )}
+        >
+          <div className={cn(
+            "absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-8 rounded-md flex items-center justify-center",
+            "opacity-0 group-hover:opacity-100 transition-opacity",
+            "bg-[hsl(172_63%_22%)] shadow-md",
+            isResizing && "opacity-100"
+          )}>
+            <GripVertical className="h-4 w-4 text-white" />
+          </div>
+        </div>
 
         {/* Header - Clean Apple Style */}
         <div className="bg-[hsl(168_25%_98%)] border-b border-[hsl(210_15%_92%)] p-5">
@@ -418,7 +570,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       : 'bg-[hsl(168_25%_96%)] text-[hsl(172_43%_15%)] rounded-2xl rounded-bl-md border border-[hsl(168_20%_92%)]'
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  {message.role === 'assistant' ? (
+                    <Markdown
+                      content={message.content}
+                      className="text-[hsl(172_43%_15%)]"
+                    />
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  )}
                 </div>
               </div>
             ))}
@@ -531,6 +690,28 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 disabled={isLoading}
                 className="flex-1 rounded-xl border-2 border-[hsl(210_15%_90%)] hover:border-[hsl(172_40%_80%)] focus:border-[hsl(172_63%_35%)] focus:ring-0 transition-colors duration-200 px-4 py-2.5 bg-[hsl(168_25%_99%)] placeholder:text-[hsl(215_15%_60%)]"
               />
+              <Button
+                variant={arxivEnabled ? "default" : "outline"}
+                size="icon"
+                onClick={() => setArxivEnabled(!arxivEnabled)}
+                disabled={!arxivAvailable}
+                title={
+                  arxivAvailable
+                    ? arxivEnabled
+                      ? "Arxiv search enabled"
+                      : "Enable Arxiv search"
+                    : "Arxiv unavailable - start backend first"
+                }
+                className={cn(
+                  "h-11 w-11 rounded-xl transition-all duration-200",
+                  arxivEnabled
+                    ? "bg-[hsl(262_80%_50%)] hover:bg-[hsl(262_80%_45%)] text-white border-0"
+                    : "border-2 border-[hsl(210_15%_90%)] hover:border-[hsl(262_60%_70%)] hover:bg-[hsl(262_80%_97%)] text-[hsl(215_15%_45%)]",
+                  !arxivAvailable && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <BookOpen className="h-4 w-4" />
+              </Button>
               <Button
                 onClick={handleSendMessage}
                 disabled={isLoading || !input.trim()}

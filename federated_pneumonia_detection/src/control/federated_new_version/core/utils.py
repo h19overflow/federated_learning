@@ -58,10 +58,20 @@ def _get_partition_data(configs: dict):
 
 
 def _prepare_partition_and_split(
-    partioner: CustomPartitioner, partition_id: int, partion_df
+    partioner: CustomPartitioner, partition_id: int, partion_df, seed: int = 42
 ):
-    """Split partition into train and validation sets."""
-    train_df, val_df = train_test_split(partion_df, test_size=0.2, random_state=42)
+    """Split partition into train and validation sets.
+
+    Args:
+        partioner: The data partitioner
+        partition_id: ID of the partition to split
+        partion_df: DataFrame for this partition
+        seed: Random seed for reproducible splits (default: 42)
+
+    Returns:
+        Tuple of (train_df, val_df)
+    """
+    train_df, val_df = train_test_split(partion_df, test_size=0.2, random_state=seed)
     return train_df, val_df
 
 

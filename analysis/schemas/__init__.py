@@ -3,9 +3,11 @@
 from analysis.schemas.experiment import ExperimentResult, MetricStats
 from analysis.schemas.comparison import ComparativeResult
 from analysis.schemas.statistics import (
-    StatisticalTestResult,
+    NormalityTestResult,
+    PairedTestResult,
     EffectSizeResult,
     BootstrapResult,
+    MetricStatisticalResult,
     StatisticalAnalysisResult,
 )
 
@@ -13,8 +15,10 @@ __all__ = [
     "ExperimentResult",
     "MetricStats",
     "ComparativeResult",
-    "StatisticalTestResult",
+    "NormalityTestResult",
+    "PairedTestResult",
     "EffectSizeResult",
     "BootstrapResult",
+    "MetricStatisticalResult",
     "StatisticalAnalysisResult",
 ]

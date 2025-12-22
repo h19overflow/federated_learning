@@ -1,37 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(uv run python:*)",
-      "Bash(powershell -Command:*)",
-      "Bash(uv run:*)",
-      "Bash(dir federated_pneumonia_detectionresults)",
-      "Bash(uvicorn federated_pneumonia_detection.src.api.main:app --reload --host 127.0.0.1 --port 8001)",
-      "Bash(tree \"C:\\Users\\User\\Projects\\FYP2\\federated_pneumonia_detection\\src\\control\\dl_model\" -L 3)",
-      "Bash(dir /s \"C:\\Users\\User\\Projects\\FYP2\\federated_pneumonia_detection\\src\\control\\dl_model\")",
-      "Bash(dir:*)",
-      "Bash(Select-Object -First 10)",
-      "Bash(python:*)",
-      "Bash(python3:*)",
-      "Bash(where:*)",
-      "Bash(/c/Users/User/AppData/Local/Microsoft/WindowsApps/python.exe sample_dataset.py)",
-      "Bash(npm run build:*)",
-      "Bash(tree:*)",
-      "Bash(git ls-tree:*)",
-      "Bash(git restore:*)",
-      "Bash(git stash:*)",
-      "Bash(git pull:*)",
-      "Bash(git add:*)",
-<<<<<<< HEAD
-      "Bash(cat:*)",
-      "Bash(docker-compose ps:*)"
-=======
-      "Bash(git check-ignore:*)",
-      "Bash(git commit:*)",
-      "Bash(git push)",
-      "Skill(frontend-design:frontend-design)"
->>>>>>> 6032913cee671e0ea5eb465ac71746d59c915daf
-    ],
-    "deny": [],
-    "ask": []
+      "Bash(nvidia-smi:*)",
+      "Bash(uv pip install:*)",
+      "Bash(uv sync:*)",
+      "Bash(Remove-Item uv.lock -ErrorAction SilentlyContinue)",
+      "Bash(uv pip:*)",
+      "Bash(findstr:*)"
+    ]
   }
 }

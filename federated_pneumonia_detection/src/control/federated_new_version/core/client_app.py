@@ -1,6 +1,9 @@
 from datasets.utils.logging import disable_progress_bar
 from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict
 from flwr.clientapp import ClientApp
+import random
+import numpy as np
+import torch
 
 from federated_pneumonia_detection.src.control.dl_model.utils.model.xray_data_module import (
     XRayDataModule,
@@ -56,7 +59,19 @@ def train(msg: Message, context: Context):
     _, partioner = _get_partition_data(configs)
     partition_id = context.node_id % configs["num_partitions"]
     partion_df = partioner.load_partition(partition_id)
-    train_df, val_df = _prepare_partition_and_split(partioner, partition_id, partion_df)
+
+    # Get seed from server config for reproducible training
+    seed = configs.get("seed", 42)
+
+    # Set global seeds for full reproducibility (data splits, augmentation, shuffling)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    centerlized_trainer.logger.info(f"[Federated Train] Set global seed={seed} for reproducibility")
+
+    train_df, val_df = _prepare_partition_and_split(partioner, partition_id, partion_df, seed=seed)
 
     # Create data module
     data_module = XRayDataModule(

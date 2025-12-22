@@ -125,7 +125,7 @@ class CentralizedExperimentRunner:
         training_duration = time.time() - start_time
 
         final_metrics = self._extract_final_metrics(results)
-        metrics_history = results.get("metrics_history", [])
+        metrics_history = self._clean_metrics_history(results.get("metrics_history", []))
         best_epoch = self._find_best_epoch(metrics_history)
 
         return ExperimentResult(
@@ -150,6 +150,20 @@ class CentralizedExperimentRunner:
         config.set("experiment.learning_rate", self.config.experiment.learning_rate)
 
         return config
+
+    def _clean_metrics_history(self, history: List[Dict]) -> List[Dict[str, float]]:
+        """Clean metrics history to only include float values.
+
+        Filters out non-numeric fields like 'timestamp' that would fail validation.
+        """
+        cleaned = []
+        for epoch in history:
+            cleaned_epoch = {}
+            for key, value in epoch.items():
+                if isinstance(value, (int, float)):
+                    cleaned_epoch[key] = float(value)
+            cleaned.append(cleaned_epoch)
+        return cleaned
 
     def _extract_final_metrics(self, results: Dict[str, Any]) -> Dict[str, float]:
         """Extract final epoch metrics from training results."""

@@ -17,6 +17,7 @@ import type {
   ClientTrainingStartData,
   ClientProgressData,
   ClientCompleteData,
+  EarlyStoppingData,
 } from '@/types/api';
 import { ExperimentConfiguration } from '@/components/ExperimentConfig';
 
@@ -392,13 +393,25 @@ export const useTrainingExecution = (
       }
     });
 
-    // ws.on('early_stopping', (data: TrainingEndData) => {
-    //   console.log('[TrainingExecution] early_stopping handler called:', data);
-    //   addStatusMessage('info', `Early stopping triggered at epoch ${data.best_epoch}`, undefined, { immediate: true });
-    //   addStatusMessage('info', `Best metric value: ${data.best_val_recall?.toFixed(4) || 'N/A'}`, undefined, { immediate: true });
-    //   addStatusMessage('info', `Metric name: val_recall`, undefined, { immediate: true });
-    //   addStatusMessage('info', `Reason: ${data.reason}`, undefined, { immediate: true });
-    // });
+    ws.on('early_stopping', (data: EarlyStoppingData) => {
+      console.log('[TrainingExecution] early_stopping handler called:', data);
+
+      // Show prominent log messages
+      addStatusMessage('info', `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, undefined, { immediate: true });
+      addStatusMessage('success', `⏹️ Early Stopping Triggered`, undefined, { immediate: true });
+      addStatusMessage('info', `   Stopped at epoch: ${data.epoch}`, undefined, { immediate: true });
+      addStatusMessage('info', `   Best ${data.metric_name}: ${data.best_metric_value?.toFixed(4) || 'N/A'}`, undefined, { immediate: true });
+      addStatusMessage('info', `   Patience: ${data.patience} epochs without improvement`, undefined, { immediate: true });
+      if (data.reason) {
+        addStatusMessage('info', `   ${data.reason}`, undefined, { immediate: true });
+      }
+      addStatusMessage('info', `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`, undefined, { immediate: true });
+
+      // Show toast notification
+      toast.info(`Early Stopping: Training stopped at epoch ${data.epoch}`, {
+        duration: 5000,
+      });
+    });
 
     ws.on('error', (data: ErrorData) => {
       console.error('[TrainingExecution] WebSocket error:', data);
@@ -465,11 +478,21 @@ export const useTrainingExecution = (
       if (config.trainingMode === 'centralized') {
         response = await api.experiments.startCentralizedTraining(datasetFile, expName);
       } else if (config.trainingMode === 'federated') {
-        response = await api.experiments.startFederatedTraining(datasetFile, expName);
+        response = await api.experiments.startFederatedTraining(
+          datasetFile,
+          expName,
+          'stage2_train_metadata.csv',
+          config.federatedRounds || 3
+        );
       } else {
         addStatusMessage('info', 'Running both centralized and federated training...', undefined, { immediate: true });
         await api.experiments.startCentralizedTraining(datasetFile, `${expName}_centralized`);
-        response = await api.experiments.startFederatedTraining(datasetFile, `${expName}_federated`);
+        response = await api.experiments.startFederatedTraining(
+          datasetFile,
+          `${expName}_federated`,
+          'stage2_train_metadata.csv',
+          config.federatedRounds || 3
+        );
       }
 
       addStatusMessage('success', response.message || 'Training started successfully', undefined, { immediate: true });

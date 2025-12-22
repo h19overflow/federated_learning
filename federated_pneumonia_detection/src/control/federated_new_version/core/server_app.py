@@ -3,6 +3,7 @@ from flwr.serverapp import ServerApp, Grid
 from datetime import datetime
 from typing import Dict, Any
 import logging
+import os
 from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
     ConfigurableFedAvg,
 )
@@ -110,12 +111,32 @@ def main(grid: Grid, context: Context) -> None:
     finally:
         db.close()
 
+    # Load ConfigManager FIRST (before any config access)
+    config_manager = ConfigManager(
+        config_path=str(
+            r"C:\Users\User\Projects\FYP2\federated_pneumonia_detection\config\default_config.yaml"
+        )
+    )
+
+    # Override config from environment variables (for analysis reproducibility)
+    # This allows the analysis module to control seeds and parameters via subprocess
+    fl_seed = os.getenv("FL_SEED")
+    if fl_seed:
+        seed_value = int(fl_seed)
+        config_manager.set("experiment.seed", seed_value)
+        config_manager.set("system.seed", seed_value)
+        logger.info(f"[ENV OVERRIDE] Using seed from FL_SEED: {seed_value}")
+
+    # Get seed from config (may have been overridden by FL_SEED env var)
+    experiment_seed = config_manager.get("experiment.seed", 42)
+
     # Create training configuration to send to clients
     train_config = {
         "file_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
         "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
         "num_partitions": num_clients,
         "run_id": run_id,  # Pass run_id to clients so they don't create their own
+        "seed": experiment_seed,  # Pass seed for reproducible data splits
     }
 
     # Create evaluation configuration to send to clients
@@ -124,12 +145,11 @@ def main(grid: Grid, context: Context) -> None:
         "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
     }
 
-    # Load global model with ConfigManager
-    config_manager = ConfigManager(
-        config_path=str(
-            r"C:\Users\User\Projects\FYP2\federated_pneumonia_detection\config\default_config.yaml"
-        )
-    )
+    # Use FL_RUN_ID for result file naming if provided (analysis compatibility)
+    analysis_run_id = os.getenv("FL_RUN_ID")
+    if analysis_run_id:
+        logger.info(f"[ENV OVERRIDE] Using run_id from FL_RUN_ID: {analysis_run_id}")
+
     global_model = LitResNet(config=config_manager)
     arrays = ArrayRecord(global_model.state_dict())
 
@@ -216,10 +236,14 @@ def main(grid: Grid, context: Context) -> None:
         )
 
     # Save all results to JSON
-    with open(f"results_{run_id}.json", "w") as f:
+    # Use analysis_run_id if provided (for analysis module compatibility)
+    # Otherwise fall back to database run_id
+    result_file_id = analysis_run_id if analysis_run_id else run_id
+    with open(f"results_{result_file_id}.json", "w") as f:
         import json
 
         json.dump(all_results, f, indent=2)
+    logger.info(f"[OK] Results saved to results_{result_file_id}.json")
 
     # Persist server evaluation metrics to database
     if result.evaluate_metrics_serverapp and run_id:

@@ -223,12 +223,14 @@ export const experimentsApi = {
   async startFederatedTraining(
     dataZip: File,
     experimentName: string = 'pneumonia_federated',
-    csvFilename: string = 'stage2_train_metadata.csv'
+    csvFilename: string = 'stage2_train_metadata.csv',
+    numServerRounds: number = 3
   ): Promise<TrainingStartResponse> {
     const formData = new FormData();
     formData.append('data_zip', dataZip);
     formData.append('experiment_name', experimentName);
     formData.append('csv_filename', csvFilename);
+    formData.append('num_server_rounds', numServerRounds.toString());
 
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/experiments/federated/train`,

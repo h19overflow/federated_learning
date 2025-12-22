@@ -26,6 +26,7 @@ import {
   ClientTrainingStartData,
   ClientProgressData,
   ClientCompleteData,
+  EarlyStoppingData,
 } from '@/types/api';
 
 // ============================================================================
@@ -59,7 +60,7 @@ interface EventListeners {
   client_complete: EventListener<ClientCompleteData>[];
   status: EventListener<StatusData>[];
   error: EventListener<ErrorData>[];
-  early_stopping: EventListener<{ epoch: number; best_metric_value: number; metric_name: string; patience: number }>[];
+  early_stopping: EventListener<EarlyStoppingData>[];
   pong: EventListener<{}>[];
   disconnected: EventListener<{}>[];
   reconnecting: EventListener<{ attempt: number }>[];

@@ -145,7 +145,7 @@ const SavedExperiments = () => {
 
           {/* Experiments Grid */}
           {!loading && !error && runs.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
               {runs.map((run, index) => {
                 const isFederated = run.training_mode === 'federated';
                 const federatedInfo = run.federated_info;
@@ -153,7 +153,7 @@ const SavedExperiments = () => {
                 return (
                   <div
                     key={run.id}
-                    className="group relative bg-white rounded-[1.5rem] border border-[hsl(210_15%_92%)] p-6 hover:shadow-xl hover:shadow-[hsl(172_40%_85%)]/25 transition-all duration-500 hover:-translate-y-1"
+                    className="group relative bg-white rounded-[1.5rem] border border-[hsl(210_15%_92%)] p-6 hover:shadow-xl hover:shadow-[hsl(172_40%_85%)]/25 transition-all duration-500 hover:-translate-y-1 flex flex-col h-full"
                     style={{
                       animation: 'fadeIn 0.4s ease-out forwards',
                       animationDelay: `${index * 0.05}s`,
@@ -192,8 +192,8 @@ const SavedExperiments = () => {
                       </div>
                     </div>
 
-                    {/* Metrics Section */}
-                    <div className="bg-[hsl(168_25%_98%)] rounded-xl p-4 mb-4 border border-[hsl(168_20%_94%)]">
+                    {/* Metrics Section - flex-grow to push footer down */}
+                    <div className="bg-[hsl(168_25%_98%)] rounded-xl p-4 mb-4 border border-[hsl(168_20%_94%)] flex-grow">
                       {/* Centralized Metrics */}
                       {!isFederated && run.best_val_recall > 0 && (
                         <div>
@@ -246,8 +246,8 @@ const SavedExperiments = () => {
                       )}
                     </div>
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-between">
+                    {/* Footer - always at bottom */}
+                    <div className="flex items-center justify-between mt-auto pt-2">
                       <span className="text-xs text-[hsl(215_15%_55%)]">
                         {run.metrics_count} metrics collected
                       </span>

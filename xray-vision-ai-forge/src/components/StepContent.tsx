@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 /**
  * StepContent Wrapper Component
- * Provides smooth fade-in/fade-out animations when switching between steps
+ * Simple wrapper that passes through children - animations are handled by individual components
  *
  * Props:
  * - children: The content to render for the current step
- * - stepKey: Unique key to trigger re-animation when step changes
+ * - stepKey: Unique key for React reconciliation (forces remount on step change)
+ * - isLoading: Optional loading state to disable interactions
  */
 
 interface StepContentProps {
@@ -16,28 +17,12 @@ interface StepContentProps {
 }
 
 const StepContent = ({ children, stepKey, isLoading = false }: StepContentProps) => {
-  const [isVisible, setIsVisible] = useState(true);
-  const [displayKey, setDisplayKey] = useState(stepKey);
-
-  useEffect(() => {
-    // Trigger fade-out animation
-    setIsVisible(false);
-
-    // After fade-out completes, update content and fade-in
-    const timer = setTimeout(() => {
-      setDisplayKey(stepKey);
-      setIsVisible(true);
-    }, 150); // Half of fade-out animation duration
-
-    return () => clearTimeout(timer);
-  }, [stepKey]);
-
+  // Using key prop on the wrapper ensures React remounts the content on step change
+  // This triggers the individual component's entrance animations naturally
   return (
     <div
-      key={displayKey}
-      className={`step-content-container transition-all duration-300 ${
-        isVisible ? 'step-content-enter' : 'step-content-exit'
-      } ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+      key={stepKey}
+      className={`step-content-container ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
     >
       {children}
     </div>

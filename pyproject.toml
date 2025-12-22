@@ -8,10 +8,10 @@ dependencies = [
     "fastapi>=0.119.0",
     "flwr-datasets[vision]>=0.5.0",
     "ipykernel>=7.0.1",
-    "langchain>=0.3.27",
+    "langchain>=1.0.0",
     "langchain-community>=0.3.31",
     "langchain-experimental>=0.3.4",
-    "langchain-google-genai>=2.1.12",
+    "langchain-google-genai>=3.1.0",
     "langchain-huggingface>=0.3.1",
     "langchain-postgres>=0.0.15",
     "langgraph>=0.6.10",
@@ -28,8 +28,9 @@ dependencies = [
     "seaborn>=0.13.2",
     "tensorboard>=2.20.0",
     "tensorboardx>=2.6.4",
-    "torch>=2.8.0",
-    "torchvision>=0.23.0",
+    "torch",
+    "torchvision",
+    "torchaudio",
     "uvicorn>=0.37.0",
     "wandb>=0.22.2",
     "flwr[simulation]>=1.22.0",
@@ -39,4 +40,15 @@ dependencies = [
     "tomli-w>=1.2.0",
     "tomli>=2.3.0",
     "sentence-transformers>=5.1.2",
+    "langchain-mcp-adapters>=0.2.1",
 ]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
