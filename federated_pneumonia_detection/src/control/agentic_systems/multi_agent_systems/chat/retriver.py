@@ -275,8 +275,15 @@ class QueryEngine:
             # Stream only the LLM response
             async for chunk in self.llm.astream(messages):
                 if hasattr(chunk, "content") and chunk.content:
-                    full_response += chunk.content
-                    yield {"type": "token", "content": chunk.content}
+                    # Handle content that may be a list (Gemini) or string
+                    content = chunk.content
+                    if isinstance(content, list):
+                        content = "".join(
+                            part if isinstance(part, str) else part.get("text", "")
+                            for part in content
+                        )
+                    full_response += content
+                    yield {"type": "token", "content": content}
 
             # After streaming completes, save to history
             self.add_to_history(session_id, query, full_response)

@@ -29,11 +29,31 @@ interface RunSummary {
   federated_info: FederatedInfo | null;
 }
 
+interface ConfusionMatrixSummary {
+  sensitivity: number;
+  specificity: number;
+  precision_cm: number;
+  accuracy_cm: number;
+  f1_cm: number;
+}
+
 const SavedExperiments = () => {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [summaryStats, setSummaryStats] = useState<Record<number, ConfusionMatrixSummary | null>>({});
+  const [loadingStats, setLoadingStats] = useState<Record<number, boolean>>({});
   const navigate = useNavigate();
+
+  // Fetch summary stats when card is viewed
+  const handleCardHover = async (runId: number) => {
+    if (loadingStats[runId] || summaryStats.hasOwnProperty(runId)) {
+      return; // Already loading or loaded
+    }
+    setLoadingStats(prev => ({ ...prev, [runId]: true }));
+    await fetchSummaryStatistics(runId);
+    setLoadingStats(prev => ({ ...prev, [runId]: false }));
+  };
 
   useEffect(() => {
     const fetchRuns = async () => {
@@ -76,6 +96,60 @@ const SavedExperiments = () => {
     } catch {
       return dateString;
     }
+  };
+
+  const fetchSummaryStatistics = async (runId: number) => {
+    // Return early if already cached
+    if (summaryStats.hasOwnProperty(runId)) {
+      return summaryStats[runId];
+    }
+
+    try {
+      const results = await api.results.getRunMetrics(runId);
+      if (results.confusion_matrix) {
+        const stats: ConfusionMatrixSummary = {
+          sensitivity: results.confusion_matrix.sensitivity,
+          specificity: results.confusion_matrix.specificity,
+          precision_cm: results.confusion_matrix.precision_cm,
+          accuracy_cm: results.confusion_matrix.accuracy_cm,
+          f1_cm: results.confusion_matrix.f1_cm,
+        };
+        setSummaryStats(prev => ({ ...prev, [runId]: stats }));
+        return stats;
+      }
+    } catch (err) {
+      console.error(`Failed to fetch summary statistics for run ${runId}:`, err);
+      setSummaryStats(prev => ({ ...prev, [runId]: null }));
+    }
+    return null;
+  };
+
+  const SummaryStatisticsPreview = ({ stats, loading = false }: { stats?: ConfusionMatrixSummary | null; loading?: boolean }) => {
+    if (!stats) return null;
+
+    return (
+      <div className="pt-3 border-t border-[hsl(168_20%_92%)]">
+        <p className="text-xs text-[hsl(215_15%_55%)] mb-2 uppercase tracking-wide">Summary Statistics</p>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
+            <p className="text-[9px] text-[hsl(215_15%_50%)]">Sensitivity</p>
+            <p className="font-semibold text-[hsl(172_63%_28%)]">{(stats.sensitivity * 100).toFixed(0)}%</p>
+          </div>
+          <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
+            <p className="text-[9px] text-[hsl(215_15%_50%)]">Specificity</p>
+            <p className="font-semibold text-[hsl(172_63%_28%)]">{(stats.specificity * 100).toFixed(0)}%</p>
+          </div>
+          <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
+            <p className="text-[9px] text-[hsl(215_15%_50%)]">Precision</p>
+            <p className="font-semibold text-[hsl(172_63%_28%)]">{(stats.precision_cm * 100).toFixed(0)}%</p>
+          </div>
+          <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
+            <p className="text-[9px] text-[hsl(215_15%_50%)]">F1 Score</p>
+            <p className="font-semibold text-[hsl(172_63%_28%)]">{(stats.f1_cm * 100).toFixed(0)}%</p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -154,6 +228,7 @@ const SavedExperiments = () => {
                   <div
                     key={run.id}
                     className="group relative bg-white rounded-[1.5rem] border border-[hsl(210_15%_92%)] p-6 hover:shadow-xl hover:shadow-[hsl(172_40%_85%)]/25 transition-all duration-500 hover:-translate-y-1 flex flex-col h-full"
+                    onMouseEnter={() => handleCardHover(run.id)}
                     style={{
                       animation: 'fadeIn 0.4s ease-out forwards',
                       animationDelay: `${index * 0.05}s`,
@@ -202,6 +277,7 @@ const SavedExperiments = () => {
                             {(run.best_val_recall * 100).toFixed(1)}
                             <span className="text-lg text-[hsl(172_63%_40%)]">%</span>
                           </p>
+                          <SummaryStatisticsPreview stats={summaryStats[run.id]} />
                         </div>
                       )}
 
@@ -235,6 +311,7 @@ const SavedExperiments = () => {
                               <p className="text-xs text-[hsl(35_70%_45%)]">No server evaluation data</p>
                             </div>
                           )}
+                          <SummaryStatisticsPreview stats={summaryStats[run.id]} />
                         </div>
                       )}
 

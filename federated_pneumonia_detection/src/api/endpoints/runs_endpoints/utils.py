@@ -2,11 +2,68 @@
 Utility functions for transforming run data to API response format.
 
 Converts database Run objects to frontend-compatible ExperimentResults format,
-including epoch indexing conversion and metrics aggregation.
+including epoch indexing conversion, metrics aggregation, and summary statistics.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from collections import defaultdict
+
+
+def _calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
+    """
+    Calculate derived metrics from confusion matrix values.
+
+    Args:
+        cm: Dict with keys: true_positives, true_negatives, false_positives, false_negatives
+
+    Returns:
+        Dict with calculated statistics: sensitivity, specificity, precision_cm, accuracy_cm, f1_cm
+
+    Raises:
+        ValueError: If any confusion matrix value is negative or total samples is zero
+    """
+    tp = cm.get("true_positives", 0)
+    tn = cm.get("true_negatives", 0)
+    fp = cm.get("false_positives", 0)
+    fn = cm.get("false_negatives", 0)
+
+    # Validate values
+    if any(v < 0 for v in [tp, tn, fp, fn]):
+        raise ValueError("Confusion matrix values cannot be negative")
+
+    total = tp + tn + fp + fn
+    if total == 0:
+        return {
+            "sensitivity": 0.0,
+            "specificity": 0.0,
+            "precision_cm": 0.0,
+            "accuracy_cm": 0.0,
+            "f1_cm": 0.0,
+        }
+
+    # Sensitivity (Recall for positive class) = TP / (TP + FN)
+    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+
+    # Specificity (Recall for negative class) = TN / (TN + FP)
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+
+    # Precision = TP / (TP + FP)
+    precision_cm = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+
+    # Accuracy = (TP + TN) / Total
+    accuracy_cm = (tp + tn) / total if total > 0 else 0.0
+
+    # F1 Score = 2 * (Precision * Sensitivity) / (Precision + Sensitivity)
+    denom = precision_cm + sensitivity
+    f1_cm = 2 * (precision_cm * sensitivity) / denom if denom > 0 else 0.0
+
+    return {
+        "sensitivity": round(sensitivity, 4),
+        "specificity": round(specificity, 4),
+        "precision_cm": round(precision_cm, 4),
+        "accuracy_cm": round(accuracy_cm, 4),
+        "f1_cm": round(f1_cm, 4),
+    }
 
 
 def _transform_run_to_results(run) -> Dict[str, Any]:
@@ -74,6 +131,29 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
     auc = final_metrics.get("val_auroc", final_metrics.get("val_auc", 0.0))
     loss = final_metrics.get("val_loss", 0.0)
 
+    # Extract confusion matrix values from last epoch
+    confusion_matrix_obj = None
+    if last_epoch_data:
+        tp = last_epoch_data.get("val_cm_tp")
+        tn = last_epoch_data.get("val_cm_tn")
+        fp = last_epoch_data.get("val_cm_fp")
+        fn = last_epoch_data.get("val_cm_fn")
+
+        # Only build CM object if all values exist
+        if all(v is not None for v in [tp, tn, fp, fn]):
+            try:
+                cm_dict = {
+                    "true_positives": int(tp),
+                    "true_negatives": int(tn),
+                    "false_positives": int(fp),
+                    "false_negatives": int(fn),
+                }
+                # Calculate summary statistics
+                summary_stats = _calculate_summary_statistics(cm_dict)
+                confusion_matrix_obj = {**cm_dict, **summary_stats}
+            except (ValueError, TypeError):
+                confusion_matrix_obj = None
+
     result = {
         "experiment_id": f"run_{run.id}",
         "status": run.status,
@@ -106,7 +186,7 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
             "final_auc": auc,
             "final_loss": loss,
         },
-        "confusion_matrix": None,  # `TODO: Add if available in metrics
+        "confusion_matrix": confusion_matrix_obj,
     }
 
     return result

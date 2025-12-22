@@ -51,8 +51,9 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
                 "evaluation_time": datetime.now(),
             }
 
-            # Extract confusion matrix if available
+            # Extract confusion matrix if available (supports multiple formats)
             if "confusion_matrix" in metrics:
+                # Nested dict format: {"confusion_matrix": {tp: ..., tn: ..., ...}}
                 cm = metrics["confusion_matrix"]
                 eval_data.update(
                     {
@@ -62,23 +63,28 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
                         "false_negatives": cm.get("false_negatives") or cm.get("fn"),
                     }
                 )
+            elif "server_cm_tp" in metrics:
+                # Flat format: {"server_cm_tp": ..., "server_cm_tn": ..., ...}
+                eval_data.update(
+                    {
+                        "true_positives": metrics.get("server_cm_tp"),
+                        "true_negatives": metrics.get("server_cm_tn"),
+                        "false_positives": metrics.get("server_cm_fp"),
+                        "false_negatives": metrics.get("server_cm_fn"),
+                    }
+                )
 
             # Store any additional metrics
+            excluded_keys = {
+                "loss", "accuracy", "precision", "recall", "f1_score", "f1",
+                "auroc", "auc", "confusion_matrix",
+                "server_cm_tp", "server_cm_tn", "server_cm_fp", "server_cm_fn",
+                "server_loss", "server_accuracy", "server_precision", "server_recall",
+                "server_f1", "server_auroc"
+            }
             additional = {
-                k: v
-                for k, v in metrics.items()
-                if k
-                not in [
-                    "loss",
-                    "accuracy",
-                    "precision",
-                    "recall",
-                    "f1_score",
-                    "f1",
-                    "auroc",
-                    "auc",
-                    "confusion_matrix",
-                ]
+                k: v for k, v in metrics.items()
+                if k not in excluded_keys
             }
             if additional:
                 eval_data["additional_metrics"] = additional

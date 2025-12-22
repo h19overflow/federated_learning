@@ -114,6 +114,7 @@ class LitResNet(pl.LightningModule):
         self.val_recall = torchmetrics.Recall(task=task_type, num_classes=num_classes)
         self.val_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
         self.val_auroc = torchmetrics.AUROC(task=task_type, num_classes=num_classes)
+        self.val_confusion = torchmetrics.ConfusionMatrix(task=task_type, num_classes=num_classes)
 
         # Test metrics (same as validation)
         self.test_accuracy = torchmetrics.Accuracy(task=task_type, num_classes=num_classes)
@@ -216,6 +217,7 @@ class LitResNet(pl.LightningModule):
         self.val_recall.update(preds, targets_for_metrics)
         self.val_f1.update(preds, targets_for_metrics)
         self.val_auroc.update(preds, targets_for_metrics)
+        self.val_confusion.update(preds, targets_for_metrics)
 
         # Log metrics
         self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
@@ -295,9 +297,24 @@ class LitResNet(pl.LightningModule):
         self.log("learning_rate", current_lr, on_epoch=True)
 
     def on_validation_epoch_end(self) -> None:
-        """Called at the end of validation epoch."""
-        # Optional: Add custom validation epoch end logic
-        pass
+        """Called at the end of validation epoch. Extracts and logs confusion matrix values."""
+        # Compute and extract confusion matrix values
+        cm = self.val_confusion.compute()
+
+        # For binary classification, CM is 2x2: [[TN, FP], [FN, TP]]
+        tn = int(cm[0, 0].item())
+        fp = int(cm[0, 1].item())
+        fn = int(cm[1, 0].item())
+        tp = int(cm[1, 1].item())
+
+        # Log confusion matrix components
+        self.log("val_cm_tn", tn, on_epoch=True, sync_dist=True)
+        self.log("val_cm_fp", fp, on_epoch=True, sync_dist=True)
+        self.log("val_cm_fn", fn, on_epoch=True, sync_dist=True)
+        self.log("val_cm_tp", tp, on_epoch=True, sync_dist=True)
+
+        # Reset the confusion matrix for the next epoch
+        self.val_confusion.reset()
 
     def get_model_summary(self) -> Dict[str, Any]:
         """Get comprehensive model summary."""

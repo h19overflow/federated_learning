@@ -47,3 +47,7 @@ Thumbs.db
 analysis/
 analysis_output/
 documentation/
+extracted_data/
+
+# Claude documentation copies
+**/Claude.md

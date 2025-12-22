@@ -226,6 +226,12 @@ export interface ConfusionMatrix {
   true_negatives: number;
   false_positives: number;
   false_negatives: number;
+  // Summary statistics calculated from CM values
+  sensitivity: number;      // TP / (TP + FN) - true positive rate
+  specificity: number;      // TN / (TN + FP) - true negative rate
+  precision_cm: number;     // TP / (TP + FP)
+  accuracy_cm: number;      // (TP + TN) / Total
+  f1_cm: number;            // 2 * (Precision * Sensitivity) / (Precision + Sensitivity)
 }
 
 export interface ResultsTrainingHistoryEntry {

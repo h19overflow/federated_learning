@@ -6,7 +6,22 @@
       "Bash(uv sync:*)",
       "Bash(Remove-Item uv.lock -ErrorAction SilentlyContinue)",
       "Bash(uv pip:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(Get-ChildItem -Path analysis_output -Recurse)",
+      "Bash(Select-Object FullName, Length)",
+      "Bash(dir:*)",
+      "Bash(tree:*)",
+      "Bash(rm:*)",
+      "Bash(tee:*)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(for file in /c/Users/User/Projects/FYP2/tests/integration/test_confusion_matrix*.py)",
+      "Bash(do echo \"Checking $file...\")",
+      "Bash(done)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Projects\\\\FYP2\" -Filter \"README.md\" -Recurse)",
+      "Bash(Where-Object { $_FullName -notmatch '\\(node_modules|\\\\.venv|\\\\.pytest_cache\\)' })",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

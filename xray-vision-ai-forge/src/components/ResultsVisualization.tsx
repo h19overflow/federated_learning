@@ -187,6 +187,42 @@ const ResultsVisualization = ({
     </div>
   );
 
+  // Summary Statistics Component (from confusion matrix)
+  const SummaryStatisticsDisplay = ({
+    confusion_matrix,
+    title = "Summary Statistics"
+  }: {
+    confusion_matrix: any;
+    title?: string;
+  }) => {
+    if (!confusion_matrix || !confusion_matrix.sensitivity) return null;
+
+    const stats = [
+      { label: "Sensitivity", value: confusion_matrix.sensitivity, tooltip: "True Positive Rate (TP/(TP+FN))" },
+      { label: "Specificity", value: confusion_matrix.specificity, tooltip: "True Negative Rate (TN/(TN+FP))" },
+      { label: "Precision", value: confusion_matrix.precision_cm, tooltip: "TP/(TP+FP)" },
+      { label: "Accuracy", value: confusion_matrix.accuracy_cm, tooltip: "(TP+TN)/Total" },
+      { label: "F1 Score", value: confusion_matrix.f1_cm, tooltip: "Harmonic mean of Precision & Sensitivity" },
+    ];
+
+    return (
+      <div className="bg-[hsl(168_25%_98%)] rounded-xl p-5 border border-[hsl(168_20%_92%)]">
+        <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] mb-4 flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-[hsl(172_63%_35%)]" />
+          {title}
+        </h4>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {stats.map((stat) => (
+            <div key={stat.label} className="bg-white p-3 rounded-lg border border-[hsl(210_15%_92%)] text-center hover:shadow-sm transition-shadow" title={stat.tooltip}>
+              <p className="text-xs text-[hsl(215_15%_55%)] uppercase mb-1">{stat.label}</p>
+              <p className="text-xl font-bold text-[hsl(172_63%_28%)]">{(stat.value * 100).toFixed(1)}%</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // Confusion Matrix Component
   const ConfusionMatrixDisplay = ({ matrix, title }: { matrix: number[][]; title?: string }) => (
     <div className="bg-[hsl(168_25%_98%)] rounded-xl p-5 border border-[hsl(168_20%_92%)]">
@@ -392,6 +428,11 @@ const ResultsVisualization = ({
                           <ConfusionMatrixDisplay matrix={centralizedConfusionMatrix} title="Confusion Matrix" />
                         )}
                       </div>
+
+                      {/* Summary Statistics from Confusion Matrix */}
+                      {centralizedResults?.confusion_matrix && (
+                        <SummaryStatisticsDisplay confusion_matrix={centralizedResults.confusion_matrix} title="Centralized Summary Statistics" />
+                      )}
                     </>
                   ) : (
                     <div className="text-center py-12">
@@ -432,6 +473,11 @@ const ResultsVisualization = ({
                           <ConfusionMatrixDisplay matrix={federatedConfusionMatrix} title="Confusion Matrix" />
                         )}
                       </div>
+
+                      {/* Summary Statistics from Confusion Matrix */}
+                      {federatedResults?.confusion_matrix && (
+                        <SummaryStatisticsDisplay confusion_matrix={federatedResults.confusion_matrix} title="Federated Summary Statistics" />
+                      )}
                     </>
                   ) : (
                     <div className="text-center py-12">
@@ -509,6 +555,11 @@ const ResultsVisualization = ({
                           <ConfusionMatrixDisplay matrix={confusionMatrix} title="Confusion Matrix" />
                         )}
                       </div>
+
+                      {/* Summary Statistics from Confusion Matrix */}
+                      {activeResults?.confusion_matrix && (
+                        <SummaryStatisticsDisplay confusion_matrix={activeResults.confusion_matrix} />
+                      )}
                     </>
                   )}
                 </TabsContent>
@@ -619,7 +670,14 @@ const ResultsVisualization = ({
                     </div>
 
                     {serverEvaluationConfusionMatrix && (
-                      <ConfusionMatrixDisplay matrix={serverEvaluationConfusionMatrix} title="Confusion Matrix (Latest Round)" />
+                      <>
+                        <ConfusionMatrixDisplay matrix={serverEvaluationConfusionMatrix} title="Confusion Matrix (Latest Round)" />
+                      </>
+                    )}
+
+                    {/* Summary Statistics for Server Evaluation */}
+                    {serverEvaluation?.evaluations && serverEvaluation.evaluations.length > 0 && serverEvaluation.evaluations[serverEvaluation.evaluations.length - 1]?.confusion_matrix && (
+                      <SummaryStatisticsDisplay confusion_matrix={serverEvaluation.evaluations[serverEvaluation.evaluations.length - 1].confusion_matrix} title="Server Evaluation Summary Statistics" />
                     )}
                   </TabsContent>
                 )}

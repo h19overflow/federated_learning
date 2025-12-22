@@ -136,7 +136,7 @@ def create_central_evaluate_fn(
         accuracy = total_correct / total_samples
 
         # Calculate additional metrics using torchmetrics
-        from torchmetrics import Precision, Recall, F1Score, AUROC
+        from torchmetrics import Precision, Recall, F1Score, AUROC, ConfusionMatrix
 
         preds_tensor = torch.tensor(all_preds)
         targets_tensor = torch.tensor(all_targets)
@@ -145,17 +145,26 @@ def create_central_evaluate_fn(
         recall_metric = Recall(task="binary")
         f1_metric = F1Score(task="binary")
         auroc_metric = AUROC(task="binary")
+        cm_metric = ConfusionMatrix(task="binary")
 
         precision = precision_metric(preds_tensor, targets_tensor).item()
         recall = recall_metric(preds_tensor, targets_tensor).item()
         f1 = f1_metric(preds_tensor, targets_tensor).item()
         auroc = auroc_metric(preds_tensor, targets_tensor).item()
 
+        # Compute confusion matrix
+        cm = cm_metric(preds_tensor, targets_tensor)
+        tn = int(cm[0, 0].item())
+        fp = int(cm[0, 1].item())
+        fn = int(cm[1, 0].item())
+        tp = int(cm[1, 1].item())
+
         logger.info(
             f"[Server Evaluation] Round {server_round} - "
             f"Loss: {avg_loss:.4f}, Acc: {accuracy:.4f}, "
             f"Prec: {precision:.4f}, Rec: {recall:.4f}, "
-            f"F1: {f1:.4f}, AUROC: {auroc:.4f}"
+            f"F1: {f1:.4f}, AUROC: {auroc:.4f}, "
+            f"CM(TP/TN/FP/FN): {tp}/{tn}/{fp}/{fn}"
         )
 
         # Return metrics as MetricRecord
@@ -167,6 +176,10 @@ def create_central_evaluate_fn(
                 "server_recall": recall,
                 "server_f1": f1,
                 "server_auroc": auroc,
+                "server_cm_tp": float(tp),
+                "server_cm_tn": float(tn),
+                "server_cm_fp": float(fp),
+                "server_cm_fn": float(fn),
             }
         )
 
