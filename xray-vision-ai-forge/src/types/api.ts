@@ -48,6 +48,7 @@ export interface ExperimentConfigBackend {
   reduce_lr_patience?: number;
   reduce_lr_factor?: number;
   min_lr?: number;
+  validation_split?: number;
 
   // Federated Learning parameters
   num_rounds?: number;

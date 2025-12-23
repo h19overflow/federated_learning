@@ -126,6 +126,7 @@ export function mapToBackendConfig(
       reduce_lr_patience: frontendConfig.reduceLrPatience ?? ADVANCED_DEFAULTS.reduce_lr_patience,
       reduce_lr_factor: frontendConfig.reduceLrFactor ?? ADVANCED_DEFAULTS.reduce_lr_factor,
       min_lr: frontendConfig.minLr ?? ADVANCED_DEFAULTS.min_lr,
+      validation_split: overrides?.experiment?.validation_split ?? overrides?.system?.validation_split ?? ADVANCED_DEFAULTS.validation_split,
 
       // Federated parameters (only if applicable)
       ...(frontendConfig.trainingMode === 'federated' || frontendConfig.trainingMode === 'both'

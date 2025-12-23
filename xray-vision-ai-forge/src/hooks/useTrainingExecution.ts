@@ -34,6 +34,7 @@ export type StatusMessage = {
 export const useTrainingExecution = (
   config: ExperimentConfiguration,
   datasetFile: File | null,
+  trainSplit: number,
   onComplete: (runId: number) => void
 ) => {
   const [isRunning, setIsRunning] = useState(false);
@@ -467,10 +468,15 @@ export const useTrainingExecution = (
 
       addStatusMessage('info', 'Uploading dataset and starting training...', undefined, { immediate: true });
 
-      const backendConfig = mapToBackendConfig(config);
+      // Convert trainSplit (e.g., 80%) to validation_split (e.g., 0.20)
+      const validationSplit = (100 - trainSplit) / 100;
+      const backendConfig = mapToBackendConfig(config, {
+        system: { validation_split: validationSplit },
+      });
 
+      console.log(`[TrainingExecution] Setting validation_split=${validationSplit} (trainSplit=${trainSplit}%)`);
       await api.configuration.setConfiguration(backendConfig);
-      addStatusMessage('info', 'Configuration set successfully', undefined, { immediate: true });
+      addStatusMessage('info', `Configuration set: Train ${trainSplit}% / Validation ${100 - trainSplit}%`, undefined, { immediate: true });
 
       setupWebSocket(expName);
 

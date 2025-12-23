@@ -23,6 +23,7 @@ import InstructionCard from './InstructionCard';
 interface TrainingExecutionProps {
   config: ExperimentConfiguration;
   datasetFile: File | null;
+  trainSplit: number;
   onComplete: (runId: number) => void;
   onFederatedUpdate?: (data: {
     isFederated: boolean;
@@ -36,7 +37,7 @@ interface TrainingExecutionProps {
  * Displays real-time training progress and status
  * Redesigned with Clinical Clarity theme - teal progress bars, professional status badges
  */
-const TrainingExecution = ({ config, datasetFile, onComplete, onFederatedUpdate }: TrainingExecutionProps) => {
+const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFederatedUpdate }: TrainingExecutionProps) => {
   const {
     isRunning,
     progress,
@@ -48,7 +49,7 @@ const TrainingExecution = ({ config, datasetFile, onComplete, onFederatedUpdate 
     isFederatedTraining,
     federatedRounds,
     federatedContext,
-  } = useTrainingExecution(config, datasetFile, onComplete);
+  } = useTrainingExecution(config, datasetFile, trainSplit, onComplete);
 
   // Validation state
   const [validationErrors, setValidationErrors] = useState<string[]>([]);

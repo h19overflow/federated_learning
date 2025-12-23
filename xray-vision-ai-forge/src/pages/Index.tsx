@@ -266,9 +266,10 @@ const Index = () => {
         return <ExperimentConfig onComplete={handleConfigComplete} initialConfig={experimentConfig} />;
       case 3:
         return (
-          <TrainingExecution 
-            config={experimentConfig} 
-            datasetFile={datasetState.file} 
+          <TrainingExecution
+            config={experimentConfig}
+            datasetFile={datasetState.file}
+            trainSplit={datasetState.trainSplit}
             onComplete={handleTrainingComplete}
             onFederatedUpdate={(fedData) => {
               setIsFederatedTraining(fedData.isFederated);

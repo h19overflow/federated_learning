@@ -65,6 +65,9 @@ class ExperimentConfig(BaseModel):
     reduce_lr_patience: Optional[int] = Field(None, description="Reduce LR patience")
     reduce_lr_factor: Optional[float] = Field(None, description="Reduce LR factor")
     min_lr: Optional[float] = Field(None, description="Minimum learning rate")
+    validation_split: Optional[float] = Field(
+        None, description="Validation split ratio (0.0 to 1.0)"
+    )
 
     # Federated Learning parameters
     num_rounds: Optional[int] = Field(None, description="Number of federated rounds")
