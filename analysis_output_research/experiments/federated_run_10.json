@@ -1,0 +1,52 @@
+{
+  "run_id": 10,
+  "training_mode": "federated",
+  "seed": 1083481624,
+  "final_metrics": {
+    "accuracy": 0.69,
+    "precision": 0.43918919563293457,
+    "recall": 0.8666666746139526,
+    "f1": 0.5829596519470215,
+    "auroc": 0.8096000552177429,
+    "loss": 0.607182050148646
+  },
+  "metrics_history": [
+    {
+      "round": 0.0,
+      "val_acc": 0.6466666666666666,
+      "val_precision": 0.2753623127937317,
+      "val_recall": 0.25333333015441895,
+      "val_f1": 0.2638888955116272,
+      "val_auroc": 0.47146666049957275,
+      "val_loss": 0.6914565348625183
+    },
+    {
+      "round": 1.0,
+      "val_acc": 0.7366666666666667,
+      "val_precision": 0.4545454680919647,
+      "val_recall": 0.2666666805744171,
+      "val_f1": 0.3361344635486603,
+      "val_auroc": 0.7714370489120483,
+      "val_loss": 0.5949405694007873
+    },
+    {
+      "round": 2.0,
+      "val_acc": 0.69,
+      "val_precision": 0.43918919563293457,
+      "val_recall": 0.8666666746139526,
+      "val_f1": 0.5829596519470215,
+      "val_auroc": 0.8096000552177429,
+      "val_loss": 0.607182050148646
+    }
+  ],
+  "training_duration_seconds": 435.84280133247375,
+  "best_epoch": 3,
+  "best_model_path": null,
+  "config_snapshot": {
+    "num_clients": 5,
+    "num_rounds": 5,
+    "local_epochs": 2,
+    "seed": 1083481624
+  },
+  "timestamp": "2025-12-23T01:27:39.490456"
+}

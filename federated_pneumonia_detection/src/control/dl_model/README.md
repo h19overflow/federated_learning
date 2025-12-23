@@ -53,6 +53,64 @@ The centralized training module is responsible for:
 
 ### Step-by-Step Execution
 
+#### Architecture Flow Diagram
+
+```mermaid
+graph TD
+    Start([User: train request]) --> Init["1️⃣ INITIALIZATION<br/>CentralizedTrainer<br/>Load Config<br/>Setup Directories"]
+
+    Init --> Extract["2️⃣ DATA EXTRACTION<br/>DataSourceExtractor<br/>Validate ZIP/Directory<br/>Find CSV + Images"]
+
+    Extract --> Prepare["3️⃣ DATA PREPARATION<br/>Load Metadata CSV<br/>Train/Val Split 80/20<br/>Stratified Sampling"]
+
+    Prepare --> DataModule["4️⃣ DATA MODULE<br/>XRayDataModule<br/>Create Data Loaders<br/>Pin Memory, Prefetch"]
+
+    DataModule --> ModelSetup["5️⃣ MODEL SETUP<br/>LitResNet<br/>ResNet50 Backbone<br/>Custom Head"]
+
+    ModelSetup --> Callbacks["6️⃣ CALLBACKS CONFIG<br/>ModelCheckpoint<br/>EarlyStopping<br/>MetricsCollector<br/>LRMonitor"]
+
+    Callbacks --> TrainStart["7️⃣ TRAINING EXECUTION<br/>PyTorch Lightning Trainer<br/>trainer.fit()"]
+
+    TrainStart --> EpochLoop["FOR EACH EPOCH:<br/>Forward Pass<br/>Compute Loss<br/>Backward Pass<br/>Optimizer Step"]
+
+    EpochLoop --> Validation["VALIDATION LOOP<br/>Evaluate on Val Set<br/>Compute Metrics<br/>Check Early Stopping"]
+
+    Validation --> MetricsFlow["📤 METRICS PIPELINE"]
+
+    MetricsFlow --> WebSocket["WebSocketSender<br/>Send to Frontend<br/>Real-time Dashboard"]
+
+    MetricsFlow --> FilePersist["MetricsFilePersister<br/>Save CSV<br/>Save JSON Metadata"]
+
+    Validation --> CheckStop{Early Stopping<br/>Triggered?}
+
+    CheckStop -->|No| EpochLoop
+    CheckStop -->|Yes| Collect["8️⃣ RESULTS COLLECTION<br/>Extract Training History<br/>Get Best Model Path<br/>Aggregate Statistics"]
+
+    Collect --> Return["✅ RETURN RESULTS<br/>Best Model Path<br/>Metrics History<br/>Performance Scores"]
+
+    Return --> End([Training Complete])
+
+    style Start fill:#2196F3,color:#fff,stroke:#1565C0,stroke-width:2px
+    style Init fill:#FF6F00,color:#fff,stroke:#E65100,stroke-width:2px
+    style Extract fill:#FF6F00,color:#fff,stroke:#E65100,stroke-width:2px
+    style Prepare fill:#9C27B0,color:#fff,stroke:#6A1B9A,stroke-width:2px
+    style DataModule fill:#9C27B0,color:#fff,stroke:#6A1B9A,stroke-width:2px
+    style ModelSetup fill:#4CAF50,color:#fff,stroke:#2E7D32,stroke-width:2px
+    style Callbacks fill:#4CAF50,color:#fff,stroke:#2E7D32,stroke-width:2px
+    style TrainStart fill:#F44336,color:#fff,stroke:#C62828,stroke-width:2px
+    style EpochLoop fill:#F44336,color:#fff,stroke:#C62828,stroke-width:2px
+    style Validation fill:#F44336,color:#fff,stroke:#C62828,stroke-width:2px
+    style MetricsFlow fill:#FFC107,color:#000,stroke:#F57F17,stroke-width:2px
+    style WebSocket fill:#00BCD4,color:#fff,stroke:#00838F,stroke-width:2px
+    style FilePersist fill:#00BCD4,color:#fff,stroke:#00838F,stroke-width:2px
+    style Collect fill:#2196F3,color:#fff,stroke:#1565C0,stroke-width:2px
+    style Return fill:#2196F3,color:#fff,stroke:#1565C0,stroke-width:2px
+    style End fill:#4CAF50,color:#fff,stroke:#2E7D32,stroke-width:2px
+    style CheckStop fill:#FF9800,color:#fff,stroke:#E65100,stroke-width:2px
+```
+
+#### Detailed Step Breakdown
+
 ```
 1. INITIALIZATION
    ├─ CentralizedTrainer(config, run_name)
@@ -194,7 +252,9 @@ The centralized training module is responsible for:
 
 ---
 
-## Directory Structure
+## Directory Structure & Component Architecture
+
+#### Directory Layout
 
 ```
 dl_model/
@@ -210,6 +270,85 @@ dl_model/
 │       ├── metrics_file_persister.py # File export
 │       └── websocket_metrics_sender.py # Real-time streaming
 └── README.md                        # This file
+```
+
+#### Component Interaction Diagram
+
+```mermaid
+graph LR
+    subgraph Input["🔌 INPUT LAYER"]
+        ZipFile["ZIP/Directory<br/>Dataset"]
+        Config["Config Manager<br/>Parameters"]
+    end
+
+    subgraph DataLayer["📂 DATA LAYER"]
+        Extractor["DataSourceExtractor<br/>- Extract ZIP<br/>- Find CSV<br/>- Validate Images"]
+
+        DataMod["XRayDataModule<br/>- Load Metadata<br/>- Create Batches<br/>- Pin Memory"]
+    end
+
+    subgraph ModelLayer["🧠 MODEL LAYER"]
+        LitModel["LitResNet<br/>- ResNet50<br/>- Custom Head<br/>- Loss Function"]
+
+        Trainer["PyTorch Lightning<br/>Trainer<br/>- Fit Loop<br/>- Device Mgmt"]
+    end
+
+    subgraph CallbackLayer["⚡ CALLBACK LAYER"]
+        MetricsCol["MetricsCollector<br/>- Track Metrics<br/>- Per-Epoch Agg"]
+
+        Checkpoint["ModelCheckpoint<br/>- Best Model Save<br/>- Score Monitor"]
+
+        EarlyStopping["EarlyStopping<br/>- Patience Logic<br/>- Trigger Signal"]
+    end
+
+    subgraph OutputLayer["📤 OUTPUT LAYER"]
+        WebSocket["WebSocketSender<br/>- Real-time Stream<br/>- Dashboard Push"]
+
+        FilePersist["MetricsFilePersister<br/>- CSV Export<br/>- JSON Metadata"]
+
+        DBSave["Database Saver<br/>- run Table<br/>- run_metrics Table"]
+    end
+
+    subgraph Orchestrator["🎯 ORCHESTRATOR"]
+        CentralTrain["CentralizedTrainer<br/>Coordinates All Phases<br/>Handles Errors<br/>Collects Results"]
+    end
+
+    %% Connections
+    Input --> CentralTrain
+
+    CentralTrain --> Extractor
+    Extractor --> DataMod
+
+    Config --> LitModel
+    Config --> Trainer
+    DataMod --> Trainer
+
+    LitModel --> Trainer
+    Trainer --> MetricsCol
+    Trainer --> Checkpoint
+    Trainer --> EarlyStopping
+
+    MetricsCol --> WebSocket
+    MetricsCol --> FilePersist
+    MetricsCol --> DBSave
+
+    Checkpoint --> DBSave
+    EarlyStopping --> WebSocket
+
+    %% Styling
+    classDef input fill:#2196F3,color:#fff,stroke:#1565C0,stroke-width:2px
+    classDef data fill:#9C27B0,color:#fff,stroke:#6A1B9A,stroke-width:2px
+    classDef model fill:#4CAF50,color:#fff,stroke:#2E7D32,stroke-width:2px
+    classDef callback fill:#FF6F00,color:#fff,stroke:#E65100,stroke-width:2px
+    classDef output fill:#F44336,color:#fff,stroke:#C62828,stroke-width:2px
+    classDef main fill:#00BCD4,color:#fff,stroke:#00838F,stroke-width:3px
+
+    class ZipFile,Config input
+    class Extractor,DataMod data
+    class LitModel,Trainer model
+    class MetricsCol,Checkpoint,EarlyStopping callback
+    class WebSocket,FilePersist,DBSave output
+    class CentralTrain main
 ```
 
 ---

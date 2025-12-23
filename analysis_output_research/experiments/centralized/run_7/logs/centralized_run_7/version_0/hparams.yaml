@@ -1,0 +1,9 @@
+color_mode: null
+custom_preprocessing_config: null
+image_dir: C:\Users\User\AppData\Local\Temp\pneumonia_training_vr4trhl_\Training\Images
+monitor_metric: val_recall
+num_classes: 1
+persistent_workers: null
+pin_memory: null
+prefetch_factor: null
+validate_images_on_init: false

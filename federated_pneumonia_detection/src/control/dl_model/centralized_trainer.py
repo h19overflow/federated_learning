@@ -21,13 +21,16 @@ from federated_pneumonia_detection.src.control.dl_model.utils.model.training_cal
 from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import (
     LitResNet,
 )
+from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet_enhanced import (
+    LitResNetEnhanced,
+    ProgressiveUnfreezeCallback,
+)
 from federated_pneumonia_detection.src.control.dl_model.utils.model.xray_data_module import (
     XRayDataModule,
 )
 from federated_pneumonia_detection.src.utils.data_processing import (
     load_metadata,
     create_train_val_split,
-    sample_dataframe,
 )
 from .utils import DataSourceExtractor
 
@@ -190,7 +193,7 @@ class CentralizedTrainer:
         is_federated: bool = False,
         client_id: Optional[int] = None,
         round_number: int = 0,
-    ) -> Tuple[LitResNet, list, Any]:
+    ) -> Tuple[pl.LightningModule, list, Any]:
         """
         Build model and training callbacks.
 
@@ -205,7 +208,7 @@ class CentralizedTrainer:
         Returns:
             Tuple of (model, callbacks, metrics_collector)
         """
-        self.logger.info("Setting up model and callbacks...")
+        self.logger.info("Setting up model and callbacks (Enhanced v3 - Balanced)...")
         if is_federated and client_id is not None:
             self.logger.info(
                 f"[CentralizedTrainer] Federated mode enabled for client_id={client_id}, round={round_number}"
@@ -226,13 +229,38 @@ class CentralizedTrainer:
             round_number=round_number,
         )
 
-        model = LitResNet(
+        # Enhanced v3 - Balanced configuration for high accuracy, precision, recall, AND F1
+        # focal_alpha=0.6 balances recall and precision
+        # focal_gamma=1.5 provides moderate focus on hard examples
+        # Keep val_recall as monitor for frontend compatibility
+        model = LitResNetEnhanced(
             config=self.config,
             class_weights_tensor=callback_config["class_weights"],
-            monitor_metric="val_recall",
+            use_focal_loss=True,
+            focal_alpha=0.6,  # Balanced between recall and precision
+            focal_gamma=1.5,  # Less extreme focus
+            label_smoothing=0.05,  # Mild regularization
+            use_cosine_scheduler=True,
+            monitor_metric="val_recall",  # Keep val_recall for frontend/callback compatibility
         )
 
-        return model, callback_config["callbacks"], callback_config["metrics_collector"]
+        # Add progressive unfreezing callback for better feature learning
+        total_epochs = self.config.get("experiment.epochs", 25)
+        unfreeze_epochs = [
+            int(total_epochs * 0.15),
+            int(total_epochs * 0.35),
+            int(total_epochs * 0.55),
+            int(total_epochs * 0.75),
+        ]
+        progressive_callback = ProgressiveUnfreezeCallback(
+            unfreeze_epochs=unfreeze_epochs,
+            layers_per_unfreeze=4,
+        )
+        self.logger.info(f"Progressive unfreezing at epochs: {unfreeze_epochs}")
+
+        callbacks = callback_config["callbacks"] + [progressive_callback]
+
+        return model, callbacks, callback_config["metrics_collector"]
 
     def _build_trainer(
         self, callbacks: list, experiment_name: str, is_federated: bool = False
@@ -369,18 +397,8 @@ class CentralizedTrainer:
         df = load_metadata(csv_path, self.config, self.logger)
         self.logger.info(f"Loaded metadata: {len(df)} samples from {csv_path}")
 
-        # Sample data if needed
+        # Create train/val split (use all uploaded data, no sampling)
         target_col = self.config.get("columns.target")
-        if self.config.get("system.sample_fraction") < 1.0:
-            df = sample_dataframe(
-                df,
-                self.config.get("system.sample_fraction"),
-                target_col,
-                self.config.get("system.seed"),
-                self.logger,
-            )
-
-        # Create train/val split
         train_df, val_df = create_train_val_split(
             df,
             self.config.get("experiment.validation_split"),

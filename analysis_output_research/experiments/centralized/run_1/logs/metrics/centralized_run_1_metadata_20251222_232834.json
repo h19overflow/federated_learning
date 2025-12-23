@@ -1,0 +1,22 @@
+{
+  "experiment_name": "centralized_run_1",
+  "start_time": "2025-12-22T23:24:09.883764",
+  "end_time": "2025-12-22T23:28:34.002510",
+  "total_epochs": 10,
+  "best_epoch": 5,
+  "best_val_recall": 0.875,
+  "best_val_loss": 0.715995728969574,
+  "training_mode": "centralized",
+  "client_id": null,
+  "round_number": 0,
+  "run_id": 46,
+  "max_epochs": 10,
+  "num_devices": 1,
+  "accelerator": "CUDAAccelerator",
+  "precision": "16-mixed",
+  "model_class": "LitResNet",
+  "total_parameters": 24049089,
+  "trainable_parameters": 541057,
+  "training_duration_seconds": 264.118746,
+  "training_duration_formatted": "0:04:24.118746"
+}

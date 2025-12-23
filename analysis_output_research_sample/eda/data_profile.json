@@ -1,0 +1,134 @@
+{
+  "metadata": {
+    "generated_at": "2025-12-22T23:16:43.651711",
+    "source_path": "Training_Sample_5pct.zip",
+    "csv_filename": "stage2_train_metadata.csv"
+  },
+  "dataset_overview": {
+    "total_samples": 1500,
+    "num_features": 12,
+    "columns": [
+      "patientId",
+      "x",
+      "y",
+      "width",
+      "height",
+      "Target",
+      "class",
+      "age",
+      "sex",
+      "modality",
+      "position",
+      "filename"
+    ]
+  },
+  "class_distribution": {
+    "classes": {
+      "0": {
+        "count": 1051,
+        "percentage": 70.07
+      },
+      "1": {
+        "count": 449,
+        "percentage": 29.93
+      }
+    },
+    "num_classes": 2,
+    "balance_ratio": 0.4272,
+    "is_imbalanced": "True",
+    "majority_class": "0",
+    "minority_class": "1"
+  },
+  "data_quality": {
+    "missing_values": {
+      "patientId": 0,
+      "x": 1051,
+      "y": 1051,
+      "width": 1051,
+      "height": 1051,
+      "Target": 0,
+      "class": 0,
+      "age": 0,
+      "sex": 0,
+      "modality": 0,
+      "position": 0,
+      "filename": 0
+    },
+    "total_missing": 4204,
+    "missing_percentage": 23.3556,
+    "complete_cases": 449,
+    "complete_cases_percentage": 29.93,
+    "duplicates": 0
+  },
+  "preprocessing_steps": {
+    "steps": [
+      {
+        "step": 1,
+        "name": "Load CSV Metadata",
+        "description": "Load patient metadata from CSV file",
+        "function": "load_metadata()"
+      },
+      {
+        "step": 2,
+        "name": "Generate Filenames",
+        "description": "Create image filenames from patient IDs with .jpg extension",
+        "transformation": "patient_id + '.jpg' -> filename"
+      },
+      {
+        "step": 3,
+        "name": "Target Encoding",
+        "description": "Convert target column to string labels",
+        "values": {
+          "0": "Normal",
+          "1": "Pneumonia"
+        }
+      },
+      {
+        "step": 4,
+        "name": "Validation",
+        "description": "Check for missing values in critical columns",
+        "columns_checked": [
+          "patient_id",
+          "Target",
+          "filename"
+        ]
+      }
+    ],
+    "data_cleaning": {
+      "missing_value_handling": "Rows with missing critical values are rejected",
+      "duplicate_handling": "Duplicates preserved (same patient may have multiple views)",
+      "outlier_handling": "No outlier removal applied to metadata"
+    }
+  },
+  "feature_engineering": {
+    "image_preprocessing": {
+      "resize": "224x224 pixels",
+      "normalization": "ImageNet mean/std normalization",
+      "color_mode": "RGB (3 channels)"
+    },
+    "augmentation_training": {
+      "random_resized_crop": {
+        "scale": [
+          0.8,
+          1.0
+        ]
+      },
+      "random_horizontal_flip": {
+        "probability": 0.5
+      },
+      "random_rotation": {
+        "degrees": 15
+      },
+      "color_jitter": {
+        "brightness": 0.2,
+        "contrast": 0.2,
+        "saturation": 0.1,
+        "hue": 0.1
+      }
+    },
+    "augmentation_validation": {
+      "resize": "256x256 pixels",
+      "center_crop": "224x224 pixels"
+    }
+  }
+}

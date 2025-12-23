@@ -247,7 +247,12 @@ class DataSourceExtractor:
             self.logger.error(f"    Searched extensions: {self._image_extensions}")
             raise ValueError("No image files found")
 
-        image_dir = str(image_files[0].parent)
+        # Group images by parent directory and select the one with most images
+        from collections import Counter
+        dir_counts = Counter(str(img.parent) for img in image_files)
+        image_dir = max(dir_counts.items(), key=lambda x: x[1])[0]
+
         self.logger.info(f"    Found image directory: {image_dir}")
         self.logger.info(f"    Total images found: {len(image_files)}")
+        self.logger.info(f"    Selected directory with {dir_counts[image_dir]} images")
         return image_dir
