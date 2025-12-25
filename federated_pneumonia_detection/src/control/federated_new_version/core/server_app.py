@@ -212,25 +212,49 @@ def main(grid: Grid, context: Context) -> None:
     logger.info("Server evaluation: ENABLED (centralized test set)")
     logger.info("=" * 80)
 
-    result = strategy.start(
-        grid=grid,
-        initial_arrays=arrays,
-        num_rounds=num_rounds,
-        evaluate_fn=central_evaluate_fn,  # Pass evaluate_fn to start() method
-    )
-
-    # Update run with completion time and status
-    logger.info("Marking federated run as completed in database...")
-    db = get_session()
+    # Start federated learning
+    logger.info("Starting federated learning...")
     try:
-        run_crud.complete_run(db, run_id=run_id, status="completed")
-        db.commit()
-        logger.info(f"[OK] Run {run_id} marked as completed with end_time")
+        result = strategy.start(
+            grid=grid,
+            initial_arrays=arrays,
+            num_rounds=num_rounds,
+            evaluate_fn=central_evaluate_fn,  # Pass evaluate_fn to start() method
+        )
+        logger.info("Federated learning completed.")
+
+        # Mark run as completed
+        if run_id:
+            logger.info("Marking federated run as completed in database...")
+            db = get_session()
+            try:
+                run_crud.complete_run(db, run_id=run_id, status="completed")
+                db.commit()
+                logger.info(f"[OK] Run {run_id} marked as completed with end_time")
+            except Exception as e:
+                logger.error(f"[ERROR] Failed to update run completion: {e}")
+                db.rollback()
+            finally:
+                db.close()
+
     except Exception as e:
-        logger.error(f"[ERROR] Failed to update run completion: {e}")
-        db.rollback()
-    finally:
-        db.close()
+        logger.error(f"Federated learning failed: {str(e)}", exc_info=True)
+
+        # Mark run as failed
+        if run_id:
+            logger.error(f"Marking run {run_id} as failed in database...")
+            db = get_session()
+            try:
+                run_crud.complete_run(db, run_id=run_id, status="failed")
+                db.commit()
+                logger.error(f"[OK] Run {run_id} marked as failed")
+            except Exception as db_error:
+                logger.error(f"[ERROR] Failed to mark run as failed: {db_error}")
+                db.rollback()
+            finally:
+                db.close()
+
+        raise  # Re-raise to propagate error
 
     all_results = {}
 

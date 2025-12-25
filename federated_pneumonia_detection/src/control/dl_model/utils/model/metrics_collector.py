@@ -465,8 +465,8 @@ class MetricsCollectorCallback(pl.Callback):
                     run_crud.update(
                         db,
                         run_id,
-                        status="completed",
-                        end_time=self.training_end_time
+                        status="completed"
+                        # end_time is set by centralized_trainer.complete_run() - not here to avoid race condition
                     )
                     self.logger.info(
                         f"Updated run {run_id} with end_time={self.training_end_time.isoformat()}"

@@ -57,11 +57,57 @@ class RunCRUD(BaseCRUD[Run]):
         Returns:
             Updated Run object or None if run not found
         """
+        self.logger.info(f"Completing run {run_id} with status: {status}")
+
         run = db.query(self.model).filter(self.model.id == run_id).first()
         if not run:
-            self.logger.warning(f"Run {run_id} not found")
+            self.logger.warning(f"Run {run_id} not found - cannot complete")
             return None
-        return self.update(db, run_id, end_time=datetime.now(), status=status)
+
+        # Log current state before update
+        self.logger.info(
+            f"Run {run_id} current state: status={run.status}, "
+            f"start_time={run.start_time}, end_time={run.end_time}"
+        )
+
+        # Update end_time and status
+        updated_run = self.update(db, run_id, end_time=datetime.now(), status=status)
+
+        # Log updated state
+        if updated_run:
+            self.logger.info(
+                f"Run {run_id} updated: status={updated_run.status}, "
+                f"end_time={updated_run.end_time}, "
+                f"duration={(updated_run.end_time - updated_run.start_time).total_seconds() / 60:.2f} minutes"
+            )
+
+        return updated_run
+
+    def get_by_status_and_mode(
+        self,
+        db: Session,
+        status: str,
+        training_mode: Optional[str] = None
+    ) -> List[Run]:
+        """
+        Get runs filtered by status and optionally by training_mode.
+
+        Uses database-level filtering for efficiency.
+
+        Args:
+            db: Database session
+            status: Run status ("completed", "in_progress", "failed")
+            training_mode: Optional training mode filter ("centralized", "federated")
+
+        Returns:
+            List of Run objects matching criteria
+        """
+        query = db.query(self.model).filter(self.model.status == status)
+
+        if training_mode:
+            query = query.filter(self.model.training_mode == training_mode)
+
+        return query.order_by(self.model.start_time.desc()).all()
 
     def get_by_wandb_id(self, db: Session, wandb_id: str) -> Optional[Run]:
         """Get run by W&B ID."""

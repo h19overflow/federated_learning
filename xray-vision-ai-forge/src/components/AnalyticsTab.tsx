@@ -388,6 +388,7 @@ const AnalyticsTab = () => {
               <TableHead className="font-semibold">Mode</TableHead>
               <TableHead className="font-semibold text-right">Accuracy</TableHead>
               <TableHead className="font-semibold text-right">Duration</TableHead>
+              <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="font-semibold">Date</TableHead>
             </TableRow>
           </TableHeader>
@@ -406,6 +407,17 @@ const AnalyticsTab = () => {
                 </TableCell>
                 <TableCell className="text-right font-semibold">{formatPercentage(run.best_accuracy)}</TableCell>
                 <TableCell className="text-right text-[hsl(215,15%,50%)]">{formatDuration(run.duration_minutes)}</TableCell>
+                <TableCell>
+                  <Badge className={
+                    run.status === 'completed'
+                      ? 'bg-[hsl(168,40%,45%)] hover:bg-[hsl(168,40%,40%)]'
+                      : run.status === 'failed'
+                      ? 'bg-red-500 hover:bg-red-600'
+                      : 'bg-yellow-500 hover:bg-yellow-600'
+                  }>
+                    {run.status === 'completed' ? 'Completed' : run.status === 'failed' ? 'Failed' : 'In Progress'}
+                  </Badge>
+                </TableCell>
                 <TableCell className="text-[hsl(215,15%,50%)]">{formatDate(run.start_time)}</TableCell>
               </TableRow>
             ))}

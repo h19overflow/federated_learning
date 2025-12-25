@@ -51,12 +51,8 @@ async def get_analytics_summary(
     db = get_session()
 
     try:
-        # Fetch runs with status filter
-        runs = run_crud.get_by_status(db, status)
-
-        # Apply training_mode filter if specified
-        if training_mode:
-            runs = [r for r in runs if r.training_mode == training_mode]
+        # Fetch runs with status and training_mode filters (database-level filtering)
+        runs = run_crud.get_by_status_and_mode(db, status=status, training_mode=training_mode)
 
         # Apply time filter if specified
         if days:
