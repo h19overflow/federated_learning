@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExperimentConfiguration } from '@/types/experiment';
 import { BarChart, LineChart, Line, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Download, Check, ArrowLeftRight, BarChart2, BarChart3, Loader2, AlertCircle, Activity, TrendingUp, Grid3X3, FileText, Sparkles } from 'lucide-react';
+import { Download, Check, ArrowLeftRight, BarChart2, BarChart3, Loader2, AlertCircle, Activity, TrendingUp, Grid3X3, FileText, Sparkles, HelpCircle, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import MetadataDisplay from '@/components/MetadataDisplay';
@@ -223,35 +224,99 @@ const ResultsVisualization = ({
     );
   };
 
-  // Confusion Matrix Component
-  const ConfusionMatrixDisplay = ({ matrix, title }: { matrix: number[][]; title?: string }) => (
-    <div className="bg-[hsl(168_25%_98%)] rounded-xl p-5 border border-[hsl(168_20%_92%)]">
-      {title && (
-        <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] mb-4 flex items-center gap-2">
-          <Grid3X3 className="h-4 w-4 text-[hsl(172_63%_35%)]" />
-          {title}
-        </h4>
-      )}
-      <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto">
-        <div className="bg-[hsl(172_50%_95%)] p-3 rounded-lg text-center">
-          <p className="text-xs text-[hsl(215_15%_55%)] mb-1">True Negative</p>
-          <p className="text-2xl font-bold text-[hsl(172_63%_28%)]">{matrix[0][0]}</p>
+  // Confusion Matrix Component with educational content
+  const ConfusionMatrixDisplay = ({ matrix, title }: { matrix: number[][]; title?: string }) => {
+    const [isOpen, setIsOpen] = React.useState(false);
+
+    return (
+      <div className="bg-[hsl(168_25%_98%)] rounded-xl p-5 border border-[hsl(168_20%_92%)]">
+        {title && (
+          <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] mb-4 flex items-center gap-2">
+            <Grid3X3 className="h-4 w-4 text-[hsl(172_63%_35%)]" />
+            {title}
+          </h4>
+        )}
+
+        {/* Matrix Grid */}
+        <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto mb-4">
+          <div className="bg-[hsl(172_50%_95%)] p-3 rounded-lg text-center">
+            <p className="text-xs text-[hsl(215_15%_55%)] mb-1">True Negative</p>
+            <p className="text-2xl font-bold text-[hsl(172_63%_28%)]">{matrix[0][0]}</p>
+          </div>
+          <div className="bg-[hsl(0_60%_97%)] p-3 rounded-lg text-center">
+            <p className="text-xs text-[hsl(215_15%_55%)] mb-1">False Positive</p>
+            <p className="text-2xl font-bold text-[hsl(0_72%_51%)]">{matrix[0][1]}</p>
+          </div>
+          <div className="bg-[hsl(0_60%_97%)] p-3 rounded-lg text-center">
+            <p className="text-xs text-[hsl(215_15%_55%)] mb-1">False Negative</p>
+            <p className="text-2xl font-bold text-[hsl(0_72%_51%)]">{matrix[1][0]}</p>
+          </div>
+          <div className="bg-[hsl(172_50%_95%)] p-3 rounded-lg text-center">
+            <p className="text-xs text-[hsl(215_15%_55%)] mb-1">True Positive</p>
+            <p className="text-2xl font-bold text-[hsl(172_63%_28%)]">{matrix[1][1]}</p>
+          </div>
         </div>
-        <div className="bg-[hsl(0_60%_97%)] p-3 rounded-lg text-center">
-          <p className="text-xs text-[hsl(215_15%_55%)] mb-1">False Positive</p>
-          <p className="text-2xl font-bold text-[hsl(0_72%_51%)]">{matrix[0][1]}</p>
-        </div>
-        <div className="bg-[hsl(0_60%_97%)] p-3 rounded-lg text-center">
-          <p className="text-xs text-[hsl(215_15%_55%)] mb-1">False Negative</p>
-          <p className="text-2xl font-bold text-[hsl(0_72%_51%)]">{matrix[1][0]}</p>
-        </div>
-        <div className="bg-[hsl(172_50%_95%)] p-3 rounded-lg text-center">
-          <p className="text-xs text-[hsl(215_15%_55%)] mb-1">True Positive</p>
-          <p className="text-2xl font-bold text-[hsl(172_63%_28%)]">{matrix[1][1]}</p>
-        </div>
+
+        {/* Educational Collapsible */}
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 text-sm text-[hsl(172_63%_30%)] hover:text-[hsl(172_63%_25%)] transition-colors w-full justify-center py-2 rounded-lg hover:bg-[hsl(172_40%_94%)]">
+              <HelpCircle className="h-4 w-4" />
+              <span>Understanding the Confusion Matrix</span>
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3">
+            <div className="bg-white rounded-lg p-4 border border-[hsl(168_20%_90%)] space-y-3">
+              <p className="text-sm text-[hsl(215_15%_40%)]">
+                A confusion matrix shows how well the model classifies X-rays as <strong>Normal</strong> or <strong>Pneumonia</strong>.
+              </p>
+
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-[hsl(172_50%_85%)] mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-[hsl(172_43%_20%)]">True Negative (TN)</p>
+                    <p className="text-xs text-[hsl(215_15%_50%)]">Correctly identified as Normal (no pneumonia)</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-[hsl(172_50%_85%)] mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-[hsl(172_43%_20%)]">True Positive (TP)</p>
+                    <p className="text-xs text-[hsl(215_15%_50%)]">Correctly identified as Pneumonia</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-[hsl(0_60%_90%)] mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-[hsl(0_60%_40%)]">False Positive (FP)</p>
+                    <p className="text-xs text-[hsl(215_15%_50%)]">Incorrectly flagged as Pneumonia (false alarm)</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-[hsl(0_60%_90%)] mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-[hsl(0_60%_40%)]">False Negative (FN)</p>
+                    <p className="text-xs text-[hsl(215_15%_50%)]">Missed Pneumonia case (most critical error)</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-[hsl(168_20%_92%)]">
+                <p className="text-xs text-[hsl(215_15%_45%)] italic">
+                  💡 In medical diagnosis, minimizing False Negatives is critical—missing a pneumonia case could delay treatment.
+                </p>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Main render
   return (
@@ -705,23 +770,12 @@ const ResultsVisualization = ({
                   onClick={() => handleDownload('csv')}
                   className="rounded-xl border-[hsl(172_30%_80%)] text-[hsl(172_43%_25%)] hover:bg-[hsl(168_25%_94%)]"
                 >
-                  <FileText className="mr-2 h-4 w-4" /> Metrics CSV
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleDownload('json')}
-                  className="rounded-xl border-[hsl(172_30%_80%)] text-[hsl(172_43%_25%)] hover:bg-[hsl(168_25%_94%)]"
-                >
-                  <FileText className="mr-2 h-4 w-4" /> Metrics JSON
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleDownload('summary')}
-                  className="rounded-xl border-[hsl(172_30%_80%)] text-[hsl(172_43%_25%)] hover:bg-[hsl(168_25%_94%)]"
-                >
-                  <FileText className="mr-2 h-4 w-4" /> Summary Report
+                  <FileText className="mr-2 h-4 w-4" /> Export Training Metrics (CSV)
                 </Button>
               </div>
+              <p className="text-xs text-[hsl(215_15%_55%)] mt-2">
+                Download epoch-by-epoch training and validation metrics for further analysis.
+              </p>
             </div>
           </div>
 

@@ -7,6 +7,7 @@ import os
 import logging
 import json
 from typing import Optional, Dict, Any, Tuple, TYPE_CHECKING
+from datetime import datetime
 
 import pandas as pd
 
@@ -14,6 +15,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
+from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.control.dl_model.utils.model.training_callbacks import (
     prepare_trainer_and_callbacks_pl,
     create_trainer_from_config,
@@ -106,10 +109,35 @@ class CentralizedTrainer:
             source_path: Path to zip file or directory containing dataset
             experiment_name: Name for this training experiment
             csv_filename: Optional specific CSV filename to look for
+            run_id: Optional pre-existing run ID (if None, creates new run)
 
         Returns:
             Dictionary with training results and paths
         """
+        # Create run in database to track timing
+        if run_id is None:
+            self.logger.info("Creating centralized training run in database...")
+            db = get_session()
+            try:
+                run_data = {
+                    "training_mode": "centralized",
+                    "status": "in_progress",
+                    "start_time": datetime.now(),
+                    "wandb_id": f"{experiment_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    "source_path": source_path,
+                }
+                new_run = run_crud.create(db, **run_data)
+                db.commit()
+                run_id = new_run.id
+                self.logger.info(f"Created run in database with id={run_id}")
+            except Exception as e:
+                self.logger.error(f"Failed to create run: {e}")
+                db.rollback()
+                run_id = None
+            finally:
+                db.close()
+        else:
+            self.logger.info(f"Using existing run_id={run_id}")
 
         try:
             try:
@@ -156,11 +184,25 @@ class CentralizedTrainer:
                 self.logger.error(f"  Error message: {str(e)}")
                 raise
 
+            # Mark run as completed in database
+            if run_id:
+                self.logger.info("Marking run as completed in database...")
+                db = get_session()
+                try:
+                    run_crud.complete_run(db, run_id=run_id, status="completed")
+                    db.commit()
+                    self.logger.info(f"Run {run_id} marked as completed")
+                except Exception as e:
+                    self.logger.error(f"Failed to complete run: {e}")
+                    db.rollback()
+                finally:
+                    db.close()
+
             # Collect results
             self.logger.info("Collecting training results...")
             try:
                 results = self._collect_training_results(
-                    trainer, model, metrics_collector
+                    trainer, model, metrics_collector, run_id
                 )
             except Exception as e:
                 self.logger.error(f"  Error type: {type(e).__name__}")
@@ -169,6 +211,20 @@ class CentralizedTrainer:
 
         except Exception as e:
             self.logger.error(f"  Error message: {str(e)}")
+
+            # Mark run as failed if it exists
+            if run_id:
+                db = get_session()
+                try:
+                    run_crud.complete_run(db, run_id=run_id, status="failed")
+                    db.commit()
+                    self.logger.info(f"Run {run_id} marked as failed")
+                except Exception as db_error:
+                    self.logger.error(f"Failed to mark run as failed: {db_error}")
+                    db.rollback()
+                finally:
+                    db.close()
+
             raise
 
     def get_training_status(self) -> Dict[str, Any]:
@@ -299,7 +355,7 @@ class CentralizedTrainer:
         return trainer
 
     def _collect_training_results(
-        self, trainer: pl.Trainer, model: LitResNet, metrics_collector: Any
+        self, trainer: pl.Trainer, model: LitResNet, metrics_collector: Any, run_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Collect and organize training results.
@@ -308,6 +364,7 @@ class CentralizedTrainer:
             trainer: Trained PyTorch Lightning trainer
             model: Trained model instance
             metrics_collector: MetricsCollectorCallback instance
+            run_id: Optional database run ID
 
         Returns:
             Dictionary with training results
@@ -351,6 +408,7 @@ class CentralizedTrainer:
         metrics_metadata = metrics_collector.get_metadata() if metrics_collector else {}
 
         results = {
+            "run_id": run_id,
             "best_model_path": best_model_path,
             "best_model_score": best_model_score,
             "current_epoch": trainer.current_epoch,

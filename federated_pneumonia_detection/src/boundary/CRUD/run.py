@@ -1,4 +1,5 @@
 from typing import Optional, List, Dict, Any
+from datetime import datetime
 import logging
 from sqlalchemy.orm import Session
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
@@ -44,6 +45,23 @@ class RunCRUD(BaseCRUD[Run]):
     def update_status(self, db: Session, id: int, status: str) -> Optional[Run]:
         """Update run status."""
         return self.update(db, id, status=status)
+
+    def complete_run(self, db: Session, run_id: int, status: str = "completed") -> Optional[Run]:
+        """Mark run as completed or failed with end_time timestamp.
+
+        Args:
+            db: Database session
+            run_id: Run ID to complete
+            status: Final status ("completed" or "failed")
+
+        Returns:
+            Updated Run object or None if run not found
+        """
+        run = db.query(self.model).filter(self.model.id == run_id).first()
+        if not run:
+            self.logger.warning(f"Run {run_id} not found")
+            return None
+        return self.update(db, run_id, end_time=datetime.now(), status=status)
 
     def get_by_wandb_id(self, db: Session, wandb_id: str) -> Optional[Run]:
         """Get run by W&B ID."""

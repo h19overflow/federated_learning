@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BarChart, Loader2, AlertCircle, Users, Server, ChevronRight, Calendar, Activity } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ArrowLeft, BarChart, Loader2, AlertCircle, Users, Server, ChevronRight, Calendar, Activity, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/services/api';
+import AnalyticsTab from '@/components/AnalyticsTab';
 
 interface FederatedInfo {
   num_rounds: number;
@@ -43,6 +45,7 @@ const SavedExperiments = () => {
   const [error, setError] = useState<string | null>(null);
   const [summaryStats, setSummaryStats] = useState<Record<number, ConfusionMatrixSummary | null>>({});
   const [loadingStats, setLoadingStats] = useState<Record<number, boolean>>({});
+  const [activeTab, setActiveTab] = useState('experiments');
   const navigate = useNavigate();
 
   // Fetch summary stats when card is viewed
@@ -189,52 +192,73 @@ const SavedExperiments = () => {
             </div>
           </div>
 
-          {/* Loading State */}
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-24">
-              <div className="w-16 h-16 rounded-2xl bg-[hsl(172_40%_94%)] flex items-center justify-center mb-6">
-                <Loader2 className="h-8 w-8 text-[hsl(172_63%_35%)] animate-spin" />
-              </div>
-              <p className="text-lg font-medium text-[hsl(172_43%_20%)]">Loading experiments</p>
-              <p className="text-sm text-[hsl(215_15%_55%)] mt-1">Please wait...</p>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && !loading && (
-            <div className="flex flex-col items-center justify-center py-24">
-              <div className="w-16 h-16 rounded-2xl bg-[hsl(0_60%_95%)] flex items-center justify-center mb-6">
-                <AlertCircle className="h-8 w-8 text-[hsl(0_72%_51%)]" />
-              </div>
-              <p className="text-lg font-medium text-[hsl(172_43%_15%)] mb-2">Failed to Load Experiments</p>
-              <p className="text-sm text-[hsl(215_15%_50%)] mb-6 max-w-md text-center">{error}</p>
-              <Button
-                onClick={() => window.location.reload()}
-                className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white rounded-xl px-6 py-2.5 shadow-md shadow-[hsl(172_63%_22%)]/20"
+          {/* Tabs Navigation */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full max-w-md mx-auto mb-8 grid-cols-2 bg-[hsl(168,20%,95%)] p-1 rounded-xl">
+              <TabsTrigger
+                value="experiments"
+                className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[hsl(172,43%,20%)] flex items-center gap-2"
               >
-                Try Again
-              </Button>
-            </div>
-          )}
+                <BarChart className="w-4 h-4" />
+                Experiments
+              </TabsTrigger>
+              <TabsTrigger
+                value="analytics"
+                className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[hsl(172,43%,20%)] flex items-center gap-2"
+              >
+                <TrendingUp className="w-4 h-4" />
+                Analytics
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Experiments Grid */}
-          {!loading && !error && runs.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
-              {runs.map((run, index) => {
-                const isFederated = run.training_mode === 'federated';
-                const federatedInfo = run.federated_info;
+            {/* Experiments Tab Content */}
+            <TabsContent value="experiments" className="mt-0">
+              {/* Loading State */}
+              {loading && (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="w-16 h-16 rounded-2xl bg-[hsl(172_40%_94%)] flex items-center justify-center mb-6">
+                    <Loader2 className="h-8 w-8 text-[hsl(172_63%_35%)] animate-spin" />
+                  </div>
+                  <p className="text-lg font-medium text-[hsl(172_43%_20%)]">Loading experiments</p>
+                  <p className="text-sm text-[hsl(215_15%_55%)] mt-1">Please wait...</p>
+                </div>
+              )}
 
-                return (
-                  <div
-                    key={run.id}
-                    className="group relative bg-white rounded-[1.5rem] border border-[hsl(210_15%_92%)] p-6 hover:shadow-xl hover:shadow-[hsl(172_40%_85%)]/25 transition-all duration-500 hover:-translate-y-1 flex flex-col h-full"
-                    onMouseEnter={() => handleCardHover(run.id)}
-                    style={{
-                      animation: 'fadeIn 0.4s ease-out forwards',
-                      animationDelay: `${index * 0.05}s`,
-                      opacity: 0
-                    }}
+              {/* Error State */}
+              {error && !loading && (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="w-16 h-16 rounded-2xl bg-[hsl(0_60%_95%)] flex items-center justify-center mb-6">
+                    <AlertCircle className="h-8 w-8 text-[hsl(0_72%_51%)]" />
+                  </div>
+                  <p className="text-lg font-medium text-[hsl(172_43%_15%)] mb-2">Failed to Load Experiments</p>
+                  <p className="text-sm text-[hsl(215_15%_50%)] mb-6 max-w-md text-center">{error}</p>
+                  <Button
+                    onClick={() => window.location.reload()}
+                    className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white rounded-xl px-6 py-2.5 shadow-md shadow-[hsl(172_63%_22%)]/20"
                   >
+                    Try Again
+                  </Button>
+                </div>
+              )}
+
+              {/* Experiments Grid */}
+              {!loading && !error && runs.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+                  {runs.map((run, index) => {
+                    const isFederated = run.training_mode === 'federated';
+                    const federatedInfo = run.federated_info;
+
+                    return (
+                      <div
+                        key={run.id}
+                        className="group relative bg-white rounded-[1.5rem] border border-[hsl(210_15%_92%)] p-6 hover:shadow-xl hover:shadow-[hsl(172_40%_85%)]/25 transition-all duration-500 hover:-translate-y-1 flex flex-col h-full"
+                        onMouseEnter={() => handleCardHover(run.id)}
+                        style={{
+                          animation: 'fadeIn 0.4s ease-out forwards',
+                          animationDelay: `${index * 0.05}s`,
+                          opacity: 0
+                        }}
+                      >
                     {/* Card Header */}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1 min-w-0">
@@ -338,36 +362,43 @@ const SavedExperiments = () => {
                         <ChevronRight className="h-4 w-4 ml-1 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                       </Button>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
-          {/* Empty State */}
-          {!loading && !error && runs.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-24">
-              <div className="w-20 h-20 rounded-3xl bg-[hsl(168_25%_96%)] flex items-center justify-center mb-6">
-                <svg className="w-10 h-10 text-[hsl(172_63%_35%)]" viewBox="0 0 40 40" fill="none">
-                  <rect x="6" y="10" width="28" height="24" rx="3" stroke="currentColor" strokeWidth="2" />
-                  <path d="M6 16h28" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="11" cy="13" r="1.5" fill="currentColor" />
-                  <circle cx="16" cy="13" r="1.5" fill="currentColor" />
-                  <path d="M14 26l5-5 4 4 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-[hsl(172_43%_15%)] mb-2">No experiments yet</h3>
-              <p className="text-[hsl(215_15%_50%)] mb-8 max-w-sm text-center">
-                Start your first training run to see it appear here.
-              </p>
-              <Button
-                onClick={() => navigate('/experiment')}
-                className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white rounded-xl px-8 py-3 text-base shadow-lg shadow-[hsl(172_63%_22%)]/20 hover:shadow-xl hover:shadow-[hsl(172_63%_22%)]/30 transition-all duration-300 hover:-translate-y-0.5"
-              >
-                Create New Experiment
-              </Button>
-            </div>
-          )}
+              {/* Empty State */}
+              {!loading && !error && runs.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="w-20 h-20 rounded-3xl bg-[hsl(168_25%_96%)] flex items-center justify-center mb-6">
+                    <svg className="w-10 h-10 text-[hsl(172_63%_35%)]" viewBox="0 0 40 40" fill="none">
+                      <rect x="6" y="10" width="28" height="24" rx="3" stroke="currentColor" strokeWidth="2" />
+                      <path d="M6 16h28" stroke="currentColor" strokeWidth="2" />
+                      <circle cx="11" cy="13" r="1.5" fill="currentColor" />
+                      <circle cx="16" cy="13" r="1.5" fill="currentColor" />
+                      <path d="M14 26l5-5 4 4 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-[hsl(172_43%_15%)] mb-2">No experiments yet</h3>
+                  <p className="text-[hsl(215_15%_50%)] mb-8 max-w-sm text-center">
+                    Start your first training run to see it appear here.
+                  </p>
+                  <Button
+                    onClick={() => navigate('/experiment')}
+                    className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white rounded-xl px-8 py-3 text-base shadow-lg shadow-[hsl(172_63%_22%)]/20 hover:shadow-xl hover:shadow-[hsl(172_63%_22%)]/30 transition-all duration-300 hover:-translate-y-0.5"
+                  >
+                    Create New Experiment
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Analytics Tab Content */}
+            <TabsContent value="analytics" className="mt-0">
+              <AnalyticsTab />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
 

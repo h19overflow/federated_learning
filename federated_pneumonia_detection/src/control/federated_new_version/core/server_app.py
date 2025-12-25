@@ -218,6 +218,20 @@ def main(grid: Grid, context: Context) -> None:
         num_rounds=num_rounds,
         evaluate_fn=central_evaluate_fn,  # Pass evaluate_fn to start() method
     )
+
+    # Update run with completion time and status
+    logger.info("Marking federated run as completed in database...")
+    db = get_session()
+    try:
+        run_crud.complete_run(db, run_id=run_id, status="completed")
+        db.commit()
+        logger.info(f"[OK] Run {run_id} marked as completed with end_time")
+    except Exception as e:
+        logger.error(f"[ERROR] Failed to update run completion: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
     all_results = {}
 
     if result.train_metrics_clientapp:

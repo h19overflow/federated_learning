@@ -7,7 +7,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { Info, Users, Brain, ChevronRight, Layers } from 'lucide-react';
+import { Info, Users, Brain, ChevronRight, Layers, Settings } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import InstructionCard from './InstructionCard';
 import HelpTooltip from './HelpTooltip';
 

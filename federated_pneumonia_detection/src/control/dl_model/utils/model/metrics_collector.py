@@ -459,6 +459,21 @@ class MetricsCollectorCallback(pl.Callback):
                 db, run_id, self.epoch_metrics, federated_context=federated_context
             )
 
+            # Update run completion time if training finished normally
+            if run_id and hasattr(self, 'training_end_time') and self.training_end_time:
+                try:
+                    run_crud.update(
+                        db,
+                        run_id,
+                        status="completed",
+                        end_time=self.training_end_time
+                    )
+                    self.logger.info(
+                        f"Updated run {run_id} with end_time={self.training_end_time.isoformat()}"
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Failed to update run end_time: {e}")
+
         except Exception as e:
             self.logger.error(f"Failed to persist metrics to database: {e}")
             if close_session:

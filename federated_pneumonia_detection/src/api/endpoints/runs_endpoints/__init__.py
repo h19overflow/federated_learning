@@ -14,6 +14,7 @@ from . import (
     runs_download,
     runs_federated_rounds,
     runs_server_evaluation,
+    runs_analytics,
 )
 
 # Create main router for runs endpoints
@@ -26,5 +27,6 @@ router.include_router(runs_metrics.router)
 router.include_router(runs_download.router)
 router.include_router(runs_federated_rounds.router)
 router.include_router(runs_server_evaluation.router)
+router.include_router(runs_analytics.router)
 
 __all__ = ["router"]
