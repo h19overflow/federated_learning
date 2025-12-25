@@ -163,6 +163,16 @@ class LitResNetEnhanced(pl.LightningModule):
             fine_tune_layers_count=self.config.get("experiment.fine_tune_layers_count", 0)
         )
 
+        # Apply torch.compile if enabled (PyTorch 2.0+ performance optimization)
+        if self.config.get('experiment.use_torch_compile', False):
+            compile_mode = self.config.get('experiment.torch_compile_mode', 'default')
+            self.logger_obj.info(f"Applying torch.compile with mode='{compile_mode}'")
+            try:
+                self.model = torch.compile(self.model, mode=compile_mode)
+                self.logger_obj.info("Model compiled successfully")
+            except Exception as e:
+                self.logger_obj.warning(f"torch.compile failed, falling back to eager mode: {e}")
+
         # Store class weights
         self.class_weights_tensor = class_weights_tensor
 
