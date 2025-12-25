@@ -12,11 +12,8 @@ from datetime import datetime, timedelta
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
-from .analytics_utils import (
-    calculate_mode_statistics,
-    extract_run_details,
-    create_empty_response
-)
+from .analytics_utils import extract_run_details, create_empty_response
+from .analytics_utils_pkg.aggregators import calculate_mode_statistics
 
 router = APIRouter()
 logger = get_logger(__name__)

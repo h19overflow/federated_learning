@@ -218,6 +218,11 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
         best_recall = max(
             (e for e in evaluations if e.recall), key=lambda x: x.recall, default=None
         )
+        best_precision = max(
+            (e for e in evaluations if e.precision),
+            key=lambda x: x.precision,
+            default=None,
+        )
         best_f1 = max(
             (e for e in evaluations if e.f1_score),
             key=lambda x: x.f1_score,
@@ -242,6 +247,10 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
             "best_recall": {
                 "value": best_recall.recall if best_recall else None,
                 "round": best_recall.round_number if best_recall else None,
+            },
+            "best_precision": {
+                "value": best_precision.precision if best_precision else None,
+                "round": best_precision.round_number if best_precision else None,
             },
             "best_f1_score": {
                 "value": best_f1.f1_score if best_f1 else None,
