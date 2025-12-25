@@ -21,7 +21,8 @@
       "Bash(done)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Projects\\\\FYP2\" -Filter \"README.md\" -Recurse)",
       "Bash(Where-Object { $_FullName -notmatch '\\(node_modules|\\\\.venv|\\\\.pytest_cache\\)' })",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(git add:*)"
     ]
   }
 }
