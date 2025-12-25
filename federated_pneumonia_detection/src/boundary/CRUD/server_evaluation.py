@@ -207,24 +207,31 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
         if not evaluations:
             return {}
 
+        # Exclude round 0 (initial untrained model) from best metrics calculation
+        # Round 0 often has misleading metrics (e.g., 100% recall from predicting all positive)
+        trained_evaluations = [e for e in evaluations if e.round_number > 0]
+
+        # Use trained evaluations for best metrics, fall back to all if only round 0 exists
+        evals_for_best = trained_evaluations if trained_evaluations else evaluations
+
         latest = evaluations[-1]
 
-        # Find best values
+        # Find best values (excluding round 0)
         best_accuracy = max(
-            (e for e in evaluations if e.accuracy),
+            (e for e in evals_for_best if e.accuracy),
             key=lambda x: x.accuracy,
             default=None,
         )
         best_recall = max(
-            (e for e in evaluations if e.recall), key=lambda x: x.recall, default=None
+            (e for e in evals_for_best if e.recall), key=lambda x: x.recall, default=None
         )
         best_precision = max(
-            (e for e in evaluations if e.precision),
+            (e for e in evals_for_best if e.precision),
             key=lambda x: x.precision,
             default=None,
         )
         best_f1 = max(
-            (e for e in evaluations if e.f1_score),
+            (e for e in evals_for_best if e.f1_score),
             key=lambda x: x.f1_score,
             default=None,
         )

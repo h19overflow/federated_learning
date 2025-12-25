@@ -180,46 +180,100 @@ const ResultsVisualization = ({
     );
   }
 
-  // Metric Card Component
-  const MetricCard = ({ name, value }: { name: string; value: number }) => (
-    <div className="bg-white p-5 rounded-xl border border-[hsl(210_15%_92%)] shadow-sm hover:shadow-md transition-shadow">
-      <p className="text-xs text-[hsl(215_15%_55%)] uppercase tracking-wide mb-1">{name}</p>
-      <p className="text-3xl font-bold text-[hsl(172_63%_25%)]">{(value * 100).toFixed(1)}%</p>
-    </div>
-  );
+  // Metric explanations for educational tooltips
+  const metricExplanations: Record<string, { description: string; relevance: string }> = {
+    'F1-Score': {
+      description: 'The harmonic mean of precision and recall (2 × (precision × recall) / (precision + recall)). It balances both false positives and false negatives into a single metric.',
+      relevance: 'For pneumonia detection, F1-Score ensures the model doesn\'t sacrifice recall (catching pneumonia cases) for precision (avoiding false alarms) or vice versa. A high F1-Score (>0.85) indicates reliable clinical performance with balanced error rates.'
+    },
+    'F1 Score': {
+      description: 'The harmonic mean of precision and recall (2 × (precision × recall) / (precision + recall)). It balances both false positives and false negatives into a single metric.',
+      relevance: 'For pneumonia detection, F1 Score ensures the model doesn\'t sacrifice recall (catching pneumonia cases) for precision (avoiding false alarms) or vice versa. A high F1 Score (>0.85) indicates reliable clinical performance with balanced error rates.'
+    },
+    'AUC': {
+      description: 'Area Under the ROC Curve - measures the model\'s ability to distinguish between pneumonia and normal X-rays across all possible classification thresholds (0.0 = worst, 1.0 = perfect).',
+      relevance: 'In medical imaging, AUC (>0.90 is excellent, >0.95 is outstanding) shows how well the model separates normal X-rays from pneumonia cases. Unlike accuracy, it\'s robust to class imbalance, making it the gold standard for clinical validation and FDA approval.'
+    },
+    'AUC-ROC': {
+      description: 'Area Under the ROC Curve - measures the model\'s ability to distinguish between pneumonia and normal X-rays across all possible classification thresholds (0.0 = worst, 1.0 = perfect).',
+      relevance: 'In medical imaging, AUC-ROC (>0.90 is excellent, >0.95 is outstanding) shows how well the model separates normal X-rays from pneumonia cases. Unlike accuracy, it\'s robust to class imbalance, making it the gold standard for clinical validation and FDA approval.'
+    },
+    'AUROC': {
+      description: 'Area Under the ROC Curve - measures the model\'s ability to distinguish between pneumonia and normal X-rays across all possible classification thresholds (0.0 = worst, 1.0 = perfect).',
+      relevance: 'In medical imaging, AUROC (>0.90 is excellent, >0.95 is outstanding) shows how well the model separates normal X-rays from pneumonia cases. Unlike accuracy, it\'s robust to class imbalance, making it the gold standard for clinical validation and FDA approval.'
+    },
+    'Precision': {
+      description: 'Proportion of positive predictions that are actually correct (TP / (TP + FP)).',
+      relevance: 'High precision means fewer false alarms - when the model flags pneumonia, it\'s usually right. This reduces unnecessary follow-up tests and patient anxiety.'
+    },
+    'Recall': {
+      description: 'Proportion of actual positive cases that are correctly identified (TP / (TP + FN)).',
+      relevance: 'High recall is critical in medical diagnosis - it means the model catches most pneumonia cases. Missing a pneumonia case (low recall) could delay life-saving treatment.'
+    },
+    'Accuracy': {
+      description: 'Overall proportion of correct predictions ((TP + TN) / Total).',
+      relevance: 'While accuracy gives a general sense of performance, it can be misleading with imbalanced datasets. Use F1 Score and AUC-ROC for better clinical assessment.'
+    }
+  };
 
-  // Summary Statistics Component (from confusion matrix)
-  const SummaryStatisticsDisplay = ({
-    confusion_matrix,
-    title = "Summary Statistics"
-  }: {
-    confusion_matrix: any;
-    title?: string;
-  }) => {
-    if (!confusion_matrix || !confusion_matrix.sensitivity) return null;
+  // Enhanced Metric Card Component with tooltips
+  const MetricCard = ({ name, value, index = 0, total = 5 }: { name: string; value: number; index?: number; total?: number }) => {
+    const [showTooltip, setShowTooltip] = React.useState(false);
+    const explanation = metricExplanations[name];
 
-    const stats = [
-      { label: "Sensitivity", value: confusion_matrix.sensitivity, tooltip: "True Positive Rate (TP/(TP+FN))" },
-      { label: "Specificity", value: confusion_matrix.specificity, tooltip: "True Negative Rate (TN/(TN+FP))" },
-      { label: "Precision", value: confusion_matrix.precision_cm, tooltip: "TP/(TP+FP)" },
-      { label: "Accuracy", value: confusion_matrix.accuracy_cm, tooltip: "(TP+TN)/Total" },
-      { label: "F1 Score", value: confusion_matrix.f1_cm, tooltip: "Harmonic mean of Precision & Sensitivity" },
-    ];
+    // Determine tooltip position to prevent overflow
+    const isFirst = index === 0;
+    const isLast = index === total - 1;
+    const tooltipPositionClass = isFirst
+      ? 'left-0'
+      : isLast
+      ? 'right-0'
+      : 'left-1/2 -translate-x-1/2';
+
+    const arrowPositionClass = isFirst
+      ? 'left-8'
+      : isLast
+      ? 'right-8'
+      : 'left-1/2 -translate-x-1/2';
 
     return (
-      <div className="bg-[hsl(168_25%_98%)] rounded-xl p-5 border border-[hsl(168_20%_92%)]">
-        <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] mb-4 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-[hsl(172_63%_35%)]" />
-          {title}
-        </h4>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {stats.map((stat) => (
-            <div key={stat.label} className="bg-white p-3 rounded-lg border border-[hsl(210_15%_92%)] text-center hover:shadow-sm transition-shadow" title={stat.tooltip}>
-              <p className="text-xs text-[hsl(215_15%_55%)] uppercase mb-1">{stat.label}</p>
-              <p className="text-xl font-bold text-[hsl(172_63%_28%)]">{(stat.value * 100).toFixed(1)}%</p>
-            </div>
-          ))}
+      <div
+        className="bg-white p-5 rounded-xl border border-[hsl(210_15%_92%)] shadow-sm hover:shadow-md transition-shadow relative group"
+        onMouseEnter={() => explanation && setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs text-[hsl(215_15%_55%)] uppercase tracking-wide">{name}</p>
+          {explanation && (
+            <HelpCircle className="h-3 w-3 text-[hsl(172_63%_35%)] cursor-help" />
+          )}
         </div>
+        <p className="text-3xl font-bold text-[hsl(172_63%_25%)]">{(value * 100).toFixed(1)}%</p>
+
+        {/* Educational Tooltip - positioned to avoid overflow */}
+        {explanation && showTooltip && (
+          <div className={`absolute z-50 w-72 p-4 bg-white border-2 border-[hsl(172_40%_85%)] rounded-xl shadow-2xl bottom-full mb-2 ${tooltipPositionClass} pointer-events-none`}>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-bold text-[hsl(172_63%_28%)] mb-1.5 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  What is {name}?
+                </p>
+                <p className="text-xs text-[hsl(215_15%_40%)] leading-relaxed">{explanation.description}</p>
+              </div>
+              <div className="pt-2 border-t border-[hsl(210_15%_92%)]">
+                <p className="text-xs font-bold text-[hsl(172_63%_28%)] mb-1.5 flex items-center gap-1">
+                  <Activity className="h-3 w-3" />
+                  Clinical Relevance
+                </p>
+                <p className="text-xs text-[hsl(215_15%_40%)] leading-relaxed">{explanation.relevance}</p>
+              </div>
+            </div>
+            {/* Tooltip arrow pointing down */}
+            <div className={`absolute top-full ${arrowPositionClass} border-8 border-transparent border-t-white`} style={{ marginTop: '-2px' }}></div>
+            <div className={`absolute top-full ${arrowPositionClass} border-[9px] border-transparent border-t-[hsl(172_40%_85%)]`}></div>
+          </div>
+        )}
       </div>
     );
   };
@@ -466,8 +520,8 @@ const ResultsVisualization = ({
                   {centralizedResults ? (
                     <>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        {centralizedMetricsData.map((metric) => (
-                          <MetricCard key={metric.name} name={metric.name} value={metric.value} />
+                        {centralizedMetricsData.map((metric, idx) => (
+                          <MetricCard key={metric.name} name={metric.name} value={metric.value} index={idx} total={centralizedMetricsData.length} />
                         ))}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -493,11 +547,6 @@ const ResultsVisualization = ({
                           <ConfusionMatrixDisplay matrix={centralizedConfusionMatrix} title="Confusion Matrix" />
                         )}
                       </div>
-
-                      {/* Summary Statistics from Confusion Matrix */}
-                      {centralizedResults?.confusion_matrix && (
-                        <SummaryStatisticsDisplay confusion_matrix={centralizedResults.confusion_matrix} title="Centralized Summary Statistics" />
-                      )}
                     </>
                   ) : (
                     <div className="text-center py-12">
@@ -511,8 +560,8 @@ const ResultsVisualization = ({
                   {federatedResults ? (
                     <>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        {federatedMetricsData.map((metric) => (
-                          <MetricCard key={metric.name} name={metric.name} value={metric.value} />
+                        {federatedMetricsData.map((metric, idx) => (
+                          <MetricCard key={metric.name} name={metric.name} value={metric.value} index={idx} total={federatedMetricsData.length} />
                         ))}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -538,11 +587,6 @@ const ResultsVisualization = ({
                           <ConfusionMatrixDisplay matrix={federatedConfusionMatrix} title="Confusion Matrix" />
                         )}
                       </div>
-
-                      {/* Summary Statistics from Confusion Matrix */}
-                      {federatedResults?.confusion_matrix && (
-                        <SummaryStatisticsDisplay confusion_matrix={federatedResults.confusion_matrix} title="Federated Summary Statistics" />
-                      )}
                     </>
                   ) : (
                     <div className="text-center py-12">
@@ -587,9 +631,22 @@ const ResultsVisualization = ({
                 <TabsContent value="metrics" className="space-y-6">
                   {activeResults && (
                     <>
+                      {config.trainingMode === 'federated' && (
+                        <div className="bg-[hsl(210_100%_97%)] rounded-xl p-4 border border-[hsl(210_60%_85%)] mb-6">
+                          <div className="flex gap-3">
+                            <HelpCircle className="h-5 w-5 text-[hsl(210_60%_45%)] flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-semibold text-[hsl(210_70%_30%)] mb-1">Final Metrics - Client Training Results</p>
+                              <p className="text-sm text-[hsl(210_50%_35%)]">
+                                These are the averaged performance metrics from all participating clients' local models at the final training round. This represents the client-side training performance before global model aggregation.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        {metricsChartData.map((metric) => (
-                          <MetricCard key={metric.name} name={metric.name} value={metric.value} />
+                        {metricsChartData.map((metric, idx) => (
+                          <MetricCard key={metric.name} name={metric.name} value={metric.value} index={idx} total={metricsChartData.length} />
                         ))}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -620,11 +677,6 @@ const ResultsVisualization = ({
                           <ConfusionMatrixDisplay matrix={confusionMatrix} title="Confusion Matrix" />
                         )}
                       </div>
-
-                      {/* Summary Statistics from Confusion Matrix */}
-                      {activeResults?.confusion_matrix && (
-                        <SummaryStatisticsDisplay confusion_matrix={activeResults.confusion_matrix} />
-                      )}
                     </>
                   )}
                 </TabsContent>
@@ -701,15 +753,21 @@ const ResultsVisualization = ({
                 {serverEvaluation?.has_server_evaluation && (
                   <TabsContent value="server-evaluation" className="space-y-6">
                     <div className="bg-[hsl(210_100%_97%)] rounded-xl p-4 border border-[hsl(210_60%_85%)] mb-6">
-                      <p className="text-sm text-[hsl(210_50%_35%)]">
-                        <strong className="text-[hsl(210_70%_30%)]">Server Evaluation:</strong> The global model is evaluated on a held-out centralized test set after each round, providing an objective measure of performance.
-                      </p>
+                      <div className="flex gap-3">
+                        <HelpCircle className="h-5 w-5 text-[hsl(210_60%_45%)] flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-[hsl(210_70%_30%)] mb-1">Server Evaluation - Global Model Performance</p>
+                          <p className="text-sm text-[hsl(210_50%_35%)]">
+                            The aggregated global model is evaluated on a held-out centralized test set after each training round. This provides an objective measure of the global model's generalization performance independent of client-side variations.
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
                     {serverEvaluationLatestMetrics && (
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        {serverEvaluationLatestMetrics.map((metric) => (
-                          <MetricCard key={metric.name} name={metric.name} value={metric.value} />
+                        {serverEvaluationLatestMetrics.map((metric, idx) => (
+                          <MetricCard key={metric.name} name={metric.name} value={metric.value} index={idx} total={serverEvaluationLatestMetrics.length} />
                         ))}
                       </div>
                     )}
@@ -738,11 +796,6 @@ const ResultsVisualization = ({
                       <>
                         <ConfusionMatrixDisplay matrix={serverEvaluationConfusionMatrix} title="Confusion Matrix (Latest Round)" />
                       </>
-                    )}
-
-                    {/* Summary Statistics for Server Evaluation */}
-                    {serverEvaluation?.evaluations && serverEvaluation.evaluations.length > 0 && serverEvaluation.evaluations[serverEvaluation.evaluations.length - 1]?.confusion_matrix && (
-                      <SummaryStatisticsDisplay confusion_matrix={serverEvaluation.evaluations[serverEvaluation.evaluations.length - 1].confusion_matrix} title="Server Evaluation Summary Statistics" />
                     )}
                   </TabsContent>
                 )}
