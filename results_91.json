@@ -1,0 +1,15 @@
+{
+  "train_metrics_clientapp": {
+    "1": "{'epoch': 1.0, 'val_loss': 0.17023909091949463, 'val_acc': 0.773333340883255, 'val_precision': 0.6785714328289032, 'val_recall': 0.3710027188062668, 'val_f1': 0.41843972355127335, 'val_auroc': 0.7785229980945587, 'train_loss': 0.1407146006822586, 'train_acc': 0.651666671037674, 'train_f1': 0.6026197075843811}",
+    "2": "{'epoch': 1.0, 'val_loss': 0.15399086847901344, 'val_acc': 0.7099999785423279, 'val_precision': 0.5599318742752075, 'val_recall': 0.7527450919151306, 'val_f1': 0.6404138505458832, 'val_auroc': 0.8005529046058655, 'train_loss': 0.12974712252616882, 'train_acc': 0.7016666531562805, 'train_f1': 0.6198940873146057}"
+  },
+  "evaluate_metrics_clientapp": {
+    "1": "{'test_loss': 0.1565372496843338, 'test_accuracy': 0.79666668176651, 'test_precision': 0.7543859481811523, 'test_recall': 0.47777777910232544, 'test_f1': 0.5850340127944946, 'test_auroc': 0.8104761838912964}",
+    "2": "{'test_loss': 0.11779293417930603, 'test_accuracy': 0.75, 'test_precision': 0.5539568066596985, 'test_recall': 0.855555534362793, 'test_f1': 0.6724891066551208, 'test_auroc': 0.8674073815345764}"
+  },
+  "evaluate_metrics_serverapp": {
+    "0": "{'server_loss': 0.7105863706270854, 'server_accuracy': 0.25, 'server_precision': 0.25, 'server_recall': 1.0, 'server_f1': 0.4000000059604645, 'server_auroc': 0.45771849155426025, 'server_cm_tp': 75.0, 'server_cm_tn': 0.0, 'server_cm_fp': 225.0, 'server_cm_fn': 0.0}",
+    "1": "{'server_loss': 0.6241680971781413, 'server_accuracy': 0.7433333333333333, 'server_precision': 0.4821428656578064, 'server_recall': 0.36000001430511475, 'server_f1': 0.4122137427330017, 'server_auroc': 0.733629584312439, 'server_cm_tp': 27.0, 'server_cm_tn': 196.0, 'server_cm_fp': 29.0, 'server_cm_fn': 48.0}",
+    "2": "{'server_loss': 0.5878689122200013, 'server_accuracy': 0.7, 'server_precision': 0.4475524425506592, 'server_recall': 0.8533333539962769, 'server_f1': 0.5871559381484985, 'server_auroc': 0.8089481592178345, 'server_cm_tp': 64.0, 'server_cm_tn': 146.0, 'server_cm_fp': 79.0, 'server_cm_fn': 11.0}"
+  }
+}

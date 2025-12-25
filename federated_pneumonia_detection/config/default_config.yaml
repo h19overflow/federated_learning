@@ -3,25 +3,25 @@ columns:
   patient_id: patientId
   target: Target
 experiment:
-  adaptive_histogram: true
-  augmentation_strength: 0.2
-  batch_size: 128
+  adaptive_histogram: false
+  augmentation_strength: 1.0
+  batch_size: 32
   clients_per_round: 2
   clip_limit: 2.0
-  color_mode: L
+  color_mode: RGB
   contrast_stretch: true
-  device: cuda
-  dropout_rate: 0.6
-  early_stopping_patience: 3
-  edge_enhancement: true
+  device: auto
+  dropout_rate: 0.3
+  early_stopping_patience: 5
+  edge_enhancement: false
   edge_strength: 1.0
-  epochs: 3
-  file-path: C:\Users\User\AppData\Local\Temp\tmpzw78ou90\extracted\Training_Sample_5pct\stage2_train_metadata.csv
+  epochs: 10
+  file-path: C:\Users\User\AppData\Local\Temp\tmpcqg99rjo\extracted\Training_Sample_5pct\stage2_train_metadata.csv
   fine_tune_layers_count: 5
-  freeze_backbone: false
-  image-dir: C:\Users\User\AppData\Local\Temp\tmpzw78ou90\extracted\Training_Sample_5pct\Images
-  learning_rate: 0.05
-  local_epochs: 2
+  freeze_backbone: true
+  image-dir: C:\Users\User\AppData\Local\Temp\tmpcqg99rjo\extracted\Training_Sample_5pct\Images
+  learning_rate: 0.001
+  local_epochs: 1
   lower_percentile: 5.0
   max-epochs: 2
   min_lr: 1.0e-07
@@ -40,10 +40,10 @@ experiment:
   reduce_lr_patience: 3
   seed: 42
   upper_percentile: 95.0
-  use_custom_preprocessing: true
+  use_custom_preprocessing: false
   use_imagenet_norm: true
   validate_images_on_init: true
-  validation_split: 0.1
+  validation_split: 0.2
   weight_decay: 0.0001
 logging:
   file_logging: true
@@ -66,4 +66,4 @@ system:
   - 256
   sample_fraction: 0.05
   seed: 42
-  validation_split: 0.1
+  validation_split: 0.2
