@@ -169,62 +169,83 @@ logger.error(f"Error occurred: {exception}")
 
 ## Data Processing Pipeline
 
-```
-Raw CSV File
-    ↓ load_metadata()
-Pandas DataFrame
-    ↓ (optional) sample_dataframe()
-Sampled DataFrame
-    ↓ create_train_val_split()
-Training Set + Validation Set
-    ↓ (in DataModule)
-Image Files
-    ↓ CustomImageDataset.__getitem__()
-PIL Image
-    ↓ TransformBuilder.build_training_transforms()
-Transformed Tensor
-    ↓ PyTorch DataLoader
-Batch of Images + Labels
+```mermaid
+graph LR
+    Raw["📄 Metadata CSV"]
+    Img["🖼️ Images"]
+    
+    subgraph Loading
+        DF["DataFrame"]
+        Split["Train/Val Split"]
+    end
+    
+    subgraph Processing
+        Load["PIL Image"]
+        Aug["Augmentation<br/>(Rotate/Flip)"]
+        Norm["Normalization"]
+    end
+    
+    subgraph ModelReady
+        Tensor["Tensor"]
+        Batch["Batch (DataLoader)"]
+    end
+
+    Raw --> DF --> Split
+    Split -->|File Path| Load
+    Img --> Load
+    
+    Load --> Aug --> Norm --> Tensor
+    Tensor --> Batch
+
+    %% Styling
+    classDef source fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef process fill:#0091EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef ready fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+    
+    class Raw,Img source;
+    class DF,Split,Load,Aug,Norm process;
+    class Tensor,Batch ready;
 ```
 
 ---
 
-## Image Transformations Pipeline
+## Usage Examples
 
-### Training Augmentation
-```
-PIL Image (original)
-  ↓ RandomRotation (15°)
-  ↓ RandomHorizontalFlip (p=0.5)
-  ↓ ColorJitter (brightness, contrast, saturation)
-  ↓ RandomAffine (scale, translate, rotation)
-  ↓ Resize/CenterCrop
-  ↓ Normalize (ImageNet statistics)
-  ↓ Tensor (C, H, W)
-```
+### 1. Loading and Splitting Data
+```python
+from federated_pneumonia_detection.src.utils.data_processing import load_metadata, create_train_val_split
 
-### Validation (Deterministic)
-```
-PIL Image (original)
-  ↓ Resize
-  ↓ CenterCrop
-  ↓ Normalize (ImageNet statistics)
-  ↓ Tensor (C, H, W)
+# Load metadata
+df = load_metadata("path/to/metadata.csv")
+
+# Create stratified split
+train_df, val_df = create_train_val_split(
+    df, 
+    val_split=0.2, 
+    target_col="Target", 
+    seed=42
+)
 ```
 
-### Optional Custom Preprocessing (All Modes)
-```
-PIL Image
-  ↓ contrast_stretch_percentile() [optional]
-  ↓ adaptive_histogram_equalization() [optional]
-  ↓ edge_enhancement() [optional]
-  ↓ Standard transforms
-  ↓ Tensor
+### 2. Image Transformations
+```python
+from federated_pneumonia_detection.src.utils.image_transforms import TransformBuilder
+
+builder = TransformBuilder(config)
+
+# Create training pipeline with augmentation
+train_transforms = builder.build_training_transforms(
+    enable_augmentation=True,
+    augmentation_strength=0.5
+)
+
+# Apply to image
+transformed_image = train_transforms(pil_image)
 ```
 
 ---
 
-## Module Dependencies
+## Core Components
 
 ### Internal Dependencies
 - **utils/loggers/**: Logging infrastructure

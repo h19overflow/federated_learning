@@ -93,17 +93,29 @@ These classes are framework-agnostic at the entity level but are integrated with
 
 ## Class Hierarchy
 
-```
-torch.nn.Module (PyTorch)
-  └── ResNetWithCustomHead
-       ├── ResNet50 V2 (backbone)
-       └── Custom Classification Head
+```mermaid
+graph TB
+    subgraph PyTorch ["🔥 PyTorch Base"]
+        direction TB
+        NN["nn.Module"]
+        DS_Base["Dataset"]
+    end
 
-torch.utils.data.Dataset (PyTorch)
-  └── CustomImageDataset
-       ├── DataFrame management
-       ├── Image loading
-       └── Transformation pipeline
+    subgraph Entities ["📦 Entities Layer"]
+        direction TB
+        ResNet["ResNetWithCustomHead"]
+        Dataset["CustomImageDataset"]
+    end
+
+    NN --> ResNet
+    DS_Base --> Dataset
+
+    %% Styling
+    classDef base fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef entity fill:#D50000,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class NN,DS_Base base;
+    class ResNet,Dataset entity;
 ```
 
 ---
@@ -123,27 +135,34 @@ torch.utils.data.Dataset (PyTorch)
 
 | Component | Usage | Reference |
 |-----------|-------|-----------|
-| **image_transforms.py** | Provides transform pipelines | [image_transforms.py:219-380](../../utils/image_transforms.py#L219-L380) |
-| **data_processing.py** | Prepares DataFrames for dataset | [data_processing.py:1-150](../../utils/data_processing.py#L1-L150) |
+| **image_transforms.py** | Provides transform pipelines | [image_transforms.py:219-380](../utils/image_transforms.py#L219-L380) |
+| **data_processing.py** | Prepares DataFrames for dataset | [data_processing.py:1-150](../utils/data_processing.py#L1-L150) |
 
 ---
 
 ## Data Flow
 
-```
-CSV Metadata (stage2_train_metadata.csv)
-          ↓
-    DataProcessor (utils)
-          ↓
-    Pandas DataFrame (filename, Target)
-          ↓
-    CustomImageDataset (entities)
-          ↓
-    PyTorch DataLoader
-          ↓
-    LitResNet (wrapped ResNetWithCustomHead)
-          ↓
-    Training/Evaluation/Prediction
+```mermaid
+graph LR
+    CSV["📄 CSV Metadata"]
+    Proc["⚙️ DataProcessor"]
+    DF["🐼 Pandas DataFrame"]
+    DS["📦 CustomImageDataset"]
+    DL["🚚 PyTorch DataLoader"]
+    Model["🧠 LitResNet"]
+
+    CSV --> Proc --> DF --> DS --> DL --> Model
+
+    %% Styling
+    classDef source fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef process fill:#0091EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef ready fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef target fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class CSV source;
+    class Proc,DF process;
+    class DS,DL ready;
+    class Model target;
 ```
 
 ---
@@ -160,7 +179,7 @@ CustomImageDataset(config=config_manager, dataframe=df)
 ### Error Handling
 - **Parameter Validation**: `_validate_parameters()` and `_validate_inputs()`
 - **Image Validation**: File existence checks with fallback behavior
-- **Logging**: Structured logging via [logger.py](../../utils/loggers/logger.py)
+- **Logging**: Structured logging via [logger.py](../utils/loggers/logger.py)
 
 ### Type Hints
 Full type hints throughout for IDE support and type checking:
@@ -173,5 +192,5 @@ Full type hints throughout for IDE support and type checking:
 ## Related Documentation
 
 - **Model Training**: See [control/dl_model/utils/README.md](../control/dl_model/utils/README.md) for training pipeline
-- **Data Processing**: See [utils/README.md](../../utils/README.md) for data loading utilities
+- **Data Processing**: See [utils/README.md](../utils/README.md) for data loading utilities
 - **Configuration**: See [config/README.md](../../config/README.md) for parameter management

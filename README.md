@@ -6,173 +6,151 @@
 
 A sophisticated federated learning system for pneumonia detection from chest X-ray images, built with PyTorch Lightning and designed for privacy-preserving collaborative medical AI.
 
-## 🎯 Project Overview
+## 📌 Navigation
 
-This Final Year Project (FYP) implements a federated learning framework specifically designed for pneumonia detection, enabling multiple medical institutions to collaboratively train AI models while keeping sensitive patient data local and private.
-
-### Key Features
-
-- **🔒 Privacy-Preserving**: Federated learning ensures patient data never leaves local institutions
-- **🏥 Medical AI**: Specialized for pneumonia detection from chest X-rays
-- **⚡ Modern Architecture**: Built on PyTorch Lightning for scalable, production-ready training
-- **🔧 Modular Design**: Clean architecture with separation of concerns
-- **📊 Comprehensive Evaluation**: Advanced metrics and visualization tools
-- **🧪 Well-Tested**: Extensive unit and integration test coverage
+| Section | Description | Link |
+|---------|-------------|------|
+| **Core App** | Main Backend Source | [federated_pneumonia_detection/](federated_pneumonia_detection/) |
+| **API** | REST & WebSocket Layer | [src/api/](federated_pneumonia_detection/src/api/) |
+| **Control** | Training Orchestration | [src/control/](federated_pneumonia_detection/src/control/) |
+| **Entities** | Models & Datasets | [src/entities/](federated_pneumonia_detection/src/entities/) |
+| **Boundary** | Database & Persistence | [src/boundary/](federated_pneumonia_detection/src/boundary/) |
+| **Frontend** | React Dashboard | [xray-vision-ai-forge/](xray-vision-ai-forge/) |
+| **Config** | System Settings | [config/](federated_pneumonia_detection/config/) |
 
 ## 🏗️ Architecture
 
 ### System Architecture Overview
 
 ```mermaid
+graph LR
+    subgraph Frontend ["🖥️ Frontend Layer"]
+        UI["React UI<br/>(Dashboard)"]
+        WS_Client["WebSocket Client"]
+    end
+
+    subgraph Backend ["⚙️ Backend Layer"]
+        API["FastAPI Server"]
+        WS_Server["WebSocket Server"]
+        Trainer["Training Orchestrator"]
+    end
+
+    subgraph Data ["💾 Data Layer"]
+        DB[(PostgreSQL)]
+        Files["File System<br/>(Datasets/Models)"]
+    end
+
+    UI -->|HTTP Requests| API
+    UI -->|Listen| WS_Client
+    WS_Client <-->|Stream| WS_Server
+    
+    API -->|Triggers| Trainer
+    Trainer -->|Updates| WS_Server
+    
+    Trainer -->|Reads/Writes| DB
+    Trainer -->|Reads/Writes| Files
+    API -->|Queries| DB
+
+    %% Styling
+    classDef frontend fill:#007BFF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef backend fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef data fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+    
+    class UI,WS_Client frontend;
+    class API,WS_Server,Trainer backend;
+    class DB,Files data;
+```
+
+### Backend Architecture (ECB Pattern)
+
+```mermaid
 graph TB
-    subgraph Frontend ["🖥️ Frontend (React)"]
-        UI["User Interface<br/>Training/Results Visualization"]
-        WSC["WebSocket Client<br/>Real-time Metrics"]
+    subgraph Boundary ["🧱 Boundary Layer (Interfaces)"]
+        direction TB
+        API_End["API Endpoints"]
+        Run_DAO["Run DAO"]
+        Metric_DAO["Metric DAO"]
     end
 
-    subgraph API ["⚡ API Layer (FastAPI)"]
-        REST["REST Endpoints<br/>/experiments, /runs, /config"]
-        WSS["WebSocket Server<br/>ws://localhost:8765"]
-        TQ["Background Task Queue<br/>Training Orchestration"]
+    subgraph Control ["🎮 Control Layer (Logic)"]
+        direction TB
+        CT["Centralized Trainer"]
+        FL_Server["FL ServerApp"]
+        FL_Client["FL ClientApp"]
     end
 
-    subgraph Control ["🎮 Control Layer (Training)"]
-        subgraph Cent ["Centralized Training"]
-            CT["CentralizedTrainer<br/>Orchestrator"]
-            LR["LitResNet<br/>PyTorch Lightning"]
-            XDM["XRayDataModule<br/>Data Loading"]
-        end
-
-        subgraph Fed ["Federated Learning<br/>Flower Framework"]
-            SA["ServerApp<br/>FL Coordinator"]
-            CA["ClientApp<br/>Local Training"]
-            CS["ConfigurableFedAvg<br/>Aggregation"]
-        end
-
-        subgraph Agent ["Agentic Systems"]
-            AA["ArxivAgent<br/>Research"]
-            RAG["RAG Pipeline<br/>Documents"]
-        end
+    subgraph Entities ["📦 Entities Layer (Data)"]
+        direction TB
+        ResNet["ResNet Model"]
+        Dataset["Custom Dataset"]
+        Config["Config Manager"]
     end
 
-    subgraph Data ["📊 Data & Persistence"]
-        DB["PostgreSQL<br/>Runs, Metrics"]
-        FS["File Storage<br/>Checkpoints, Logs"]
-    end
+    %% Flow
+    API_End -->|Invokes| CT
+    API_End -->|Invokes| FL_Server
+    
+    CT -->|Uses| ResNet
+    CT -->|Uses| Dataset
+    CT -->|Uses| Config
+    
+    FL_Server -->|Uses| ResNet
+    FL_Client -->|Uses| ResNet
+    
+    CT -->|Persists via| Run_DAO
+    CT -->|Persists via| Metric_DAO
 
-    subgraph Config ["⚙️ Configuration"]
-        YAML["default_config.yaml"]
-        TOML["pyproject.toml<br/>Flower Config"]
-    end
+    %% Styling
+    classDef boundary fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef control fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef entities fill:#D50000,stroke:#fff,stroke-width:2px,color:#fff;
 
-    Frontend -->|HTTP/WebSocket| API
-    API -->|Training Tasks| Control
-    Control -->|Metrics| API
-    API -->|Updates| WSC
-    WSC -->|Display| UI
-    Control -->|Read/Write| Data
-    Control -->|Load| Config
-
-    style Frontend fill:#e1f5ff
-    style API fill:#fff3e0
-    style Control fill:#f3e5f5
-    style Cent fill:#f8bbd0
-    style Fed fill:#c8e6c9
-    style Agent fill:#fff9c4
-    style Data fill:#e8f5e9
-    style Config fill:#fce4ec
+    class API_End,Run_DAO,Metric_DAO boundary;
+    class CT,FL_Server,FL_Client control;
+    class ResNet,Dataset,Config entities;
 ```
-
-### Module Organization
-
-```
-federated_pneumonia_detection/
-├── src/
-│   ├── api/                         # FastAPI REST & WebSocket
-│   │   ├── main.py                  # FastAPI app entry point
-│   │   ├── endpoints/               # Route handlers
-│   │   │   ├── experiments/         # Training orchestration
-│   │   │   ├── runs_endpoints/      # Results & metrics
-│   │   │   ├── configuration_settings/ # Config management
-│   │   │   └── chat/                # AI assistant & RAG
-│   │   └── [See: src/api/README.md for details]
-│   │
-│   ├── boundary/                    # Database CRUD & persistence
-│   │   └── crud/                    # SQLAlchemy operations
-│   │
-│   ├── control/                     # Training orchestration
-│   │   ├── dl_model/                # Centralized training
-│   │   │   ├── centralized_trainer.py
-│   │   │   └── utils/
-│   │   │       ├── data/
-│   │   │       └── model/
-│   │   ├── federated_new_version/   # Federated learning (Flower)
-│   │   │   ├── core/                # Flower ServerApp, ClientApp
-│   │   │   ├── README.md            # Federated learning docs
-│   │   │   └── [See: details below]
-│   │   └── agentic_systems/         # Research assistant
-│   │
-│   ├── entities/                    # Domain models
-│   └── utils/                       # Shared utilities
-│
-├── scripts/
-│   ├── websocket_server.py          # WebSocket metrics relay
-│   └── [See: WebSocket Documentation below]
-│
-├── config/
-│   └── default_config.yaml          # Central configuration
-│
-└── [logs, results, tests, ...]
-```
-
-### Core Components
-
-| Component                | Purpose                                        | Documentation                                                                                                        |
-| ------------------------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **Centralized Training** | Single-machine training with PyTorch Lightning | [control/dl_model/](federated_pneumonia_detection/src/control/dl_model/)                                             |
-| **Federated Learning**   | Multi-client FL with Flower framework          | [control/federated_new_version/README.md](federated_pneumonia_detection/src/control/federated_new_version/README.md) |
-| **FastAPI REST Layer**   | Training orchestration and results retrieval   | [src/api/README.md](federated_pneumonia_detection/src/api/README.md)                                                 |
-| **WebSocket Server**     | Real-time metrics streaming to frontend        | [WebSocket Documentation](#-websocket-architecture)                                                                  |
-| **Agentic Systems**      | Research assistant with Arxiv + RAG            | [control/agentic_systems/](federated_pneumonia_detection/src/control/agentic_systems/)                               |
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.12+
-- CUDA-capable GPU (recommended)
-- At least 8GB RAM
-- 10GB+ storage for datasets
+- **Python 3.12+**
+- **CUDA-capable GPU** (recommended)
+- **uv** (high-performance package manager)
+- **Node.js 20+** (for frontend)
 
-### Installation
+### Installation & Setup
 
 1. **Clone the repository**
-
    ```bash
    git clone <repository-url>
    cd FYP2
    ```
 
-2. **Set up virtual environment**
-
+2. **Backend Setup (using uv)**
    ```bash
-   python -m venv .venv
-   # Windows
-   .venv\Scripts\activate
-   # macOS/Linux
-   source .venv/bin/activate
+   # Install dependencies and create venv
+   uv sync
    ```
 
-3. **Install dependencies**
-
+3. **Frontend Setup**
    ```bash
-   pip install -e .
+   cd xray-vision-ai-forge
+   npm install
    ```
 
-4. **Verify installation**
+4. **Verify Backend Installation**
    ```bash
-   python main.py
+   uv run python -m federated_pneumonia_detection.src.api.main
    ```
+
+## 🛠️ Key Technologies
+
+- **Federated Learning**: [Flower](https://flower.dev/)
+- **Deep Learning**: [PyTorch Lightning](https://pytorchlightning.ai/)
+- **API Framework**: [FastAPI](https://fastapi.tiangolo.com/)
+- **Logging & Viz**: [WandB](https://wandb.ai/) / Tensorboard
+- **Database**: PostgreSQL with SQLAlchemy 2.0
 
 ### Dataset Setup
 

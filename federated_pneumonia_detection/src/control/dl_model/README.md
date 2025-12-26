@@ -90,23 +90,18 @@ graph TD
 
     Return --> End([Training Complete])
 
-    style Start fill:#2196F3,color:#fff,stroke:#1565C0,stroke-width:2px
-    style Init fill:#FF6F00,color:#fff,stroke:#E65100,stroke-width:2px
-    style Extract fill:#FF6F00,color:#fff,stroke:#E65100,stroke-width:2px
-    style Prepare fill:#9C27B0,color:#fff,stroke:#6A1B9A,stroke-width:2px
-    style DataModule fill:#9C27B0,color:#fff,stroke:#6A1B9A,stroke-width:2px
-    style ModelSetup fill:#4CAF50,color:#fff,stroke:#2E7D32,stroke-width:2px
-    style Callbacks fill:#4CAF50,color:#fff,stroke:#2E7D32,stroke-width:2px
-    style TrainStart fill:#F44336,color:#fff,stroke:#C62828,stroke-width:2px
-    style EpochLoop fill:#F44336,color:#fff,stroke:#C62828,stroke-width:2px
-    style Validation fill:#F44336,color:#fff,stroke:#C62828,stroke-width:2px
-    style MetricsFlow fill:#FFC107,color:#000,stroke:#F57F17,stroke-width:2px
-    style WebSocket fill:#00BCD4,color:#fff,stroke:#00838F,stroke-width:2px
-    style FilePersist fill:#00BCD4,color:#fff,stroke:#00838F,stroke-width:2px
-    style Collect fill:#2196F3,color:#fff,stroke:#1565C0,stroke-width:2px
-    style Return fill:#2196F3,color:#fff,stroke:#1565C0,stroke-width:2px
-    style End fill:#4CAF50,color:#fff,stroke:#2E7D32,stroke-width:2px
-    style CheckStop fill:#FF9800,color:#fff,stroke:#E65100,stroke-width:2px
+    %% Styling
+    classDef start fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef data fill:#0091EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef model fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef metrics fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef stop fill:#D50000,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class Start,Init,Extract,Collect,Return,End start;
+    class Prepare,DataModule data;
+    class ModelSetup,Callbacks,TrainStart,EpochLoop,Validation model;
+    class MetricsFlow,WebSocket,FilePersist metrics;
+    class CheckStop stop;
 ```
 
 #### Detailed Step Breakdown
@@ -276,24 +271,24 @@ dl_model/
 
 ```mermaid
 graph LR
-    subgraph Input["🔌 INPUT LAYER"]
+    subgraph Input ["🔌 INPUT LAYER"]
         ZipFile["ZIP/Directory<br/>Dataset"]
         Config["Config Manager<br/>Parameters"]
     end
 
-    subgraph DataLayer["📂 DATA LAYER"]
+    subgraph DataLayer ["📂 DATA LAYER"]
         Extractor["DataSourceExtractor<br/>- Extract ZIP<br/>- Find CSV<br/>- Validate Images"]
 
         DataMod["XRayDataModule<br/>- Load Metadata<br/>- Create Batches<br/>- Pin Memory"]
     end
 
-    subgraph ModelLayer["🧠 MODEL LAYER"]
+    subgraph ModelLayer ["🧠 MODEL LAYER"]
         LitModel["LitResNet<br/>- ResNet50<br/>- Custom Head<br/>- Loss Function"]
 
         Trainer["PyTorch Lightning<br/>Trainer<br/>- Fit Loop<br/>- Device Mgmt"]
     end
 
-    subgraph CallbackLayer["⚡ CALLBACK LAYER"]
+    subgraph CallbackLayer ["⚡ CALLBACK LAYER"]
         MetricsCol["MetricsCollector<br/>- Track Metrics<br/>- Per-Epoch Agg"]
 
         Checkpoint["ModelCheckpoint<br/>- Best Model Save<br/>- Score Monitor"]
@@ -301,7 +296,7 @@ graph LR
         EarlyStopping["EarlyStopping<br/>- Patience Logic<br/>- Trigger Signal"]
     end
 
-    subgraph OutputLayer["📤 OUTPUT LAYER"]
+    subgraph OutputLayer ["📤 OUTPUT LAYER"]
         WebSocket["WebSocketSender<br/>- Real-time Stream<br/>- Dashboard Push"]
 
         FilePersist["MetricsFilePersister<br/>- CSV Export<br/>- JSON Metadata"]
@@ -309,7 +304,7 @@ graph LR
         DBSave["Database Saver<br/>- run Table<br/>- run_metrics Table"]
     end
 
-    subgraph Orchestrator["🎯 ORCHESTRATOR"]
+    subgraph Orchestrator ["🎯 ORCHESTRATOR"]
         CentralTrain["CentralizedTrainer<br/>Coordinates All Phases<br/>Handles Errors<br/>Collects Results"]
     end
 
@@ -336,19 +331,19 @@ graph LR
     EarlyStopping --> WebSocket
 
     %% Styling
-    classDef input fill:#2196F3,color:#fff,stroke:#1565C0,stroke-width:2px
-    classDef data fill:#9C27B0,color:#fff,stroke:#6A1B9A,stroke-width:2px
-    classDef model fill:#4CAF50,color:#fff,stroke:#2E7D32,stroke-width:2px
-    classDef callback fill:#FF6F00,color:#fff,stroke:#E65100,stroke-width:2px
-    classDef output fill:#F44336,color:#fff,stroke:#C62828,stroke-width:2px
-    classDef main fill:#00BCD4,color:#fff,stroke:#00838F,stroke-width:3px
+    classDef input fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef data fill:#0091EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef model fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef callback fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef output fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef main fill:#FF6F00,stroke:#fff,stroke-width:3px,color:#fff;
 
-    class ZipFile,Config input
-    class Extractor,DataMod data
-    class LitModel,Trainer model
-    class MetricsCol,Checkpoint,EarlyStopping callback
-    class WebSocket,FilePersist,DBSave output
-    class CentralTrain main
+    class ZipFile,Config input;
+    class Extractor,DataMod data;
+    class LitModel,Trainer model;
+    class MetricsCol,Checkpoint,EarlyStopping callback;
+    class WebSocket,FilePersist,DBSave output;
+    class CentralTrain main;
 ```
 
 ---

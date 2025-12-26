@@ -23,135 +23,93 @@
 **WebSocket**: `ws://localhost:8765` (real-time metrics relay)
 
 **Key Capabilities**:
-- Start centralized or federated training via REST
-- Query results and metrics from completed/running experiments
-- Manage system configuration dynamically
-- Stream real-time training progress via WebSocket
-- Download results in multiple formats (JSON, CSV, summary text)
+- **Orchestration**: Start centralized or federated training runs.
+- **Persistence**: Query results and metrics from PostgreSQL.
+- **Monitoring**: Stream real-time progress via WebSocket.
+- **Assistant**: Query Arxiv and local RAG via the chat endpoints.
 
 ---
 
-## Functional Architecture
-
-### API Component Interaction
+## Backend Architecture (ECB)
 
 ```mermaid
 graph TB
-    subgraph Client["📱 Client Layer"]
-        UI["React Frontend<br/>localhost:5173"]
+    subgraph Boundary ["🧱 Boundary Layer (Interfaces)"]
+        direction TB
+        API_End["API Endpoints"]
+        Run_DAO["Run DAO"]
+        Metric_DAO["Metric DAO"]
     end
 
-    subgraph FastAPI["⚡ FastAPI Application<br/>main.py"]
-        Router["Route Handlers<br/>Pydantic Validation"]
-        DI["Dependency Injection<br/>deps.py"]
-        WS["WebSocket Relay<br/>ws://localhost:8765"]
-        Tasks["Background Task Queue<br/>Training Execution"]
+    subgraph Control ["🎮 Control Layer (Logic)"]
+        direction TB
+        CT["Centralized Trainer"]
+        FL_Server["FL ServerApp"]
+        FL_Client["FL ClientApp"]
     end
 
-    subgraph Training["🎮 Training Execution"]
-        CT["CentralizedTrainer"]
-        FT["FederatedTrainer"]
+    subgraph Entities ["📦 Entities Layer (Data)"]
+        direction TB
+        ResNet["ResNet Model"]
+        Dataset["Custom Dataset"]
+        Config["Config Manager"]
     end
 
-    subgraph Monitoring["📊 Real-Time Monitoring"]
-        Sender["MetricsWebSocketSender"]
-        Server["WebSocket Server<br/>scripts/websocket_server.py"]
-    end
+    %% Flow
+    API_End -->|Invokes| CT
+    API_End -->|Invokes| FL_Server
+    
+    CT -->|Uses| ResNet
+    CT -->|Uses| Dataset
+    CT -->|Uses| Config
+    
+    FL_Server -->|Uses| ResNet
+    FL_Client -->|Uses| ResNet
+    
+    CT -->|Persists via| Run_DAO
+    CT -->|Persists via| Metric_DAO
 
-    subgraph Persistence["💾 Data Layer"]
-        DB["PostgreSQL<br/>Runs, Metrics"]
-        FS["File Storage<br/>Checkpoints"]
-    end
+    %% Styling
+    classDef boundary fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef control fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef entities fill:#D50000,stroke:#fff,stroke-width:2px,color:#fff;
 
-    UI -->|HTTP Requests| Router
-    Router -->|Get Dependencies| DI
-    Router -->|Queue Task| Tasks
-
-    Tasks -->|Initialize| CT
-    Tasks -->|Initialize| FT
-
-    CT -->|Report Metrics| Sender
-    FT -->|Report Metrics| Sender
-
-    Sender -->|Send JSON| Server
-    Server -->|Broadcast| WS
-    WS -->|WebSocket| UI
-
-    CT -->|Save Results| DB
-    FT -->|Save Results| DB
-    CT -->|Save Checkpoints| FS
-    FT -->|Save Checkpoints| FS
-
-    Router -->|Query| DB
-
-    style Client fill:#e1f5ff
-    style FastAPI fill:#fff3e0
-    style Training fill:#f3e5f5
-    style Monitoring fill:#f8bbd0
-    style Persistence fill:#e8f5e9
+    class API_End,Run_DAO,Metric_DAO boundary;
+    class CT,FL_Server,FL_Client control;
+    class ResNet,Dataset,Config entities;
 ```
 
 ---
 
 ## Request/Response Flows
 
-### Flow 1: Centralized Training (Complete Lifecycle)
+### Centralized Training Sequence
 
 ```mermaid
 sequenceDiagram
-    participant UI as React UI
-    participant API as FastAPI API<br/>Route Handler
-    participant Valid as Pydantic<br/>Validation
-    participant Task as Background<br/>Task Queue
-    participant Train as CentralizedTrainer
-    participant Send as MetricsWebSocket<br/>Sender
-    participant WS as WebSocket Server
-    participant DB as PostgreSQL
+    autonumber
+    participant API as FastAPI
+    participant CT as CentralizedTrainer
+    participant Model as ResNet Model
+    participant DB as Database
+    participant WS as WebSocket
 
-    UI->>API: POST /experiments/centralized<br/>{data_zip, experiment_name}
-    API->>Valid: Validate request
-    Valid-->>API: ✓ CentralizedTrainingRequest
+    Note over API, CT: Initialization
+    API->>CT: Start Training (Config)
+    CT->>CT: Load Data & Split
+    CT->>Model: Initialize Weights
 
-    API->>Task: Queue training_task()
-    API-->>UI: 202 Accepted<br/>{experiment_id}
-
-    Task->>Task: Extract ZIP<br/>Validate images<br/>Prepare data
-
-    Task->>Train: Initialize
-    Train->>Train: Load config<br/>Create model<br/>Setup trainer
-
-    Train->>Send: send_training_mode(False, 0, 0)
-    Send->>WS: JSON {type: training_mode}
-    WS->>UI: WebSocket broadcast
-    UI->>UI: Update status → "Initializing"
-
-    loop For each epoch (1 to num_epochs)
-        Train->>Train: Forward pass<br/>Compute loss
-        Train->>Train: Metrics (accuracy, recall, f1)
-        Train->>Send: send_epoch_end(epoch, metrics)
-        Send->>WS: JSON {type: epoch_end, data: metrics}
-        WS->>UI: WebSocket message
-        UI->>UI: Update charts
+    Note over CT, Model: Training Loop
+    loop Every Epoch
+        CT->>Model: Forward/Backward Pass
+        Model-->>CT: Loss & Metrics
+        CT->>WS: Broadcast Metrics
+        CT->>DB: Save Metric Record
     end
 
-    Train->>DB: INSERT run record
-    Train->>DB: INSERT metrics records
-
-    Train->>Send: send_training_end(run_id, summary)
-    Send->>WS: JSON {type: training_end, run_id: 42}
-    WS->>UI: WebSocket final signal
-    UI->>UI: Update status → "Completed"
-
-    UI->>API: GET /api/runs/42/metrics
-    API->>DB: SELECT * FROM runs, run_metrics
-    DB-->>API: Run data + metric history
-    API-->>UI: {training_history, best_metrics}
-    UI->>UI: Render final results page
-
-    style UI fill:#e1f5ff
-    style API fill:#fff3e0
-    style Train fill:#f3e5f5
-    style DB fill:#e8f5e9
+    Note over CT, DB: Completion
+    CT->>DB: Update Run Status (Done)
+    CT->>WS: Broadcast "Training Complete"
 ```
 
 ### Flow 2: Federated Learning (Complete Lifecycle)
@@ -349,7 +307,7 @@ graph LR
     end
 
     subgraph DataLayer["Data Persistence"]
-        Database["PostgreSQL"]
+        Database[(PostgreSQL)]
         WebSocketSrv["WebSocket<br/>Server"]
     end
 
@@ -383,11 +341,18 @@ graph LR
     Trainer -->|Save| Database
     CRUD -->|Query| Database
 
-    style External fill:#e1f5ff
-    style API_Layer fill:#fff3e0
-    style Services fill:#f3e5f5
-    style Backend fill:#f3e5f5
-    style DataLayer fill:#e8f5e9
+    %% Styling
+    classDef ext fill:#007BFF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef api fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef srv fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef exe fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef dat fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class External,React,Browser ext;
+    class API_Layer,MainApp,Router1,Router2,Router3,Router4,DI_Layer api;
+    class Services,TaskQ,Config,CRUD srv;
+    class Backend,Trainer,Metrics exe;
+    class DataLayer,Database,WebSocketSrv dat;
 ```
 
 ---
@@ -402,15 +367,6 @@ graph LR
 - Route registration
 - WebSocket server startup
 
-**Lifespan Events**:
-```python
-@app.lifespan
-async def lifespan(app):
-    # startup: Create DB session, initialize WebSocket server
-    yield
-    # shutdown: Close connections, cleanup resources
-```
-
 ---
 
 ### 2. Dependency Injection (`deps.py`)
@@ -420,11 +376,6 @@ async def lifespan(app):
 - `get_config()`: ConfigManager for YAML config
 - `get_experiment_crud()`: Run CRUD operations
 - `get_run_metric_crud()`: Metric CRUD operations
-
-**Benefits**:
-- Testability (easy to mock)
-- Reusability (share across endpoints)
-- Separation of concerns
 
 ---
 
@@ -470,11 +421,6 @@ endpoints/
 5. Results persisted to database
 6. Frontend polls `/api/runs/{id}/metrics` for results
 
-**Benefits**:
-- Non-blocking API responses
-- Real-time progress streaming
-- User can interact with UI while training runs
-
 ---
 
 ## Error Handling Strategy
@@ -495,13 +441,16 @@ graph TD
     F -->|Response| H
     G -->|WebSocket| H
 
-    style A fill:#ffe0b2
-    style B fill:#fff3e0
-    style D fill:#c8e6c9
-    style C fill:#ffccbc
-    style E fill:#ffccbc
-    style F fill:#ffccbc
-    style H fill:#e1f5ff
+    %% Styling
+    classDef start fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef success fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef error fill:#D50000,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef endpt fill:#0091EA,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class A start;
+    class B,D success;
+    class C,E,F,G error;
+    class H endpt;
 ```
 
 ---

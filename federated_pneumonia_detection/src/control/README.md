@@ -39,7 +39,7 @@ graph TB
     subgraph Control["🎮 Control Layer<br/>src/control/"]
         subgraph DL["dl_model<br/>Centralized Training"]
             CT["CentralizedTrainer<br/>Main Orchestrator"]
-            Utils["utils/<br/>Supporting Services"]
+            Utils_DL["utils/<br/>Supporting Services"]
         end
 
         subgraph Fed["federated_new_version<br/>Federated Learning"]
@@ -57,7 +57,7 @@ graph TB
         Models["Domain Objects<br/>Entities"]
     end
 
-    subgraph Utils["utils/<br/>Utilities"]
+    subgraph Utils_Shared["utils/<br/>Utilities"]
         Config["config_loader.py"]
         Data["data_processing.py"]
         Transforms["image_transforms.py"]
@@ -69,16 +69,18 @@ graph TB
     Core -->|Use| Shared
     Part -->|Use| Models
 
-    CT -->|Import| Utils
-    Core -->|Import| Utils
-    MAS -->|Import| Utils
+    CT -->|Import| Utils_Shared
+    Core -->|Import| Utils_Shared
+    MAS -->|Import| Utils_Shared
 
-    style Control fill:#f3e5f5
-    style DL fill:#f8bbd0
-    style Fed fill:#c8e6c9
-    style Agent fill:#fff9c4
-    style Shared fill:#e8f5e9
-    style Utils fill:#f0f4c3
+    %% Styling
+    classDef control fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef shared fill:#D50000,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef utils fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+    
+    class Control,DL,Fed,Agent control;
+    class Shared,Models shared;
+    class Utils_Shared,Config,Data,Transforms utils;
 ```
 
 ### Complete Module Tree
@@ -135,155 +137,84 @@ control/
 
 ## Functional Flows
 
-### Flow 1: Centralized Training Execution
+### Centralized Training Sequence
 
 ```mermaid
-graph TD
-    A["API: POST /experiments/centralized<br/>+ dataset.zip"] -->|Queue| B["Background Task"]
-    B -->|Initialize| C["CentralizedTrainer"]
+sequenceDiagram
+    autonumber
+    participant API as FastAPI
+    participant CT as CentralizedTrainer
+    participant Model as ResNet Model
+    participant DB as Database
+    participant WS as WebSocket
 
-    C -->|Load| D["Configuration<br/>default_config.yaml"]
-    C -->|Extract| E["DataSourceHandler<br/>ZIP → Images"]
-    C -->|Create| F["XRayDataModule<br/>Train/Val/Test"]
-    C -->|Create| G["LitResNet<br/>PyTorch Lightning"]
+    Note over API, CT: Initialization
+    API->>CT: Start Training (Config)
+    CT->>CT: Load Data & Split
+    CT->>Model: Initialize Weights
 
-    G -->|Callbacks| H["CustomCallbacks<br/>Metrics, EarlyStopping"]
-
-    H -->|Every Epoch| I["Metrics Collection<br/>Loss, Accuracy, F1..."]
-    I -->|Send| J["WebSocketSender<br/>epoch_end message"]
-    J -->|Relay| K["WebSocket Server<br/>ws://localhost:8765"]
-    K -->|Broadcast| L["React Frontend<br/>Charts Update"]
-
-    I -->|Store| M["MetricsFilePersister<br/>JSON/CSV files"]
-
-    G -->|Training| N["Model Optimization<br/>Forward/Backward Pass"]
-    N -->|Best Weights| O["Save Checkpoint<br/>PyTorch .pt"]
-
-    G -->|Final| P["Evaluate on Test Set<br/>Confusion Matrix"]
-    P -->|Results| Q["Database Persist<br/>PostgreSQL"]
-
-    C -->|Signal| R["send_training_end<br/>+ run_id"]
-    R -->|Relay| K
-
-    L -->|Polling| S["API: GET /api/runs/{run_id}/metrics"]
-    S -->|Query| Q
-    L -->|Display| T["Final Results Page<br/>Plots & Metrics"]
-
-    style A fill:#ffe0b2
-    style B fill:#fff3e0
-    style C fill:#f3e5f5
-    style K fill:#f8bbd0
-    style L fill:#e1f5ff
-    style Q fill:#e8f5e9
-    style T fill:#c8e6c9
-```
-
-### Flow 2: Federated Learning Execution
-
-```mermaid
-graph TD
-    A["API: POST /experiments/federated<br/>+ dataset.zip, num_rounds=15"] -->|Queue| B["Background Task"]
-    B -->|Extract| C["Data Preparation<br/>Load metadata"]
-    C -->|Partition| D["DataPartitioner<br/>IID/Non-IID/Stratified"]
-
-    D -->|Initialize| E["Flower ServerApp<br/>core/server_app.py"]
-    E -->|Create| F["LitResNet<br/>Global Model"]
-    E -->|Create| G["ConfigurableFedAvg<br/>Aggregation Strategy"]
-
-    E -->|Signal| H["send_training_mode<br/>is_federated=True"]
-    H -->|Relay| I["WebSocket Server"]
-    I -->|Broadcast| J["React Frontend"]
-
-    loop "For each Round (1 to 15)"
-        E -->|Distribute| K["Broadcast Weights<br/>+ Config to Clients"]
-        K -->|Receive| L["ClientApp ×N<br/>core/client_app.py"]
-
-        par "Parallel Client Execution"
-            L -->|Load| M["Data Partition<br/>Client 0"]
-            M -->|Train| N["LitResNet<br/>Local Training"]
-            N -->|Compute| O["Training Metrics<br/>Loss, Accuracy"]
-        and
-            L -->|Load| P["Data Partition<br/>Client 1"]
-            P -->|Train| Q["LitResNet<br/>Local Training"]
-            Q -->|Compute| R["Training Metrics"]
-        and
-            L -->|Load| S["Data Partition<br/>Client N"]
-            S -->|Train| T["LitResNet<br/>Local Training"]
-            T -->|Compute| U["Training Metrics"]
-        end
-
-        O -->|Return| V["Aggregate Weights<br/>FedAvg Strategy"]
-        R -->|Return| V
-        U -->|Return| V
-
-        V -->|Aggregated| W["Server-Side Evaluation<br/>Test Set"]
-        W -->|Compute| X["Metrics & CM<br/>Accuracy, Precision, Recall"]
-        X -->|Persist| Y["Database<br/>server_evaluations table"]
-
-        V -->|Signal| Z["send_round_metrics<br/>Aggregated metrics"]
-        Z -->|Relay| I
-        I -->|Update| J
+    Note over CT, Model: Training Loop
+    loop Every Epoch
+        CT->>Model: Forward/Backward Pass
+        Model-->>CT: Loss & Metrics
+        CT->>WS: Broadcast Metrics
+        CT->>DB: Save Metric Record
     end
 
-    E -->|Mark Complete| Y
-    E -->|Signal| AA["send_training_end<br/>+ run_id"]
-    AA -->|Relay| I
-
-    J -->|Query| AB["API: /api/runs/{id}/federated-rounds"]
-    AB -->|Fetch| Y
-    J -->|Display| AC["Federated Results<br/>Per-round charts"]
-
-    style A fill:#ffe0b2
-    style E fill:#c8e6c9
-    style L fill:#bbdefb
-    style I fill:#f8bbd0
-    style J fill:#e1f5ff
-    style Y fill:#e8f5e9
-    style AC fill:#c8e6c9
+    Note over CT, DB: Completion
+    CT->>DB: Update Run Status (Done)
+    CT->>WS: Broadcast "Training Complete"
 ```
 
-### Flow 3: Research Assistance (Agentic System)
+### Federated Learning - Part 1: Initialization
 
 ```mermaid
-graph TD
-    A["User Query<br/>via Frontend"] -->|POST /chat/query| B["Chat Endpoint<br/>chat_endpoints.py"]
-    B -->|Load| C["ArxivAgent<br/>LangChain Agent"]
-    B -->|Load| D["RAG Pipeline<br/>Local Documents"]
+sequenceDiagram
+    autonumber
+    participant API as FastAPI
+    participant Server as FL Server
+    participant DB as Database
+    participant WS as WebSocket
 
-    C -->|Prepare| E["Agent Prompt<br/>System Message"]
-    E -->|With Context| F["User Query<br/>+ Run Metadata"]
+    API->>Server: Start Federated Session
+    activate Server
+    
+    Server->>DB: Create New Run
+    Server->>WS: Broadcast "FL Mode Started"
+    
+    Server->>Server: Initialize Global Model
+    Server->>Server: Configure Strategy (FedAvg)
+    
+    deactivate Server
+```
 
-    F -->|Execute| G["LangChain Agentic Loop"]
-    G -->|Think| H["Reason about<br/>Best approach"]
+### Federated Learning - Part 2: Round Execution
 
-    H -->|Decide| I{Use External<br/>Tools?}
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Server as FL Server
+    participant Client as FL Client
+    participant DB as Database
+    participant WS as WebSocket
 
-    I -->|Yes - RAG| J["RAG Tool<br/>Local document search"]
-    J -->|Query| K["Vector DB<br/>Embeddings"]
-    K -->|Retrieve| L["Relevant Documents<br/>Context"]
-    L -->|Return| G
-
-    I -->|Yes - Arxiv| M["Arxiv Tool<br/>MCP Protocol"]
-    M -->|Query| N["Arxiv API<br/>Paper Search"]
-    N -->|Results| O["Paper Metadata<br/>Title, Abstract, URL"]
-    O -->|Return| G
-
-    I -->|No| P["Generate Response<br/>Using context"]
-
-    H -->|Repeat| G
-    P -->|Format| Q["ChatResponse<br/>Answer + Sources"]
-    Q -->|Return| B
-    B -->|HTTP| R["React Frontend"]
-    R -->|Display| S["Chat Interface<br/>Answer + Links"]
-
-    style A fill:#fff3e0
-    style B fill:#fff3e0
-    style C fill:#fff9c4
-    style G fill:#fff9c4
-    style J fill:#fff9c4
-    style M fill:#fff9c4
-    style Q fill:#f8bbd0
-    style S fill:#e1f5ff
+    Note over Server, Client: Start of Round N
+    
+    Server->>Client: Send Global Weights & Config
+    activate Client
+    
+    Client->>Client: Train on Local Partition
+    Client->>Client: Evaluate on Local Val Set
+    
+    Client-->>Server: Return Updated Weights & Metrics
+    deactivate Client
+    
+    Note over Server: Aggregation & Eval
+    Server->>Server: Aggregate Updates (FedAvg)
+    Server->>Server: Evaluate on Server Test Set
+    
+    Server->>DB: Persist Round Metrics
+    Server->>WS: Broadcast Round Metrics
 ```
 
 ---
@@ -314,7 +245,7 @@ graph TB
         XD_Test["test_dataloader()"]
     end
 
-    subgraph Utils["Utilities"]
+    subgraph Utils_Comp["Utilities"]
         DH["DataSourceHandler<br/>ZIP extraction"]
         MC["MetricsCollector<br/>Aggregation"]
         WS["WebSocketSender<br/>Real-time stream"]
@@ -323,7 +254,7 @@ graph TB
 
     CT_Train -->|Creates| LR_Init
     CT_Train -->|Creates| XD_Setup
-    CT_Setup -->|Uses| Utils
+    CT_Setup -->|Uses| Utils_Comp
 
     LR_Loss -->|Call| MC
     LR_Val -->|Call| MC
@@ -333,10 +264,14 @@ graph TB
 
     CT_Train -->|Extract| DH
 
-    style CentralizedTrainer fill:#f8bbd0
-    style LitResNet fill:#f3e5f5
-    style XRayDataModule fill:#f3e5f5
-    style Utils fill:#fff9c4
+    %% Styling
+    classDef main fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef model fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef util fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class CentralizedTrainer main;
+    class LitResNet,XRayDataModule model;
+    class Utils_Comp,DH,MC,WS,MFP util;
 ```
 
 ### Federated Learning Components
@@ -383,11 +318,14 @@ graph TB
 
     SA_Eval -->|Save| Utils_Persist
 
-    style ServerApp fill:#c8e6c9
-    style ClientApp fill:#bbdefb
-    style Strategy fill:#c8e6c9
-    style DataPart fill:#fff9c4
-    style Utils_FL fill:#fff9c4
+    %% Styling
+    classDef server fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef client fill:#007BFF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef strat fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class ServerApp server;
+    class ClientApp client;
+    class Strategy,DataPart,Utils_FL strat;
 ```
 
 ---
@@ -448,6 +386,60 @@ graph TB
 - Contextual responses based on training results
 - Session-based conversation history
 
+### Agentic Systems
+
+Harnesses LLMs for research assistance and RAG-based document retrieval.
+
+- **Arxiv Agent**: [src/control/agentic_systems/multi_agent_systems/chat/arxiv_agent.py](agentic_systems/multi_agent_systems/chat/arxiv_agent.py) - Searches medical literature.
+- **RAG Pipeline**: [src/control/agentic_systems/pipelines/rag/pipeline.py](agentic_systems/pipelines/rag/pipeline.py) - Processes local PDFs and medical reports.
+- **MCP Manager**: [src/control/agentic_systems/multi_agent_systems/chat/mcp_manager.py](agentic_systems/multi_agent_systems/chat/mcp_manager.py) - Handles the Model Context Protocol for tool use.
+
+### Flow 3: Research Assistance (Agentic System)
+
+```mermaid
+graph TD
+    A["User Query<br/>via Frontend"] -->|POST /chat/query| B["Chat Endpoint<br/>chat_endpoints.py"]
+    B -->|Load| C["ArxivAgent<br/>LangChain Agent"]
+    B -->|Load| D["RAG Pipeline<br/>Local Documents"]
+
+    C -->|Prepare| E["Agent Prompt<br/>System Message"]
+    E -->|With Context| F["User Query<br/>+ Run Metadata"]
+
+    F -->|Execute| G["LangChain Agentic Loop"]
+    G -->|Think| H["Reason about<br/>Best approach"]
+
+    H -->|Decide| I{Use External<br/>Tools?}
+
+    I -->|Yes - RAG| J["RAG Tool<br/>Local document search"]
+    J -->|Query| K["Vector DB<br/>Embeddings"]
+    K -->|Retrieve| L["Relevant Documents<br/>Context"]
+    L -->|Return| G
+
+    I -->|Yes - Arxiv| M["Arxiv Tool<br/>MCP Protocol"]
+    M -->|Query| N["Arxiv API<br/>Paper Search"]
+    N -->|Results| O["Paper Metadata<br/>Title, Abstract, URL"]
+    O -->|Return| G
+
+    I -->|No| P["Generate Response<br/>Using context"]
+
+    H -->|Repeat| G
+    P -->|Format| Q["ChatResponse<br/>Answer + Sources"]
+    Q -->|Return| B
+    B -->|HTTP| R["React Frontend"]
+    R -->|Display| S["Chat Interface<br/>Answer + Links"]
+
+    %% Styling
+    classDef user fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef endpoint fill:#0091EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef logic fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef tool fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class A user;
+    class B,R,S endpoint;
+    class C,D,E,F,G,H,I,P,Q logic;
+    class J,K,L,M,N,O tool;
+```
+
 ---
 
 ## Data Flow
@@ -480,16 +472,16 @@ graph LR
     H -->|Best Model| Q["Checkpointing<br/>PyTorch .pt"]
     Q -->|Save| R["File Storage<br/>models/checkpoints/"]
 
-    style A fill:#ffe0b2
-    style B fill:#fff3e0
-    style C fill:#f0f4c3
-    style D fill:#f0f4c3
-    style E fill:#f0f4c3
-    style H fill:#f3e5f5
-    style K fill:#fff9c4
-    style L fill:#f8bbd0
-    style N fill:#e1f5ff
-    style P fill:#e8f5e9
+    %% Styling
+    classDef input fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef process fill:#0091EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef model fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef output fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class A,B input;
+    class C,D,E,F,G process;
+    class H,I,J model;
+    class K,L,M,N,O,P,Q,R output;
 ```
 
 ---
@@ -503,5 +495,5 @@ graph LR
 | **WebSocket Metrics** | [dl_model/utils/data/README.md](dl_model/utils/data/README.md) |
 | **API Layer** | [../api/README.md](../api/README.md) |
 | **System Architecture** | [../../README.md](../../README.md) |
-| **Configuration** | [../../config/default_config.yaml](../../config/default_config.yaml) |
+| **Configuration** | [../../config/README.md](../../config/README.md) |
 

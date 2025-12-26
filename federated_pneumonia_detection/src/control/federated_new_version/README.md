@@ -58,13 +58,13 @@ graph TB
     end
 
     subgraph Persistence["💾 Persistence"]
-        DB["PostgreSQL<br/>Runs, Metrics,<br/>ServerEvals"]
-        FS["File Storage<br/>Checkpoints"]
+        DB[(PostgreSQL)]
+        FS["File Storage<br/>(Checkpoints)"]
     end
 
     subgraph Monitoring["📊 Real-Time Monitoring"]
-        WS["WebSocket<br/>ws://localhost:8765"]
-        UI["Frontend UI<br/>Training Progress"]
+        WS["WebSocket<br/>Server"]
+        UI["Frontend UI"]
     end
 
     Server -->|Broadcast Weights| W
@@ -87,11 +87,18 @@ graph TB
     Strat -->|Broadcast| WS
     WS -->|Display| UI
 
-    style Server fill:#c8e6c9
-    style Clients fill:#bbdefb
-    style Network fill:#ffe0b2
-    style Persistence fill:#e8f5e9
-    style Monitoring fill:#f3e5f5
+    %% Styling
+    classDef server fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef clients fill:#007BFF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef network fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef data fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef monitor fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class Server,SM,Agg,Eval,Strat server;
+    class Clients,C0,C1,Cn clients;
+    class Network,W,M network;
+    class Persistence,DB,FS data;
+    class Monitoring,WS,UI monitor;
 ```
 
 ---

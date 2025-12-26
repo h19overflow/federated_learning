@@ -1,73 +1,97 @@
-# Welcome to your Lovable project
+# X-Ray Vision AI Forge 🖥️
 
-## Project info
+**A modern, real-time dashboard for the Federated Pneumonia Detection System.**
 
-**URL**: https://lovable.dev/projects/cddd6faa-ae03-4803-b8de-4b9de0b20dff
+This React application serves as the primary user interface for controlling training sessions, visualizing results, and monitoring system status.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 🏗️ Architecture & Features
 
-**Use Lovable**
+### Tech Stack
+- **Framework**: [React](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + Shadcn UI
+- **State Management**: React Query + Context API
+- **Visualization**: Recharts
+- **Communication**: WebSocket (Real-time updates)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/cddd6faa-ae03-4803-b8de-4b9de0b20dff) and start prompting.
+### Key Capabilities
+- **Training Orchestration**: Start centralized or federated runs via simple forms.
+- **Live Monitoring**: Watch training metrics (Loss, Accuracy, F1) stream in real-time.
+- **Results Analysis**: View confusion matrices, ROC curves, and detailed per-epoch stats.
+- **Chat Assistant**: Interact with the Arxiv Agent for research questions.
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## 📂 Directory Structure
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+src/
+├── components/          # Reusable UI components
+│   ├── dashboard/       # Main dashboard widgets
+│   ├── training/        # Training control forms
+│   └── ui/              # Shadcn primitive components
+├── context/             # React Context (Auth, Theme)
+├── hooks/               # Custom hooks
+│   └── useWebSocket.ts  # Real-time metrics connection
+├── lib/                 # Utilities and helpers
+├── pages/               # Route page components
+├── services/            # API client services
+│   └── api.ts           # Axios configuration
+└── types/               # TypeScript definitions
 ```
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🔌 WebSocket Integration
 
-**Use GitHub Codespaces**
+The dashboard connects to the backend WebSocket server (`ws://localhost:8765`) to receive live updates without polling.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+**Hook Location**: `src/hooks/use-websocket.tsx`
 
-## What technologies are used for this project?
+**Message Handling**:
+- `training_mode`: Sets the UI to "Centralized" or "Federated" mode.
+- `epoch_end`: Updates charts with new epoch data points.
+- `round_end`: Updates federated learning progress bars.
+- `training_end`: Triggers final results fetch.
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🚀 Getting Started
 
-## How can I deploy this project?
+### Prerequisites
+- Node.js 20+
+- npm or bun
 
-Simply open [Lovable](https://lovable.dev/projects/cddd6faa-ae03-4803-b8de-4b9de0b20dff) and click on Share -> Publish.
+### Installation
 
-## Can I connect a custom domain to my Lovable project?
+1. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-Yes, you can!
+2. **Start Development Server**
+   ```bash
+   npm run dev
+   ```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+3. **Access Dashboard**
+   Open [http://localhost:8080](http://localhost:8080)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### Configuration
+Update `.env` to point to your backend API:
+```env
+VITE_API_URL=http://localhost:8001
+VITE_WS_URL=ws://localhost:8765
+```
+
+---
+
+## 🤝 Backend Connection
+
+This frontend requires the Python backend to be running:
+1. **API Server**: `http://localhost:8001`
+2. **WebSocket Server**: `ws://localhost:8765`
+
+Ensure both services are active before starting a training session.

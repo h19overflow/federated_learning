@@ -431,7 +431,6 @@ federated_pneumonia_detection/
 
 ## Contributing
 
-- Follow [CLAUDE.md](CLAUDE.md) for code standards
 - Use type hints throughout
 - Include error handling for I/O operations
 - Add structured logging
@@ -450,8 +449,7 @@ federated_pneumonia_detection/
 
 ## Related Repositories
 
-- **Frontend**: [xray-vision-ai-forge](../xray-vision-ai-forge) - React dashboard
-- **Analysis**: [analysis/](../analysis/) - Comparative analysis & visualizations
+- **Frontend**: [xray-vision-ai-forge](../xray-vision-ai-forge/) - React dashboard
 - **Models**: Trained models stored in PostgreSQL
 
 ---

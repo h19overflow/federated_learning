@@ -33,19 +33,57 @@ The boundary module is responsible for:
 
 ### Entity Relationship Diagram
 
-```
-Run (training sessions)
-├── Client (FL participants)
-│   └── Round (FL communication rounds)
-│       └── RunMetric (metrics per round per client)
-├── RunMetric (centralized metrics per epoch)
-└── ServerEvaluation (global model evaluation per round)
+```mermaid
+erDiagram
+    RUN ||--o{ RUN_METRIC : "tracks"
+    RUN ||--o{ CLIENT : "has"
+    RUN ||--o{ SERVER_EVALUATION : "evaluates"
+    
+    CLIENT ||--o{ ROUND : "participates"
+    CLIENT ||--o{ RUN_METRIC : "reports"
+    
+    ROUND ||--o{ RUN_METRIC : "contains"
+
+    CHAT_SESSION ||--o{ CHAT_MESSAGE : "stores (external)"
+    
+    RUN {
+        int id PK
+        string training_mode
+        string status
+        timestamp start_time
+    }
+
+    CLIENT {
+        int id PK
+        int run_id FK
+        string client_identifier
+    }
+
+    ROUND {
+        int id PK
+        int client_id FK
+        int round_number
+    }
+
+    RUN_METRIC {
+        int id PK
+        int run_id FK
+        string metric_name
+        float metric_value
+    }
+
+    CHAT_SESSION {
+        string id PK
+        string title
+        timestamp created_at
+        timestamp updated_at
+    }
 ```
 
 ### Data Models
 
 #### 1. `Run` Table
-**File**: [engine.py:21-36](engine.py#L21-L36)
+**File**: [models/run.py](models/run.py)
 
 **Purpose**: Represents a complete training execution (centralized or federated).
 
@@ -67,7 +105,7 @@ Run (training sessions)
 - 1 Run → Many ServerEvaluation (federated only)
 
 #### 2. `Client` Table
-**File**: [engine.py:38-55](engine.py#L38-L55)
+**File**: [models/client.py](models/client.py)
 
 **Purpose**: Represents a federated learning participant (NULL for centralized).
 
@@ -85,7 +123,7 @@ Run (training sessions)
 - 1 Client → Many Round
 
 #### 3. `Round` Table
-**File**: [engine.py:57-70](engine.py#L57-L70)
+**File**: [models/round.py](models/round.py)
 
 **Purpose**: Tracks federated learning communication rounds per client.
 
@@ -103,7 +141,7 @@ Run (training sessions)
 - Many Round → 1 Client
 
 #### 4. `RunMetric` Table
-**File**: [engine.py:72-99](engine.py#L72-L99)
+**File**: [models/run_metric.py](models/run_metric.py)
 
 **Purpose**: Stores training metrics (loss, accuracy, precision, etc.) per epoch/round.
 
@@ -125,7 +163,7 @@ Run (training sessions)
 - Many RunMetric → 1 Round (optional, federated only)
 
 #### 5. `ServerEvaluation` Table
-**File**: [engine.py:100-133](engine.py#L100-L133)
+**File**: [models/server_evaluation.py](models/server_evaluation.py)
 
 **Purpose**: Centralized server-side evaluation results per federated round.
 
@@ -152,6 +190,19 @@ Run (training sessions)
 **Relationships**:
 - Many ServerEvaluation → 1 Run
 
+#### 6. `ChatSession` Table
+**File**: [models/chat_session.py](models/chat_session.py)
+
+**Purpose**: Model for storing chat sessions and their metadata.
+
+**Fields**:
+| Field | Type | Purpose |
+|-------|------|---------|
+| `id` | String (PK) | Unique session UUID |
+| `title` | String | Optional session title |
+| `created_at` | TIMESTAMP | Session creation time |
+| `updated_at` | TIMESTAMP | Last update time |
+
 ---
 
 ## CRUD Operations
@@ -161,6 +212,13 @@ Run (training sessions)
 ```
 boundary/
 ├── engine.py              # Database configuration and models
+├── models/                # SQLAlchemy ORM models
+│   ├── run.py
+│   ├── client.py
+│   ├── round.py
+│   ├── run_metric.py
+│   ├── server_evaluation.py
+│   └── chat_session.py
 ├── CRUD/                  # Data access objects
 │   ├── __init__.py
 │   ├── base.py            # BaseCRUD abstract class
@@ -169,6 +227,7 @@ boundary/
 │   ├── round.py           # Round CRUD operations
 │   ├── run_metric.py      # RunMetric CRUD operations
 │   ├── server_evaluation.py # ServerEvaluation CRUD operations
+│   ├── chat_history.py    # Chat session management
 │   └── fetch_documents.py # Vector DB queries (RAG)
 └── wandb_Integration/     # WandB integration (placeholder)
 ```
@@ -231,6 +290,18 @@ boundary/
 | `get_by_run()` | Retrieve all evaluations for run |
 | `get_summary_stats()` | Compute best metrics across rounds |
 | `get_best_by_metric()` | Find best round for metric |
+
+#### 6. Chat History Functions
+**File**: [CRUD/chat_history.py](CRUD/chat_history.py)
+
+**Key Functions**:
+| Function | Purpose |
+|----------|---------|
+| `create_chat_session()` | Initialize a new session record |
+| `get_chat_session()` | Retrieve session by ID |
+| `get_all_chat_sessions()`| List all sessions (sorted by update) |
+| `update_chat_session_title()` | Rename a session |
+| `delete_chat_session()` | Remove a session record |
 
 **Features**:
 - Confusion matrix extraction and storage
