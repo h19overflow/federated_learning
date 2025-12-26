@@ -4,6 +4,9 @@ import threading
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from federated_pneumonia_detection.src.api.middleware.security import (
+    MaliciousPromptMiddleware,
+)
 from federated_pneumonia_detection.src.api.endpoints.configuration_settings import (
     configuration_endpoints,
 )
@@ -99,6 +102,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
+
+# Security middleware for prompt injection detection
+app.add_middleware(MaliciousPromptMiddleware)
 
 
 @app.get("/")

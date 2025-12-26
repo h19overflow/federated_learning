@@ -547,6 +547,20 @@ export const resultsApi = {
 };
 
 // ============================================================================
+// Chat Endpoints
+// ============================================================================
+
+export const chatApi = {
+  /**
+   * Get all documents in the knowledge base
+   */
+  async getKnowledgeBase(): Promise<{ documents: any[]; total_count: number }> {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/chat/knowledge-base`);
+    return handleResponse<{ documents: any[]; total_count: number }>(response);
+  },
+};
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -576,6 +590,7 @@ export default {
   experiments: experimentsApi,
   logging: loggingApi,
   results: resultsApi,
+  chat: chatApi,
   checkHealth: checkApiHealth,
   getBaseUrl: getApiBaseUrl,
 };

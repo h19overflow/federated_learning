@@ -543,3 +543,19 @@ export interface UploadResponse {
   dataset_summary?: DatasetSummary;
   dataset_id?: string;
 }
+// ============================================================================
+// Chat & Knowledge Base Types
+// ============================================================================
+
+export interface KnowledgeBaseDocument {
+  source: string;
+  paper_id?: string;
+  display_name: string;
+  type: 'arxiv' | 'uploaded';
+  chunk_count: number;
+}
+
+export interface KnowledgeBaseResponse {
+  documents: KnowledgeBaseDocument[];
+  total_count: number;
+}

@@ -18,7 +18,9 @@ import {
   Plus,
   History,
   Database,
+  Library,
 } from "lucide-react";
+import { KnowledgeBasePanel } from "./KnowledgeBasePanel";
 
 import { cn } from "@/lib/utils";
 import api from "@/services/api";
@@ -74,6 +76,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -161,6 +164,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     localStorage.setItem("chat_session_id", sid);
     loadHistory(sid);
     setShowHistory(false);
+    setShowKnowledgeBase(false);
   };
 
   const handleDeleteSession = async (sid: string, e: React.MouseEvent) => {
@@ -603,7 +607,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   Assistant
                 </h2>
                 <p className="text-xs text-[hsl(215_15%_50%)]">
-                  {showHistory ? "Conversation History" : "AI-powered insights"}
+                  {showHistory
+                    ? "Conversation History"
+                    : showKnowledgeBase
+                    ? "Research Collection"
+                    : "AI-powered insights"}
                 </p>
               </div>
             </div>
@@ -621,8 +629,28 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  setShowHistory(!showHistory);
-                  if (!showHistory) fetchSessions();
+                  const newState = !showKnowledgeBase;
+                  setShowKnowledgeBase(newState);
+                  if (newState) setShowHistory(false);
+                }}
+                title="Knowledge Base"
+                className={cn(
+                  "h-9 w-9 rounded-xl transition-all",
+                  showKnowledgeBase
+                    ? "text-[hsl(172_63%_22%)] bg-[hsl(172_40%_94%)]"
+                    : "text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)]"
+                )}
+              >
+                <Library className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  const newState = !showHistory;
+                  setShowHistory(newState);
+                  if (newState) setShowKnowledgeBase(false);
+                  if (newState) fetchSessions();
                 }}
                 title="History"
                 className={cn(
@@ -716,6 +744,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                 ).toLocaleTimeString([], {
                                   hour: "2-digit",
                                   minute: "2-digit",
+                                  second: "2-digit",
                                 })}
                               </p>
                             </div>
@@ -734,6 +763,17 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   </div>
                 )}
               </ScrollArea>
+            </motion.div>
+          ) : showKnowledgeBase ? (
+            <motion.div
+              key="knowledge"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="flex-1 flex flex-col overflow-hidden"
+            >
+              <KnowledgeBasePanel />
             </motion.div>
           ) : (
             <motion.div

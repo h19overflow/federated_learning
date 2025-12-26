@@ -386,3 +386,69 @@ async def retrieve_documents(message: ChatMessage) -> Dict[str, Any]:
         raise HTTPException(
             status_code=500, detail=f"Error retrieving documents: {str(e)}"
         )
+
+
+@router.get("/knowledge-base")
+async def list_knowledge_base_documents() -> Dict[str, Any]:
+    """
+    List all documents in the knowledge base.
+    
+    Returns distinct sources (arxiv papers and uploaded documents) with metadata.
+    
+    Returns:
+        Dict with list of documents and their sources
+    """
+    from federated_pneumonia_detection.src.boundary.engine import settings, get_engine
+    from sqlalchemy import text
+    
+    try:
+        engine = get_engine()
+        
+        # Query distinct sources from the langchain_pg_embedding table
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT DISTINCT 
+                    cmetadata->>'source' as source,
+                    cmetadata->>'paper_id' as paper_id,
+                    COUNT(*) as chunk_count
+                FROM langchain_pg_embedding
+                WHERE collection_id = (
+                    SELECT uuid FROM langchain_pg_collection WHERE name = 'research_papers'
+                )
+                GROUP BY cmetadata->>'source', cmetadata->>'paper_id'
+                ORDER BY source
+            """))
+            
+            documents = []
+            for row in result:
+                source = row[0] or "Unknown"
+                paper_id = row[1]
+                chunk_count = row[2]
+                
+                # Determine document type
+                if source.startswith("arxiv:"):
+                    doc_type = "arxiv"
+                    display_name = source
+                else:
+                    doc_type = "uploaded"
+                    display_name = source.split("/")[-1] if "/" in source else source
+                
+                documents.append({
+                    "source": source,
+                    "paper_id": paper_id,
+                    "display_name": display_name,
+                    "type": doc_type,
+                    "chunk_count": chunk_count,
+                })
+        
+        return {
+            "documents": documents,
+            "total_count": len(documents),
+        }
+        
+    except Exception as e:
+        logger.error(f"Error listing knowledge base: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error listing knowledge base: {str(e)}"
+        )
+

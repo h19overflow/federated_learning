@@ -29,6 +29,9 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.tools.rag_tool import (
     create_rag_tool,
 )
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.tools.arxiv_embedding_tool import (
+    create_arxiv_embedding_tool,
+)
 
 from .content import chunk_content, normalize_content
 from .history import ChatHistoryManager
@@ -123,6 +126,11 @@ class ArxivAugmentedEngine:
                 arxiv_tools = mcp_manager.get_arxiv_tools()
                 tools.extend(arxiv_tools)
                 logger.info(f"Added {len(arxiv_tools)} arxiv tools")
+                
+                # Add embedding tool for knowledge base expansion
+                embedding_tool = create_arxiv_embedding_tool()
+                tools.append(embedding_tool)
+                logger.info("Added arxiv embedding tool")
             else:
                 logger.warning("Arxiv requested but MCP manager not available")
 
