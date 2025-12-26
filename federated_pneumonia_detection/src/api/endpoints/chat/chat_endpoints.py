@@ -122,44 +122,108 @@ async def query_chat_stream(message: ChatMessage):
     Returns:
         StreamingResponse with SSE format containing tokens
     """
+    logger.info(f"[STREAM] Received streaming query request - Query: '{message.query[:100]}...', "
+                f"Session ID: {message.session_id}, Run ID: {message.run_id}, "
+                f"Arxiv Enabled: {message.arxiv_enabled}")
+    
     # Use ArxivAugmentedEngine when arxiv is enabled, else use QueryEngine
     use_arxiv = message.arxiv_enabled
+    logger.info(f"[STREAM] Using {'ArxivAugmentedEngine' if use_arxiv else 'QueryEngine'}")
 
     if not use_arxiv and query_engine is None:
+        logger.error("[STREAM] QueryEngine not initialized - cannot process request")
         raise HTTPException(
             status_code=500, detail="QueryEngine not initialized properly"
         )
 
     async def generate():
-        session_id = message.session_id or str(uuid.uuid4())
-
-        # Send session_id first so frontend knows it
-        yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
-
-        enhanced_query = message.query
-        if message.run_id is not None:
-            enhanced_query = enhance_query_with_run_context(
-                message.query, message.run_id
-            )
-
         try:
-            if use_arxiv:
-                # Use ArxivAugmentedEngine with arxiv tools
-                arxiv_engine = get_arxiv_engine()
-                async for chunk in arxiv_engine.query_stream(
-                    enhanced_query, session_id, arxiv_enabled=True
-                ):
-                    yield f"data: {json.dumps(chunk)}\n\n"
-            else:
-                # Use standard QueryEngine
-                async for chunk in query_engine.query_with_history_stream(
-                    enhanced_query, session_id
-                ):
-                    yield f"data: {json.dumps(chunk)}\n\n"
-        except Exception as e:
-            logger.error(f"Error streaming query: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            logger.info("[STREAM] Starting stream generation")
+            
+            # Generate session_id
+            session_id = message.session_id or str(uuid.uuid4())
+            logger.info(f"[STREAM] Session ID: {session_id}")
 
+            # Send session_id first so frontend knows it
+            session_data = {'type': 'session', 'session_id': session_id}
+            logger.debug(f"[STREAM] Sending session data: {session_data}")
+            yield f"data: {json.dumps(session_data)}\n\n"
+
+            # Enhance query with run context if provided
+            enhanced_query = message.query
+            if message.run_id is not None:
+                logger.info(f"[STREAM] Enhancing query with run context for run_id: {message.run_id}")
+                try:
+                    enhanced_query = enhance_query_with_run_context(
+                        message.query, message.run_id
+                    )
+                    logger.info(f"[STREAM] Query enhanced successfully")
+                except Exception as e:
+                    logger.error(f"[STREAM] Failed to enhance query with run context: {e}", exc_info=True)
+                    # Continue with original query if enhancement fails
+                    enhanced_query = message.query
+            
+            logger.info(f"[STREAM] Final query to process: '{enhanced_query[:100]}...'")
+
+            chunk_count = 0
+            try:
+                if use_arxiv:
+                    # Use ArxivAugmentedEngine with arxiv tools
+                    logger.info("[STREAM] Initializing ArxivAugmentedEngine")
+                    try:
+                        arxiv_engine = get_arxiv_engine()
+                        logger.info("[STREAM] ArxivAugmentedEngine initialized successfully")
+                    except Exception as e:
+                        logger.error(f"[STREAM] Failed to initialize ArxivAugmentedEngine: {e}", exc_info=True)
+                        error_data = {'type': 'error', 'message': f'Failed to initialize Arxiv engine: {str(e)}'}
+                        yield f"data: {json.dumps(error_data)}\n\n"
+                        return
+                    
+                    logger.info("[STREAM] Starting arxiv query stream")
+                    async for chunk in arxiv_engine.query_stream(
+                        enhanced_query, session_id, arxiv_enabled=True
+                    ):
+                        chunk_count += 1
+                        if chunk_count % 10 == 0:  # Log every 10th chunk to avoid spam
+                            logger.debug(f"[STREAM] Arxiv chunk #{chunk_count}: {chunk.get('type', 'unknown')}")
+                        yield f"data: {json.dumps(chunk)}\n\n"
+                    
+                    logger.info(f"[STREAM] Arxiv stream completed - Total chunks: {chunk_count}")
+                else:
+                    # Use standard QueryEngine
+                    logger.info("[STREAM] Starting standard query stream")
+                    try:
+                        async for chunk in query_engine.query_with_history_stream(
+                            enhanced_query, session_id
+                        ):
+                            chunk_count += 1
+                            if chunk_count % 10 == 0:  # Log every 10th chunk to avoid spam
+                                logger.debug(f"[STREAM] Standard chunk #{chunk_count}: {chunk.get('type', 'unknown')}")
+                            yield f"data: {json.dumps(chunk)}\n\n"
+                        
+                        logger.info(f"[STREAM] Standard stream completed - Total chunks: {chunk_count}")
+                    except Exception as e:
+                        logger.error(f"[STREAM] Error in query_with_history_stream: {e}", exc_info=True)
+                        error_data = {'type': 'error', 'message': f'Query engine error: {str(e)}'}
+                        yield f"data: {json.dumps(error_data)}\n\n"
+                        return
+                
+                if chunk_count == 0:
+                    logger.warning("[STREAM] No chunks were generated - this may cause empty message on frontend")
+                    error_data = {'type': 'error', 'message': 'No response generated from the query engine'}
+                    yield f"data: {json.dumps(error_data)}\n\n"
+                    
+            except Exception as e:
+                logger.error(f"[STREAM] Error during streaming iteration: {e}", exc_info=True)
+                error_data = {'type': 'error', 'message': f'Streaming error: {str(e)}'}
+                yield f"data: {json.dumps(error_data)}\n\n"
+                
+        except Exception as e:
+            logger.error(f"[STREAM] Critical error in generate function: {e}", exc_info=True)
+            error_data = {'type': 'error', 'message': f'Critical streaming error: {str(e)}'}
+            yield f"data: {json.dumps(error_data)}\n\n"
+
+    logger.info("[STREAM] Returning StreamingResponse")
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",

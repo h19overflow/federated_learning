@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 from langchain_community.document_loaders.pdf import PyPDFium2Loader
 
-# TODO: Add axriv MCP server in order to access different research papers, make sure it's functional and really helps.
 
 class QueryEngine:
     def __init__(self, max_history: int = 10):
@@ -29,47 +28,58 @@ class QueryEngine:
         Args:
             max_history: Maximum number of conversation turns to keep in memory
         """
+        logger.info(f"[QueryEngine] Initializing with max_history={max_history}")
         self.max_history = max_history
         self.conversation_history: Dict[str, List[Tuple[str, str]]] = {}
 
         try:
+            logger.info("[QueryEngine] Connecting to PGVector store...")
             self.vector_store = PGVector(
                 connection=Settings().get_postgres_db_uri(),
                 collection_name="research_papers",
                 embeddings=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2"),
             )
+            logger.info("[QueryEngine] Vector store connected successfully")
         except Exception as e:
-            logger.error(f"Error initializing the vectorstore: {e}")
+            logger.error(f"[QueryEngine] Error initializing the vectorstore: {e}", exc_info=True)
             raise e
         try:
+            logger.info("[QueryEngine] Initializing ChatGoogleGenerativeAI (gemini-3-flash-preview)...")
             self.llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview")
+            logger.info("[QueryEngine] LLM initialized successfully")
         except Exception as e:
-            logger.error(f"Error initializing the llm: {e}")
+            logger.error(f"[QueryEngine] Error initializing the llm: {e}", exc_info=True)
             raise e
         try:
             self.vector_store_retriever = self.vector_store.as_retriever(search_kwargs={"k": 10})
         except Exception as e:
-            logger.error(f"Error initializing the vectorstore retriever: {e}")
+            logger.error(f"[QueryEngine] Error initializing the vectorstore retriever: {e}", exc_info=True)
             raise e
         try:
+            logger.info("[QueryEngine] Fetching documents for BM25 retriever...")
             self.documents = fetch_all_documents()
+            logger.info(f"[QueryEngine] Fetched {len(self.documents)} documents")
         except Exception as e:
-            logger.error(f"Error fetching the documents: {e}")
+            logger.error(f"[QueryEngine] Error fetching the documents: {e}", exc_info=True)
             raise e
         try:
+            logger.info("[QueryEngine] Initializing BM25 retriever...")
             self.bm25_retriever = BM25Retriever.from_documents(self.documents)
             self.bm25_retriever.k = 10
+            logger.info("[QueryEngine] BM25 retriever initialized")
         except Exception as e:
-            logger.error(f"Error initializing the bm25 retriever: {e}")
+            logger.error(f"[QueryEngine] Error initializing the bm25 retriever: {e}", exc_info=True)
             raise e
         try:
+            logger.info("[QueryEngine] Initializing EnsembleRetriever...")
             self.ensemble_retriever = EnsembleRetriever(
                 retrievers=[self.bm25_retriever, self.vector_store_retriever],
                 llm=ChatGoogleGenerativeAI(model="gemini-3-flash-preview"),
                 weights=[0.5, 0.5]
             )
+            logger.info("[QueryEngine] EnsembleRetriever initialized successfully")
         except Exception as e:
-            logger.error(f"Error initializing the ensemble retriever: {e}")
+            logger.error(f"[QueryEngine] Error initializing the ensemble retriever: {e}", exc_info=True)
             raise e
 
     def add_to_history(self, session_id: str, user_message: str, ai_response: str):
@@ -250,19 +260,28 @@ class QueryEngine:
             Dict with type and content for each streamed chunk
         """
         try:
+            logger.info(f"[QueryEngine] Starting stream for session {session_id}, query: '{query[:50]}...'")
+            
             # Retrieve documents synchronously (BM25 + PGVector ensemble)
+            logger.info("[QueryEngine] Invoking ensemble retriever...")
             retrieved_docs = self.ensemble_retriever.invoke(query)
+            logger.info(f"[QueryEngine] Retrieved {len(retrieved_docs)} documents")
 
             # Format retrieved documents as context
             context = "\n\n".join(doc.page_content for doc in retrieved_docs)
 
             # Get conversation history
             history_context = self.format_history_for_context(session_id)
+            if history_context:
+                logger.info(f"[QueryEngine] Found conversation history for session {session_id}")
+            else:
+                logger.info(f"[QueryEngine] No history found for session {session_id}")
 
             # Build the prompt with context and history
             prompt = self.get_prompts(include_history=bool(history_context))
 
             # Create messages for the LLM
+            logger.info("[QueryEngine] Formatting messages for LLM")
             if history_context:
                 messages = prompt.format_messages(
                     context=context, history=history_context, input=query
@@ -271,8 +290,10 @@ class QueryEngine:
                 messages = prompt.format_messages(context=context, input=query)
 
             full_response = ""
+            chunk_count = 0
 
             # Stream only the LLM response
+            logger.info("[QueryEngine] Starting LLM streaming...")
             async for chunk in self.llm.astream(messages):
                 if hasattr(chunk, "content") and chunk.content:
                     # Handle content that may be a list (Gemini) or string
@@ -282,15 +303,20 @@ class QueryEngine:
                             part if isinstance(part, str) else part.get("text", "")
                             for part in content
                         )
-                    full_response += content
-                    yield {"type": "token", "content": content}
+                    
+                    if content:
+                        chunk_count += 1
+                        full_response += content
+                        yield {"type": "token", "content": content}
+
+            logger.info(f"[QueryEngine] Streaming completed. Generated {chunk_count} chunks. Response length: {len(full_response)}")
 
             # After streaming completes, save to history
             self.add_to_history(session_id, query, full_response)
             yield {"type": "done", "session_id": session_id}
 
         except Exception as e:
-            logger.error(f"Error streaming query with history: {e}")
+            logger.error(f"[QueryEngine] Error streaming query with history: {e}", exc_info=True)
             yield {"type": "error", "message": str(e)}
 
 

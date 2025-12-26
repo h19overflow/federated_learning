@@ -472,13 +472,14 @@ const Landing = () => {
                 },
                 {
                   step: '04',
-                  title: 'Analyze',
-                  description: 'Review metrics and export your trained model.',
+                  title: 'Compare & Analyze',
+                  description: 'Compare performance across training modes.',
                   icon: (
                     <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-                      <rect x="4" y="4" width="24" height="24" rx="3" stroke="currentColor" strokeWidth="2" />
-                      <path d="M4 12h24M12 12v16" stroke="currentColor" strokeWidth="2" />
-                      <path d="M18 18l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <rect x="4" y="18" width="6" height="10" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
+                      <rect x="13" y="12" width="6" height="16" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
+                      <rect x="22" y="8" width="6" height="20" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
+                      <path d="M7 18L16 12L25 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )
                 }
