@@ -10,12 +10,10 @@ import os
 import logging
 from typing import Dict, Generator
 
-from federated_pneumonia_detection.models.system_constants import SystemConstants
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
-from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
+from federated_pneumonia_detection.config.config_manager import ConfigManager
 from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
 
-from federated_pneumonia_detection.tests.fixtures.sample_data import (
+from tests.fixtures.sample_data import (
     SampleDataFactory,
     TempDataStructure,
     MockDatasets,
@@ -34,33 +32,27 @@ def test_config_dict() -> Dict:
 
 
 @pytest.fixture
-def sample_constants() -> SystemConstants:
-    """Create sample SystemConstants for testing."""
-    return SystemConstants.create_custom(
-        img_size=(224, 224),
-        batch_size=32,
-        sample_fraction=0.5,
-        validation_split=0.2,
-        seed=42,
-        base_path='test_data',
-        metadata_filename='test_metadata.csv'
-    )
+def sample_config() -> ConfigManager:
+    """Create sample ConfigManager for testing."""
+    return ConfigManager()
 
 
 @pytest.fixture
-def sample_experiment_config() -> ExperimentConfig:
-    """Create sample ExperimentConfig for testing."""
-    return ExperimentConfig(
-        learning_rate=0.001,
-        epochs=5,
-        batch_size=32,
-        sample_fraction=0.5,
-        validation_split=0.2,
-        seed=42,
-        num_rounds=3,
-        num_clients=2,
-        clients_per_round=2
-    )
+def sample_constants(sample_config) -> ConfigManager:
+    """
+    Create sample constants for testing.
+    DEPRECATED: Use sample_config instead.
+    """
+    return sample_config
+
+
+@pytest.fixture
+def sample_experiment_config(sample_config) -> ConfigManager:
+    """
+    Create sample ExperimentConfig for testing.
+    DEPRECATED: Use sample_config instead.
+    """
+    return sample_config
 
 
 @pytest.fixture
@@ -127,15 +119,9 @@ def federated_datasets() -> list:
 
 
 @pytest.fixture
-def config_loader() -> ConfigLoader:
-    """Create ConfigLoader instance."""
-    return ConfigLoader()
-
-
-@pytest.fixture
-def data_processor(sample_constants) -> DataProcessor:
-    """Create DataProcessor instance with sample constants."""
-    return DataProcessor(sample_constants)
+def data_processor(sample_config) -> DataProcessor:
+    """Create DataProcessor instance with sample config."""
+    return DataProcessor(sample_config)
 
 
 @pytest.fixture

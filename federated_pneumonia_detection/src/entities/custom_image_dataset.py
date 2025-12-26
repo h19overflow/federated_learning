@@ -359,10 +359,6 @@ class CustomImageDataset(Dataset):
                 1024 * 1024
             )
             total_estimated_mb = estimated_mb_per_image * len(self.valid_indices)
-        else:
-            self.logger.info("No valid indices in dataset")
-            estimated_mb_per_image = 0
-            total_estimated_mb = 0
 
         return {
             "total_samples": len(self.valid_indices),
