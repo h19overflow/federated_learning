@@ -9,10 +9,35 @@ from typing import Dict, List, Tuple
 from pathlib import Path
 import tempfile
 import os
+from PIL import Image
 
 
 class SampleDataFactory:
     """Factory class for creating test data fixtures."""
+
+    @staticmethod
+    def create_dummy_image(
+        size: Tuple[int, int] = (224, 224),
+        color_mode: str = 'RGB',
+        noise_level: float = 0.5
+    ) -> Image.Image:
+        """
+        Create a dummy image with random noise.
+
+        Args:
+            size: Image dimensions (width, height)
+            color_mode: 'RGB' or 'L' (grayscale)
+            noise_level: Strength of random noise
+
+        Returns:
+            PIL Image object
+        """
+        if color_mode == 'RGB':
+            data = np.random.randint(0, 255, (size[1], size[0], 3), dtype=np.uint8)
+        else:
+            data = np.random.randint(0, 255, (size[1], size[0]), dtype=np.uint8)
+
+        return Image.fromarray(data, mode=color_mode)
 
     @staticmethod
     def create_sample_metadata(
@@ -114,7 +139,8 @@ class TempDataStructure:
         self,
         metadata_df: pd.DataFrame = None,
         create_images: bool = True,
-        images_format: str = '.png'
+        images_format: str = '.png',
+        color_mode: str = 'RGB'
     ):
         """
         Initialize temporary data structure.
@@ -123,10 +149,12 @@ class TempDataStructure:
             metadata_df: DataFrame to save as metadata CSV
             create_images: Whether to create dummy image files
             images_format: File extension for images
+            color_mode: 'RGB' or 'L' for generated images
         """
         self.metadata_df = metadata_df or SampleDataFactory.create_sample_metadata()
         self.create_images = create_images
         self.images_format = images_format
+        self.color_mode = color_mode
         self.temp_dir = None
         self.paths = {}
 
@@ -143,7 +171,8 @@ class TempDataStructure:
         if self.create_images:
             for patient_id in self.metadata_df['patientId']:
                 image_file = images_dir / f"{patient_id}{self.images_format}"
-                image_file.touch()
+                img = SampleDataFactory.create_dummy_image(color_mode=self.color_mode)
+                img.save(image_file)
 
         # Save metadata CSV
         metadata_path = temp_path / "Train_metadata.csv"
