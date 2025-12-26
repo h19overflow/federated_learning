@@ -67,3 +67,4 @@ system:
   sample_fraction: 0.05
   seed: 42
   validation_split: 0.2
+  use_imagenet_norm: true

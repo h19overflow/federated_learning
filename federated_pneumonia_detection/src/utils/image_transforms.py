@@ -71,37 +71,19 @@ class XRayPreprocessor:
     ) -> Image.Image:
         """
         Apply adaptive histogram equalization (CLAHE) for better contrast.
+        NOTE: This implementation currently returns the original image as cv2 is not available.
 
         Args:
             image: Input PIL image
             clip_limit: Contrast limiting parameter
 
         Returns:
-            Enhanced PIL image
+            Original image (CLAHE currently disabled)
         """
-        try:
-            import cv2
-        except ImportError:
-            logging.warning(
-                "cv2 not installed, skipping adaptive histogram equalization"
-            )
-            return image
-
-        # Convert PIL to OpenCV format
-        img_array = np.array(image)
-
-        if len(img_array.shape) == 3:
-            # Convert to LAB color space for better results
-            lab = cv2.cvtColor(img_array, cv2.COLOR_RGB2LAB)
-            clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(8, 8))
-            lab[:, :, 0] = clahe.apply(lab[:, :, 0])
-            img_array = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
-        else:
-            # Grayscale image
-            clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(8, 8))
-            img_array = clahe.apply(img_array)
-
-        return Image.fromarray(img_array)
+        logging.warning(
+            "cv2 not installed, skipping adaptive histogram equalization"
+        )
+        return image
 
     @staticmethod
     def edge_enhancement(image: Image.Image, strength: float = 1.0) -> Image.Image:
@@ -341,10 +323,8 @@ class TransformBuilder:
             List of normalization transforms
         """
         # Check if ImageNet normalization should be used
-        self.logger.info(
-            f"use_imagenet_norm: {getattr(self.config, 'use_imagenet_norm', True)}"
-        )
-        use_imagenet_norm = getattr(self.config, "use_imagenet_norm", True)
+        use_imagenet_norm = self.config.get("system.use_imagenet_norm", True)
+        self.logger.info(f"use_imagenet_norm: {use_imagenet_norm}")
 
         if use_imagenet_norm:
             # ImageNet normalization values
@@ -420,12 +400,6 @@ class TransformBuilder:
                     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                 )
             )
-        elif normalization == "minus_one_one":
-            transform_list.append(
-                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-            )
-        # 'zero_one' requires no additional normalization after ToTensor()
-
         return transforms.Compose(transform_list)
 
 

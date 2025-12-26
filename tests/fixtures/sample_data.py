@@ -151,7 +151,7 @@ class TempDataStructure:
             images_format: File extension for images
             color_mode: 'RGB' or 'L' for generated images
         """
-        self.metadata_df = metadata_df or SampleDataFactory.create_sample_metadata()
+        self.metadata_df = metadata_df if metadata_df is not None else SampleDataFactory.create_sample_metadata()
         self.create_images = create_images
         self.images_format = images_format
         self.color_mode = color_mode

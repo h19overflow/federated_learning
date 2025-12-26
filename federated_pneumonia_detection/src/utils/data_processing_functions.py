@@ -77,38 +77,13 @@ def load_metadata(
         )
         # Convert old constants to config access pattern
         constants = config_or_constants
+        from federated_pneumonia_detection.config.config_manager import ConfigManager
+        config = ConfigManager()
+        
         patient_id_col = constants.PATIENT_ID_COLUMN
         target_col = constants.TARGET_COLUMN
         filename_col = constants.FILENAME_COLUMN
         image_ext = constants.IMAGE_EXTENSION
-    
-        # Validate required columns
-        if patient_id_col not in df.columns:
-            logger.error(f"Missing column: {patient_id_col}")
-            raise ValueError(f"Missing column: {patient_id_col}")
-
-        if target_col not in df.columns:
-            logger.error(f"Missing column: {target_col}")
-            raise ValueError(f"Missing column: {target_col}")
-
-        # Prepare filename column
-        df = df.copy()
-        df[filename_col] = df[patient_id_col].astype(str) + image_ext
-        df[target_col] = df[target_col].astype(int).astype(str)
-
-        # Basic validation
-        if df.empty:
-            logger.error("DataFrame is empty")
-            raise ValueError("DataFrame is empty")
-
-        required_columns = [patient_id_col, target_col, filename_col]
-        for col in required_columns:
-            if df[col].isna().any():
-                logger.error(f"Missing values found in column: {col}")
-                raise ValueError(f"Missing values found in column: {col}")
-
-        logger.info(f"Metadata prepared successfully: {len(df)} samples")
-        return df
 
     # New ConfigManager path
     patient_id_col = config.get('columns.patient_id')
@@ -284,47 +259,36 @@ def load_and_split_data(
             config = ConfigManager()
         elif hasattr(config_or_constants, 'get'):  # ConfigManager
             config = config_or_constants
-        else:  # Old SystemConstants
-            constants = config_or_constants
-            sample_frac = config.get('experiment.sample_fraction', 0.1)
-            val_split = config.get('experiment.validation_split', 0.2)
-            seed = config.get('experiment.seed', 42)
-
-            # Use old path
-            if metadata_path is None:
-                metadata_path = os.path.join(
-                    constants.BASE_PATH, constants.METADATA_FILENAME
-                )
-
-            df = load_metadata(metadata_path, constants, logger)
-            df_sample = sample_dataframe(
-                df, sample_frac, constants.TARGET_COLUMN, seed, logger
-            )
-            train_df, val_df = create_train_val_split(
-                df_sample,
-                val_split,
-                constants.TARGET_COLUMN,
-                seed,
-                logger,
-            )
-
-            logger.info(
-                f"Data processing completed: {len(train_df)} train, {len(val_df)} validation samples"
-            )
-            return train_df, val_df
+        else:  # Old SystemConstants (deprecated but supported via load_metadata)
+            config = None # load_metadata will handle converting constants
 
         # New ConfigManager path
         if metadata_path is None:
-            base_path = config.get('paths.base_path', '.')
-            metadata_filename = config.get('paths.metadata_filename', 'Train_metadata.csv')
+            if config:
+                base_path = config.get('paths.base_path', '.')
+                metadata_filename = config.get('paths.metadata_filename', 'Train_metadata.csv')
+            else:
+                # SystemConstants path
+                base_path = config_or_constants.BASE_PATH
+                metadata_filename = config_or_constants.METADATA_FILENAME
+            
             metadata_path = os.path.join(base_path, metadata_filename)
 
-        df = load_metadata(metadata_path, config, logger)
+        df = load_metadata(metadata_path, config_or_constants, logger)
         
-        sample_frac = config.get('experiment.sample_fraction', 0.1)
-        val_split = config.get('experiment.validation_split', 0.2)
-        seed = config.get('experiment.seed', 42)
-        target_column = config.get('columns.target', 'Target')
+        if config:
+            sample_frac = config.get('experiment.sample_fraction', 0.1)
+            val_split = config.get('experiment.validation_split', 0.2)
+            seed = config.get('experiment.seed', 42)
+            target_column = config.get('columns.target', 'Target')
+        else:
+            # Fallback for deprecated constants
+            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            config_fallback = ConfigManager()
+            sample_frac = config_fallback.get('experiment.sample_fraction', 0.1)
+            val_split = config_fallback.get('experiment.validation_split', 0.2)
+            seed = config_fallback.get('experiment.seed', 42)
+            target_column = config_or_constants.TARGET_COLUMN
 
         df_sample = sample_dataframe(
             df, sample_frac, target_column, seed, logger
