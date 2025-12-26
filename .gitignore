@@ -85,3 +85,6 @@ hive-mind-prompt-*.txt
 
 # Auto Claude data directory
 .auto-claude/
+
+# Conductor data directory
+conductor/
