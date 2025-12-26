@@ -1,21 +1,12 @@
 # Track Plan: Full Functional Test Suite (100% Coverage)
 
-### Phase 1: Test Infrastructure & Foundation (Entities/Utils)
+### Phase 1: Test Infrastructure & Foundation (Entities/Utils) [checkpoint: 52d5294]
 *Objective: Set up global fixtures and achieve 100% coverage for core domain objects and utilities.*
 
 - [x] **Task: Global Test Environment & Fixtures Setup** be538d7
-    - [ ] Create shared Pytest fixtures for mock medical datasets (CSVs and dummy images).
-    - [ ] Set up specialized Vitest mocks for browser-only APIs (WebSocket, File API).
-    - [ ] Configure coverage tools to fail if thresholds drop below 100%.
 - [x] **Task: Unit Tests for Entities (`src/entities`)** 1c0f260
-    - [ ] Test `ResNetWithCustomHead` architecture, forward pass, and layer freezing.
-    - [ ] Test `CustomImageDataset` with various label scenarios and image transforms.
-    - [ ] Validate model weight saving/loading logic.
 - [x] **Task: Unit Tests for Utilities (`src/utils`)** 70872f5
-    - [ ] Test `ConfigLoader` with YAML overrides and environment variable injections.
-    - [ ] Test `ImageTransforms` for consistency across RGB and Grayscale modes.
-    - [ ] Test data processing functions for edge cases (missing labels, corrupt metadata).
-- [~] **Task: Conductor - User Manual Verification 'Phase 1: Test Infrastructure & Foundation' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 1: Test Infrastructure & Foundation' (Protocol in workflow.md)**
 
 ### Phase 2: Backend Logic & Communication (Control/Boundary)
 *Objective: 100% coverage for trainers, orchestration logic, and API/WebSocket boundaries.*
