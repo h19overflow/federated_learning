@@ -31,6 +31,10 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import (
     QueryEngine,
 )
+from federated_pneumonia_detection.src.boundary.engine import settings, get_engine
+from langchain_postgres import PostgresChatMessageHistory
+import psycopg
+
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +55,8 @@ class ArxivAugmentedEngine:
         """
         logger.info(f"[ArxivEngine] Initializing with max_history={max_history}")
         self.max_history = max_history
-        self.conversation_history: Dict[str, List[Tuple[str, str]]] = {}
+        # Persistent history is now handled by PostgresChatMessageHistory on-demand
+        self.table_name = "message_store"
 
         try:
             logger.info("[ArxivEngine] Initializing ChatGoogleGenerativeAI (gemini-3-flash-preview)...")
@@ -116,25 +121,43 @@ class ArxivAugmentedEngine:
             user_message: User's query
             ai_response: AI's response
         """
-        if session_id not in self.conversation_history:
-            self.conversation_history[session_id] = []
+        history = self._get_postgres_history(session_id)
+        history.add_messages([
+            HumanMessage(content=user_message),
+            AIMessage(content=ai_response)
+        ])
 
-        self.conversation_history[session_id].append((user_message, ai_response))
-
-        # Trim to max history
-        if len(self.conversation_history[session_id]) > self.max_history:
-            self.conversation_history[session_id] = self.conversation_history[
-                session_id
-            ][-self.max_history :]
+    def _get_postgres_history(self, session_id: str) -> PostgresChatMessageHistory:
+        """Initialize PostgresChatMessageHistory for a session."""
+        conn_info = settings.get_postgres_db_uri()
+        # Using sync connection as langchain-postgres history is mostly sync in its basic form
+        # but supports async if needed. For now, matching the previous pattern.
+        sync_connection = psycopg.connect(conn_info)
+        
+        history = PostgresChatMessageHistory(
+            self.table_name,
+            session_id,
+            sync_connection=sync_connection
+        )
+        # Ensure tables exist - requires connection and table_name as positional arguments
+        history.create_tables(sync_connection, self.table_name)
+        return history
 
     def get_history(self, session_id: str) -> List[Tuple[str, str]]:
         """Get conversation history for a session."""
-        return self.conversation_history.get(session_id, [])
+        history = self._get_postgres_history(session_id)
+        messages = history.messages
+        # Convert back to Tuple[str, str] for compatibility
+        formatted_history = []
+        for i in range(0, len(messages)-1, 2):
+            if isinstance(messages[i], HumanMessage) and isinstance(messages[i+1], AIMessage):
+                formatted_history.append((messages[i].content, messages[i+1].content))
+        return formatted_history
 
     def clear_history(self, session_id: str) -> None:
         """Clear conversation history for a session."""
-        if session_id in self.conversation_history:
-            del self.conversation_history[session_id]
+        history = self._get_postgres_history(session_id)
+        history.clear()
 
     def _format_history_for_context(self, session_id: str) -> str:
         """Format conversation history as context string."""
@@ -162,11 +185,9 @@ class ArxivAugmentedEngine:
         """
         messages = [SystemMessage(content=ARXIV_AGENT_SYSTEM_PROMPT)]
 
-        # Add history as alternating messages
-        history = self.get_history(session_id)
-        for user_msg, ai_msg in history:
-            messages.append(HumanMessage(content=user_msg))
-            messages.append(AIMessage(content=ai_msg))
+        # Fetch history from persistent store
+        history = self._get_postgres_history(session_id)
+        messages.extend(history.messages)
 
         # Add current query
         messages.append(HumanMessage(content=query))

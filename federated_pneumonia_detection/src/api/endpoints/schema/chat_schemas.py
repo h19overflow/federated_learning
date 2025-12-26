@@ -47,3 +47,14 @@ class ChatHistoryResponse(BaseModel):
     """
     history: List[Dict[str, str]]
     session_id: str
+
+
+class ChatSessionSchema(BaseModel):
+    """Schema for chat session representation."""
+    id: str
+    title: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+    class Config:
+        from_attributes = True

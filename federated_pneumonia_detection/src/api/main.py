@@ -23,6 +23,7 @@ from federated_pneumonia_detection.src.api.endpoints.chat import (
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
     MCPManager,
 )
+from federated_pneumonia_detection.src.boundary.engine import create_tables
 import os
 from pathlib import Path
 
@@ -49,6 +50,13 @@ async def lifespan(app: FastAPI):
     Manages WebSocket server and MCP manager lifecycle.
     """
     # Startup
+    try:
+        logger.info("Ensuring database tables exist...")
+        create_tables()
+        logger.info("Database tables verified/created")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {e}")
+
     websocket_thread = threading.Thread(
         target=_start_websocket_server, daemon=True, name="WebSocket-Server-Thread"
     )

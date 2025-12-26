@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Markdown } from "@/components/ui/markdown";
+import { Textarea } from "@/components/ui/textarea";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquare,
   Send,
@@ -13,7 +15,11 @@ import {
   Activity,
   GripVertical,
   BookOpen,
+  Plus,
+  History,
+  Database,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import api from "@/services/api";
 
@@ -32,6 +38,13 @@ interface RunContext {
   trainingMode: string;
   status: string;
   startTime: string;
+}
+
+interface ChatSession {
+  id: string;
+  title?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface RunSummary {
@@ -60,8 +73,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [isOpen, setIsOpen] = useState(true);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const runPickerRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -79,18 +95,92 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   // Agent status for observability
   const [agentStatus, setAgentStatus] = useState<string | null>(null);
 
-  // Generate session ID on mount
+  // Generate session ID or fetch existing on mount
   useEffect(() => {
-    const storedSessionId = localStorage.getItem("chat_session_id");
-    if (storedSessionId) {
-      setSessionId(storedSessionId);
-      loadHistory(storedSessionId);
-    } else {
-      const newSessionId = generateSessionId();
-      setSessionId(newSessionId);
-      localStorage.setItem("chat_session_id", newSessionId);
-    }
+    const checkSession = async () => {
+      const storedSessionId = localStorage.getItem("chat_session_id");
+      // Basic UUID v4 regex check
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      if (storedSessionId && isUUID.test(storedSessionId)) {
+        setSessionId(storedSessionId);
+        loadHistory(storedSessionId);
+      } else {
+        // We will create a session on the first message or when the user clicks "New Chat"
+        // For now, just generate a temporary ID if none exists
+        const newSessionId = generateSessionId();
+        setSessionId(newSessionId);
+        localStorage.setItem("chat_session_id", newSessionId);
+      }
+      fetchSessions();
+    };
+    checkSession();
   }, []);
+
+  const fetchSessions = async () => {
+    try {
+      setIsLoadingSessions(true);
+      const response = await fetch(`${apiUrl}/chat/sessions`);
+      if (response.ok) {
+        const data = await response.json();
+        setSessions(data);
+      }
+    } catch (error) {
+      console.error("Error fetching chat sessions:", error);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  };
+
+  const createNewSession = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${apiUrl}/chat/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "New Chat" }),
+      });
+      if (response.ok) {
+        const newSession = await response.json();
+        setSessionId(newSession.id);
+        localStorage.setItem("chat_session_id", newSession.id);
+        setMessages([]);
+        setShowHistory(false);
+        fetchSessions();
+      }
+    } catch (error) {
+      console.error("Error creating new session:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSwitchSession = (sid: string) => {
+    setSessionId(sid);
+    localStorage.setItem("chat_session_id", sid);
+    loadHistory(sid);
+    setShowHistory(false);
+  };
+
+  const handleDeleteSession = async (sid: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(`${apiUrl}/chat/sessions/${sid}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        if (sid === sessionId) {
+          // If we deleted the current session, create a new one
+          createNewSession();
+        } else {
+          fetchSessions();
+        }
+      }
+    } catch (error) {
+      console.error("Error deleting session:", error);
+    }
+  };
 
   // Check arxiv availability on mount
   useEffect(() => {
@@ -166,7 +256,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
   const generateSessionId = (): string => {
-    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return crypto.randomUUID();
   };
 
   const fetchAvailableRuns = async () => {
@@ -221,9 +311,18 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     inputRef.current?.focus();
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setInput(value);
+
+    // Auto-resize textarea
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.height = `${Math.min(
+        inputRef.current.scrollHeight,
+        200
+      )}px`;
+    }
 
     if (value === "/") {
       setShowRunPicker(true);
@@ -241,6 +340,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
     const userMessage = input.trim();
     setInput("");
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
     setShowRunPicker(false);
 
     const newMessage: Message = {
@@ -373,22 +475,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   };
 
   const handleClearChat = async () => {
-    try {
-      await fetch(`${apiUrl}/chat/history/${sessionId}`, {
-        method: "DELETE",
-      });
-
-      setMessages([]);
-      setSelectedRun(null);
-      const newSessionId = generateSessionId();
-      setSessionId(newSessionId);
-      localStorage.setItem("chat_session_id", newSessionId);
-
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 0);
-    } catch (error) {
-      console.error("Error clearing chat:", error);
+    // If we have messages, we just start a new session
+    if (messages.length > 0) {
+      createNewSession();
     }
   };
 
@@ -403,6 +492,12 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey && !showRunPicker) {
+      e.preventDefault();
+      handleSendMessage();
+      return;
+    }
+
     if (showRunPicker && availableRuns.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -508,7 +603,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   Assistant
                 </h2>
                 <p className="text-xs text-[hsl(215_15%_50%)]">
-                  AI-powered insights
+                  {showHistory ? "Conversation History" : "AI-powered insights"}
                 </p>
               </div>
             </div>
@@ -516,8 +611,34 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={createNewSession}
+                title="New chat"
+                className="h-9 w-9 rounded-xl text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)] transition-all"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowHistory(!showHistory);
+                  if (!showHistory) fetchSessions();
+                }}
+                title="History"
+                className={cn(
+                  "h-9 w-9 rounded-xl transition-all",
+                  showHistory
+                    ? "text-[hsl(172_63%_22%)] bg-[hsl(172_40%_94%)]"
+                    : "text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)]"
+                )}
+              >
+                <History className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={handleClearChat}
-                title="Clear chat"
+                title="Clear current chat"
                 className="h-9 w-9 rounded-xl text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)] transition-all"
               >
                 <Trash2 className="h-4 w-4" />
@@ -534,180 +655,230 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Selected Run Context Badge */}
-        {selectedRun && (
-          <div className="px-4 pt-4 pb-2">
-            <div className="bg-[hsl(172_40%_95%)] border border-[hsl(172_30%_88%)] rounded-2xl p-4 flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[hsl(172_63%_22%)] flex items-center justify-center flex-shrink-0">
-                <BarChart className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="text-sm font-semibold text-[hsl(172_43%_20%)]">
-                    Run #{selectedRun.runId}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedRun(null)}
-                    className="h-6 w-6 p-0 rounded-lg hover:bg-[hsl(172_30%_88%)] text-[hsl(215_15%_45%)]"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-                <p className="text-xs text-[hsl(215_15%_50%)]">
-                  {selectedRun.trainingMode} training
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* arXiv Research Tool Info Card */}
-        {arxivAvailable && (
-          <div className="px-4 pt-3 pb-2">
-            <div className="w-full bg-[hsl(168_25%_98%)] rounded-2xl p-4 border border-[hsl(168_20%_92%)]">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-5 h-5 rounded-md bg-[hsl(172_63%_22%)] flex items-center justify-center">
-                  <BookOpen className="h-3 w-3 text-white" />
-                </div>
-                <p className="text-xs font-semibold text-[hsl(172_43%_20%)]">
-                  arXiv Research Tool
-                </p>
-              </div>
-              <p className="text-xs text-[hsl(215_15%_50%)] text-left leading-relaxed">
-                Click the <BookOpen className="inline h-3 w-3 mx-0.5" /> button
-                to enable academic paper search. When active, your queries will
-                be augmented with relevant research from arXiv to provide
-                evidence-based, scientifically-backed answers.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Welcome State - Apple Style */}
-        {messages.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-            <div className="mb-6 w-16 h-16 rounded-2xl bg-[hsl(172_40%_94%)] flex items-center justify-center">
-              <svg
-                className="w-8 h-8 text-[hsl(172_63%_28%)]"
-                viewBox="0 0 32 32"
-                fill="none"
-              >
-                <path
-                  d="M16 4v24M4 16h24"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-                <circle
-                  cx="16"
-                  cy="16"
-                  r="12"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  opacity="0.3"
-                />
-              </svg>
-            </div>
-            <h3 className="font-semibold text-[hsl(172_43%_15%)] text-xl mb-2">
-              Welcome
-            </h3>
-            <p className="text-sm text-[hsl(215_15%_50%)] leading-relaxed mb-6 max-w-xs">
-              Ask me anything about federated learning, pneumonia detection, or
-              your training runs.
-            </p>
-
-            {/* Pro Tip Card */}
-            <div className="w-full bg-[hsl(168_25%_98%)] rounded-2xl p-4 border border-[hsl(168_20%_92%)]">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-5 h-5 rounded-md bg-[hsl(172_63%_22%)] flex items-center justify-center">
-                  <Activity className="h-3 w-3 text-white" />
-                </div>
-                <p className="text-xs font-semibold text-[hsl(172_43%_20%)]">
-                  Quick Tip
-                </p>
-              </div>
-              <p className="text-xs text-[hsl(215_15%_50%)] text-left leading-relaxed">
-                Type{" "}
-                <kbd className="px-1.5 py-0.5 bg-white border border-[hsl(210_15%_88%)] rounded-md text-xs font-mono text-[hsl(172_63%_28%)]">
-                  /
-                </kbd>{" "}
-                to select a training run and get real-time insights about its
-                metrics.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Messages Area */}
-        <ScrollArea
-          ref={scrollAreaRef}
-          className={cn("flex-1", messages.length > 0 && "px-4 pt-4")}
-        >
-          <div className="space-y-4 pb-4">
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "flex",
-                  message.role === "user" ? "justify-end" : "justify-start"
-                )}
-                style={{
-                  animation: "fadeIn 0.3s ease-out forwards",
-                  animationDelay: `${index * 0.05}s`,
-                  opacity: 0,
-                }}
-              >
-                <div
-                  className={cn(
-                    "max-w-[85%] px-4 py-3 transition-all duration-200",
-                    message.role === "user"
-                      ? "bg-[hsl(172_63%_22%)] text-white rounded-2xl rounded-br-md shadow-md shadow-[hsl(172_63%_22%)]/15"
-                      : "bg-[hsl(168_25%_96%)] text-[hsl(172_43%_15%)] rounded-2xl rounded-bl-md border border-[hsl(168_20%_92%)]"
-                  )}
-                >
-                  {message.role === "assistant" ? (
-                    <Markdown
-                      content={message.content}
-                      className="text-[hsl(172_43%_15%)]"
-                    />
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                      {message.content}
+        {/* Main Content Area */}
+        <AnimatePresence mode="wait">
+          {showHistory ? (
+            <motion.div
+              key="history"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="flex-1 flex flex-col overflow-hidden"
+            >
+              <ScrollArea className="flex-1 p-4">
+                {isLoadingSessions ? (
+                  <div className="flex flex-col items-center justify-center p-12 gap-3">
+                    <Loader2 className="h-6 w-6 animate-spin text-[hsl(172_63%_35%)]" />
+                    <p className="text-sm text-[hsl(215_15%_50%)]">
+                      Loading history...
                     </p>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {/* Loading State */}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-[hsl(168_25%_96%)] border border-[hsl(168_20%_92%)] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-3">
-                  <div className="flex gap-1.5">
-                    <div
-                      className="h-2 w-2 bg-[hsl(172_63%_35%)] rounded-full animate-bounce"
-                      style={{ animationDelay: "0ms" }}
-                    />
-                    <div
-                      className="h-2 w-2 bg-[hsl(172_63%_35%)] rounded-full animate-bounce"
-                      style={{ animationDelay: "150ms" }}
-                    />
-                    <div
-                      className="h-2 w-2 bg-[hsl(172_63%_35%)] rounded-full animate-bounce"
-                      style={{ animationDelay: "300ms" }}
-                    />
                   </div>
-                  <p className="text-sm text-[hsl(215_15%_50%)]">
-                    {agentStatus || "Thinking..."}
+                ) : sessions.length === 0 ? (
+                  <div className="text-center p-12">
+                    <div className="w-12 h-12 rounded-2xl bg-[hsl(210_15%_95%)] flex items-center justify-center mx-auto mb-4">
+                      <History className="h-6 w-6 text-[hsl(215_15%_50%)]" />
+                    </div>
+                    <p className="text-sm font-medium text-[hsl(172_43%_15%)]">
+                      No history yet
+                    </p>
+                    <p className="text-xs text-[hsl(215_15%_55%)] mt-1">
+                      Your conversations will appear here
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {sessions.map((session) => (
+                      <div
+                        key={session.id}
+                        onClick={() => handleSwitchSession(session.id)}
+                        className={cn(
+                          "group p-4 rounded-2xl cursor-pointer transition-all border-2",
+                          sessionId === session.id
+                            ? "bg-[hsl(172_40%_96%)] border-[hsl(172_63%_35%)]"
+                            : "bg-[hsl(210_15%_98%)] border-transparent hover:border-[hsl(210_15%_88%)] hover:bg-white"
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-[hsl(172_43%_15%)] truncate">
+                              {session.title || "Untitled Conversation"}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Database className="h-3 w-3 text-[hsl(215_15%_60%)]" />
+                              <p className="text-[10px] text-[hsl(215_15%_55%)]">
+                                {new Date(
+                                  session.created_at
+                                ).toLocaleDateString()}{" "}
+                                at{" "}
+                                {new Date(
+                                  session.created_at
+                                ).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => handleDeleteSession(session.id, e)}
+                            className="opacity-0 group-hover:opacity-100 h-8 w-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="chat"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+              className="flex-1 flex flex-col overflow-hidden"
+            >
+              {/* Selected Run Context Badge */}
+              {selectedRun && (
+                <div className="px-4 pt-4 pb-2">
+                  <div className="bg-[hsl(172_40%_95%)] border border-[hsl(172_30%_88%)] rounded-2xl p-4 flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[hsl(172_63%_22%)] flex items-center justify-center flex-shrink-0">
+                      <BarChart className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-sm font-semibold text-[hsl(172_43%_20%)]">
+                          Run #{selectedRun.runId}
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedRun(null)}
+                          className="h-6 w-6 p-0 rounded-lg hover:bg-[hsl(172_30%_88%)] text-[hsl(215_15%_45%)]"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-[hsl(215_15%_50%)]">
+                        {selectedRun.trainingMode} training
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* arXiv Research Tool Info Card */}
+              {arxivAvailable && (
+                <div className="px-4 pt-3 pb-2">
+                  <div className="w-full bg-[hsl(168_25%_98%)] rounded-2xl p-4 border border-[hsl(168_20%_92%)] text-left">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-5 h-5 rounded-md bg-[hsl(172_63%_22%)] flex items-center justify-center">
+                        <BookOpen className="h-3 w-3 text-white" />
+                      </div>
+                      <p className="text-xs font-semibold text-[hsl(172_43%_20%)]">
+                        arXiv Research Tool
+                      </p>
+                    </div>
+                    <p className="text-xs text-[hsl(215_15%_50%)] leading-relaxed">
+                      Click the <BookOpen className="inline h-3 w-3 mx-0.5" />{" "}
+                      button to enable academic paper search. When active, your
+                      queries will be augmented with relevant research from
+                      arXiv.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Welcome State */}
+              {messages.length === 0 && (
+                <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+                  <div className="mb-6 w-16 h-16 rounded-2xl bg-[hsl(172_40%_94%)] flex items-center justify-center">
+                    <MessageSquare className="w-8 h-8 text-[hsl(172_63%_28%)]" />
+                  </div>
+                  <h3 className="font-semibold text-[hsl(172_43%_15%)] text-xl mb-2">
+                    Welcome
+                  </h3>
+                  <p className="text-sm text-[hsl(215_15%_50%)] leading-relaxed mb-6 max-w-xs text-balance">
+                    Ask me anything about federated learning, pneumonia
+                    detection, or your training runs.
                   </p>
                 </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+              )}
+
+              {/* Messages Area */}
+              <ScrollArea
+                ref={scrollAreaRef}
+                className={cn("flex-1", messages.length > 0 && "px-4 pt-4")}
+              >
+                <div className="space-y-4 pb-4">
+                  <AnimatePresence initial={false}>
+                    {messages.map((message, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.2, delay: 0.05 }}
+                        className={cn(
+                          "flex",
+                          message.role === "user"
+                            ? "justify-end"
+                            : "justify-start"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "max-w-[85%] px-4 py-3",
+                            message.role === "user"
+                              ? "bg-[hsl(172_63%_22%)] text-white rounded-2xl rounded-br-md shadow-md shadow-[hsl(172_63%_22%)]/15"
+                              : "bg-[hsl(168_25%_96%)] text-[hsl(172_43%_15%)] rounded-2xl rounded-bl-md border border-[hsl(168_20%_92%)]"
+                          )}
+                        >
+                          {message.role === "assistant" ? (
+                            <Markdown
+                              content={message.content}
+                              className="text-[hsl(172_43%_15%)]"
+                            />
+                          ) : (
+                            <p className="text-sm shadow-none">
+                              {message.content}
+                            </p>
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-[hsl(168_25%_96%)] border border-[hsl(168_20%_92%)] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-3">
+                        <div className="flex gap-1.5">
+                          <div className="h-2 w-2 bg-[hsl(172_63%_35%)] rounded-full animate-bounce" />
+                          <div
+                            className="h-2 w-2 bg-[hsl(172_63%_35%)] rounded-full animate-bounce"
+                            style={{ animationDelay: "150ms" }}
+                          />
+                          <div
+                            className="h-2 w-2 bg-[hsl(172_63%_35%)] rounded-full animate-bounce"
+                            style={{ animationDelay: "300ms" }}
+                          />
+                        </div>
+                        <p className="text-sm text-[hsl(215_15%_50%)]">
+                          {agentStatus || "Thinking..."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Input Section */}
         <div className="border-t border-[hsl(210_15%_92%)] bg-white">
@@ -812,7 +983,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           {/* Input Field */}
           <div className="p-4">
             <div className="flex gap-3">
-              <Input
+              <Textarea
                 ref={inputRef}
                 value={input}
                 onChange={handleInputChange}
@@ -823,7 +994,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     : "Type / to select a run..."
                 }
                 disabled={isLoading}
-                className="flex-1 rounded-xl border-2 border-[hsl(210_15%_90%)] hover:border-[hsl(172_40%_80%)] focus:border-[hsl(172_63%_35%)] focus:ring-0 transition-colors duration-200 px-4 py-2.5 bg-[hsl(168_25%_99%)] placeholder:text-[hsl(215_15%_60%)]"
+                rows={1}
+                className="flex-1 min-h-[44px] max-h-[200px] rounded-xl border-2 border-[hsl(210_15%_90%)] hover:border-[hsl(172_40%_80%)] focus:border-[hsl(172_63%_35%)] focus-visible:ring-0 transition-all duration-200 px-4 py-2.5 bg-[hsl(168_25%_99%)] placeholder:text-[hsl(215_15%_60%)] resize-none scrollbar-none"
               />
               <Button
                 variant={arxivEnabled ? "default" : "outline"}

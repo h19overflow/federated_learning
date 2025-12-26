@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import (
     QueryEngine,
 )
@@ -10,8 +10,15 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent import (
     ArxivAugmentedEngine,
 )
-from ..schema import ChatMessage, ChatResponse, ChatHistoryResponse
+from ..schema import ChatMessage, ChatResponse, ChatHistoryResponse, ChatSessionSchema
 from .chat_utils import enhance_query_with_run_context
+from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
+    get_all_chat_sessions,
+    create_chat_session,
+    delete_chat_session,
+    get_chat_session
+)
+
 import logging
 import uuid
 import json
@@ -47,6 +54,47 @@ def get_arxiv_engine() -> ArxivAugmentedEngine:
     return _arxiv_engine
 
 
+@router.get("/sessions", response_model=List[ChatSessionSchema])
+async def list_chat_sessions():
+    """List all available chat sessions."""
+    sessions = get_all_chat_sessions()
+    # Format dates as strings
+    return [
+        ChatSessionSchema(
+            id=s.id,
+            title=s.title,
+            created_at=s.created_at.isoformat(),
+            updated_at=s.updated_at.isoformat()
+        ) for s in sessions
+    ]
+
+
+@router.post("/sessions", response_model=ChatSessionSchema)
+async def create_new_chat_session(title: Optional[str] = None):
+    """Create a new chat session."""
+    session = create_chat_session(title=title)
+    return ChatSessionSchema(
+        id=session.id,
+        title=session.title,
+        created_at=session.created_at.isoformat(),
+        updated_at=session.updated_at.isoformat()
+    )
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_existing_chat_session(session_id: str):
+    """Delete a chat session."""
+    success = delete_chat_session(session_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Also clear history in the agent for this session if it's in memory/persistent store
+    arxiv_engine = get_arxiv_engine()
+    arxiv_engine.clear_history(session_id)
+    
+    return {"message": f"Session {session_id} deleted"}
+
+
 @router.post("/query", response_model=ChatResponse)
 async def query_chat(message: ChatMessage) -> ChatResponse:
     """
@@ -67,6 +115,11 @@ async def query_chat(message: ChatMessage) -> ChatResponse:
     try:
         # Generate session_id if not provided
         session_id = message.session_id or str(uuid.uuid4())
+        
+        # Ensure session exists in DB
+        existing_session = get_chat_session(session_id)
+        if not existing_session:
+            create_chat_session(title=message.query[:50] + "...", session_id=session_id)
 
         # Enhance query with run context if provided
         enhanced_query = message.query
@@ -143,6 +196,16 @@ async def query_chat_stream(message: ChatMessage):
             # Generate session_id
             session_id = message.session_id or str(uuid.uuid4())
             logger.info(f"[STREAM] Session ID: {session_id}")
+
+            # Ensure session exists in DB
+            try:
+                existing_session = get_chat_session(session_id)
+                if not existing_session:
+                    logger.info(f"[STREAM] Creating new session in DB: {session_id}")
+                    # Passing session_id to create_chat_session as well (need to update CRUD)
+                    create_chat_session(title=message.query[:50] + "...", session_id=session_id)
+            except Exception as e:
+                logger.warning(f"[STREAM] Failed to ensure session exists in DB: {e}")
 
             # Send session_id first so frontend knows it
             session_data = {'type': 'session', 'session_id': session_id}
@@ -252,7 +315,8 @@ async def get_chat_history(session_id: str) -> ChatHistoryResponse:
         )
 
     try:
-        history = query_engine.get_history(session_id)
+        arxiv_engine = get_arxiv_engine()
+        history = arxiv_engine.get_history(session_id)
         formatted_history = [
             {"user": user_msg, "assistant": ai_msg} for user_msg, ai_msg in history
         ]
@@ -281,7 +345,8 @@ async def clear_chat_history(session_id: str) -> Dict[str, str]:
         )
 
     try:
-        query_engine.clear_history(session_id)
+        arxiv_engine = get_arxiv_engine()
+        arxiv_engine.clear_history(session_id)
         return {"message": f"History cleared for session {session_id}"}
     except Exception as e:
         logger.error(f"Error clearing history: {e}")
