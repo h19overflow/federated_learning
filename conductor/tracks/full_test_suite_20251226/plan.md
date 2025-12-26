@@ -7,7 +7,7 @@
     - [ ] Create shared Pytest fixtures for mock medical datasets (CSVs and dummy images).
     - [ ] Set up specialized Vitest mocks for browser-only APIs (WebSocket, File API).
     - [ ] Configure coverage tools to fail if thresholds drop below 100%.
-- [ ] **Task: Unit Tests for Entities (`src/entities`)**
+- [x] **Task: Unit Tests for Entities (`src/entities`)** 1c0f260
     - [ ] Test `ResNetWithCustomHead` architecture, forward pass, and layer freezing.
     - [ ] Test `CustomImageDataset` with various label scenarios and image transforms.
     - [ ] Validate model weight saving/loading logic.
