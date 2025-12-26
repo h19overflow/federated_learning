@@ -15,7 +15,7 @@
     - [ ] Test `ConfigLoader` with YAML overrides and environment variable injections.
     - [ ] Test `ImageTransforms` for consistency across RGB and Grayscale modes.
     - [ ] Test data processing functions for edge cases (missing labels, corrupt metadata).
-- [ ] **Task: Conductor - User Manual Verification 'Phase 1: Test Infrastructure & Foundation' (Protocol in workflow.md)**
+- [~] **Task: Conductor - User Manual Verification 'Phase 1: Test Infrastructure & Foundation' (Protocol in workflow.md)**
 
 ### Phase 2: Backend Logic & Communication (Control/Boundary)
 *Objective: 100% coverage for trainers, orchestration logic, and API/WebSocket boundaries.*
