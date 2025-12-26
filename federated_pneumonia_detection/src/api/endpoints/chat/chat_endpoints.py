@@ -129,7 +129,7 @@ async def query_chat(message: ChatMessage) -> ChatResponse:
             )
 
         # Use query_with_history for session-based queries
-        result = query_engine.query_with_history(enhanced_query, session_id)
+        result = query_engine.query_with_history(enhanced_query, session_id, original_query=message.query)
 
         sources = []
         if "context" in result:
@@ -244,7 +244,7 @@ async def query_chat_stream(message: ChatMessage):
                     
                     logger.info("[STREAM] Starting arxiv query stream")
                     async for chunk in arxiv_engine.query_stream(
-                        enhanced_query, session_id, arxiv_enabled=True
+                        enhanced_query, session_id, arxiv_enabled=True, original_query=message.query
                     ):
                         chunk_count += 1
                         if chunk_count % 10 == 0:  # Log every 10th chunk to avoid spam
@@ -257,7 +257,7 @@ async def query_chat_stream(message: ChatMessage):
                     logger.info("[STREAM] Starting standard query stream")
                     try:
                         async for chunk in query_engine.query_with_history_stream(
-                            enhanced_query, session_id
+                            enhanced_query, session_id, original_query=message.query
                         ):
                             chunk_count += 1
                             if chunk_count % 10 == 0:  # Log every 10th chunk to avoid spam

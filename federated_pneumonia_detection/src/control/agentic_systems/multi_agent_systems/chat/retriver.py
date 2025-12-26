@@ -11,7 +11,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_huggingface import HuggingFaceEmbeddings
-from typing import List, Dict, Tuple, AsyncGenerator, Any
+from typing import List, Dict, Tuple, AsyncGenerator, Any, Optional
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -218,7 +218,7 @@ class QueryEngine:
             raise e
         return chain
 
-    def query_with_history(self, query: str, session_id: str):
+    def query_with_history(self, query: str, session_id: str, original_query: Optional[str] = None):
         """
         Query with conversation history context.
 
@@ -236,7 +236,9 @@ class QueryEngine:
             result = chain.invoke({"input": query, "history": history_context})
 
             # Store this interaction in history
-            self.add_to_history(session_id, query, result.get("answer", ""))
+            # Store this interaction in history
+            history_query = original_query if original_query is not None else query
+            self.add_to_history(session_id, history_query, result.get("answer", ""))
 
             return result
         except Exception as e:
@@ -244,7 +246,7 @@ class QueryEngine:
             raise e
 
     async def query_with_history_stream(
-        self, query: str, session_id: str
+        self, query: str, session_id: str, original_query: Optional[str] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Stream query results token by token with conversation history context.
@@ -312,7 +314,9 @@ class QueryEngine:
             logger.info(f"[QueryEngine] Streaming completed. Generated {chunk_count} chunks. Response length: {len(full_response)}")
 
             # After streaming completes, save to history
-            self.add_to_history(session_id, query, full_response)
+            # After streaming completes, save to history
+            history_query = original_query if original_query is not None else query
+            self.add_to_history(session_id, history_query, full_response)
             yield {"type": "done", "session_id": session_id}
 
         except Exception as e:

@@ -13,6 +13,7 @@ Dependencies:
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -134,9 +135,20 @@ class ArxivAugmentedEngine:
         # but supports async if needed. For now, matching the previous pattern.
         sync_connection = psycopg.connect(conn_info)
         
+        # Validate or convert session_id to UUID
+        try:
+            # Check if it's already a valid UUID
+            uuid.UUID(session_id)
+            clean_session_id = session_id
+        except ValueError:
+            # If not, generate a deterministic UUID based on the string
+            # using UUID5 with a DNS namespace
+            clean_session_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, session_id))
+            logger.info(f"[ArxivEngine] Mapped custom session_id '{session_id}' to UUID '{clean_session_id}' for storage")
+
         history = PostgresChatMessageHistory(
             self.table_name,
-            session_id,
+            clean_session_id,
             sync_connection=sync_connection
         )
         # Ensure tables exist - requires connection and table_name as positional arguments
@@ -195,7 +207,7 @@ class ArxivAugmentedEngine:
         return messages
 
     async def query_stream(
-        self, query: str, session_id: str, arxiv_enabled: bool = False
+        self, query: str, session_id: str, arxiv_enabled: bool = False, original_query: Optional[str] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Stream query response token by token.
@@ -379,7 +391,10 @@ class ArxivAugmentedEngine:
 
 
             # Save to history
-            self.add_to_history(session_id, query, full_response)
+            # Save to history
+            # Use original_query if provided (to clear context from history), else use the query as is
+            history_query = original_query if original_query is not None else query
+            self.add_to_history(session_id, history_query, full_response)
             yield {"type": "done", "session_id": session_id}
 
         except Exception as e:
@@ -387,7 +402,7 @@ class ArxivAugmentedEngine:
             yield {"type": "error", "message": str(e)}
 
     async def query(
-        self, query: str, session_id: str, arxiv_enabled: bool = False
+        self, query: str, session_id: str, arxiv_enabled: bool = False, original_query: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Non-streaming query (collects full response).
@@ -403,7 +418,7 @@ class ArxivAugmentedEngine:
         full_response = ""
         tool_calls = []
 
-        async for chunk in self.query_stream(query, session_id, arxiv_enabled):
+        async for chunk in self.query_stream(query, session_id, arxiv_enabled, original_query):
             if chunk["type"] == "token":
                 full_response += chunk["content"]
             elif chunk["type"] == "tool_call":
