@@ -105,6 +105,18 @@ class ConfigManager:
         """Create a backup of the current configuration."""
         return self.backup_manager.create(self.config, str(self.config_path), backup_path)
 
+    def flatten_config(self, config_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Flatten a nested configuration dictionary to dot-notation keys.
+
+        Args:
+            config_dict: The nested configuration dictionary to flatten
+
+        Returns:
+            Dictionary with flattened dot-notation keys
+        """
+        return self.flattener.flatten(config_dict)
+
     def to_dict(self) -> Dict[str, Any]:
         """Get a copy of the entire configuration as a dictionary."""
         return copy.deepcopy(self.config)

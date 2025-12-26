@@ -58,7 +58,7 @@ async def update_settings(
     logger = get_logger(__name__)
 
     config_data = configuration.model_dump(exclude_none=True)
-    flattened = config._flatten_config(config_data)
+    flattened = config.flatten_config(config_data)
 
     logger.info(f"Updating {len(flattened)} configuration fields: {list(flattened.keys())}")
 

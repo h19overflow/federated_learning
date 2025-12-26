@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Dict, Any
 import logging
 import os
+from pathlib import Path
 from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
     ConfigurableFedAvg,
 )
@@ -35,8 +36,6 @@ logger = setup_logger(__name__)
 app = ServerApp()
 
 
-# TODO: When invoking make sure to add an update to the file path configuration.#
-# TODO: Context objects in the client and server classes contains run id , node id , so adjust it such that we persist them to the db.
 @app.lifespan()
 def lifespan(app: ServerApp):
     """Lifecycle management for ServerApp.
@@ -112,11 +111,12 @@ def main(grid: Grid, context: Context) -> None:
         db.close()
 
     # Load ConfigManager FIRST (before any config access)
-    config_manager = ConfigManager(
-        config_path=str(
-            r"C:\Users\User\Projects\FYP2\federated_pneumonia_detection\config\default_config.yaml"
-        )
+    # Make config path configurable via environment or use default relative path
+    default_config_path = (
+        Path(__file__).parent.parent.parent.parent.parent / "config" / "default_config.yaml"
     )
+    config_path = os.getenv("CONFIG_PATH", str(default_config_path))
+    config_manager = ConfigManager(config_path=str(config_path))
 
     # Override config from environment variables (for analysis reproducibility)
     # This allows the analysis module to control seeds and parameters via subprocess
@@ -132,8 +132,8 @@ def main(grid: Grid, context: Context) -> None:
 
     # Create training configuration to send to clients
     train_config = {
-        "file_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
-        "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
+        "file_path": config_manager.get("experiment.file-path"),
+        "image_dir": config_manager.get("experiment.image-dir"),
         "num_partitions": num_clients,
         "run_id": run_id,  # Pass run_id to clients so they don't create their own
         "seed": experiment_seed,  # Pass seed for reproducible data splits
@@ -141,8 +141,8 @@ def main(grid: Grid, context: Context) -> None:
 
     # Create evaluation configuration to send to clients
     eval_config = {
-        "csv_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
-        "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
+        "csv_path": config_manager.get("experiment.file-path"),
+        "image_dir": config_manager.get("experiment.image-dir"),
     }
 
     # Use FL_RUN_ID for result file naming if provided (analysis compatibility)
@@ -171,8 +171,8 @@ def main(grid: Grid, context: Context) -> None:
     logger.info("Creating server-side evaluation function...")
     central_evaluate_fn = create_central_evaluate_fn(
         config_manager=config_manager,
-        csv_path=train_config["file_path"],
-        image_dir=train_config["image_dir"],
+        csv_path=config_manager.get("experiment.file-path"),
+        image_dir=config_manager.get("experiment.image-dir"),
     )
     logger.info("[OK] Server evaluation function created")
 

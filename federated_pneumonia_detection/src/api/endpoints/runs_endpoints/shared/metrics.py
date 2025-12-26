@@ -42,9 +42,19 @@ class FederatedMetricExtractor(MetricExtractor):
 class CentralizedMetricExtractor(MetricExtractor):
     """Extract metrics from centralized runs via run metrics."""
 
+    # Map standardized API metric names to database field names
+    METRIC_NAME_MAP = {
+        "accuracy": "val_acc",
+        "precision": "val_precision",
+        "recall": "val_recall",
+        "f1_score": "val_f1",
+        "auroc": "val_auroc",
+    }
+
     def get_best_metric(self, db: Session, run_id: int, metric_name: str) -> Optional[float]:
         """Get best metric from run_metrics table."""
-        metric_field = f"val_{metric_name}"
+        # Use mapping to get actual database field name
+        metric_field = self.METRIC_NAME_MAP.get(metric_name, f"val_{metric_name}")
         best = run_metric_crud.get_best_metric(db, run_id, metric_field, maximize=True)
         return best.metric_value if best else None
 
