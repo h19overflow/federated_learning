@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import (
     QueryEngine,
 )
@@ -11,6 +10,7 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent import (
     ArxivAugmentedEngine,
 )
+from ..schema import ChatMessage, ChatResponse, ChatHistoryResponse
 from .chat_utils import enhance_query_with_run_context
 import logging
 import uuid
@@ -45,25 +45,6 @@ def get_arxiv_engine() -> ArxivAugmentedEngine:
     if _arxiv_engine is None:
         _arxiv_engine = ArxivAugmentedEngine()
     return _arxiv_engine
-
-
-class ChatMessage(BaseModel):
-    query: str
-    session_id: Optional[str] = None
-    run_id: Optional[int] = None
-    training_mode: Optional[str] = None
-    arxiv_enabled: bool = False
-
-
-class ChatResponse(BaseModel):
-    answer: str
-    sources: List[str] = []
-    session_id: str
-
-
-class ChatHistoryResponse(BaseModel):
-    history: List[Dict[str, str]]
-    session_id: str
 
 
 @router.post("/query", response_model=ChatResponse)
