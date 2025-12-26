@@ -11,7 +11,7 @@
     - [ ] Test `ResNetWithCustomHead` architecture, forward pass, and layer freezing.
     - [ ] Test `CustomImageDataset` with various label scenarios and image transforms.
     - [ ] Validate model weight saving/loading logic.
-- [ ] **Task: Unit Tests for Utilities (`src/utils`)**
+- [x] **Task: Unit Tests for Utilities (`src/utils`)** 70872f5
     - [ ] Test `ConfigLoader` with YAML overrides and environment variable injections.
     - [ ] Test `ImageTransforms` for consistency across RGB and Grayscale modes.
     - [ ] Test data processing functions for edge cases (missing labels, corrupt metadata).
