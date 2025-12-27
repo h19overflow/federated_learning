@@ -5,11 +5,15 @@ from typing import Dict, Any
 import logging
 import os
 from pathlib import Path
+import torch
 from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
     ConfigurableFedAvg,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import (
     LitResNet,
+)
+from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet_enhanced import (
+    LitResNetEnhanced,
 )
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
     read_configs_to_toml,
@@ -150,7 +154,24 @@ def main(grid: Grid, context: Context) -> None:
     if analysis_run_id:
         logger.info(f"[ENV OVERRIDE] Using run_id from FL_RUN_ID: {analysis_run_id}")
 
-    global_model = LitResNet(config=config_manager)
+    # Initialize enhanced model with balanced configuration (matches centralized_trainer.py)
+    # Use uniform class weights for server initialization (clients use their own local weights)
+    # Class weights don't affect server-side evaluation metrics, only loss computation
+    num_classes = 2  # Binary classification: Normal vs Pneumonia
+    class_weights = torch.ones(num_classes)
+
+    global_model = LitResNetEnhanced(
+        config=config_manager,
+        class_weights_tensor=class_weights,
+        use_focal_loss=True,
+        focal_alpha=0.6,  # Balanced between recall and precision
+        focal_gamma=1.5,  # Moderate focus on hard examples
+        label_smoothing=0.05,  # Mild regularization
+        use_cosine_scheduler=True,
+        monitor_metric="val_recall",  # Consistent with centralized training
+    )
+    logger.info("Initialized LitResNetEnhanced with balanced focal loss configuration")
+
     arrays = ArrayRecord(global_model.state_dict())
 
     # Initialize WebSocket sender to broadcast training mode
