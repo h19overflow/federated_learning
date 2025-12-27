@@ -4,134 +4,340 @@
 
 ---
 
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Module Architecture](#module-architecture)
-3. [Functional Flows](#functional-flows)
-4. [Component Hierarchy](#component-hierarchy)
-5. [Module Details](#module-details)
-6. [Data Flow](#data-flow)
-
----
-
-## Overview
-
-The Control Layer contains the core business logic for:
-- **Centralized Training**: Single-machine PyTorch Lightning training
-- **Federated Learning**: Multi-client distributed training with Flower framework
-- **Agentic Systems**: Research assistance with Arxiv + RAG
-
-**Key Principles**:
-- **Separation of Concerns**: Training, data, utilities kept separate
-- **Reusability**: Shared components (LitResNet, XRayDataModule) used across modes
-- **Configuration-Driven**: All parameters externalized to YAML config
-- **Async Integration**: WebSocket metrics streaming in real-time
-
----
-
-## Module Architecture
-
-### High-Level Structure
+## Control Layer Architecture
 
 ```mermaid
 graph TB
-    subgraph Control["🎮 Control Layer<br/>src/control/"]
-        subgraph DL["dl_model<br/>Centralized Training"]
-            CT["CentralizedTrainer<br/>Main Orchestrator"]
-            Utils_DL["utils/<br/>Supporting Services"]
+    subgraph Control["🎮 Control Layer"]
+        subgraph CentralizedBox["📊 Centralized Training<br/>dl_model/"]
+            CentralizedTrainer["CentralizedTrainer<br/>main orchestrator"]
+            CentralizedUtils["utils/<br/>data, model, callbacks"]
         end
 
-        subgraph Fed["federated_new_version<br/>Federated Learning"]
-            Core["core/<br/>Flower Components"]
-            Part["partioner.py<br/>Data Partitioning"]
+        subgraph FederatedBox["🔗 Federated Learning<br/>federated_new_version/"]
+            ServerApp["ServerApp<br/>Flower server"]
+            ClientApp["ClientApp<br/>Flower client"]
+            Strategy["Strategy<br/>FedAvg aggregation"]
+            Partitioner["partitioner.py<br/>data distribution"]
         end
 
-        subgraph Agent["agentic_systems<br/>Research Assistant"]
-            MAS["multi_agent_systems/<br/>LangChain Agents"]
-            RAG["pipelines/rag/<br/>Document Processing"]
+        subgraph AgenticBox["🤖 Agentic Systems<br/>agentic_systems/"]
+            ArxivAgent["ArxivAgent<br/>paper search"]
+            RAGPipeline["RAG Pipeline<br/>document processing"]
+            MCPManager["MCP Manager<br/>tool protocol"]
         end
     end
 
-    subgraph Shared["entities/<br/>Shared Models"]
-        Models["Domain Objects<br/>Entities"]
+    subgraph Boundary["📁 Boundary Layer<br/>data access"]
+        BoundaryAPI["API interfaces"]
     end
 
-    subgraph Utils_Shared["utils/<br/>Utilities"]
-        Config["config_loader.py"]
-        Data["data_processing.py"]
-        Transforms["image_transforms.py"]
+    subgraph ApiLayer["🌐 API Layer<br/>REST endpoints"]
+        ApiServer["FastAPI<br/>request handlers"]
     end
 
-    CT -->|Use| Models
-    CT -->|Use| Shared
-    Core -->|Use| Models
-    Core -->|Use| Shared
-    Part -->|Use| Models
+    subgraph Config["⚙️ Configuration"]
+        ConfigFile["config.yaml<br/>training parameters"]
+    end
 
-    CT -->|Import| Utils_Shared
-    Core -->|Import| Utils_Shared
-    MAS -->|Import| Utils_Shared
+    CentralizedTrainer -->|coordinates| CentralizedUtils
+    ServerApp -->|orchestrates| ClientApp
+    ServerApp -->|uses| Strategy
+    ServerApp -->|distributes| Partitioner
+    ArxivAgent -->|leverages| MCPManager
+    RAGPipeline -->|processes| ArxivAgent
+
+    ApiServer -->|invokes| CentralizedTrainer
+    ApiServer -->|invokes| ServerApp
+    ApiServer -->|invokes| ArxivAgent
+
+    CentralizedTrainer -->|reads| ConfigFile
+    ServerApp -->|reads| ConfigFile
+
+    ApiServer -->|accesses| Boundary
+    CentralizedUtils -->|uses| Boundary
 
     %% Styling
     classDef control fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef shared fill:#D50000,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef utils fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
-    
-    class Control,DL,Fed,Agent control;
-    class Shared,Models shared;
-    class Utils_Shared,Config,Data,Transforms utils;
+    classDef subsystem fill:#1976D2,stroke:#fff,stroke-width:1px,color:#fff;
+    classDef boundary fill:#D50000,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef api fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef config fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class Control control;
+    class CentralizedBox,FederatedBox,AgenticBox subsystem;
+    class Boundary boundary;
+    class ApiLayer api;
+    class Config config;
 ```
 
-### Complete Module Tree
+---
+
+## Table of Contents
+
+1. [Control Layer Overview](#control-layer-overview)
+2. [Sub-systems Overview](#sub-systems-overview)
+3. [Training Orchestration](#training-orchestration)
+4. [Common Components](#common-components)
+5. [Configuration Integration](#configuration-integration)
+6. [Error Handling & Logging](#error-handling--logging)
+7. [Sub-module Links](#sub-module-links)
+8. [Functional Flows](#functional-flows)
+9. [Data Flow](#data-flow)
+
+---
+
+## Control Layer Overview
+
+The Control Layer is the **central business logic hub** of the federated pneumonia detection system. It orchestrates three distinct training paradigms:
+
+### Key Principles
+- **Separation of Concerns**: Each subsystem (centralized, federated, agentic) operates independently with clean interfaces
+- **Configuration-Driven**: All parameters externalized to `config.yaml`
+- **Real-time Monitoring**: WebSocket integration for live metric streaming
+- **Failure Resilience**: Structured error handling with logging throughout
+
+### Core Responsibilities
+- **Model Training**: Execute single-node or multi-node training
+- **Data Management**: Load, partition, and validate datasets
+- **Metrics Collection**: Aggregate and persist training metrics
+- **Research Assistance**: Query papers and local documents via LLM agents
+
+---
+
+## Sub-systems Overview
+
+### 1. Centralized Training (`dl_model/`)
+
+**What it does**: Single-machine PyTorch Lightning training on GPU or CPU.
+
+**When to use**:
+- Initial model development and experimentation
+- Rapid iteration on hyperparameters
+- Full dataset training on single node
+
+**Architecture**:
+- `CentralizedTrainer`: Main orchestrator that coordinates setup, training loops, and shutdown
+- `LitResNet`: PyTorch Lightning module wrapping ResNet architecture
+- `XRayDataModule`: Lightning DataModule handling train/val/test splits
+- Utilities: Data extraction, metrics collection, WebSocket streaming, checkpointing
+
+**Key Features**:
+- Automatic mixed precision training
+- Checkpointing best models
+- Real-time metrics streaming to frontend
+- Early stopping on validation metrics
+
+**See**: [./dl_model/README.md](./dl_model/README.md) for detailed documentation
+
+---
+
+### 2. Federated Learning (`federated_new_version/`)
+
+**What it does**: Multi-client distributed training using the Flower framework.
+
+**When to use**:
+- Training across multiple data centers or edge devices
+- Privacy-preserving training where data never leaves clients
+- Heterogeneous data distribution across clients
+
+**Architecture**:
+- `ServerApp`: Flower server orchestrating rounds and aggregation
+- `ClientApp`: Flower client implementing local training logic
+- `ConfigurableFedAvg`: Custom aggregation strategy with FedAvg
+- `partitioner.py`: Data distribution utilities (IID, Non-IID, Stratified)
+- `toml_adjustment.py`: Synchronizes config across clients
+
+**Key Features**:
+- Privacy-preserving (weights only, no raw data shared)
+- Multiple data distribution strategies
+- Server-side evaluation on held-out test set
+- Real-time round metrics and confusion matrices
+- Graceful client dropout handling
+
+**See**: [./federated_new_version/README.md](./federated_new_version/README.md) for detailed documentation
+
+---
+
+### 3. Agentic Systems (`agentic_systems/`)
+
+**What it does**: LLM-based research assistance with paper search and document RAG.
+
+**When to use**:
+- Users need contextual research background during training
+- Answering domain questions about training results
+- Searching medical literature (Arxiv)
+
+**Architecture**:
+- `ArxivAgent`: LangChain agent that searches Arxiv papers via MCP
+- `RAG Pipeline`: Processes PDFs and medical documents into embeddings
+- `MCP Manager`: Handles Model Context Protocol for tool integration
+- `Retriever`: Query engine for document similarity search
+
+**Key Features**:
+- Integration with Claude API for reasoning
+- Arxiv search via MCP protocol
+- Local RAG for training reports and papers
+- Session-based conversation history
+- Contextual answers based on training run metadata
+
+**See**: [./agentic_systems/README.md](./agentic_systems/README.md) for detailed documentation (create if missing)
+
+---
+
+## Training Orchestration
+
+Training in the Control Layer is initiated and managed through the API layer endpoints, which instantiate and coordinate the appropriate subsystem.
+
+### Initialization Flow
 
 ```
-control/
-├── dl_model/                          # Centralized Training
-│   ├── centralized_trainer.py         # Main orchestrator
-│   ├── README.md                      # Centralized docs
-│   └── utils/
-│       ├── data/
-│       │   ├── data_source_handler.py # ZIP extraction
-│       │   ├── metrics_file_persister.py # Metrics storage
-│       │   ├── websocket_metrics_sender.py # Real-time relay
-│       │   └── README.md              # WebSocket docs
-│       ├── model/
-│       │   ├── lit_resnet.py          # PyTorch Lightning module
-│       │   ├── xray_data_module.py    # Data loading
-│       │   ├── metrics_collector.py   # Metrics aggregation
-│       │   ├── training_callbacks.py  # PL callbacks
-│       │   └── custom_image_dataset.py # Image loading
-│       └── callbacks/
-│           └── custom_callbacks.py    # Training callbacks
-│
-├── federated_new_version/             # Federated Learning (Flower)
-│   ├── core/
-│   │   ├── server_app.py              # Flower ServerApp
-│   │   ├── client_app.py              # Flower ClientApp
-│   │   ├── custom_strategy.py         # FedAvg strategy
-│   │   ├── server_evaluation.py       # Server-side eval
-│   │   └── utils.py                   # FL utilities
-│   ├── partioner.py                   # Data partitioner
-│   ├── toml_adjustment.py             # Config sync
-│   ├── pyproject.toml                 # Flower config
-│   └── README.md                      # FL docs
-│
-├── agentic_systems/                   # Research Assistance
-│   ├── multi_agent_systems/
-│   │   └── chat/
-│   │       ├── arxiv_agent.py         # Arxiv search agent
-│   │       ├── arxiv_agent_prompts.py # Agent prompts
-│   │       ├── mcp_manager.py         # MCP protocol handler
-│   │       ├── retriver.py            # Query engine
-│   │       └── tools/
-│   │           └── rag_tool.py        # RAG tool wrapper
-│   └── pipelines/
-│       └── rag/
-│           └── pipeline.py            # PDF processing pipeline
-│
-└── [Other utilities and configs]
+API Request → Control Layer → Subsystem Initialization
+     ↓
+Load config.yaml
+Load training data
+Initialize model & optimizers
+Setup monitoring (WebSocket, logging)
+Begin training loop
 ```
+
+### Training Lifecycle
+
+1. **Pre-Training**: Validate config, load data, check resources
+2. **Setup**: Initialize model, optimizers, schedulers
+3. **Execution**: Run training loop with periodic evaluation
+4. **Monitoring**: Stream metrics in real-time
+5. **Cleanup**: Save final model, close resources
+
+### Mode Selection
+
+The API layer routes to the appropriate subsystem based on request parameters:
+
+- **mode=centralized** → `CentralizedTrainer`
+- **mode=federated** → `ServerApp`
+- **mode=agentic** → `ArxivAgent` / RAG Pipeline
+
+---
+
+## Common Components
+
+### Shared Utilities
+
+Located in `control/` and imported by all subsystems:
+
+#### Metrics Handling
+- `MetricsCollector`: Aggregates epoch/round metrics
+- `MetricsFilePersister`: Saves metrics to JSON/CSV locally
+- `WebSocketMetricsSender`: Streams metrics to frontend in real-time
+
+#### Data Processing
+- `DataSourceHandler`: Extracts ZIP files and validates structure
+- `CustomImageDataset`: On-the-fly image transforms and loading
+- `image_transforms.py`: Augmentation pipeline (rotation, flip, normalize)
+
+#### Model Artifacts
+- `LitResNet`: PyTorch Lightning wrapper (used by both centralized and federated)
+- `XRayDataModule`: Dataset splits (used by both centralized and federated)
+- Checkpointing utilities for model persistence
+
+### Interface Contracts
+
+All subsystems follow these patterns:
+
+```
+Initialization:
+  __init__(config: ConfigSchema, data_path: str, callbacks: List[Callable])
+
+Execution:
+  train() -> TrainingResult
+
+Monitoring:
+  on_epoch_complete(metrics: Dict[str, float]) -> None
+  on_error(error: Exception) -> None
+```
+
+---
+
+## Configuration Integration
+
+All training parameters are specified in `../config/default_config.yaml` and follow this hierarchy:
+
+```yaml
+training:
+  mode: 'centralized'  # or 'federated' or 'agentic'
+  model:
+    architecture: 'resnet50'
+    num_classes: 2
+  optimizer:
+    type: 'adam'
+    lr: 0.001
+
+federated:
+  num_rounds: 10
+  num_clients: 5
+  client_fraction: 0.8
+
+data:
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+```
+
+### Config Loading
+
+Each subsystem loads config via:
+```
+ConfigLoader.load_default() → ConfigSchema → subsystem.__init__()
+```
+
+Changes to `config.yaml` are picked up on next training run. For federated learning, `toml_adjustment.py` syncs config to all clients.
+
+---
+
+## Error Handling & Logging
+
+### Structured Logging
+
+All subsystems use Python's built-in `logging` module with:
+
+- **Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
+- **Correlation IDs**: Tracking requests across subsystems
+- **Contextual Info**: Training run ID, epoch/round number, metrics
+
+### Error Scenarios
+
+| Scenario | Handling | Log Level |
+|----------|----------|-----------|
+| Invalid config | Fail fast, print validation errors | ERROR |
+| Data not found | Retry with backoff, then error | ERROR |
+| OOM during training | Graceful shutdown, save checkpoint | CRITICAL |
+| Client dropout (federated) | Exclude from round, continue | WARNING |
+| WebSocket disconnection | Retry, fallback to file logging | WARNING |
+
+### Try-Except Pattern
+
+All I/O, external calls, and failure-prone operations follow:
+
+```python
+try:
+    result = operation()
+except SpecificException as e:
+    logger.error(f"Operation failed: {e}", exc_info=True)
+    raise CustomError(f"Context: {e}") from e
+```
+
+---
+
+## Sub-module Links
+
+| Component | Documentation | Purpose |
+|-----------|---------------|---------|
+| **Centralized Training** | [./dl_model/README.md](./dl_model/README.md) | Single-node PyTorch Lightning training |
+| **Federated Learning** | [./federated_new_version/README.md](./federated_new_version/README.md) | Multi-client Flower framework |
+| **Agentic Systems** | [./agentic_systems/README.md](./agentic_systems/README.md) | LLM research assistance & RAG |
+| **Boundary Layer** | [../boundary/README.md](../boundary/README.md) | Data access interfaces |
+| **API Layer** | [../api/README.md](../api/README.md) | REST endpoints & routing |
+| **Configuration** | [../../config/README.md](../../config/README.md) | Config schema & defaults |
 
 ---
 
@@ -166,311 +372,97 @@ sequenceDiagram
     CT->>WS: Broadcast "Training Complete"
 ```
 
-### Federated Learning - Part 1: Initialization
+### Federated Learning Sequence
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant API as FastAPI
     participant Server as FL Server
-    participant DB as Database
-    participant WS as WebSocket
-
-    API->>Server: Start Federated Session
-    activate Server
-    
-    Server->>DB: Create New Run
-    Server->>WS: Broadcast "FL Mode Started"
-    
-    Server->>Server: Initialize Global Model
-    Server->>Server: Configure Strategy (FedAvg)
-    
-    deactivate Server
-```
-
-### Federated Learning - Part 2: Round Execution
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Server as FL Server
     participant Client as FL Client
     participant DB as Database
     participant WS as WebSocket
 
-    Note over Server, Client: Start of Round N
-    
-    Server->>Client: Send Global Weights & Config
-    activate Client
-    
-    Client->>Client: Train on Local Partition
-    Client->>Client: Evaluate on Local Val Set
-    
-    Client-->>Server: Return Updated Weights & Metrics
-    deactivate Client
-    
-    Note over Server: Aggregation & Eval
-    Server->>Server: Aggregate Updates (FedAvg)
-    Server->>Server: Evaluate on Server Test Set
-    
-    Server->>DB: Persist Round Metrics
-    Server->>WS: Broadcast Round Metrics
+    Note over API, Server: Initialization
+    API->>Server: Start Federated Session
+    Server->>DB: Create New Run
+    Server->>WS: Broadcast "FL Mode Started"
+    Server->>Server: Initialize Global Model
+
+    Note over Server, Client: Round Execution (Repeat)
+    loop Every Round
+        Server->>Client: Send Global Weights & Config
+        activate Client
+        Client->>Client: Train on Local Partition
+        Client->>Client: Evaluate on Local Val Set
+        Client-->>Server: Return Updated Weights & Metrics
+        deactivate Client
+
+        Server->>Server: Aggregate Updates (FedAvg)
+        Server->>Server: Evaluate on Server Test Set
+        Server->>DB: Persist Round Metrics
+        Server->>WS: Broadcast Round Metrics
+    end
 ```
 
----
-
-## Component Hierarchy
-
-### Centralized Training Components
-
-```mermaid
-graph TB
-    subgraph CentralizedTrainer["CentralizedTrainer<br/>Main Orchestrator"]
-        CT_Init["__init__<br/>- Load config<br/>- Setup directories"]
-        CT_Train["train()<br/>- Coordinate full flow<br/>- Error handling"]
-        CT_Setup["_setup_trainer<br/>- Create PyTorch trainer<br/>- Configure callbacks"]
-    end
-
-    subgraph LitResNet["LitResNet<br/>PyTorch Lightning Module"]
-        LR_Init["__init__<br/>- Model architecture<br/>- Loss, optimizers"]
-        LR_Forward["forward()<br/>- Forward pass<br/>- Predictions"]
-        LR_Loss["training_step()<br/>- Compute loss<br/>- Metrics"]
-        LR_Val["validation_step()<br/>- Validation pass<br/>- Val metrics"]
-    end
-
-    subgraph XRayDataModule["XRayDataModule<br/>Data Loading"]
-        XD_Setup["setup()<br/>- Load metadata<br/>- Create splits"]
-        XD_Train["train_dataloader()"]
-        XD_Val["val_dataloader()"]
-        XD_Test["test_dataloader()"]
-    end
-
-    subgraph Utils_Comp["Utilities"]
-        DH["DataSourceHandler<br/>ZIP extraction"]
-        MC["MetricsCollector<br/>Aggregation"]
-        WS["WebSocketSender<br/>Real-time stream"]
-        MFP["MetricsFilePersister<br/>Local storage"]
-    end
-
-    CT_Train -->|Creates| LR_Init
-    CT_Train -->|Creates| XD_Setup
-    CT_Setup -->|Uses| Utils_Comp
-
-    LR_Loss -->|Call| MC
-    LR_Val -->|Call| MC
-
-    MC -->|Send| WS
-    MC -->|Save| MFP
-
-    CT_Train -->|Extract| DH
-
-    %% Styling
-    classDef main fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef model fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef util fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
-
-    class CentralizedTrainer main;
-    class LitResNet,XRayDataModule model;
-    class Utils_Comp,DH,MC,WS,MFP util;
-```
-
-### Federated Learning Components
-
-```mermaid
-graph TB
-    subgraph ServerApp["ServerApp<br/>Flower Server"]
-        SA_Init["__init__<br/>- Load config<br/>- Create model"]
-        SA_Main["main()<br/>- Execute FL rounds<br/>- Orchestrate clients"]
-        SA_Eval["_server_evaluation()<br/>- Evaluate on test set<br/>- Confusion matrix"]
-    end
-
-    subgraph ClientApp["ClientApp<br/>Flower Client"]
-        CA_Fit["fit()<br/>- Receive weights<br/>- Train locally<br/>- Return updates"]
-        CA_Eval["evaluate()<br/>- Validate model<br/>- Return metrics"]
-    end
-
-    subgraph Strategy["ConfigurableFedAvg<br/>Custom Strategy"]
-        ST_Config["configure_train()<br/>- Prepare client config"]
-        ST_Agg["aggregate_fit()<br/>- FedAvg aggregation<br/>- Weighted by samples"]
-        ST_Agg_E["aggregate_evaluate()<br/>- Aggregate metrics"]
-    end
-
-    subgraph DataPart["DataPartitioner<br/>partioner.py"]
-        DP_IID["partition_data_iid()"]
-        DP_NonIID["partition_data_non_iid()"]
-        DP_Strat["partition_data_stratified()"]
-    end
-
-    subgraph Utils_FL["Utilities"]
-        Utils_Prep["_prepare_partition()<br/>Load partition"]
-        Utils_Metrics["_extract_metrics()<br/>Parse metrics"]
-        Utils_Persist["_persist_evaluations()<br/>Database save"]
-    end
-
-    SA_Main -->|Creates| ClientApp
-    SA_Main -->|Uses| Strategy
-    SA_Main -->|Uses| DataPart
-    SA_Main -->|Uses| Utils_FL
-
-    CA_Fit -->|Receives| Utils_Prep
-    Strategy -->|Aggregates| CA_Fit
-    Strategy -->|Persists| Utils_Persist
-
-    SA_Eval -->|Save| Utils_Persist
-
-    %% Styling
-    classDef server fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef client fill:#007BFF,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef strat fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
-
-    class ServerApp server;
-    class ClientApp client;
-    class Strategy,DataPart,Utils_FL strat;
-```
-
----
-
-## Module Details
-
-### 1. Centralized Training (`dl_model/`)
-
-**Purpose**: Single-machine training orchestration
-
-**Key Files**:
-- `centralized_trainer.py`: Main orchestrator
-- `utils/data/`: Data handling and WebSocket
-- `utils/model/`: Model and metrics
-
-**Key Features**:
-- PyTorch Lightning training loop
-- Automatic checkpointing
-- Real-time metrics streaming
-- Early stopping support
-
-**See**: [dl_model/README.md](dl_model/README.md) for detailed documentation
-
----
-
-### 2. Federated Learning (`federated_new_version/`)
-
-**Purpose**: Multi-client distributed training with Flower
-
-**Key Files**:
-- `core/server_app.py`: Server orchestration
-- `core/client_app.py`: Client training logic
-- `core/custom_strategy.py`: FedAvg aggregation
-- `partioner.py`: Data partitioning
-
-**Key Features**:
-- Privacy-preserving training
-- Multiple data distribution strategies (IID, Non-IID, Stratified)
-- Server-side evaluation
-- Real-time round metrics
-
-**See**: [federated_new_version/README.md](federated_new_version/README.md) for detailed documentation
-
----
-
-### 3. Agentic Systems (`agentic_systems/`)
-
-**Purpose**: Research assistance with LangChain
-
-**Key Files**:
-- `multi_agent_systems/chat/arxiv_agent.py`: Arxiv search
-- `multi_agent_systems/chat/mcp_manager.py`: MCP protocol
-- `pipelines/rag/pipeline.py`: Local RAG
-
-**Key Features**:
-- Arxiv paper search via MCP
-- Local document RAG
-- Contextual responses based on training results
-- Session-based conversation history
-
-### Agentic Systems
-
-Harnesses LLMs for research assistance and RAG-based document retrieval.
-
-- **Arxiv Agent**: [src/control/agentic_systems/multi_agent_systems/chat/arxiv_agent.py](agentic_systems/multi_agent_systems/chat/arxiv_agent.py) - Searches medical literature.
-- **RAG Pipeline**: [src/control/agentic_systems/pipelines/rag/pipeline.py](agentic_systems/pipelines/rag/pipeline.py) - Processes local PDFs and medical reports.
-- **MCP Manager**: [src/control/agentic_systems/multi_agent_systems/chat/mcp_manager.py](agentic_systems/multi_agent_systems/chat/mcp_manager.py) - Handles the Model Context Protocol for tool use.
-
-### Flow 3: Research Assistance (Agentic System)
+### Research Assistance Flow
 
 ```mermaid
 graph TD
-    A["User Query<br/>via Frontend"] -->|POST /chat/query| B["Chat Endpoint<br/>chat_endpoints.py"]
+    A["User Query<br/>via Frontend"] -->|POST /chat/query| B["Chat Endpoint"]
     B -->|Load| C["ArxivAgent<br/>LangChain Agent"]
     B -->|Load| D["RAG Pipeline<br/>Local Documents"]
 
-    C -->|Prepare| E["Agent Prompt<br/>System Message"]
-    E -->|With Context| F["User Query<br/>+ Run Metadata"]
+    C -->|Execute| G["Agentic Loop<br/>Think → Act → Observe"]
+    D -->|Embedded| K["Vector DB"]
 
-    F -->|Execute| G["LangChain Agentic Loop"]
-    G -->|Think| H["Reason about<br/>Best approach"]
+    G -->|Decide| I{Use Tool?}
 
-    H -->|Decide| I{Use External<br/>Tools?}
-
-    I -->|Yes - RAG| J["RAG Tool<br/>Local document search"]
-    J -->|Query| K["Vector DB<br/>Embeddings"]
-    K -->|Retrieve| L["Relevant Documents<br/>Context"]
+    I -->|Yes - RAG| J["RAG Tool<br/>Local search"]
+    J -->|Query| K
+    K -->|Retrieve| L["Relevant Docs"]
     L -->|Return| G
 
     I -->|Yes - Arxiv| M["Arxiv Tool<br/>MCP Protocol"]
-    M -->|Query| N["Arxiv API<br/>Paper Search"]
-    N -->|Results| O["Paper Metadata<br/>Title, Abstract, URL"]
+    M -->|Query| N["Arxiv API"]
+    N -->|Results| O["Paper Metadata"]
     O -->|Return| G
 
-    I -->|No| P["Generate Response<br/>Using context"]
-
-    H -->|Repeat| G
+    I -->|No| P["Generate Response"]
     P -->|Format| Q["ChatResponse<br/>Answer + Sources"]
     Q -->|Return| B
     B -->|HTTP| R["React Frontend"]
-    R -->|Display| S["Chat Interface<br/>Answer + Links"]
-
-    %% Styling
-    classDef user fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef endpoint fill:#0091EA,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef logic fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef tool fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
-
-    class A user;
-    class B,R,S endpoint;
-    class C,D,E,F,G,H,I,P,Q logic;
-    class J,K,L,M,N,O tool;
 ```
 
 ---
 
 ## Data Flow
 
-### Complete Training Data Flow
+### Complete Training Data Pipeline
 
 ```mermaid
 graph LR
     A["Input: dataset.zip<br/>+ config.yaml"] -->|Extract| B["Images<br/>+ Metadata CSV"]
-    B -->|Load| C["Pandas DataFrame<br/>patient_id, target, filename"]
-    C -->|Transform| D["XRayDataModule<br/>Train/Val/Test split"]
+    B -->|Load| C["Pandas DataFrame"]
+    C -->|Transform| D["XRayDataModule<br/>Train/Val/Test"]
 
-    D -->|Images| E["CustomImageDataset<br/>On-the-fly transform"]
-    E -->|Transform| F["Augmentation<br/>Rotation, Flip, Normalize"]
-    F -->|Batching| G["DataLoader<br/>Batch processing"]
+    D -->|Images| E["CustomImageDataset<br/>Transforms"]
+    E -->|Augment| F["Rotation, Flip<br/>Normalize"]
+    F -->|Batch| G["DataLoader"]
 
-    G -->|Batch| H["LitResNet<br/>Model forward pass"]
-    H -->|Predictions| I["Loss & Metrics<br/>BCELoss + AUC"]
-    I -->|Backprop| J["Gradient Computation<br/>Adam optimizer"]
+    G -->|Batch| H["Model<br/>Forward Pass"]
+    H -->|Predictions| I["Loss & Metrics"]
+    I -->|Backprop| J["Gradients<br/>Adam Optimizer"]
     J -->|Update| H
 
-    I -->|Collect| K["MetricsCollector<br/>Per-epoch aggregation"]
-    K -->|Send| L["WebSocketSender<br/>JSON payload"]
-    L -->|Stream| M["WebSocket Server<br/>ws://localhost:8765"]
-    M -->|Broadcast| N["React Frontend<br/>Real-time update"]
+    I -->|Collect| K["MetricsCollector"]
+    K -->|Stream| L["WebSocket<br/>Real-time"]
+    L -->|Broadcast| M["Frontend<br/>Live Dashboard"]
 
-    K -->|Store| O["MetricsFilePersister<br/>Local JSON/CSV"]
-    K -->|Persist| P["PostgreSQL<br/>run_metrics table"]
+    K -->|Store| N["File Storage<br/>JSON/CSV"]
+    K -->|Persist| O["PostgreSQL<br/>Metrics Table"]
 
-    H -->|Best Model| Q["Checkpointing<br/>PyTorch .pt"]
-    Q -->|Save| R["File Storage<br/>models/checkpoints/"]
+    H -->|Best Model| P["Checkpoints<br/>.pt Files"]
 
     %% Styling
     classDef input fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
@@ -481,19 +473,37 @@ graph LR
     class A,B input;
     class C,D,E,F,G process;
     class H,I,J model;
-    class K,L,M,N,O,P,Q,R output;
+    class K,L,M,N,O,P output;
 ```
 
 ---
 
-## Related Documentation
+## Quick Reference
 
-| Component | Documentation |
-|-----------|---------------|
-| **Centralized Training** | [dl_model/README.md](dl_model/README.md) |
-| **Federated Learning** | [federated_new_version/README.md](federated_new_version/README.md) |
-| **WebSocket Metrics** | [dl_model/utils/data/README.md](dl_model/utils/data/README.md) |
-| **API Layer** | [../api/README.md](../api/README.md) |
-| **System Architecture** | [../../README.md](../../README.md) |
-| **Configuration** | [../../config/README.md](../../config/README.md) |
+### Starting a Centralized Training Run
+```python
+from control.dl_model.centralized_trainer import CentralizedTrainer
+from control.config_loader import ConfigLoader
+
+config = ConfigLoader.load_default()
+trainer = CentralizedTrainer(config, data_path="/path/to/data")
+result = trainer.train()
+```
+
+### Starting a Federated Learning Run
+```python
+from control.federated_new_version.core.server_app import ServerApp
+
+config = ConfigLoader.load_default()
+server = ServerApp(config)
+server.main()
+```
+
+### Querying the Research Assistant
+```python
+from control.agentic_systems.multi_agent_systems.chat.arxiv_agent import ArxivAgent
+
+agent = ArxivAgent()
+response = agent.query("What are recent advances in pneumonia detection?")
+```
 

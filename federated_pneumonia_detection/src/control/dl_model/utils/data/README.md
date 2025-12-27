@@ -1,200 +1,318 @@
-# WebSocket Metrics Streaming Architecture
+# Data Utils: Federated Pneumonia Detection Pipeline
 
-**Purpose**: Real-time streaming of training metrics from backend to frontend via WebSocket, enabling live monitoring of training progress.
+**Purpose**: Core data pipeline for training federated and centralized pneumonia detection models, including dataset handling, metrics collection, and real-time metrics streaming.
+
+---
+
+## Data Pipeline Architecture
+
+```mermaid
+graph TD
+    A["🗂️ Raw Dataset<br/>ZIP File"] -->|Extract| B["📁 Extracted Files<br/>Images + Metadata"]
+    B -->|Load| C["📊 Metadata CSV<br/>Train/Val/Test Splits"]
+
+    C -->|Validate & Filter| D["✅ Validated Dataset<br/>Clean Samples"]
+    D -->|Split| E["📌 Train/Val Dataset<br/>PyTorch Dataset"]
+
+    E -->|DataLoader| F["🔄 Batch Generator<br/>Mini-batches"]
+    F -->|Feed| G["🧠 Model Training<br/>Loss Backprop"]
+
+    G -->|Metrics per Epoch| H["📈 MetricsCollector<br/>Accumulate Metrics"]
+
+    H -->|Stream| I["🌐 WebSocketMetricsSender<br/>Real-time WebSocket"]
+    I -->|JSON Payload| J["📱 Frontend Dashboard<br/>Live Charts"]
+
+    H -->|Persist| K["💾 MetricsFilePersister<br/>Save to Disk"]
+    K -->|metrics.json| L["📁 Metrics Archive<br/>Historical Data"]
+
+    style A fill:#fff3cd
+    style B fill:#fff3cd
+    style C fill:#d1ecf1
+    style D fill:#d1ecf1
+    style E fill:#d1ecf1
+    style F fill:#d4edda
+    style G fill:#f8d7da
+    style H fill:#e2e3e5
+    style I fill:#e2e3e5
+    style J fill:#d1ecf1
+    style K fill:#e2e3e5
+    style L fill:#e2e3e5
+```
 
 ---
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Component Details](#component-details)
-4. [Message Format](#message-format)
-5. [Usage Examples](#usage-examples)
-6. [Integration Points](#integration-points)
-7. [Error Handling](#error-handling)
+1. [Data Utils Overview](#data-utils-overview)
+2. [Pipeline Stages](#pipeline-stages)
+3. [Key Components](#key-components)
+4. [Real-time Metrics Streaming](#real-time-metrics-streaming)
+5. [Configuration](#configuration)
+6. [Error Handling](#error-handling)
+7. [Integration with PyTorch Lightning](#integration-with-pytorch-lightning)
+8. [Links](#links)
 
 ---
 
-## Overview
+## Data Utils Overview
 
-The system uses two complementary components for WebSocket communication:
+The Data Utils module provides a complete data pipeline for training federated and centralized pneumonia detection models:
 
-| Component | Purpose | Location |
-|-----------|---------|----------|
-| **WebSocket Server** | Central relay/broadcaster | [scripts/websocket_server.py](../../../../scripts/websocket_server.py) |
-| **Metrics Sender** | Metrics publisher from training | [websocket_metrics_sender.py](websocket_metrics_sender.py) |
+- **Dataset Handling**: Extract, load, validate, and preprocess medical imaging datasets
+- **Metrics Collection**: Capture training metrics in real-time
+- **Metrics Streaming**: Send metrics via WebSocket for live frontend monitoring
+- **Metrics Persistence**: Save metrics to disk for historical analysis
 
-This design separates concerns:
-- **Server**: Handles connections, message relay, broadcasting
-- **Sender**: Prepares metrics, sends to WebSocket server
+All components adhere to SOLID principles with clean separation of concerns.
 
 ---
 
-## Architecture
+## Pipeline Stages
 
-```mermaid
-graph LR
-    subgraph Backend["🎮 Training Backend"]
-        CT["CentralizedTrainer<br/>or Federated"]
-        Metrics["Metrics Collected<br/>per epoch/round"]
-        WMS["MetricsWebSocketSender<br/>(websocket_metrics_sender.py)"]
-    end
+### Stage 1: DataSourceHandler (Extract & Load)
 
-    subgraph Network["🌐 Network"]
-        WS["WebSocket Server<br/>ws://localhost:8765<br/>(websocket_server.py)"]
-    end
+**File**: [components/data_source_handler.py](components/data_source_handler.py)
 
-    subgraph Frontend["🖥️ Frontend"]
-        WSC["WebSocket Client<br/>(React)<br/>services/websocket.ts"]
-        Component["TrainingExecution<br/>Component"]
-        UI["Charts & Status<br/>Visualization"]
-    end
-
-    CT -->|report metrics| Metrics
-    Metrics -->|send_metrics| WMS
-    WMS -->|JSON payload<br/>asyncio.run| WS
-    WS -->|broadcast| WSC
-    WSC -->|dispatch action| Component
-    Component -->|render| UI
-
-    style Backend fill:#f3e5f5
-    style Network fill:#e0e0e0
-    style Frontend fill:#e1f5ff
-```
-
----
-
-## Component Details
-
-### 1. WebSocket Server (`scripts/websocket_server.py`)
-
-**Purpose**: Central message relay and broadcaster
+**Purpose**: Extract ZIP files, validate structure, and load metadata
 
 **Key Responsibilities**:
-- Accept WebSocket connections from frontend clients
-- Receive metrics messages from training backend
-- Broadcast messages to all connected clients
-- Handle connection lifecycle (connect, disconnect)
-- Log all activity
+- Extract dataset ZIP archives
+- Load metadata from CSV files
+- Validate data file existence
+- Handle corrupted or missing files
+- Return clean dataset configuration
 
-**Implementation Details**:
-
-```python
-# Handler for each WebSocket connection
-async def handler(websocket, path):
-    # Add new client
-    connected_clients.add(websocket)
-
-    try:
-        async for message in websocket:
-            # Parse incoming metric message (JSON)
-            data = json.loads(message)
-
-            # Broadcast to all connected clients
-            for client in connected_clients:
-                if client != websocket:
-                    await client.send(message)
-```
-
-**Usage**:
-
-```bash
-# Start WebSocket server in background
-python scripts/websocket_server.py
-
-# Server listens on ws://localhost:8765
-# Logs: "✓ WebSocket server is running and ready for connections"
-```
-
-**Key Features**:
-- Async message broadcasting (concurrent `asyncio.gather()`)
-- Connection tracking (clients set)
-- JSON validation with error logging
-- Graceful shutdown on Ctrl+C
+**Validation Checks**:
+- ZIP file integrity
+- CSV metadata completeness
+- Image file references
+- Train/Val/Test split consistency
 
 ---
 
-### 2. Metrics WebSocket Sender (`websocket_metrics_sender.py`)
+### Stage 2: Metadata Processing & Validation
 
-**Purpose**: Metrics publisher from training backend
+**Purpose**: Ensure data quality and consistency
 
-**File Location**: [websocket_metrics_sender.py](websocket_metrics_sender.py)
+**Validations Performed**:
+- Missing values in metadata columns
+- Invalid file paths
+- Corrupted image files
+- Mismatched labels across datasets
+- Data leakage between splits
 
-**Key Responsibilities**:
-- Collect metrics from training loop
-- Format metrics into JSON payloads
-- Send to WebSocket server
-- Handle async operations from sync contexts
-- Log all sends and errors
+**Filters Applied**:
+- Remove samples with corrupted images
+- Remove samples with incomplete metadata
+- Remove outlier samples (if configured)
 
-**Class**: `MetricsWebSocketSender`
+---
+
+### Stage 3: Train/Validation Splitting
+
+**Purpose**: Create reproducible train/validation/test splits
+
+**Splitting Strategies**:
+- **Stratified Split**: Maintain class distribution across splits
+- **Random Split**: Shuffle and split by ratio
+- **Custom Split**: Use predefined split assignments from metadata
+
+**Configuration Parameters**:
+- `train_ratio`: Percentage for training (default: 0.7)
+- `val_ratio`: Percentage for validation (default: 0.15)
+- `test_ratio`: Percentage for testing (default: 0.15)
+- `random_seed`: For reproducibility
+
+---
+
+### Stage 4: Data Loading Configuration
+
+**Purpose**: Configure PyTorch DataLoader for batching and preprocessing
+
+**DataLoader Features**:
+- Configurable batch size
+- Shuffle enabled for training
+- Multi-worker data loading
+- Persistent workers for efficiency
+- Image augmentation (if configured)
+
+**Key Parameters**:
+- `batch_size`: Batch size per iteration
+- `num_workers`: Parallel data loading threads
+- `pin_memory`: GPU memory optimization
+- `drop_last`: Drop incomplete batches
+
+---
+
+## Key Components
+
+### 1. DataSourceHandler
+
+**File**: [components/data_source_handler.py](components/data_source_handler.py)
+
+**Purpose**: Extract and load datasets with validation
+
+**Class**: `DataSourceHandler`
 
 **Constructor**:
-
 ```python
-sender = MetricsWebSocketSender(
-    websocket_uri="ws://localhost:8765"  # Default
+handler = DataSourceHandler(
+    dataset_zip_path="/path/to/dataset.zip",
+    extract_dir="/path/to/extracted",
+    config=data_config
 )
 ```
 
 **Core Methods**:
+- `extract_dataset()`: Extract ZIP archive
+- `load_metadata()`: Load CSV metadata
+- `validate_dataset()`: Verify data integrity
+- `get_dataset_info()`: Return dataset configuration
 
-| Method | Purpose | Called By |
-|--------|---------|-----------|
-| `send_metrics(metrics, type)` | Send arbitrary metrics | All other methods |
-| `send_training_mode(is_federated, num_rounds, num_clients)` | Signal training mode at start | ServerApp/CentralizedTrainer |
-| `send_epoch_end(epoch, phase, metrics)` | Send epoch completion metrics | Training callbacks |
-| `send_round_end(round_num, total_rounds, fit_metrics, eval_metrics)` | Send FL round metrics | ServerApp |
-| `send_training_end(run_id, summary_data)` | Send completion signal with run_id | Training finish |
-| `send_error(error_message, error_type)` | Send error notification | Exception handlers |
-| `send_early_stopping_triggered(epoch, best_metric_value, metric_name, patience)` | Send early stopping signal | EarlyStoppingCallback |
-| `send_round_metrics(round_num, total_rounds, metrics)` | Send aggregated round metrics | Custom strategy |
+**Error Handling**:
+- Raises `DatasetExtractionError` for ZIP failures
+- Raises `DatasetValidationError` for missing files
+- Raises `MetadataError` for CSV parsing issues
 
 ---
 
-## Message Format
+### 2. MetricsCollector
 
-All messages are JSON with standard structure:
+**File**: [components/metrics_collector.py](components/metrics_collector.py)
 
+**Purpose**: Accumulate and aggregate training metrics during training loops
+
+**Class**: `MetricsCollector`
+
+**Constructor**:
+```python
+collector = MetricsCollector(
+    track_fields=['loss', 'accuracy', 'precision', 'recall', 'f1', 'auroc']
+)
+```
+
+**Core Methods**:
+- `record_batch(metrics_dict)`: Record metrics for a batch
+- `record_epoch(epoch_num, phase, metrics_dict)`: Record epoch-level metrics
+- `get_epoch_metrics()`: Retrieve aggregated metrics for epoch
+- `reset()`: Clear accumulated metrics
+
+**Aggregation Strategy**:
+- Batch metrics: Average across all batches in epoch
+- Phase metrics: Separate train/val/test aggregation
+- Epoch summary: Mean, min, max, std for each metric
+
+---
+
+### 3. WebSocketMetricsSender
+
+**File**: [websocket_metrics_sender.py](websocket_metrics_sender.py)
+
+**Purpose**: Stream collected metrics to frontend via WebSocket in real-time
+
+**Class**: `WebSocketMetricsSender`
+
+**Constructor**:
+```python
+sender = WebSocketMetricsSender(
+    websocket_uri="ws://localhost:8765"
+)
+```
+
+**Core Methods**:
+- `send_metrics(metrics_dict, message_type)`: Send arbitrary metrics
+- `send_training_mode(is_federated, num_rounds, num_clients)`: Signal training start
+- `send_epoch_end(epoch, phase, metrics)`: Send epoch completion
+- `send_round_end(round_num, total_rounds, fit_metrics, eval_metrics)`: Send FL round metrics
+- `send_training_end(run_id, summary_data)`: Signal training completion
+- `send_error(error_message, error_type)`: Report training errors
+- `send_early_stopping_triggered(epoch, best_metric, metric_name, patience)`: Signal early stop
+
+**Message Delivery**:
+- Non-blocking: Uses asyncio for async sends
+- Graceful failure: Errors logged, training continues
+- JSON format: All messages are JSON-serializable
+
+---
+
+### 4. MetricsFilePersister
+
+**File**: [components/metrics_file_persister.py](components/metrics_file_persister.py)
+
+**Purpose**: Save training metrics to disk for historical analysis
+
+**Class**: `MetricsFilePersister`
+
+**Constructor**:
+```python
+persister = MetricsFilePersister(
+    output_dir="/path/to/metrics",
+    run_id=42
+)
+```
+
+**Core Methods**:
+- `save_epoch_metrics(epoch, phase, metrics)`: Save metrics for epoch
+- `save_run_summary(summary_dict)`: Save complete run summary
+- `load_run_metrics(run_id)`: Load historical metrics for run
+
+**File Structure**:
+```
+output_dir/
+├── run_42/
+│   ├── metrics.json       # Complete metrics per epoch
+│   ├── run_summary.json   # Run statistics and metadata
+│   └── log.txt            # Event log
+```
+
+**Data Format**:
 ```json
 {
-    "type": "message_type",
-    "timestamp": "2024-01-15T10:30:45.123456",
-    "data": {
-        // Message-specific fields
-    }
+    "run_id": 42,
+    "training_mode": "centralized",
+    "epochs": [
+        {
+            "epoch": 1,
+            "phase": "train",
+            "loss": 0.523,
+            "accuracy": 0.845,
+            "timestamp": "2024-01-15T10:30:45Z"
+        }
+    ]
 }
 ```
 
+---
+
+## Real-time Metrics Streaming
+
+### Streaming Architecture
+
+The system captures metrics at training time and streams them to the frontend for live monitoring:
+
+1. **MetricsCollector** accumulates metrics during each training loop
+2. **MetricsCollector** reports aggregated metrics per epoch
+3. **WebSocketMetricsSender** formats and sends metrics via WebSocket
+4. **Frontend** receives messages and updates charts in real-time
+
 ### Message Types
 
-#### 1. training_mode
-
+#### training_mode
 **Sent**: At training start
-
-**Structure**:
 ```json
 {
     "type": "training_mode",
     "timestamp": "2024-01-15T10:30:00Z",
     "data": {
-        "is_federated": true,
-        "num_rounds": 15,
-        "num_clients": 5
+        "is_federated": false,
+        "num_rounds": 0,
+        "num_clients": 0
     }
 }
 ```
 
-**Purpose**: Signal to frontend whether training is federated or centralized
-
----
-
-#### 2. epoch_end (Centralized)
-
+#### epoch_end
 **Sent**: After each epoch in centralized training
-
-**Structure**:
 ```json
 {
     "type": "epoch_end",
@@ -214,13 +332,8 @@ All messages are JSON with standard structure:
 }
 ```
 
----
-
-#### 3. round_metrics (Federated)
-
-**Sent**: After each FL round (aggregated from all clients)
-
-**Structure**:
+#### round_metrics
+**Sent**: After each FL round
 ```json
 {
     "type": "round_metrics",
@@ -240,13 +353,8 @@ All messages are JSON with standard structure:
 }
 ```
 
----
-
-#### 4. training_end
-
+#### training_end
 **Sent**: When training completes
-
-**Structure**:
 ```json
 {
     "type": "training_end",
@@ -263,36 +371,8 @@ All messages are JSON with standard structure:
 }
 ```
 
-**Important**: `run_id` is used by frontend to query `/api/runs/{run_id}/metrics` for final results
-
----
-
-#### 5. early_stopping
-
-**Sent**: When early stopping is triggered
-
-**Structure**:
-```json
-{
-    "type": "early_stopping",
-    "timestamp": "2024-01-15T10:33:00Z",
-    "data": {
-        "epoch": 7,
-        "best_metric_value": 0.923,
-        "metric_name": "val_recall",
-        "patience": 7,
-        "reason": "Early stopping triggered at epoch 7 with best val_recall=0.9230"
-    }
-}
-```
-
----
-
-#### 6. error
-
+#### error
 **Sent**: When training encounters an error
-
-**Structure**:
 ```json
 {
     "type": "error",
@@ -306,178 +386,194 @@ All messages are JSON with standard structure:
 
 ---
 
-## Usage Examples
+## Configuration
 
-### Centralized Training Integration
+Data-related configuration is specified in `config/default_config.yaml`:
 
-```python
-from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
-
-# Initialize sender
-sender = MetricsWebSocketSender()
-
-# Signal start
-sender.send_training_mode(is_federated=False, num_rounds=0, num_clients=0)
-
-# After each epoch
-for epoch in range(num_epochs):
-    # Training...
-
-    # Send epoch metrics
-    sender.send_epoch_end(
-        epoch=epoch,
-        phase="train",
-        metrics={
-            "loss": train_loss,
-            "accuracy": train_acc,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1_score,
-            "auroc": auroc
-        }
-    )
-
-# At completion
-sender.send_training_end(
-    run_id=42,
-    summary_data={
-        "status": "completed",
-        "best_epoch": best_epoch,
-        "final_metrics": final_metrics
-    }
-)
+**Dataset Configuration**:
+```yaml
+dataset:
+  zip_path: "path/to/dataset.zip"
+  extract_dir: "path/to/extracted"
+  metadata_file: "train_val_test_metadata.csv"
+  validation_enabled: true
 ```
 
-### Federated Learning Integration
-
-```python
-# In ServerApp (server_app.py)
-from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import MetricsWebSocketSender
-
-sender = MetricsWebSocketSender()
-
-# Signal federated mode
-sender.send_training_mode(
-    is_federated=True,
-    num_rounds=num_server_rounds,
-    num_clients=num_partitions
-)
-
-# In strategy's aggregate_fit or aggregate_evaluate
-sender.send_round_metrics(
-    round_num=server_round,
-    total_rounds=num_server_rounds,
-    metrics={
-        "loss": aggregated_loss,
-        "accuracy": aggregated_accuracy,
-        "precision": precision,
-        "recall": recall,
-        "f1": f1_score,
-        "auroc": auroc
-    }
-)
-
-# At end
-sender.send_training_end(run_id=run_id, summary_data=final_metrics)
+**Data Loading Configuration**:
+```yaml
+data_loading:
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+  drop_last: false
+  shuffle_train: true
 ```
 
----
+**Splitting Configuration**:
+```yaml
+splitting:
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  random_seed: 42
+  stratified: true
+```
 
-## Integration Points
-
-### 1. CentralizedTrainer Integration
-
-**File**: [centralized_trainer.py](../model/lit_resnet.py)
-
-**Points of Integration**:
-- Create `MetricsWebSocketSender` instance
-- Send `training_mode` at start
-- Send `epoch_end` after each epoch (via callbacks)
-- Send `training_end` at completion
-
----
-
-### 2. Federated Learning Integration
-
-**File**: [core/custom_strategy.py](../../federated_new_version/core/custom_strategy.py)
-
-**Points of Integration**:
-- Server creates sender instance
-- Sends metrics in `aggregate_fit()` and `aggregate_evaluate()`
-- Broadcasts metrics via strategy
-
----
-
-### 3. Frontend Integration
-
-**File**: [services/websocket.ts](../../../../../../xray-vision-ai-forge/src/services/websocket.ts)
-
-**React Component**: `TrainingExecution.tsx`
-
-**Integration Flow**:
-1. Component initiates training via REST API
-2. Backend starts training and connects to WebSocket
-3. Frontend connects WebSocket client
-4. Messages received trigger Redux/Context state updates
-5. Component re-renders with updated metrics
-6. Charts update in real-time
+**Metrics Configuration**:
+```yaml
+metrics:
+  track_fields: [loss, accuracy, precision, recall, f1, auroc]
+  websocket_uri: "ws://localhost:8765"
+  enable_file_persistence: true
+  metrics_output_dir: "path/to/metrics"
+```
 
 ---
 
 ## Error Handling
 
-### Graceful Failures
+### Invalid File Handling
 
-All `send_*` methods wrap operations in try-except:
+**Error Types**:
+- Corrupted ZIP files: Raises `DatasetExtractionError`
+- Missing metadata CSV: Raises `MetadataError`
+- Invalid file paths in metadata: Raises `DataValidationError`
 
+**Recovery Strategy**:
+- Skip corrupted samples
+- Validate before processing
+- Log all errors with context
+- Raise specific exceptions with actionable messages
+
+**Example**:
 ```python
 try:
-    # Prepare and send message
-    asyncio.run(self._send_async(payload))
-except Exception as e:
-    logger.warning(f"Failed to send metrics via WebSocket: {e}")
-    # Training continues even if WebSocket fails
+    handler = DataSourceHandler(zip_path, extract_dir, config)
+    handler.extract_dataset()
+    handler.validate_dataset()
+except DatasetExtractionError as e:
+    logger.error(f"Failed to extract dataset: {e}")
+    # Handle or re-raise
+except DatasetValidationError as e:
+    logger.error(f"Dataset validation failed: {e}")
+    # Handle or re-raise
 ```
 
-**Important**: WebSocket failures do NOT block training. Metrics are logged locally regardless.
+### Corrupted Data Detection
 
-### Common Errors
+**Validation Checks**:
+- Image file size > 0 bytes
+- Metadata columns non-null
+- Image format matches expected type
+- Pixel values within valid range
+- No duplicate samples
 
-| Error | Cause | Resolution |
-|-------|-------|-----------|
-| "Connection refused" | WebSocket server not running | Start `python scripts/websocket_server.py` |
-| "Event loop already running" | Async context issue | Use `asyncio.run()` wrapper |
-| "JSON serialization failed" | Non-JSON-serializable object in metrics | Ensure all metrics are primitives (float, int, str) |
+**Handling Strategy**:
+- Remove corrupted samples from dataset
+- Log sample IDs that were removed
+- Report summary statistics
+- Continue training with clean data
+
+### WebSocket Failures
+
+**Graceful Degradation**:
+- WebSocket errors do NOT block training
+- All metrics logged locally regardless
+- Reconnection attempted automatically
+- User notified via error messages
+
+**Error Handling Code**:
+```python
+try:
+    sender.send_epoch_end(epoch, phase, metrics)
+except Exception as e:
+    logger.warning(f"Failed to send metrics via WebSocket: {e}")
+    # Training continues
+```
 
 ---
 
-## Performance Considerations
+## Integration with PyTorch Lightning
 
-### Asynchronous Non-Blocking Design
+### Training Loop Integration
 
-- Uses `asyncio.run()` to execute async WebSocket sends from sync training loop
-- Non-blocking: If WebSocket is slow, training doesn't stall
-- Each message send is independent
+**Callback Pattern**:
+```python
+class MetricsStreamingCallback(Callback):
+    def __init__(self, sender: WebSocketMetricsSender):
+        self.sender = sender
+        self.collector = MetricsCollector()
 
-### Frequency Recommendations
+    def on_train_epoch_end(self, trainer, pl_module):
+        metrics = trainer.callback_metrics
+        self.collector.record_epoch(
+            trainer.current_epoch, 'train', metrics
+        )
+        self.sender.send_epoch_end(
+            trainer.current_epoch, 'train', metrics
+        )
 
-- **Epoch-level**: Send after each epoch (reasonable frequency)
-- **Batch-level**: Avoid sending per-batch (too frequent, bandwidth waste)
-- **Custom**: Adjust frequency based on training duration
+    def on_validation_epoch_end(self, trainer, pl_module):
+        metrics = trainer.callback_metrics
+        self.sender.send_epoch_end(
+            trainer.current_epoch, 'val', metrics
+        )
+```
 
-### Network Overhead
+### DataLoader Integration
 
-Default message size: ~300 bytes (JSON)
-- 15 epochs × 300 bytes = 4.5 KB per run
-- Acceptable for production
+```python
+from torch.utils.data import DataLoader
+
+# Load and validate dataset
+handler = DataSourceHandler(
+    dataset_zip_path=config.dataset.zip_path,
+    extract_dir=config.dataset.extract_dir,
+    config=config
+)
+handler.extract_dataset()
+handler.validate_dataset()
+
+# Create PyTorch Dataset
+train_dataset = PneumoniaDataset(
+    dataset_path=handler.extract_dir,
+    split='train',
+    transform=get_transforms()
+)
+
+# Create DataLoader
+train_loader = DataLoader(
+    train_dataset,
+    batch_size=config.data_loading.batch_size,
+    num_workers=config.data_loading.num_workers,
+    pin_memory=config.data_loading.pin_memory,
+    shuffle=config.data_loading.shuffle_train
+)
+
+# Pass to PyTorch Lightning Trainer
+trainer = Trainer(...)
+trainer.fit(model, train_dataloaders=train_loader)
+```
 
 ---
 
-## Related Documentation
+## Links
 
-- **WebSocket Server**: [scripts/websocket_server.py](../../../../scripts/websocket_server.py)
-- **Centralized Training**: [centralized_trainer.py](../model/lit_resnet.py)
-- **Federated Training**: [federated_new_version/README.md](../../federated_new_version/README.md)
-- **Frontend Integration**: [services/websocket.ts](../../../../../../xray-vision-ai-forge/src/services/websocket.ts)
-- **System Architecture**: [README.md](../../../../README.md)
+**Parent Documentation**:
+- [Model Utils README](../README.md)
+- [DL Model README](../../README.md)
+- [Boundary Layer README](../../../boundary/README.md)
 
+**Related Components**:
+- [WebSocket Metrics Sender](websocket_metrics_sender.py)
+- [Data Source Handler](components/data_source_handler.py)
+- [Metrics Collector](components/metrics_collector.py)
+- [Metrics File Persister](components/metrics_file_persister.py)
+
+**Training Integration**:
+- [Centralized Trainer](../model/lit_resnet.py)
+- [Federated Learning Strategy](../../federated_new_version/core/custom_strategy.py)
+
+**Frontend Integration**:
+- [WebSocket Server](../../../../scripts/websocket_server.py)
+- [Frontend WebSocket Service](../../../../../../xray-vision-ai-forge/src/services/websocket.ts)

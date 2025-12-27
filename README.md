@@ -2,751 +2,742 @@
 
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-Lightning-orange.svg)](https://pytorchlightning.ai/)
+[![Flower](https://img.shields.io/badge/Flower-Federated-purple.svg)](https://flower.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-A sophisticated federated learning system for pneumonia detection from chest X-ray images, built with PyTorch Lightning and designed for privacy-preserving collaborative medical AI.
+A production-ready federated learning system for pneumonia detection from chest X-ray images, built with PyTorch Lightning and Flower framework. Enables privacy-preserving collaborative medical AI across distributed institutions without centralizing sensitive patient data.
 
-## 📌 Navigation
-
-| Section | Description | Link |
-|---------|-------------|------|
-| **Core App** | Main Backend Source | [federated_pneumonia_detection/](federated_pneumonia_detection/) |
-| **API** | REST & WebSocket Layer | [src/api/](federated_pneumonia_detection/src/api/) |
-| **Control** | Training Orchestration | [src/control/](federated_pneumonia_detection/src/control/) |
-| **Entities** | Models & Datasets | [src/entities/](federated_pneumonia_detection/src/entities/) |
-| **Boundary** | Database & Persistence | [src/boundary/](federated_pneumonia_detection/src/boundary/) |
-| **Frontend** | React Dashboard | [xray-vision-ai-forge/](xray-vision-ai-forge/) |
-| **Config** | System Settings | [config/](federated_pneumonia_detection/config/) |
-
-## 🏗️ Architecture
-
-### System Architecture Overview
-
-```mermaid
-graph LR
-    subgraph Frontend ["🖥️ Frontend Layer"]
-        UI["React UI<br/>(Dashboard)"]
-        WS_Client["WebSocket Client"]
-    end
-
-    subgraph Backend ["⚙️ Backend Layer"]
-        API["FastAPI Server"]
-        WS_Server["WebSocket Server"]
-        Trainer["Training Orchestrator"]
-    end
-
-    subgraph Data ["💾 Data Layer"]
-        DB[(PostgreSQL)]
-        Files["File System<br/>(Datasets/Models)"]
-    end
-
-    UI -->|HTTP Requests| API
-    UI -->|Listen| WS_Client
-    WS_Client <-->|Stream| WS_Server
-    
-    API -->|Triggers| Trainer
-    Trainer -->|Updates| WS_Server
-    
-    Trainer -->|Reads/Writes| DB
-    Trainer -->|Reads/Writes| Files
-    API -->|Queries| DB
-
-    %% Styling
-    classDef frontend fill:#007BFF,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef backend fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef data fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
-    
-    class UI,WS_Client frontend;
-    class API,WS_Server,Trainer backend;
-    class DB,Files data;
-```
-
-### Backend Architecture (ECB Pattern)
+## System Architecture
 
 ```mermaid
 graph TB
-    subgraph Boundary ["🧱 Boundary Layer (Interfaces)"]
+    subgraph frontend["🖥️ Frontend Layer"]
         direction TB
-        API_End["API Endpoints"]
-        Run_DAO["Run DAO"]
-        Metric_DAO["Metric DAO"]
+        UI["React UI<br/>(Dashboard)"]
+        WS_Client["WebSocket<br/>Client"]
     end
 
-    subgraph Control ["🎮 Control Layer (Logic)"]
+    subgraph api_layer["🌐 API Layer (Boundary)"]
         direction TB
-        CT["Centralized Trainer"]
-        FL_Server["FL ServerApp"]
-        FL_Client["FL ClientApp"]
+        FastAPI["FastAPI<br/>REST Server"]
+        WS_Server["WebSocket<br/>Server"]
+        Schemas["Request/Response<br/>Schemas"]
     end
 
-    subgraph Entities ["📦 Entities Layer (Data)"]
+    subgraph control_layer["🎮 Control Layer"]
         direction TB
-        ResNet["ResNet Model"]
-        Dataset["Custom Dataset"]
-        Config["Config Manager"]
+        subgraph ct["Centralized Training"]
+            CentralizedTrainer["CentralizedTrainer<br/>(PyTorch Lightning)"]
+        end
+        subgraph fl["Federated Learning"]
+            ServerApp["FL ServerApp<br/>(Flower)"]
+            ClientApp["FL ClientApp<br/>(Flower)"]
+            DataPartitioner["Data Partitioner<br/>(IID/Non-IID/Stratified)"]
+        end
+        Orchestrator["ExperimentOrchestrator<br/>(Comparison)"]
     end
 
-    %% Flow
-    API_End -->|Invokes| CT
-    API_End -->|Invokes| FL_Server
-    
-    CT -->|Uses| ResNet
-    CT -->|Uses| Dataset
-    CT -->|Uses| Config
-    
-    FL_Server -->|Uses| ResNet
-    FL_Client -->|Uses| ResNet
-    
-    CT -->|Persists via| Run_DAO
-    CT -->|Persists via| Metric_DAO
+    subgraph entities_layer["📦 Entities Layer"]
+        direction TB
+        ResNet["ResNetWithCustomHead<br/>(Model)"]
+        Dataset["XRayDataModule<br/>(Data)"]
+        Config["SystemConstants<br/>ExperimentConfig"]
+    end
 
-    %% Styling
-    classDef boundary fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef control fill:#2962FF,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef entities fill:#D50000,stroke:#fff,stroke-width:2px,color:#fff;
+    subgraph boundary_layer["🧱 Boundary Layer"]
+        direction TB
+        RunDAO["Run DAO<br/>(ORM)"]
+        MetricDAO["Metric DAO<br/>(ORM)"]
+    end
 
-    class API_End,Run_DAO,Metric_DAO boundary;
-    class CT,FL_Server,FL_Client control;
-    class ResNet,Dataset,Config entities;
+    subgraph utils_layer["⚙️ Utils Layer"]
+        direction TB
+        ConfigLoader["ConfigLoader<br/>(YAML)"]
+        MetricsSender["MetricsWebSocketSender<br/>(Real-time)"]
+        Logging["Logging & Error<br/>Handling"]
+    end
+
+    subgraph data["💾 Data Layer"]
+        direction TB
+        DB[("PostgreSQL<br/>(Metrics & Runs)")]
+        FileSystem["File System<br/>(Datasets & Models)"]
+    end
+
+    UI -->|HTTP| FastAPI
+    UI -->|WebSocket| WS_Client
+    WS_Client <-->|Stream Updates| WS_Server
+
+    FastAPI -->|Validate| Schemas
+    FastAPI -->|Invoke| CentralizedTrainer
+    FastAPI -->|Invoke| ServerApp
+    FastAPI -->|Query| RunDAO
+
+    CentralizedTrainer -->|Uses| ResNet
+    CentralizedTrainer -->|Uses| Dataset
+    CentralizedTrainer -->|Uses| Config
+    CentralizedTrainer -->|Sends Metrics| MetricsSender
+
+    ServerApp -->|Uses| ResNet
+    ServerApp -->|Coordinates| ClientApp
+    ServerApp -->|Uses| DataPartitioner
+    ServerApp -->|Sends Metrics| MetricsSender
+
+    ClientApp -->|Uses| ResNet
+    ClientApp -->|Uses| Dataset
+
+    DataPartitioner -->|Loads| Dataset
+
+    CentralizedTrainer -->|Persists| RunDAO
+    CentralizedTrainer -->|Logs| MetricDAO
+
+    ServerApp -->|Persists| RunDAO
+    ServerApp -->|Logs| MetricDAO
+
+    MetricsSender -->|Broadcasts| WS_Server
+
+    Orchestrator -->|Runs| CentralizedTrainer
+    Orchestrator -->|Runs| ServerApp
+    Orchestrator -->|Uses| ConfigLoader
+
+    ConfigLoader -->|Loads| Config
+    Logging -->|Monitors| CentralizedTrainer
+    Logging -->|Monitors| ServerApp
+
+    RunDAO -->|Read/Write| DB
+    MetricDAO -->|Read/Write| DB
+    Dataset -->|Read| FileSystem
+    ResNet -->|Checkpoint| FileSystem
+
+    style frontend fill:#007BFF,stroke:#333,stroke-width:2px,color:#fff
+    style api_layer fill:#FF6F00,stroke:#333,stroke-width:2px,color:#fff
+    style control_layer fill:#2962FF,stroke:#333,stroke-width:2px,color:#fff
+    style entities_layer fill:#D50000,stroke:#333,stroke-width:2px,color:#fff
+    style boundary_layer fill:#AA00FF,stroke:#333,stroke-width:2px,color:#fff
+    style utils_layer fill:#00897B,stroke:#333,stroke-width:2px,color:#fff
+    style data fill:#558B2F,stroke:#333,stroke-width:2px,color:#fff
 ```
 
-## 🚀 Quick Start
+## Project Overview
+
+**Federated Pneumonia Detection** is a research-grade system that demonstrates privacy-preserving AI for medical imaging. Instead of centralizing patient X-rays in a single location, this system allows multiple medical institutions to collaboratively train a pneumonia detection model while keeping sensitive patient data at the source.
+
+**Key Insight**: Hospitals send model weights, not patient data. The trained model is centrally aggregated using Flower's federated averaging algorithm (FedAvg).
+
+## Key Features
+
+- **Dual Training Modes**: Run identical experiments in centralized or federated mode from a single API
+- **Privacy-Preserving**: Implements Flower framework for true federated learning without centralizing patient images
+- **Production-Ready**: Built on battle-tested PyTorch Lightning and Flower frameworks
+- **Configurable Data Distribution**: Three partitioning strategies for federated clients
+  - IID (Independent and Identically Distributed) for controlled experiments
+  - Non-IID (Patient-based) for realistic multi-hospital scenarios
+  - Stratified for maintaining class balance
+- **Real-Time Monitoring**: WebSocket streaming of training metrics to React dashboard
+- **Comprehensive Comparison**: Built-in orchestrator for side-by-side evaluation of approaches
+- **Type-Safe & Well-Tested**: Full type hints, >90% test coverage, clean architecture
+
+## Architecture Overview
+
+This system follows **Clean Architecture** with **Entity-Control-Boundary (ECB)** pattern:
+
+| Layer | Purpose | Directory |
+|-------|---------|-----------|
+| **Frontend** | React dashboard for experiment monitoring | `xray-vision-ai-forge/` |
+| **API Layer** | FastAPI REST endpoints & WebSocket server for client communication | `src/api/` |
+| **Control Layer** | Training orchestration (centralized/federated), data partitioning, experiment comparison | `src/control/` |
+| **Entities Layer** | Core domain objects: models, datasets, configuration | `src/entities/` |
+| **Boundary Layer** | Data access objects (DAOs) for database persistence | `src/boundary/` |
+| **Utils Layer** | Shared utilities: config loading, metrics broadcasting, logging | `src/utils/` |
+| **Data Layer** | PostgreSQL for metrics/runs, file system for datasets/checkpoints | External |
+
+### Separation of Concerns
+
+- **Entities** know nothing about frameworks; they're pure domain logic
+- **Control** orchestrates entities; decides how to train
+- **Boundary** handles database I/O; no business logic
+- **API** translates HTTP to control layer calls
+- **Utils** are shared helpers; no dependencies on control/entities
+
+## Module Directory
+
+Each module has detailed documentation explaining its purpose, components, and usage:
+
+| Module | Purpose | Link |
+|--------|---------|------|
+| **API Layer** | REST endpoints, WebSocket integration, request validation | [src/api/README.md](federated_pneumonia_detection/src/api/README.md) |
+| **Control Layer** | Training orchestration, federated learning, experiment management | [src/control/README.md](federated_pneumonia_detection/src/control/README.md) |
+| **Entities Layer** | Model architecture, dataset definitions, configuration objects | [src/entities/README.md](federated_pneumonia_detection/src/entities/README.md) |
+| **Boundary Layer** | Database schema, ORM mappings, data access objects | [src/boundary/README.md](federated_pneumonia_detection/src/boundary/README.md) |
+| **Utils Layer** | Configuration loading, metrics broadcasting, error handling | [src/utils/README.md](federated_pneumonia_detection/src/utils/README.md) |
+| **Federated Learning** | Flower framework, server/client apps, data partitioning | [src/control/federated_new_version/README.md](federated_pneumonia_detection/src/control/federated_new_version/README.md) |
+
+## Quick Start
 
 ### Prerequisites
 
-- **Python 3.12+**
-- **CUDA-capable GPU** (recommended)
-- **uv** (high-performance package manager)
-- **Node.js 20+** (for frontend)
+- **Python 3.12+** with `uv` package manager
+- **CUDA-capable GPU** (recommended for training)
+- **PostgreSQL** (for metrics/runs storage)
+- **Node.js 20+** (for frontend dashboard)
 
-### Installation & Setup
+### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd FYP2
-   ```
+```bash
+# Clone and navigate
+git clone <repository-url>
+cd FYP2
 
-2. **Backend Setup (using uv)**
-   ```bash
-   # Install dependencies and create venv
-   uv sync
-   ```
+# Backend setup with uv
+uv sync
 
-3. **Frontend Setup**
-   ```bash
-   cd xray-vision-ai-forge
-   npm install
-   ```
-
-4. **Verify Backend Installation**
-   ```bash
-   uv run python -m federated_pneumonia_detection.src.api.main
-   ```
-
-## 🛠️ Key Technologies
-
-- **Federated Learning**: [Flower](https://flower.dev/)
-- **Deep Learning**: [PyTorch Lightning](https://pytorchlightning.ai/)
-- **API Framework**: [FastAPI](https://fastapi.tiangolo.com/)
-- **Logging & Viz**: [WandB](https://wandb.ai/) / Tensorboard
-- **Database**: PostgreSQL with SQLAlchemy 2.0
-
-### Dataset Setup
-
-1. **Prepare your chest X-ray dataset**
-
-   - Place images in `Training/` or `Test/` directories
-   - Ensure metadata CSV files contain required columns:
-     - `patient_id`: Unique patient identifier
-     - `filename`: Image filename
-     - `label`: Binary classification (0=Normal, 1=Pneumonia)
-
-2. **Configure paths**
-   - Update `federated_pneumonia_detection/config/` with your dataset paths
-   - Modify `SystemConstants` if needed for your data structure
-
-## 💡 Usage Examples
-
-### Quick Comparison (Centralized vs Federated)
-
-Compare both training approaches with a single command:
-
-```python
-from federated_pneumonia_detection.src.control.comparison import run_quick_comparison
-
-# Run both centralized and federated training, then compare
-results = run_quick_comparison(
-    source_path="path/to/dataset.zip",  # or directory path
-    config_path="federated_pneumonia_detection/config/default_config.yaml",
-    partition_strategy="non-iid"  # Options: 'iid', 'non-iid', 'stratified'
-)
-
-print(f"Results saved to: {results['experiment_dir']}")
-print(f"Centralized status: {results['centralized']['status']}")
-print(f"Federated status: {results['federated']['status']}")
+# Frontend setup
+cd xray-vision-ai-forge
+npm install
+cd ..
 ```
 
-### Centralized Training
+### Verification
+
+```bash
+# Start API server (runs on http://localhost:8000)
+python -m federated_pneumonia_detection.src.api.main
+
+# In another terminal, run a simple test
+python -c "
+from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
+config_loader = ConfigLoader(config_dir='federated_pneumonia_detection/config')
+config = config_loader.create_experiment_config()
+print(f'Config loaded. Batch size: {config.batch_size}')
+"
+```
+
+## Technologies Used
+
+### Core Deep Learning
+
+| Technology | Purpose | Version |
+|-----------|---------|---------|
+| **PyTorch** | Deep learning framework | Latest |
+| **PyTorch Lightning** | Training abstraction & logging | Latest |
+| **PyTorch Lightning Advanced** | Callbacks, strategies, plugins | Latest |
+
+### Federated Learning
+
+| Technology | Purpose | Version |
+|-----------|---------|---------|
+| **Flower** | Federated learning framework | Latest |
+| **NumPy** | Numerical computations | Latest |
+| **Scikit-learn** | Data partitioning utilities | Latest |
+
+### API & Infrastructure
+
+| Technology | Purpose | Version |
+|-----------|---------|---------|
+| **FastAPI** | REST API framework | Latest |
+| **Uvicorn** | ASGI server | Latest |
+| **WebSockets** | Real-time metric streaming | WebSocket Protocol |
+| **Pydantic** | Request/response validation | Latest |
+
+### Data & Storage
+
+| Technology | Purpose | Version |
+|-----------|---------|---------|
+| **SQLAlchemy 2.0** | ORM for database access | 2.0+ |
+| **PostgreSQL** | Metrics & experiment runs storage | 12+ |
+| **Pandas** | Data manipulation & analysis | Latest |
+| **Pillow** | Image processing | Latest |
+
+### Monitoring & Logging
+
+| Technology | Purpose | Version |
+|-----------|---------|---------|
+| **Weights & Biases** | Experiment tracking (optional) | Latest |
+| **TensorBoard** | Metric visualization | Latest |
+| **Python Logging** | Structured logging | Built-in |
+
+### Frontend
+
+| Technology | Purpose | Version |
+|-----------|---------|---------|
+| **React** | UI framework | 18+ |
+| **TypeScript** | Type-safe JavaScript | Latest |
+| **Chart.js** | Real-time metric charts | Latest |
+
+## File Structure
+
+```
+FYP2/
+├── federated_pneumonia_detection/      # Main application package
+│   ├── src/
+│   │   ├── api/                        # REST & WebSocket endpoints
+│   │   │   ├── main.py                # FastAPI app entry point
+│   │   │   ├── routes/                # Endpoint definitions
+│   │   │   ├── schemas/               # Pydantic request/response models
+│   │   │   └── README.md              # API documentation
+│   │   │
+│   │   ├── control/                   # Training orchestration
+│   │   │   ├── dl_model/              # Centralized training system
+│   │   │   │   ├── centralized_trainer.py
+│   │   │   │   └── utils/
+│   │   │   ├── federated_learning/    # Federated learning system
+│   │   │   │   ├── federated_trainer.py
+│   │   │   │   ├── data_partitioner.py
+│   │   │   │   └── federated_new_version/  # Flower implementation
+│   │   │   ├── comparison.py          # ExperimentOrchestrator
+│   │   │   └── README.md              # Control layer documentation
+│   │   │
+│   │   ├── entities/                  # Domain models & data structures
+│   │   │   ├── model/                 # ResNet architecture
+│   │   │   ├── dataset/               # XRayDataModule
+│   │   │   ├── config/                # Configuration classes
+│   │   │   └── README.md              # Entities documentation
+│   │   │
+│   │   ├── boundary/                  # Database & persistence
+│   │   │   ├── models/                # SQLAlchemy ORM models
+│   │   │   ├── repositories/          # Data access objects (DAOs)
+│   │   │   └── README.md              # Boundary documentation
+│   │   │
+│   │   └── utils/                     # Shared utilities
+│   │       ├── config_loader.py       # YAML config loading
+│   │       ├── data_utils.py          # Data processing helpers
+│   │       ├── logging.py             # Structured logging
+│   │       └── README.md              # Utils documentation
+│   │
+│   ├── config/
+│   │   └── default_config.yaml        # All system parameters (single source of truth)
+│   │
+│   └── tests/                         # Comprehensive test suite
+│       ├── unit/                      # Component-level tests
+│       ├── integration/               # End-to-end workflows
+│       └── api/                       # HTTP endpoint tests
+│
+├── xray-vision-ai-forge/              # React frontend dashboard
+│   ├── src/
+│   │   ├── components/                # React components
+│   │   ├── pages/                     # Application pages
+│   │   └── services/                  # API client & WebSocket
+│   └── package.json
+│
+├── scripts/                           # Utility scripts
+│   ├── websocket_server.py            # Standalone WebSocket relay
+│   └── setup_db.py                    # Database initialization
+│
+└── README.md                          # This file
+```
+
+## Getting Started: Common Workflows
+
+### Workflow 1: Run Centralized Training
 
 ```python
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import CentralizedTrainer
 
-# Initialize trainer
 trainer = CentralizedTrainer(
     config_path="federated_pneumonia_detection/config/default_config.yaml",
-    checkpoint_dir="centralized_checkpoints",
-    logs_dir="centralized_logs"
+    checkpoint_dir="checkpoints",
+    logs_dir="logs"
 )
 
-# Train model from zip file or directory
 results = trainer.train(
-    source_path="dataset.zip",
-    experiment_name="pneumonia_centralized"
+    source_path="path/to/dataset.zip",
+    experiment_name="pneumonia_baseline"
 )
 
-print(f"Best model: {results['best_model_path']}")
-print(f"Best score: {results['best_model_score']:.4f}")
-print(f"Final metrics: {results['final_metrics']}")
+print(f"Best model saved to: {results['best_model_path']}")
+print(f"Best F1 score: {results['best_model_score']:.4f}")
 ```
 
-### Federated Learning
+### Workflow 2: Run Federated Learning
 
 ```python
 from federated_pneumonia_detection.src.control.federated_learning.federated_trainer import FederatedTrainer
 
-# Initialize federated trainer
 trainer = FederatedTrainer(
     config_path="federated_pneumonia_detection/config/default_config.yaml",
-    checkpoint_dir="federated_checkpoints",
-    logs_dir="federated_logs",
-    partition_strategy="non-iid"  # Patient-based partitioning
+    checkpoint_dir="checkpoints",
+    logs_dir="logs",
+    partition_strategy="non-iid"  # Patient-based data distribution
 )
 
-# Run federated training
 results = trainer.train(
-    source_path="dataset.zip",
+    source_path="path/to/dataset.zip",
     experiment_name="pneumonia_federated"
 )
 
-print(f"Federated training completed")
-print(f"Number of clients: {results['num_clients']}")
-print(f"Number of rounds: {results['num_rounds']}")
-print(f"Final model: {results['checkpoint_dir']}")
+print(f"Trained across {results['num_clients']} simulated clients")
+print(f"Completed {results['num_rounds']} communication rounds")
 ```
 
-### Advanced Orchestration
-
-For full control over experiments:
+### Workflow 3: Compare Both Approaches
 
 ```python
 from federated_pneumonia_detection.src.control.comparison import ExperimentOrchestrator
 
-# Create orchestrator
 orchestrator = ExperimentOrchestrator(
     config_path="federated_pneumonia_detection/config/default_config.yaml",
-    base_output_dir="experiments",
-    partition_strategy="stratified"
+    partition_strategy="non-iid"
 )
 
-# Run individual experiments
-centralized_results = orchestrator.run_centralized("dataset.zip")
-federated_results = orchestrator.run_federated("dataset.zip")
+comparison = orchestrator.run_comparison("path/to/dataset.zip")
 
-# Or run full comparison
-comparison = orchestrator.run_comparison("dataset.zip")
-
-print(f"Experiment directory: {orchestrator.experiment_dir}")
+print(f"Results saved to: {orchestrator.experiment_dir}")
+print(f"Centralized F1: {comparison['centralized']['metrics']['f1']:.4f}")
+print(f"Federated F1: {comparison['federated']['metrics']['f1']:.4f}")
 ```
 
-### Configuration Loading
+### Workflow 4: Monitor Training via React Dashboard
+
+```bash
+# Terminal 1: Start API server
+python -m federated_pneumonia_detection.src.api.main
+
+# Terminal 2: Start WebSocket server
+python scripts/websocket_server.py
+
+# Terminal 3: Start React dashboard
+cd xray-vision-ai-forge
+npm start
+
+# Open http://localhost:3000 to see real-time metrics
+```
+
+## Configuration
+
+All parameters are centralized in **one YAML file**: `federated_pneumonia_detection/config/default_config.yaml`
+
+This single source of truth controls:
+- Image preprocessing (size, normalization, augmentation)
+- Model architecture (learning rate, dropout, freeze layers)
+- Training (epochs, batch size, early stopping)
+- Federated learning (number of rounds, clients, partitioning)
+- Output paths (checkpoints, logs, results)
+
+**Example configuration**:
+
+```yaml
+system:
+  img_size: [256, 256]
+  batch_size: 32
+  validation_split: 0.20
+  seed: 42
+
+experiment:
+  learning_rate: 0.0015
+  weight_decay: 0.0001
+  epochs: 15
+
+  # Federated learning parameters
+  num_rounds: 15
+  num_clients: 5
+  clients_per_round: 3
+  local_epochs: 2
+```
+
+Load configuration in code:
 
 ```python
 from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
 
-# Load configuration from YAML
 config_loader = ConfigLoader(config_dir="federated_pneumonia_detection/config")
 constants = config_loader.create_system_constants()
 config = config_loader.create_experiment_config()
 
 print(f"Image size: {constants.IMG_SIZE}")
 print(f"Batch size: {config.batch_size}")
-print(f"Learning rate: {config.learning_rate}")
 print(f"FL rounds: {config.num_rounds}")
-print(f"FL clients: {config.num_clients}")
 ```
 
-### Complete Examples
+## Data Preparation
 
-See detailed usage examples:
+### Dataset Format
 
-```bash
-# View usage examples
-cat USAGE_EXAMPLE.md
+Place chest X-ray images in this structure:
 
-# View implementation summary
-cat FEDERATED_INTEGRATION_SUMMARY.md
+```
+dataset/
+├── Images/
+│   ├── NORMAL/
+│   │   ├── image_001.png
+│   │   ├── image_002.png
+│   │   └── ...
+│   └── PNEUMONIA/
+│       ├── image_001.png
+│       ├── image_002.png
+│       └── ...
+└── metadata.csv
 ```
 
-## ⚙️ Configuration
+### Metadata CSV Format
 
-All configuration is centralized in `config/default_config.yaml`. Both centralized and federated training use the same configuration file.
+Columns required in `metadata.csv`:
 
-### Configuration File Structure
-
-```yaml
-# System Constants
-system:
-  img_size: [256, 256]
-  image_extension: ".png"
-  batch_size: 512
-  sample_fraction: 0.10
-  validation_split: 0.20
-  seed: 42
-
-# File Paths
-paths:
-  base_path: "."
-  main_images_folder: "Images"
-  images_subfolder: "Images"
-  metadata_filename: "Train_metadata.csv"
-
-# Data Column Names
-columns:
-  patient_id: "patientId"
-  target: "Target"
-  filename: "filename"
-
-# Experiment Configuration
-experiment:
-  # Model parameters (shared by both centralized and federated)
-  learning_rate: 0.0015
-  epochs: 15 # For centralized training
-  weight_decay: 0.0001
-  freeze_backbone: true
-  dropout_rate: 0.3
-  num_classes: 1
-
-  # Training parameters
-  early_stopping_patience: 7
-  reduce_lr_patience: 3
-  reduce_lr_factor: 0.5
-
-  # Federated Learning parameters
-  num_rounds: 15 # Number of FL communication rounds
-  num_clients: 5 # Total number of simulated clients
-  clients_per_round: 3 # Clients participating per round
-  local_epochs: 2 # Epochs each client trains locally
-
-  # System parameters
-  device: "cuda"
-  num_workers: 10
-
-  # Image processing
-  color_mode: "RGB"
-  use_imagenet_norm: true
-  augmentation_strength: 1.0
-  validate_images_on_init: true
-
-# Output Directories
-output:
-  checkpoint_dir: "models/checkpoints"
-  results_dir: "results"
-  log_dir: "logs"
+```csv
+patientId,filename,Target
+P001,image_001.png,0
+P001,image_002.png,0
+P002,image_003.png,1
+P003,image_004.png,0
 ```
 
-### Programmatic Configuration
+- `patientId`: Unique patient identifier (used for non-IID partitioning)
+- `filename`: Image filename (relative to Images/)
+- `Target`: Binary label (0=Normal, 1=Pneumonia)
 
-Load configuration using `ConfigLoader`:
-
-```python
-from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
-
-# Load from default config
-config_loader = ConfigLoader(config_dir="federated_pneumonia_detection/config")
-constants = config_loader.create_system_constants()
-config = config_loader.create_experiment_config()
-
-# Or load custom config
-custom_config = config_loader.load_config("custom_config.yaml")
-constants = config_loader.create_system_constants(custom_config)
-config = config_loader.create_experiment_config(custom_config)
-```
-
-### Data Partitioning Strategies
-
-Configure how data is split across federated clients:
-
-- **IID (Independent and Identically Distributed)**: Random distribution
-
-  ```python
-  trainer = FederatedTrainer(partition_strategy="iid")
-  ```
-
-- **Non-IID (Patient-based)**: Each client gets distinct patients (realistic for medical scenarios)
-
-  ```python
-  trainer = FederatedTrainer(partition_strategy="non-iid")
-  ```
-
-- **Stratified**: Maintains class balance across clients
-  ```python
-  trainer = FederatedTrainer(partition_strategy="stratified")
-  ```
-
-## 🧪 Testing
+## Testing
 
 Run the comprehensive test suite:
 
 ```bash
-# Run all tests
+# All tests
 pytest
 
-# Run with coverage
+# With coverage report
 pytest --cov=federated_pneumonia_detection
 
-# Run specific test categories
-pytest tests/unit/          # Unit tests only
-pytest tests/integration/   # Integration tests only
+# Specific test categories
+pytest tests/unit/                          # Component tests only
+pytest tests/integration/                   # End-to-end workflows
+pytest tests/api/                           # HTTP endpoint tests
+pytest tests/unit/control/test_centralized_trainer.py  # Single file
 ```
 
-### Test Structure
+**Test Organization**:
 
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test end-to-end data pipelines
-- **Fixtures**: Reusable test data and configurations in `conftest.py`
+```
+tests/
+├── unit/
+│   ├── control/              # Training logic tests
+│   ├── entities/             # Model & dataset tests
+│   ├── boundary/             # Database tests
+│   └── utils/                # Utility function tests
+├── integration/
+│   ├── data_pipeline/        # Dataset loading & partitioning
+│   ├── training/             # Full training workflows
+│   ├── federated_learning/   # FL round execution
+│   └── comparison/           # Centralized vs Federated
+├── api/                      # REST & WebSocket endpoint tests
+└── conftest.py               # Shared fixtures & configuration
+```
 
-## 📊 Model Performance
+**Key Test Fixtures**:
 
-### Metrics Tracked
+- `sample_dataset`: Pre-generated X-ray dataset for testing
+- `config_loader`: Pre-configured settings object
+- `db_session`: In-memory SQLite database
+- `websocket_client`: Mock WebSocket connection
 
-- **Classification Metrics**: Accuracy, Precision, Recall, F1-Score
-- **Medical AI Metrics**: Sensitivity, Specificity, AUC-ROC
-- **Training Metrics**: Loss curves, Learning rate schedules
-- **Federated Learning**: Communication rounds, client contributions
+## Federated Learning Details
 
-### Visualization Tools
+### What is Federated Learning?
 
-The system includes comprehensive visualization capabilities:
+Instead of centralizing patient data:
 
-- Training/validation curves
-- Confusion matrices
-- ROC curves and AUC analysis
-- Feature importance maps
-- Client contribution tracking (FL)
+1. Each hospital keeps its patient X-rays
+2. Downloads the latest model weights from central server
+3. Trains the model locally on its data
+4. Sends updated weights back (not data)
+5. Server aggregates weights from all hospitals using FedAvg algorithm
 
-## 🔮 Federated Learning Features
+**Result**: A model trained on distributed data without moving sensitive images.
 
-### Flower Integration
+### Data Partitioning Strategies
 
-Built on [Flower](https://flower.dev/) framework for production-ready federated learning:
+The system offers three strategies to distribute data across simulated clients:
 
-- **FedAvg Strategy**: Standard federated averaging algorithm
-- **Configurable Clients**: Simulate multiple medical institutions
-- **Privacy-Preserving**: Data never leaves client devices
-- **Scalable Architecture**: Ready for real-world deployment
-
-### Key Features
-
-1. **Unified Model Architecture**: Same `ResNetWithCustomHead` used in both centralized and federated modes
-2. **Flexible Data Partitioning**: IID, non-IID (patient-based), and stratified strategies
-3. **Configuration-Driven**: All FL parameters in `default_config.yaml`
-4. **Easy Comparison**: Side-by-side evaluation with centralized training
-
-### Data Partitioning
-
-The system supports three partitioning strategies optimized for medical data:
-
-#### IID (Independent and Identically Distributed)
+#### IID (Independent & Identically Distributed)
 
 ```python
-from federated_pneumonia_detection.src.control.federated_learning.data_partitioner import partition_data_iid
-
-partitions = partition_data_iid(df, num_clients=5, seed=42)
+trainer = FederatedTrainer(partition_strategy="iid")
 ```
 
-- Random distribution of samples across clients
+- Random distribution of samples
 - Each client gets similar data distribution
-- Good baseline for FL experiments
+- Good for controlled baseline experiments
+- Unrealistic for real medical scenarios
 
-#### Non-IID (Patient-based)
+#### Non-IID (Patient-Based)
 
 ```python
-from federated_pneumonia_detection.src.control.federated_learning.data_partitioner import partition_data_by_patient
-
-partitions = partition_data_by_patient(
-    df,
-    num_clients=5,
-    patient_column="patientId",
-    seed=42
-)
+trainer = FederatedTrainer(partition_strategy="non-iid")
 ```
 
 - Each client gets data from distinct patients
-- More realistic for medical scenarios
-- Simulates real hospital data distribution
+- Simulates real multi-hospital distribution
+- Different clients may have different class balances
+- Recommended for realistic evaluation
 
 #### Stratified
 
 ```python
-from federated_pneumonia_detection.src.control.federated_learning.data_partitioner import partition_data_stratified
-
-partitions = partition_data_stratified(
-    df,
-    num_clients=5,
-    target_column="Target",
-    seed=42
-)
+trainer = FederatedTrainer(partition_strategy="stratified")
 ```
 
-- Maintains class balance across all clients
+- Maintains class balance (Normal/Pneumonia ratio) across clients
 - Good for imbalanced datasets
-- Ensures fair performance evaluation
+- Ensures fair performance comparison
 
-### Multi-Institution Simulation
+### Flower Framework Integration
+
+This system uses **Flower**, a production-ready federated learning framework:
+
+**Server-Side**:
+- Manages global model weights
+- Orchestrates client selection
+- Aggregates client updates using FedAvg
+- Performs server-side evaluation
+- Broadcasts metrics to frontend
+
+**Client-Side** (Simulated):
+- Receives global weights
+- Trains locally on its data partition
+- Computes local metrics
+- Returns updated weights
+
+See [Flower documentation](https://flower.dev/) for production deployment.
+
+## Monitoring & Visualization
+
+### Real-Time Metrics via WebSocket
+
+The system streams real-time metrics to the React dashboard:
+
+```
+Backend Training → MetricsWebSocketSender → WebSocket Server → React Dashboard
+```
+
+**Streamed Metrics**:
+- Per-epoch: loss, accuracy, precision, recall, F1, AUC-ROC
+- Per-round (FL): client updates, aggregation stats
+- Training events: start, end, early stopping, errors
+
+### WandB & TensorBoard
+
+Optionally integrate with monitoring platforms:
 
 ```python
-from federated_pneumonia_detection.src.control.federated_learning.federated_trainer import FederatedTrainer
+from pytorch_lightning.loggers import WandbLogger
 
-# Simulate 5 hospitals collaborating
-trainer = FederatedTrainer(
-    config_path="config/default_config.yaml",
-    partition_strategy="non-iid"  # Patient-based partitioning
-)
-
-# Run federated training
-results = trainer.train(
-    source_path="hospital_dataset.zip",
-    experiment_name="multi_hospital_fl"
-)
-
-print(f"Trained across {results['num_clients']} institutions")
-print(f"Completed {results['num_rounds']} communication rounds")
+logger = WandbLogger(project="pneumonia-detection")
+trainer = LitResNet(..., logger=logger)
 ```
 
-### Comparison with Centralized
-
-The system makes it easy to compare federated and centralized approaches:
-
-```python
-from federated_pneumonia_detection.src.control.comparison import ExperimentOrchestrator
-
-orchestrator = ExperimentOrchestrator(partition_strategy="non-iid")
-
-# Run both and compare
-comparison = orchestrator.run_comparison("dataset.zip")
-
-# Results automatically saved with metrics comparison
-print(f"Results: {orchestrator.experiment_dir}/comparison_report.json")
-```
-
-## 🔌 WebSocket Architecture
-
-Real-time metrics streaming from training backend to frontend visualization:
-
-```mermaid
-graph LR
-    subgraph Backend ["Backend (Training)"]
-        CT["CentralizedTrainer<br/>or Federated"]
-        WSS["MetricsWebSocketSender<br/>broadcasts metrics"]
-    end
-
-    subgraph Network ["Network Layer"]
-        WS["WebSocket<br/>ws://localhost:8765"]
-    end
-
-    subgraph Frontend ["Frontend (React)"]
-        WSC["WebSocket Client"]
-        TEC["TrainingExecution<br/>Component"]
-        Chart["Charts & Visualization"]
-    end
-
-    CT -->|send metrics| WSS
-    WSS -->|JSON messages| WS
-    WS -->|receive updates| WSC
-    WSC -->|state updates| TEC
-    TEC -->|render| Chart
-
-    style Backend fill:#f3e5f5
-    style Network fill:#e0e0e0
-    style Frontend fill:#e1f5ff
-```
-
-**Message Types Streamed**:
-
-- `training_mode`: Initial signal with mode (centralized/federated) and parameters
-- `epoch_end`: Per-epoch metrics (loss, accuracy, precision, recall, f1, auroc)
-- `round_end`: Per-round metrics (federated only)
-- `training_end`: Final status with run_id for database lookup
-- `early_stopping`: Early stopping triggered signal
-- `error`: Training errors
-
-See [WebSocket Documentation](federated_pneumonia_detection/src/control/dl_model/utils/data/websocket_metrics_sender.py) for implementation details.
-
----
-
-## 💡 Training Flow Diagrams
-
-### Centralized Training Flow
-
-```mermaid
-sequenceDiagram
-    participant UI as React UI
-    participant API as FastAPI<br/>REST
-    participant Trainer as CentralizedTrainer
-    participant Model as LitResNet
-    participant Data as XRayDataModule
-    participant WS as WebSocket<br/>Server
-
-    UI->>API: POST /experiments/centralized<br/>with dataset.zip
-    API->>Trainer: Initialize & start
-    Trainer->>Data: Load & partition data
-    Data-->>Trainer: Training/Val/Test splits
-
-    loop For each epoch
-        Trainer->>Model: Forward pass
-        Model->>Model: Compute loss & metrics
-        Trainer->>WS: Send epoch_end metrics
-        WS-->>UI: Display metrics
-    end
-
-    Model-->>Trainer: Final weights
-    Trainer->>WS: Send training_end<br/>with run_id
-    WS-->>UI: Update status
-    UI->>API: GET /api/runs/{run_id}/metrics
-    API-->>UI: Display final results
-```
-
-### Federated Learning Flow
-
-```mermaid
-sequenceDiagram
-    participant UI as React UI
-    participant API as FastAPI
-    participant Server as ServerApp<br/>Flower
-    participant Clients as ClientApp<br/>×N Clients
-    participant WS as WebSocket
-
-    UI->>API: POST /experiments/federated<br/>with config
-    API->>Server: Initialize FL
-
-    loop For each Round
-        Server->>Server: Prepare global model
-        Server->>Clients: Send weights + config
-
-        par Client Execution
-            Clients->>Clients: Load partition
-            Clients->>Clients: Local training
-            Clients->>Clients: Compute metrics
-        end
-
-        Clients-->>Server: Return weights + metrics
-        Server->>Server: Aggregate (FedAvg)
-        Server->>Server: Server-side evaluation
-        Server->>WS: Send round_metrics
-        WS-->>UI: Display round progress
-    end
-
-    Server-->>WS: Send training_end
-    WS-->>UI: Update status
-```
-
----
-
-## 📚 Additional Documentation
-
-### Module-Specific Guides
-
-| Module                 | Documentation                                                                                                                                                          |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Federated Learning** | [federated_new_version/README.md](federated_pneumonia_detection/src/control/federated_new_version/README.md) - Flower framework, server/client apps, data partitioning |
-| **API Layer**          | [api/README.md](federated_pneumonia_detection/src/api/README.md) - REST endpoints, schemas, dependency injection                                                       |
-| **WebSocket Metrics**  | [websocket_metrics_sender.py](federated_pneumonia_detection/src/control/dl_model/utils/data/websocket_metrics_sender.py) - Real-time metric broadcasting               |
-| **WebSocket Server**   | [scripts/websocket_server.py](scripts/websocket_server.py) - WebSocket relay implementation                                                                            |
-| **Control Layer**      | [control/README.md](federated_pneumonia_detection/src/control/README.md) - Training components overview                                                                |
-
-### Complete Examples
-
-- **[USAGE_EXAMPLE.md](USAGE_EXAMPLE.md)** - Comprehensive usage examples for all features
-- **[FEDERATED_INTEGRATION_SUMMARY.md](FEDERATED_INTEGRATION_SUMMARY.md)** - Complete implementation overview
-- **[documentation/guidelines.md](documentation/guidelines.md)** - Development guidelines and project phases
-
-### Key Features Summary
-
-✅ **Dual Training Modes**: Run centralized or federated learning with identical API
-✅ **Configuration-Driven**: Single YAML file controls all parameters
-✅ **Model Consistency**: Same ResNet50 V2 architecture for fair comparison
-✅ **Flexible Partitioning**: IID, non-IID (patient-based), and stratified strategies
-✅ **Easy Comparison**: Built-in orchestrator for side-by-side evaluation
-✅ **Component Reuse**: Maximum code reuse between approaches
-✅ **Production-Ready**: Built on Flower framework for real-world deployment
-
-### Recent Updates
-
-#### Federated Learning Integration (Latest)
-
-- Implemented Flower-based federated learning system
-- Added three data partitioning strategies (IID, non-IID, stratified)
-- Created unified API for both centralized and federated training
-- Built comparison framework for easy evaluation
-- Maintained 100% component reuse from existing system
-- Added comprehensive documentation and examples
-
-## 🛠️ Development
-
-### Project Structure Philosophy
-
-This project follows **Clean Architecture** principles with **Entity-Control-Boundary (ECB)** pattern:
-
-- **Entities** (`src/entities/`): Core domain objects and data structures
-- **Control** (`src/control/`): Business logic and orchestration
-  - `dl_model/`: Centralized training system
-  - `federated_learning/`: Federated learning system
-  - `comparison/`: Experiment orchestration
-- **Boundary** (`src/boundary/`): External interfaces and APIs
-- **Utils** (`src/utils/`): Shared utilities and helpers
-
-### Adding New Features
-
-1. **Configuration**: Add parameters to `config/default_config.yaml`
-2. **Models**: Create/extend entities in `src/entities/`
-3. **Data Processing**: Extend utilities in `src/utils/`
-4. **Training Logic**: Implement in `src/control/`
-5. **Tests**: Add unit and integration tests
-6. **Documentation**: Update README and add docstrings
+## Development Guidelines
 
 ### Code Quality Standards
 
-- **Type Hints**: Full type annotation coverage
-- **Docstrings**: Comprehensive documentation for all public methods
+- **Type Hints**: Full type annotation coverage (no `Any`)
+- **Docstrings**: Every public method has a docstring
 - **Testing**: >90% code coverage target
-- **Linting**: Follow PEP 8 standards
-- **SOLID Principles**: Single Responsibility, Dependency Injection
 - **File Size**: Maximum 150 lines per file
-- **Error Handling**: Comprehensive try-catch with logging
+- **Error Handling**: Try-except with logging for I/O and external calls
+- **SOLID Principles**:
+  - **S**ingle Responsibility: One class, one job
+  - **O**pen/Closed: Open to extension, closed to modification
+  - **L**iskov Substitution: Subclasses interchangeable with parents
+  - **I**nterface Segregation: Small, focused interfaces
+  - **D**ependency Inversion: Inject dependencies, don't create them
 
-## 🤝 Contributing
+### Adding a New Feature
+
+1. **Add configuration** to `config/default_config.yaml`
+2. **Create/extend entities** in `src/entities/`
+3. **Implement logic** in `src/control/`
+4. **Add database models** if needed in `src/boundary/`
+5. **Expose API endpoints** in `src/api/routes/`
+6. **Write tests** (unit + integration)
+7. **Update module README** with documentation
+
+### Common Patterns
+
+**Dependency Injection**:
+```python
+class CentralizedTrainer:
+    def __init__(self, config: ExperimentConfig, data_module: XRayDataModule):
+        self.config = config
+        self.data_module = data_module
+```
+
+**Result Objects**:
+```python
+@dataclass
+class TrainingResult:
+    best_model_path: str
+    best_model_score: float
+    final_metrics: Dict[str, float]
+```
+
+**Error Handling**:
+```python
+try:
+    result = train_model(config)
+except FileNotFoundError as e:
+    logger.error(f"Dataset not found: {e}", exc_info=True)
+    raise
+```
+
+## Performance Metrics
+
+The system tracks comprehensive metrics for medical AI:
+
+| Metric | Purpose | Formula |
+|--------|---------|---------|
+| **Accuracy** | Correct predictions / Total predictions | (TP + TN) / (TP + TN + FP + FN) |
+| **Precision** | True positives / Predicted positives | TP / (TP + FP) |
+| **Recall (Sensitivity)** | True positives / Actual positives | TP / (TP + FN) |
+| **F1 Score** | Harmonic mean of precision & recall | 2 * (P * R) / (P + R) |
+| **Specificity** | True negatives / Actual negatives | TN / (TN + FP) |
+| **AUC-ROC** | Area under receiver operating curve | 0.0-1.0 (higher better) |
+
+Where: TP=True Positives, TN=True Negatives, FP=False Positives, FN=False Negatives
+
+## Additional Resources
+
+### Documentation Files
+
+- **[USAGE_EXAMPLE.md](USAGE_EXAMPLE.md)** - Detailed usage examples for all features
+- **[FEDERATED_INTEGRATION_SUMMARY.md](FEDERATED_INTEGRATION_SUMMARY.md)** - Complete implementation overview
+- **[documentation/guidelines.md](documentation/guidelines.md)** - Development guidelines and project phases
+
+### External Resources
+
+- **[Flower Documentation](https://flower.dev/)** - Federated learning framework
+- **[PyTorch Lightning Documentation](https://pytorchlightning.ai/)** - Training abstractions
+- **[FastAPI Documentation](https://fastapi.tiangolo.com/)** - API framework
+- **[SQLAlchemy 2.0 Documentation](https://docs.sqlalchemy.org/)** - ORM and database access
+
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Follow code quality standards (type hints, docstrings, tests)
+4. Run tests: `pytest --cov=federated_pneumonia_detection`
+5. Commit: `git commit -m "Add your feature"`
+6. Push: `git push origin feature/your-feature`
+7. Open a Pull Request
 
-## 📝 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- **PyTorch Lightning** for the excellent deep learning framework
-- **Medical AI Community** for advancing healthcare through AI
-- **Federated Learning Research** for privacy-preserving ML innovations
+- **PyTorch Lightning Team** for the excellent deep learning framework
+- **Flower Community** for production-ready federated learning
+- **Medical AI Research Community** for advancing healthcare through machine learning
+- **Open-Source Contributors** for essential libraries and tools
 
-## 📧 Contact
+## Support
 
-For questions, suggestions, or collaboration opportunities, please open an issue or reach out through the project's GitHub page.
+For questions, issues, or collaboration opportunities:
+
+- Open a GitHub Issue for bug reports
+- Start a GitHub Discussion for questions
+- Contact project maintainers for collaboration
 
 ---
 
-**Note**: This is a research project for educational purposes. Always consult with medical professionals and follow proper regulatory guidelines when deploying medical AI systems in clinical settings.
+**Note**: This is a research project for educational purposes. When deploying medical AI systems in clinical settings, always:
+- Consult with medical professionals
+- Follow regulatory guidelines (FDA, HIPAA, etc.)
+- Validate models on clinically representative data
+- Implement proper audit trails and explainability

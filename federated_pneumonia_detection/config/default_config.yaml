@@ -16,17 +16,17 @@ experiment:
   edge_enhancement: false
   edge_strength: 1.0
   epochs: 10
-  file-path: C:\Users\User\AppData\Local\Temp\tmp30s8gofx\extracted\Training_Sample_5pct\stage2_train_metadata.csv
+  file-path: C:\Users\User\AppData\Local\Temp\experiment_data_6vzjogfb\stage2_train_metadata.csv
   fine_tune_layers_count: 5
   freeze_backbone: true
-  image-dir: C:\Users\User\AppData\Local\Temp\tmp30s8gofx\extracted\Training_Sample_5pct\Images
+  image-dir: C:\Users\User\AppData\Local\Temp\experiment_data_6vzjogfb\Training\Images
   learning_rate: 0.001
-  local_epochs: 1
+  local_epochs: 2
   lower_percentile: 5.0
   max-epochs: 2
   min_lr: 1.0e-07
   monitor_metric: val_loss
-  num-server-rounds: 2
+  num-server-rounds: 5
   num_classes: 1
   num_clients: 2
   num_rounds: 2
@@ -38,7 +38,7 @@ experiment:
   prefetch_factor: 2
   reduce_lr_factor: 0.5
   reduce_lr_patience: 3
-  seed: 42
+  seed: 46
   upper_percentile: 95.0
   use_custom_preprocessing: false
   use_imagenet_norm: true
@@ -66,5 +66,5 @@ system:
   - 256
   sample_fraction: 0.05
   seed: 42
-  validation_split: 0.2
   use_imagenet_norm: true
+  validation_split: 0.2

@@ -6,394 +6,378 @@ This module orchestrates server-client communication, model aggregation, and cen
 
 ---
 
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Federated Learning Workflow](#federated-learning-workflow)
-4. [Data Partitioning](#data-partitioning)
-5. [Key Components](#key-components)
-6. [Configuration](#configuration)
-7. [Execution](#execution)
-8. [Integration](#integration)
-
----
-
-## Overview
-
-**Framework**: [Flower (flwr.dev)](https://flower.dev) - A Friendly Federated Learning Framework
-
-**Key Characteristics**:
-- **Privacy-First**: Patient data never leaves client machines; only model weights are aggregated
-- **Decentralized Training**: Each client trains locally on its data partition
-- **Centralized Aggregation**: Server aggregates client updates using FedAvg (Federated Averaging)
-- **Server Evaluation**: Global model validated on server-held test dataset each round
-- **Configuration-Driven**: All parameters (rounds, epochs, clients) controlled via YAML + pyproject.toml
-- **Real-Time Monitoring**: WebSocket streaming of metrics to frontend UI
-
----
-
-## Architecture
-
-### Client/Server Communication Model
+## Architecture Overview
 
 ```mermaid
 graph TB
     subgraph Server["🖥️ Flower Server<br/>ServerApp"]
-        SM["State Manager<br/>Global Model"]
-        Agg["Aggregator<br/>FedAvg"]
-        Eval["Server Evaluator<br/>Test Set"]
-        Strat["Strategy<br/>ConfigurableFedAvg"]
+        State["Global Model<br/>Weights"]
+        Agg["FedAvg<br/>Aggregator"]
+        Eval["Evaluation<br/>Function"]
     end
 
-    subgraph Clients["👥 Federated Clients (Parallel)"]
-        C0["Client 0<br/>ClientApp<br/>Partition 0"]
-        C1["Client 1<br/>ClientApp<br/>Partition 1"]
-        Cn["Client N<br/>ClientApp<br/>Partition N"]
+    subgraph Clients["👥 Federated Clients"]
+        C0["Client 0<br/>Local Partition 0<br/>Train & Evaluate"]
+        C1["Client 1<br/>Local Partition 1<br/>Train & Evaluate"]
+        Cn["Client N<br/>Local Partition N<br/>Train & Evaluate"]
     end
 
-    subgraph Network["⇄ Communication Channel"]
-        W["Weights<br/>+ Config"]
-        M["Metrics<br/>+ Updates"]
+    subgraph FL_Round["⚙️ Federated Learning Round"]
+        S1["1. Server broadcasts<br/>current weights"]
+        S2["2. Clients train locally<br/>on private partitions"]
+        S3["3. Clients return<br/>updated weights"]
+        S4["4. Server aggregates<br/>using FedAvg"]
+        S5["5. Server evaluates<br/>on test set"]
+        S6["6. Metrics stored<br/>in database"]
     end
 
-    subgraph Persistence["💾 Persistence"]
-        DB[(PostgreSQL)]
-        FS["File Storage<br/>(Checkpoints)"]
+    subgraph Storage["💾 Persistence"]
+        DB["PostgreSQL<br/>Metrics Database"]
+        FS["File Checkpoints"]
     end
 
-    subgraph Monitoring["📊 Real-Time Monitoring"]
-        WS["WebSocket<br/>Server"]
-        UI["Frontend UI"]
-    end
+    Server -->|Weights<br/>Config| C0
+    Server -->|Weights<br/>Config| C1
+    Server -->|Weights<br/>Config| Cn
 
-    Server -->|Broadcast Weights| W
-    W -->|Receive| C0
-    W -->|Receive| C1
-    W -->|Receive| Cn
+    C0 -->|Updated<br/>Weights| Agg
+    C1 -->|Updated<br/>Weights| Agg
+    Cn -->|Updated<br/>Weights| Agg
 
-    C0 -->|Return Weights + Metrics| M
-    C1 -->|Return Weights + Metrics| M
-    Cn -->|Return Weights + Metrics| M
+    Agg -->|FedAvg<br/>Aggregation| State
+    State -->|Evaluate| Eval
+    Eval -->|Store| DB
+    Eval -->|Store| FS
 
-    M -->|Aggregate| Agg
-    Agg -->|Updated Weights| SM
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 --> S5
+    S5 --> S6
 
-    SM -->|Evaluate| Eval
-    Eval -->|Metrics| Strat
-
-    Strat -->|Store| DB
-    Strat -->|Save| FS
-    Strat -->|Broadcast| WS
-    WS -->|Display| UI
-
-    %% Styling
     classDef server fill:#AA00FF,stroke:#fff,stroke-width:2px,color:#fff;
     classDef clients fill:#007BFF,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef network fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef data fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef monitor fill:#6200EA,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef round fill:#FF6F00,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef storage fill:#00C853,stroke:#fff,stroke-width:2px,color:#fff;
 
-    class Server,SM,Agg,Eval,Strat server;
+    class Server,State,Agg,Eval server;
     class Clients,C0,C1,Cn clients;
-    class Network,W,M network;
-    class Persistence,DB,FS data;
-    class Monitoring,WS,UI monitor;
+    class FL_Round,S1,S2,S3,S4,S5,S6 round;
+    class Storage,DB,FS storage;
 ```
 
 ---
 
-## Federated Learning Workflow
+## Federated Learning Overview
 
-### Round-by-Round Process
+### Privacy-Preserving Distributed Training
 
-**File**: [core/server_app.py](core/server_app.py) - See lines 71-274 for main orchestration logic
+**Federated Learning Principle**: Data never leaves client machines. Only model weights are transmitted to the server for aggregation.
 
-**Sequence Diagram**:
-
-```mermaid
-sequenceDiagram
-    participant S as ServerApp<br/>Orchestrator
-    participant C as ClientApp<br/>×N Clients
-    participant Data as Data<br/>Partitions
-    participant Model as LitResNet<br/>Model
-    participant DB as PostgreSQL<br/>Metrics
-    participant WS as WebSocket<br/>Relay
-
-    loop For each Round (1 to num_server_rounds)
-        S->>S: 1. Get global model weights
-        S->>S: 2. Prepare config (epochs, paths, seed)
-
-        S->>C: 3a. Broadcast weights<br/>+ training config
-        C->>Data: 3b. Load data partition<br/>(by node_id)
-
-        par Client Training (Parallel)
-            C->>C: 3c. Train locally for max_epochs
-            C->>Model: Forward pass, backward pass
-            Model->>C: Updated weights + loss
-        end
-
-        C-->>S: 4. Return updated weights<br/>+ training metrics
-
-        S->>S: 5a. Aggregate weights (FedAvg)<br/>weighted by num_examples
-        S->>S: 5b. Aggregate metrics<br/>(weighted average)
-
-        S->>C: 6a. Send aggregated model<br/>for evaluation
-
-        par Client Evaluation
-            C->>Data: 6b. Load validation partition
-            C->>Model: 6c. Evaluate on local data
-            Model->>C: Validation metrics
-        end
-
-        C-->>S: 7. Return eval metrics
-
-        S->>S: 8a. Aggregate eval metrics
-
-        S->>Model: 8b. Load aggregated weights
-        S->>Data: 8c. Load server test set
-        S->>Model: 8d. Evaluate on server data
-        Model-->>S: Server metrics<br/>(accuracy, precision, recall, f1, auroc)
-
-        S->>S: 8e. Extract confusion matrix<br/>(TP, TN, FP, FN)
-
-        S->>DB: 9a. Persist to server_evaluations
-        S->>DB: 9b. Persist metrics to run_metrics
-
-        S->>WS: 10. Send round_metrics<br/>message to UI
-
-        WS-->>WS: Broadcast to frontend
-    end
-
-    S->>DB: 11. Mark run as completed
-    S->>WS: 12. Send training_end signal<br/>with run_id
-```
-
-**Key Details**:
-
-| Step | Component | Purpose | Details |
-|------|-----------|---------|---------|
-| 1-2 | ServerApp | Initialization | Get global model, prepare configuration |
-| 3a-3c | ClientApp | Training | Clients train locally in parallel on their partitions |
-| 4 | ClientApp | Return Updates | Send trained weights + metrics back to server |
-| 5a-5b | FedAvg | Aggregation | Weighted average of all client updates |
-| 6-7 | ClientApp | Validation | Evaluate aggregated model on client validation sets |
-| 8a-8e | ServerEval | Server Evaluation | Evaluate on server-held test set; compute metrics |
-| 9 | Database | Persistence | Store all metrics in PostgreSQL |
-| 10 | WebSocket | Monitoring | Stream metrics to frontend for real-time visualization |
-| 11-12 | Finalization | Completion | Mark run as complete, send final signal |
+**Key Characteristics**:
+- **Multi-Client Training**: Multiple clients train independently on local data partitions
+- **Privacy-First Design**: Raw data stays private; only trained model weights are aggregated
+- **Centralized Coordination**: Single server orchestrates communication and aggregation
+- **FedAvg Algorithm**: Weighted averaging of client weights by dataset size
+- **Decentralized Privacy**: Each client's data remains inaccessible to other clients and server
+- **Deterministic Reproducibility**: Seed-controlled partitioning ensures consistent training across rounds
 
 ---
 
-## Data Partitioning
+## Flower Framework Integration
 
-### IID Partition Strategy
+### Framework Details
 
-**File**: [partioner.py](partioner.py)
+**Framework**: [Flower (flwr.dev)](https://flower.dev) - A Friendly Federated Learning Framework
 
-**Process**:
-1. Load full dataset metadata (all patient IDs and labels)
-2. Randomly shuffle all indices (seed-controlled)
-3. Split evenly into `num_partitions` (e.g., 2 clients = 2 equal parts)
-4. Each client loads its partition deterministically by node_id
+**Simulation Mode**: Uses Flower[simulation] for local multi-process federated learning orchestration
 
-**Example** (100 samples, 2 clients):
-- Partition 0 (Client 0): Samples 0-49 (50 samples)
-- Partition 1 (Client 1): Samples 50-99 (50 samples)
+**Key Flower Components**:
+- `ServerApp`: Defines server-side orchestration and strategy
+- `ClientApp`: Defines client-side training and evaluation logic
+- `FedAvg` Strategy: Standard federated averaging aggregation
+- Configuration via `pyproject.toml`: Flower-native configuration
 
-**Class Distribution**: Stratified splits ensure balanced labels in each partition
-
-**Reproducibility**: Seed propagated from server ensures consistent partitions across rounds
+**Real-Time Monitoring**: WebSocket streaming of metrics to frontend UI during training
 
 ---
 
-## Key Components
+## Architecture Components
 
-### 1. Server Application (`core/server_app.py`)
+### 1. ServerApp - Server Orchestration
 
 **File**: [core/server_app.py](core/server_app.py)
 
-**Lifespan Management** (lines 40-68):
-- `on_startup()`: Create database run entity
-- `on_shutdown()`: Finalize run, update status
-- Environment setup, configuration loading
+**Responsibilities**:
+- Initialize global model (LitResNet) with pretrained weights
+- Create and manage `ConfigurableFedAvg` strategy
+- Orchestrate federated rounds via `strategy.start()`
+- Evaluate aggregated model on server-held test set
+- Persist results to database (PostgreSQL) and JSON checkpoints
+- Send training completion signals via WebSocket
 
-**Main Logic** (lines 71-274):
-- Initialize global model (LitResNet)
-- Configure strategy with FedAvg and evaluation function
-- Execute federated rounds via `strategy.start()`
-- Persist results to database and JSON
-- Send training completion signal
+**Lifespan Management**:
+- `on_startup()`: Create database run entity, initialize environment
+- `on_shutdown()`: Finalize run, update status to completed/failed
 
-**Configuration** (lines 133-146):
-- `num_server_rounds`: Total federated rounds
-- `max_epochs`: Local epochs per client per round
-- `num_partitions`: Total number of clients
-- Applied to all client configurations
+**Configuration Parameters**:
+- `num_server_rounds`: Total federated learning rounds to execute
+- `max_epochs`: Local training epochs per client per round
+- `num_partitions`: Total number of federated clients
 
 ---
 
-### 2. Client Application (`core/client_app.py`)
+### 2. ClientApp - Client-Side Training
 
 **File**: [core/client_app.py](core/client_app.py)
 
-**Training** (lines 28-171):
-- Load global model from server
-- Get data partition by `context.node_id % num_partitions`
-- Train locally for `max_epochs` epochs
-- Return: Updated weights + training metrics
+**Responsibilities**:
+- Load global model weights from server
+- Retrieve local data partition by `node_id % num_partitions`
+- Train locally for specified epochs without sharing raw data
+- Evaluate model on local validation set
+- Return updated weights and training metrics to server
 
-**Evaluation** (lines 174-269):
-- Evaluate global model on validation set
-- Return: Validation metrics (accuracy, precision, recall, f1, auroc)
-- Include `num-examples` for weighted aggregation
+**Data Handling**:
+- Private data partition loaded deterministically by client ID
+- No data transmission; only weights sent back to server
+- Stratified partitioning ensures balanced class distribution
 
-**Data Pipeline**:
-- Uses [utils.py::_prepare_partition_and_split()](core/utils.py#L53-L75) to load partition
-- Creates XRayDataModule with local data
-- Trains with identical LitResNet as centralized
-
----
-
-### 3. Server Evaluation (`core/server_evaluation.py`)
-
-**File**: [core/server_evaluation.py](core/server_evaluation.py)
-
-**Purpose**: Centralized evaluation of aggregated model on server-held test set
-
-**Process** (lines 38-173):
-1. Receive aggregated model weights from FedAvg
-2. Load model into LitResNet
-3. Evaluate on server test set (last 20% of full dataset)
-4. Compute metrics: loss, accuracy, precision, recall, f1, auroc
-5. Extract confusion matrix: TP, TN, FP, FN
-6. Return as MetricRecord
-
-**Server Test Set**:
-- Independent of client partitions
-- Provides unbiased global performance estimate
-- Used for monitoring convergence
+**Metrics Returned**:
+- Training loss, accuracy, precision, recall, F1-score, AUROC
+- Validation metrics with `num-examples` for weighted aggregation
+- Client metadata for round tracking
 
 ---
 
-### 4. Custom Strategy (`core/custom_strategy.py`)
+### 3. ConfigurableFedAvg - Custom Aggregation Strategy
 
 **File**: [core/custom_strategy.py](core/custom_strategy.py)
 
 **Class**: `ConfigurableFedAvg` (extends Flower's `FedAvg`)
 
-**Features**:
-- **configure_train()**: Pass custom config (paths, seeds) to clients
-- **configure_evaluate()**: Pass model + evaluation config to clients
-- **aggregate_evaluate()**: Weighted aggregation of client metrics
-- **Metrics Broadcasting**: Send round metrics to WebSocket for frontend
+**Key Features**:
+- **configure_train()**: Pass custom training configuration to selected clients
+- **configure_evaluate()**: Distribute aggregated model and evaluation config to clients
+- **aggregate_fit()**: Weighted average of client weights by dataset size
+- **aggregate_evaluate()**: Weighted aggregation of client validation metrics
+- **Metrics Broadcasting**: Send round metrics to WebSocket for real-time UI updates
 
 **Weighted Aggregation Formula**:
 ```
-aggregated_metric = Σ(client_metric_i × num_examples_i) / Σ(num_examples_i)
+aggregated_metric = Σ(metric_i × num_examples_i) / Σ(num_examples_i)
 ```
 
-**Critical Convention**: Clients must include `num-examples` (with HYPHEN, not underscore) in MetricRecord for proper weighting.
+**Critical Convention**: Clients must include `num-examples` (hyphen, not underscore) in metric dictionaries for proper weighted aggregation.
 
 ---
 
-### 5. Utilities (`core/utils.py`)
+### 4. Data Partitioner - Distributed Data Strategy
 
-**File**: [core/utils.py](core/utils.py)
+**File**: [partioner.py](partioner.py)
 
-**Key Functions**:
+**Partitioning Modes**:
 
-| Function | Purpose | Reference |
-|----------|---------|-----------|
-| `_prepare_partition_and_split()` | Load and split client data partition | lines 53-75 |
-| `_extract_metrics_from_result()` | Map various metric names to standard format | lines 127-166 |
-| `_create_metric_record_dict()` | Create metric dict with num-examples (CRITICAL) | lines 169-186 |
-| `_persist_server_evaluations()` | Save server metrics to database | lines 279-376 |
-| `read_configs_to_toml()` | Sync YAML config to Flower pyproject.toml | lines 189-264 |
+| Mode | Strategy | Use Case | Distribution |
+|------|----------|----------|--------------|
+| IID | Random shuffle, equal split | Balanced data scenarios | Uniform random |
+| Non-IID | Stratified by node ID | Heterogeneous client datasets | Class-imbalanced |
+| Stratified | Class-balanced splits | Medical imaging (pneumonia distribution) | Balanced labels |
+
+**Process**:
+1. Load full dataset metadata (all patient IDs and labels)
+2. Apply selected partitioning strategy
+3. Each client loads partition deterministically by node_id
+4. Seed-controlled for reproducibility across rounds
+
+**Example (100 samples, 2 clients, IID)**:
+- Partition 0 (Client 0): Samples 0-49 (50 samples)
+- Partition 1 (Client 1): Samples 50-99 (50 samples)
+
+**Reproducibility**: Seed propagated from server ensures identical partitions across all training rounds.
+
+---
+
+## Federated Learning Round Flow
+
+### Step-by-Step Execution
+
+```
+Round N:
+├─ 1. Server Initialization
+│  ├─ Load current global model weights
+│  └─ Prepare training configuration (epochs, data paths, seed)
+│
+├─ 2. Client Selection & Weight Distribution
+│  └─ Broadcast global weights + config to selected clients
+│
+├─ 3. Parallel Client Training
+│  ├─ Client 0: Load partition 0, train for max_epochs
+│  ├─ Client 1: Load partition 1, train for max_epochs
+│  └─ Client N: Load partition N, train for max_epochs
+│     (No data sharing; only trained weights returned)
+│
+├─ 4. Weight Aggregation (FedAvg)
+│  ├─ Receive updated weights from all clients
+│  ├─ Weight each client's update by: num_examples_i / total_examples
+│  └─ Compute weighted average of all client weights
+│
+├─ 5. Client-Side Evaluation
+│  ├─ Distribute aggregated model to clients
+│  ├─ Clients evaluate on local validation sets
+│  └─ Return local validation metrics + num_examples
+│
+├─ 6. Server-Side Evaluation
+│  ├─ Load aggregated weights into LitResNet
+│  ├─ Evaluate on server-held test set (independent of client data)
+│  ├─ Compute: accuracy, precision, recall, F1, AUROC, confusion matrix
+│  └─ Extract TP, TN, FP, FN for detailed analysis
+│
+├─ 7. Metrics Aggregation
+│  ├─ Weighted average of client validation metrics
+│  ├─ Combine with server evaluation results
+│  └─ Aggregate by num_examples for fair weighting
+│
+├─ 8. Data Persistence
+│  ├─ Store server evaluation metrics to PostgreSQL
+│  ├─ Store aggregated metrics to run_metrics table
+│  └─ Save model checkpoint to file storage
+│
+└─ 9. Real-Time Monitoring
+   └─ Broadcast round_metrics to WebSocket for frontend display
+```
+
+### Key Details by Component
+
+| Step | Component | Purpose |
+|------|-----------|---------|
+| 1 | ServerApp | Load global model, prepare configuration |
+| 2 | ServerApp | Select clients, broadcast weights |
+| 3 | ClientApp | Local training on private partitions (parallel) |
+| 4 | FedAvg | Aggregate client weights by dataset size |
+| 5 | ClientApp | Evaluate aggregated model locally |
+| 6 | ServerEval | Evaluate on independent server test set |
+| 7 | Metrics Aggregator | Weighted average of all metrics |
+| 8 | Database | Persist metrics and checkpoints |
+| 9 | WebSocket | Stream to frontend for real-time visualization |
 
 ---
 
 ## Configuration
 
-### Flower Configuration (`pyproject.toml`)
+### Flower Configuration (pyproject.toml)
 
 **File**: [pyproject.toml](pyproject.toml)
 
+Federated learning parameters:
+
 ```toml
 [tool.flwr.app.config]
-num-server-rounds = 2
-max-epochs = 2
+num-server-rounds = 2        # Total FL rounds
+max-epochs = 2               # Local training epochs per client per round
 
 [tool.flwr.federations.local-simulation.options]
-num-supernodes = 2  # Number of clients
+num-supernodes = 2           # Number of clients in federation
 ```
 
-### YAML Configuration (`config/default_config.yaml`)
+### YAML Configuration (config/default_config.yaml)
+
+**File**: [../../../config/default_config.yaml](../../../config/default_config.yaml)
 
 ```yaml
 experiment:
-  num_rounds: 2
-  num_clients: 2
-  clients_per_round: 2
-  local_epochs: 2
-  num-server-rounds: 2
-  max-epochs: 2
+  num_rounds: 2              # Federated learning rounds
+  num_clients: 2             # Total clients in federation
+  clients_per_round: 2       # Clients selected each round
+  local_epochs: 2            # Training epochs per client
+  num-server-rounds: 2       # Must match pyproject.toml
+  max-epochs: 2              # Must match pyproject.toml
   options:
-    num-supernodes: 2
+    num-supernodes: 2        # Must match pyproject.toml
 ```
 
-**Synchronization**: `utils.py::read_configs_to_toml()` keeps values in sync
+**Synchronization**: `utils.py::read_configs_to_toml()` keeps YAML and Flower configurations in sync
 
 ---
 
-## Metrics Tracking
+## Data Partitioning Strategies
 
-### Three Types of Metrics
+### Deterministic Partition Loading
 
-| Type | Source | Aggregation | Storage |
-|------|--------|-------------|---------|
-| **Client Training** | Client local training | Per-client (not aggregated) | run_metrics |
-| **Client Evaluation** | Client validation sets | Weighted (by num_examples) | run_metrics (aggregated) |
-| **Server Evaluation** | Server test set | Not aggregated (global) | server_evaluations |
+**Mechanism**: Each client loads its partition deterministically using:
+```
+partition_index = node_id % num_partitions
+```
 
-### Database Tables
+**Why This Approach**:
+- No data transmission during training
+- Each client independently accesses only its partition
+- Consistent across all rounds due to seed control
+- Enables reproducible federated experiments
 
-- **run**: Training session metadata
-- **client**: Federated participants (multiple per federated run, NULL for centralized)
-- **round**: FL communication rounds per client
-- **run_metrics**: Training metrics (supports both centralized and federated)
-- **server_evaluations**: Global model performance per round
+### Class Distribution
+
+**Stratified Splits**: Partitioner ensures balanced label distribution across all client partitions
+- Example: If full dataset is 60% pneumonia, each partition maintains ~60%
+- Prevents data bias in federated learning
+
+### IID vs Non-IID Considerations
+
+**IID (Independent, Identical Distribution)**:
+- Equal data size per client
+- Similar class distribution
+- Easier convergence
+
+**Non-IID (Different Distribution)**:
+- Simulated real-world heterogeneity
+- Clients may have different class balances
+- Tests model robustness to data heterogeneity
 
 ---
 
-## Real-Time Monitoring
+## Privacy Considerations
 
-### WebSocket Streaming
+### Data Localization
 
-**File**: [websocket_metrics_sender.py](../dl_model/utils/data/websocket_metrics_sender.py)
+**Core Privacy Guarantee**: Raw data never leaves client machines
+- Each client trains on its local partition only
+- Only trained model weights are transmitted to server
+- Server cannot infer client data from weights (differential privacy not yet implemented)
 
-**Messages Sent**:
-1. `training_mode`: Federated vs centralized + num_rounds, num_clients
-2. `round_end`: Per-round aggregated metrics
-3. `training_end`: Final status + run_id
+### Aggregation Privacy
 
-**Frontend Reception**: [services/websocket.ts](../../../../../xray-vision-ai-forge/src/services/websocket.ts) receives and updates TrainingExecution component
+**FedAvg Aggregation**: Server receives only:
+- Client weights (not raw data)
+- Aggregated metrics (num_examples for weighting)
+- No access to individual predictions or activations
+
+### Communication Privacy
+
+**No Raw Data Transmission**:
+- Weights are numeric tensors, not interpretable as original data
+- Each client's contribution is mathematically blended in FedAvg
+- Server test set remains independent (not used by clients)
+
+**Future Enhancements**:
+- Differential privacy for stronger formal guarantees
+- Secure aggregation to prevent server from viewing individual client weights
+- Communication compression for reduced bandwidth
 
 ---
 
-## Execution
+## Deployment
 
-### Command Line
+### Command Line Execution
 
 ```bash
-# Run federated simulation (2 clients, 2 rounds, local simulation)
+# Run federated simulation (default: 2 clients, 2 rounds, local simulation)
 uv run flwr run federated_pneumonia_detection/src/control/federated_new_version
 
 # Via PowerShell script
 ./federated_pneumonia_detection/src/rf.ps1
 ```
 
-### Via API
+### Via REST API
 
 **POST /experiments/federated**:
 ```json
@@ -407,38 +391,28 @@ uv run flwr run federated_pneumonia_detection/src/control/federated_new_version
 }
 ```
 
----
+**Response**:
+```json
+{
+  "run_id": "12345",
+  "status": "training",
+  "num_rounds": 3,
+  "num_clients": 2
+}
+```
 
-## Integration with Centralized Training
+### Monitoring Training Progress
 
-**Shared Components**:
-- LitResNet (model wrapper)
-- XRayDataModule (data loading)
-- MetricsCollector (metrics tracking)
-- CustomImageDataset (image loading)
-- image_transforms (augmentation)
-
-**Key Difference**:
-- Centralized: Full dataset on single machine
-- Federated: Data distributed across clients, coordinated training
-
----
-
-## Error Handling & Logging
-
-- **Server Failures**: Graceful shutdown, partial results saved
-- **Client Failures**: Flower handles offline clients, continues with online ones
-- **Communication Errors**: Auto-retry with exponential backoff
-- **Metrics Errors**: Logged but don't block training
-- **Database Errors**: Logged with rollback support
+- **WebSocket Connection**: Frontend connects to `/ws/training/{run_id}`
+- **Real-Time Metrics**: Aggregated metrics sent after each round
+- **Training Status**: `training_mode`, `round_end`, `training_end` messages
+- **Database Queries**: Check `run_metrics` and `server_evaluations` tables
 
 ---
 
 ## Related Documentation
 
-- **Client Training Utils**: See [dl_model/utils/README.md](../dl_model/utils/README.md)
-- **Model Architecture**: See [entities/README.md](../../entities/README.md)
-- **Data Partitioning**: See [partioner.py](partioner.py)
-- **Database Schema**: See [boundary/README.md](../../boundary/README.md)
-- **API Integration**: See [api/README.md](../../api/README.md)
-- **System Architecture**: See [README.md](../../../README.md)
+- **Control Layer Overview**: [../README.md](../README.md)
+- **Boundary Layer (Database)**: [../../boundary/README.md](../../boundary/README.md)
+- **Training Utilities**: [../../utils/README.md](../../utils/README.md)
+- **System Architecture**: [../../../README.md](../../../README.md)
