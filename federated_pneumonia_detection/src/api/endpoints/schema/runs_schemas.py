@@ -111,6 +111,7 @@ class RunSummary(BaseModel):
         start_time: ISO format start timestamp.
         end_time: ISO format end timestamp.
         best_val_recall: Best validation recall achieved.
+        best_val_accuracy: Best validation accuracy achieved.
         metrics_count: Number of metrics recorded.
         run_description: Optional description of the run.
         federated_info: Federated-specific info if applicable.
@@ -121,6 +122,7 @@ class RunSummary(BaseModel):
     start_time: Optional[str] = Field(None, description="ISO format timestamp")
     end_time: Optional[str] = Field(None, description="ISO format timestamp")
     best_val_recall: float = Field(ge=0, le=1, description="Best validation recall")
+    best_val_accuracy: float = Field(ge=0, le=1, description="Best validation accuracy")
     metrics_count: int = Field(ge=0, description="Number of metrics")
     run_description: Optional[str] = Field(None, description="Run description")
     federated_info: Optional[FederatedInfo] = Field(

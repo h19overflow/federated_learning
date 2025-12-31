@@ -47,7 +47,6 @@ class ResNetWithCustomHead(nn.Module):
             ValueError: If configuration parameters are invalid
         """
         super().__init__()
-
         if config is None:
             from federated_pneumonia_detection.config.config_manager import ConfigManager
             config = ConfigManager()

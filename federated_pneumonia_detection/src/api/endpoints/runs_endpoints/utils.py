@@ -174,6 +174,7 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
             "total_epochs": len(training_history),
             "best_epoch": _find_best_epoch(training_history),
             "best_val_accuracy": max([h.get("val_acc", 0) for h in training_history], default=0.0),
+            "best_val_precision": max([h.get("val_precision", 0) for h in training_history], default=0.0),
             "best_val_recall": max([h.get("val_recall", 0) for h in training_history], default=0.0),
             "best_val_loss": min([h.get("val_loss", float('inf')) for h in training_history], default=0.0),
             "best_val_f1": max([h.get("val_f1", 0) for h in training_history], default=0.0),

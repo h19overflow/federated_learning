@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import {
   Loader2,
@@ -12,13 +11,14 @@ import {
   Activity,
   Terminal,
   Settings,
-  Zap,
   ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ExperimentConfiguration } from './ExperimentConfig';
 import { useTrainingExecution } from '@/hooks/useTrainingExecution';
+import { useTrainingMetrics } from '@/hooks/useTrainingMetrics';
 import InstructionCard from './InstructionCard';
+import TrainingObservabilityPanel from './observability/TrainingObservabilityPanel';
 
 interface TrainingExecutionProps {
   config: ExperimentConfiguration;
@@ -32,15 +32,9 @@ interface TrainingExecutionProps {
   }) => void;
 }
 
-/**
- * TrainingExecution Component
- * Displays real-time training progress and status
- * Redesigned with Clinical Clarity theme - teal progress bars, professional status badges
- */
 const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFederatedUpdate }: TrainingExecutionProps) => {
   const {
     isRunning,
-    progress,
     statusMessages,
     overallStatus,
     logContainerRef,
@@ -49,23 +43,22 @@ const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFede
     isFederatedTraining,
     federatedRounds,
     federatedContext,
+    ws,
   } = useTrainingExecution(config, datasetFile, trainSplit, onComplete);
 
-  // Validation state
+  const trainingMetrics = useTrainingMetrics(ws);
+
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
 
-  // Real-time validation
   useEffect(() => {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Dataset validation
     if (!datasetFile) {
       errors.push('No dataset uploaded. Please go back and upload a dataset.');
     }
 
-    // Federated-specific validation
     if (config.trainingMode === 'federated') {
       if (!config.clients || config.clients < 2) {
         errors.push('Federated learning requires at least 2 clients.');
@@ -76,44 +69,25 @@ const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFede
       if (!config.federatedRounds || config.federatedRounds < 1) {
         errors.push('At least 1 federated round is required.');
       }
-      if (config.federatedRounds && config.federatedRounds > 50) {
-        warnings.push(`${config.federatedRounds} rounds is quite high and will take considerable time.`);
-      }
       if (!config.localEpochs || config.localEpochs < 1) {
         errors.push('Local epochs must be at least 1.');
       }
     }
 
-    // Centralized validation
     if (config.trainingMode === 'centralized') {
       if (!config.epochs || config.epochs < 1) {
         errors.push('At least 1 epoch is required for training.');
       }
-      if (config.epochs && config.epochs > 100) {
-        warnings.push(`${config.epochs} epochs may lead to overfitting. Consider using fewer epochs.`);
-      }
     }
 
-    // General validation
     if (config.batchSize < 8) {
       warnings.push('Small batch size may result in unstable training.');
-    }
-    if (config.batchSize > 128) {
-      warnings.push('Large batch size may require more memory and affect convergence.');
-    }
-
-    if (config.learningRate > 0.01) {
-      warnings.push('High learning rate may cause training instability.');
-    }
-    if (config.learningRate < 0.00001) {
-      warnings.push('Very low learning rate will result in slow training.');
     }
 
     setValidationErrors(errors);
     setValidationWarnings(warnings);
   }, [config, datasetFile]);
 
-  // Update parent component when federated state changes
   React.useEffect(() => {
     if (onFederatedUpdate) {
       onFederatedUpdate({
@@ -161,7 +135,6 @@ const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFede
 
   return (
     <div className="space-y-8" style={{ animation: 'fadeIn 0.5s ease-out' }}>
-      {/* Main Training Card */}
       <div className="w-full max-w-4xl mx-auto">
         <div className="bg-white rounded-[2rem] border border-[hsl(210_15%_92%)] shadow-lg shadow-[hsl(172_40%_85%)]/20 overflow-hidden">
           {/* Header */}
@@ -170,13 +143,10 @@ const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFede
               <div className="flex items-center gap-4">
                 <div className={cn(
                   "p-3 rounded-2xl transition-colors",
-                  overallStatus === 'running'
-                    ? "bg-[hsl(172_40%_94%)]"
-                    : overallStatus === 'completed'
-                      ? "bg-[hsl(172_50%_92%)]"
-                      : overallStatus === 'error'
-                        ? "bg-[hsl(0_60%_95%)]"
-                        : "bg-[hsl(168_25%_94%)]"
+                  overallStatus === 'running' ? "bg-[hsl(172_40%_94%)]"
+                    : overallStatus === 'completed' ? "bg-[hsl(172_50%_92%)]"
+                    : overallStatus === 'error' ? "bg-[hsl(0_60%_95%)]"
+                    : "bg-[hsl(168_25%_94%)]"
                 )}>
                   {overallStatus === 'idle' && <Play className="h-6 w-6 text-[hsl(172_63%_28%)]" />}
                   {overallStatus === 'running' && <Activity className="h-6 w-6 text-[hsl(172_63%_28%)] animate-pulse" />}
@@ -201,48 +171,6 @@ const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFede
 
           {/* Content */}
           <div className="p-8 space-y-6">
-            {/* Progress Section */}
-            <div className="bg-[hsl(168_25%_98%)] rounded-2xl p-6 border border-[hsl(168_20%_92%)]">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-[hsl(172_40%_94%)]">
-                    <Zap className="h-5 w-5 text-[hsl(172_63%_35%)]" />
-                  </div>
-                  Training Progress
-                </h3>
-                <span className="text-2xl font-bold text-[hsl(172_63%_28%)]">
-                  {progress.toFixed(1)}%
-                </span>
-              </div>
-
-              {/* Custom Progress Bar */}
-              <div className="relative h-3 rounded-full overflow-hidden bg-[hsl(168_25%_92%)]">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-500 ease-out",
-                    overallStatus === 'completed'
-                      ? "bg-[hsl(172_63%_28%)]"
-                      : overallStatus === 'error'
-                        ? "bg-[hsl(0_72%_51%)]"
-                        : "bg-gradient-to-r from-[hsl(172_63%_35%)] to-[hsl(172_63%_28%)]"
-                  )}
-                  style={{ width: `${progress}%` }}
-                />
-                {overallStatus === 'running' && (
-                  <div
-                    className="absolute inset-y-0 rounded-full bg-white/30 animate-pulse"
-                    style={{ width: `${progress}%` }}
-                  />
-                )}
-              </div>
-
-              <div className="flex justify-between mt-2 text-xs text-[hsl(215_15%_55%)]">
-                <span>Start</span>
-                <span>{Math.floor(progress / 10) * 10}% Complete</span>
-                <span>Finish</span>
-              </div>
-            </div>
-
             {/* Validation Messages */}
             {(validationErrors.length > 0 || validationWarnings.length > 0) && (
               <div className="space-y-4" style={{ animation: 'fadeIn 0.3s ease-out' }}>
@@ -294,7 +222,6 @@ const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFede
               </div>
             )}
 
-            {/* Success indicator when no errors */}
             {validationErrors.length === 0 && datasetFile && overallStatus === 'idle' && (
               <InstructionCard variant="success">
                 <span className="font-medium">Configuration is valid and ready for training</span>
@@ -358,10 +285,7 @@ const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFede
               <div
                 ref={logContainerRef}
                 className="font-mono text-xs h-56 overflow-y-auto pr-2 space-y-1"
-                style={{
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: 'hsl(172 30% 25%) transparent'
-                }}
+                style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(172 30% 25%) transparent' }}
               >
                 {statusMessages.length === 0 ? (
                   <div className="text-[hsl(168_20%_50%)] italic py-4">
@@ -391,6 +315,18 @@ const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFede
                 )}
               </div>
             </div>
+
+            {/* Live Observability Panel - below terminal */}
+            {isRunning && (
+              <TrainingObservabilityPanel
+                batchMetrics={trainingMetrics.batchMetrics}
+                currentLoss={trainingMetrics.currentLoss}
+                currentAccuracy={trainingMetrics.currentAccuracy}
+                currentF1={trainingMetrics.currentF1}
+                isReceiving={trainingMetrics.isReceiving}
+                trainingMode={config.trainingMode}
+              />
+            )}
           </div>
 
           {/* Footer */}

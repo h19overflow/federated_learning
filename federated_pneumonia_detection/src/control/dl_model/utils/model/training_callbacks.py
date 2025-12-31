@@ -25,6 +25,12 @@ from federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_coll
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
     MetricsWebSocketSender,
 )
+from federated_pneumonia_detection.src.control.dl_model.utils.model.batch_metrics_callback import (
+    BatchMetricsCallback,
+)
+from federated_pneumonia_detection.src.control.dl_model.utils.model.gradient_monitor_callback import (
+    GradientMonitorCallback,
+)
 
 
 class EarlyStoppingSignalCallback(pl.Callback):
@@ -208,6 +214,8 @@ def prepare_trainer_and_callbacks_pl(
     is_federated: bool = False,
     client_id: Optional[int] = None,
     round_number: int = 0,
+    batch_sample_interval: Optional[int] = None,
+    gradient_sample_interval: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Prepare PyTorch Lightning trainer callbacks and configuration.
@@ -226,6 +234,8 @@ def prepare_trainer_and_callbacks_pl(
         is_federated: If True, uses local_epochs; if False, uses epochs
         client_id: Optional client ID for federated learning context
         round_number: Round number for federated learning
+        batch_sample_interval: Send batch metrics every N batches (default: 10)
+        gradient_sample_interval: Send gradient stats every N steps (default: 20)
 
     Returns:
         Dictionary containing callbacks and trainer configuration
@@ -320,6 +330,22 @@ def prepare_trainer_and_callbacks_pl(
         websocket_sender=websocket_sender
     )
 
+    # Batch metrics callback - send batch-level metrics for real-time observability
+    batch_interval = batch_sample_interval or config.get("experiment.batch_sample_interval", 10)
+    batch_metrics_callback = BatchMetricsCallback(
+        websocket_sender=websocket_sender,
+        sample_interval=batch_interval,
+        client_id=client_id,
+        round_num=round_number,
+    )
+
+    # Gradient monitor callback - track gradient norms and learning rate
+    gradient_interval = gradient_sample_interval or config.get("experiment.gradient_sample_interval", 20)
+    gradient_monitor_callback = GradientMonitorCallback(
+        websocket_sender=websocket_sender,
+        sample_interval=gradient_interval,
+    )
+
     # Compile callbacks list
     callbacks = [
         checkpoint_callback,
@@ -328,6 +354,8 @@ def prepare_trainer_and_callbacks_pl(
         lr_monitor,
         highest_recall_callback,
         metrics_collector,
+        batch_metrics_callback,
+        gradient_monitor_callback,
     ]
 
     # Trainer configuration

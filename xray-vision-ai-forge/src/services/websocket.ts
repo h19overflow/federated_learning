@@ -27,6 +27,9 @@ import {
   ClientProgressData,
   ClientCompleteData,
   EarlyStoppingData,
+  BatchMetricsData,
+  GradientStatsData,
+  LRUpdateData,
 } from '@/types/api';
 
 // ============================================================================
@@ -65,6 +68,10 @@ interface EventListeners {
   disconnected: EventListener<{}>[];
   reconnecting: EventListener<{ attempt: number }>[];
   reconnected: EventListener<{}>[];
+  // Training observability events
+  batch_metrics: EventListener<BatchMetricsData>[];
+  gradient_stats: EventListener<GradientStatsData>[];
+  lr_update: EventListener<LRUpdateData>[];
 }
 
 // ============================================================================
@@ -95,6 +102,10 @@ export class TrainingProgressWebSocket {
     disconnected: [],
     reconnecting: [],
     reconnected: [],
+    // Training observability events
+    batch_metrics: [],
+    gradient_stats: [],
+    lr_update: [],
   };
   private reconnectAttempts = 0;
   private reconnectTimeout: number | null = null;

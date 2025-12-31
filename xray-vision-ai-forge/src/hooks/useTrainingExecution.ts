@@ -535,5 +535,7 @@ export const useTrainingExecution = (
     isFederatedTraining,
     federatedRounds,
     federatedContext,
+    // WebSocket instance for observability hooks
+    ws: wsRef.current,
   };
 };

@@ -427,7 +427,7 @@ const ResultsVisualization = ({
                       <div className="p-2 rounded-xl bg-[hsl(172_40%_94%)]">
                         <BarChart2 className="h-5 w-5 text-[hsl(172_63%_35%)]" />
                       </div>
-                      Performance Metrics Comparison
+                      Best Validation Metrics Comparison
                     </h3>
                     <Table>
                       <TableHeader>
@@ -519,6 +519,17 @@ const ResultsVisualization = ({
                 <TabsContent value="centralized" className="space-y-6">
                   {centralizedResults ? (
                     <>
+                      <div className="bg-[hsl(172_50%_96%)] rounded-xl p-4 border border-[hsl(172_40%_85%)] mb-6">
+                        <div className="flex gap-3">
+                          <TrendingUp className="h-5 w-5 text-[hsl(172_63%_35%)] flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-semibold text-[hsl(172_63%_25%)] mb-1">Best Validation Metrics - Centralized Training</p>
+                            <p className="text-sm text-[hsl(172_43%_30%)]">
+                              Peak validation performance achieved during centralized training across all epochs.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {centralizedMetricsData.map((metric, idx) => (
                           <MetricCard key={metric.name} name={metric.name} value={metric.value} index={idx} total={centralizedMetricsData.length} />
@@ -559,6 +570,17 @@ const ResultsVisualization = ({
                 <TabsContent value="federated" className="space-y-6">
                   {federatedResults ? (
                     <>
+                      <div className="bg-[hsl(210_100%_97%)] rounded-xl p-4 border border-[hsl(210_60%_85%)] mb-6">
+                        <div className="flex gap-3">
+                          <HelpCircle className="h-5 w-5 text-[hsl(210_60%_45%)] flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-semibold text-[hsl(210_70%_30%)] mb-1">Final Round Metrics - Federated Learning</p>
+                            <p className="text-sm text-[hsl(210_50%_35%)]">
+                              Averaged client-side metrics from the final training round across all participating clients.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {federatedMetricsData.map((metric, idx) => (
                           <MetricCard key={metric.name} name={metric.name} value={metric.value} index={idx} total={federatedMetricsData.length} />
@@ -636,9 +658,22 @@ const ResultsVisualization = ({
                           <div className="flex gap-3">
                             <HelpCircle className="h-5 w-5 text-[hsl(210_60%_45%)] flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-sm font-semibold text-[hsl(210_70%_30%)] mb-1">Final Metrics - Client Training Results</p>
+                              <p className="text-sm font-semibold text-[hsl(210_70%_30%)] mb-1">Final Round Metrics - Client Training Results</p>
                               <p className="text-sm text-[hsl(210_50%_35%)]">
                                 These are the averaged performance metrics from all participating clients' local models at the final training round. This represents the client-side training performance before global model aggregation.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {config.trainingMode === 'centralized' && (
+                        <div className="bg-[hsl(172_50%_96%)] rounded-xl p-4 border border-[hsl(172_40%_85%)] mb-6">
+                          <div className="flex gap-3">
+                            <TrendingUp className="h-5 w-5 text-[hsl(172_63%_35%)] flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-semibold text-[hsl(172_63%_25%)] mb-1">Best Validation Metrics</p>
+                              <p className="text-sm text-[hsl(172_43%_30%)]">
+                                These are the highest validation metrics achieved during training across all epochs. The model checkpoint with these metrics is saved for deployment.
                               </p>
                             </div>
                           </div>
@@ -765,11 +800,24 @@ const ResultsVisualization = ({
                     </div>
 
                     {serverEvaluationLatestMetrics && (
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        {serverEvaluationLatestMetrics.map((metric, idx) => (
-                          <MetricCard key={metric.name} name={metric.name} value={metric.value} index={idx} total={serverEvaluationLatestMetrics.length} />
-                        ))}
-                      </div>
+                      <>
+                        <div className="bg-[hsl(172_50%_96%)] rounded-xl p-4 border border-[hsl(172_40%_85%)] mb-4">
+                          <div className="flex gap-3">
+                            <TrendingUp className="h-5 w-5 text-[hsl(172_63%_35%)] flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-semibold text-[hsl(172_63%_25%)] mb-1">Latest Round - Global Model Performance</p>
+                              <p className="text-sm text-[hsl(172_43%_30%)]">
+                                Performance metrics of the aggregated global model from the most recent training round on the centralized test set.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                          {serverEvaluationLatestMetrics.map((metric, idx) => (
+                            <MetricCard key={metric.name} name={metric.name} value={metric.value} index={idx} total={serverEvaluationLatestMetrics.length} />
+                          ))}
+                        </div>
+                      </>
                     )}
 
                     <div className="bg-[hsl(168_25%_98%)] rounded-2xl p-6 border border-[hsl(168_20%_92%)]">

@@ -26,6 +26,7 @@ interface RunSummary {
   start_time: string | null;
   end_time: string | null;
   best_val_recall: number;
+  best_val_accuracy: number;
   metrics_count: number;
   run_description: string | null;
   federated_info: FederatedInfo | null;
@@ -132,10 +133,10 @@ const SavedExperiments = () => {
 
     return (
       <div className="pt-3 border-t border-[hsl(168_20%_92%)]">
-        <p className="text-xs text-[hsl(215_15%_55%)] mb-2 uppercase tracking-wide">Summary Statistics</p>
+        <p className="text-xs text-[hsl(215_15%_55%)] mb-2 uppercase tracking-wide">Final Epoch Statistics</p>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
-            <p className="text-[9px] text-[hsl(215_15%_50%)]">Sensitivity</p>
+            <p className="text-[9px] text-[hsl(215_15%_50%)]">Recall</p>
             <p className="font-semibold text-[hsl(172_63%_28%)]">{(stats.sensitivity * 100).toFixed(0)}%</p>
           </div>
           <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
@@ -294,13 +295,22 @@ const SavedExperiments = () => {
                     {/* Metrics Section - flex-grow to push footer down */}
                     <div className="bg-[hsl(168_25%_98%)] rounded-xl p-4 mb-4 border border-[hsl(168_20%_94%)] flex-grow">
                       {/* Centralized Metrics */}
-                      {!isFederated && run.best_val_recall > 0 && (
-                        <div>
-                          <p className="text-xs text-[hsl(215_15%_55%)] mb-1">Best Validation Recall</p>
-                          <p className="text-3xl font-semibold text-[hsl(172_63%_28%)]">
-                            {(run.best_val_recall * 100).toFixed(1)}
-                            <span className="text-lg text-[hsl(172_63%_40%)]">%</span>
-                          </p>
+                      {!isFederated && (run.best_val_recall > 0 || run.best_val_accuracy > 0) && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
+                              <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">Best Val Accuracy</p>
+                              <p className="text-xl font-semibold text-[hsl(172_43%_20%)]">
+                                {(run.best_val_accuracy * 100).toFixed(1)}%
+                              </p>
+                            </div>
+                            <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
+                              <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">Best Val Recall</p>
+                              <p className="text-xl font-semibold text-[hsl(172_63%_28%)]">
+                                {(run.best_val_recall * 100).toFixed(1)}%
+                              </p>
+                            </div>
+                          </div>
                           <SummaryStatisticsPreview stats={summaryStats[run.id]} />
                         </div>
                       )}
@@ -319,13 +329,26 @@ const SavedExperiments = () => {
                             </div>
                           </div>
 
-                          {federatedInfo.has_server_evaluation && federatedInfo.best_recall !== null && federatedInfo.best_recall !== undefined && (
+                          {federatedInfo.has_server_evaluation && (federatedInfo.best_accuracy !== null || federatedInfo.best_recall !== null) && (
                             <div className="pt-2 border-t border-[hsl(168_20%_92%)]">
-                              <p className="text-xs text-[hsl(215_15%_55%)] mb-1">Best Server Recall</p>
-                              <p className="text-2xl font-semibold text-[hsl(172_63%_28%)]">
-                                {(federatedInfo.best_recall * 100).toFixed(1)}
-                                <span className="text-sm text-[hsl(172_63%_40%)]">%</span>
-                              </p>
+                              <div className="grid grid-cols-2 gap-3">
+                                {federatedInfo.best_accuracy !== null && federatedInfo.best_accuracy !== undefined && (
+                                  <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
+                                    <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">Best Val Accuracy</p>
+                                    <p className="text-xl font-semibold text-[hsl(172_43%_20%)]">
+                                      {(federatedInfo.best_accuracy * 100).toFixed(1)}%
+                                    </p>
+                                  </div>
+                                )}
+                                {federatedInfo.best_recall !== null && federatedInfo.best_recall !== undefined && (
+                                  <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
+                                    <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">Best Val Recall</p>
+                                    <p className="text-xl font-semibold text-[hsl(172_63%_28%)]">
+                                      {(federatedInfo.best_recall * 100).toFixed(1)}%
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
 
@@ -340,7 +363,7 @@ const SavedExperiments = () => {
                       )}
 
                       {/* No metrics fallback */}
-                      {!isFederated && run.best_val_recall === 0 && (
+                      {!isFederated && run.best_val_recall === 0 && run.best_val_accuracy === 0 && (
                         <div className="text-center py-2">
                           <p className="text-sm text-[hsl(215_15%_55%)]">No metrics available</p>
                         </div>

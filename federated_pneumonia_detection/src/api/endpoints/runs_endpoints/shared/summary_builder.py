@@ -28,10 +28,14 @@ class RunSummaryBuilder:
     def _build_base_summary(run: Run) -> Dict[str, Any]:
         """Build base summary fields common across all training modes."""
         best_val_recall = 0.0
+        best_val_accuracy = 0.0
         if run.metrics:
-            vals = [m.metric_value for m in run.metrics if m.metric_name == "val_recall"]
-            if vals:
-                best_val_recall = max(vals)
+            recall_vals = [m.metric_value for m in run.metrics if m.metric_name == "val_recall"]
+            if recall_vals:
+                best_val_recall = max(recall_vals)
+            acc_vals = [m.metric_value for m in run.metrics if m.metric_name == "val_acc"]
+            if acc_vals:
+                best_val_accuracy = max(acc_vals)
 
         return {
             "id": run.id,
@@ -40,6 +44,7 @@ class RunSummaryBuilder:
             "start_time": run.start_time.isoformat() if run.start_time else None,
             "end_time": run.end_time.isoformat() if run.end_time else None,
             "best_val_recall": best_val_recall,
+            "best_val_accuracy": best_val_accuracy,
             "metrics_count": len(run.metrics) if hasattr(run, "metrics") else 0,
             "run_description": run.run_description,
         }

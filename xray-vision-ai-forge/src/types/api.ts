@@ -204,8 +204,18 @@ export interface ExperimentMetadata {
   end_time: string;
   total_epochs: number;
   best_epoch: number;
+  best_val_accuracy: number;
+  best_val_precision: number;
   best_val_recall: number;
+  best_val_f1: number;
+  best_val_auroc: number;
   best_val_loss: number;
+  final_accuracy?: number;
+  final_precision?: number;
+  final_recall?: number;
+  final_f1?: number;
+  final_auc?: number;
+  final_loss?: number;
   training_duration_seconds?: number;
   training_duration_formatted?: string;
   max_epochs?: number;
@@ -558,4 +568,28 @@ export interface KnowledgeBaseDocument {
 export interface KnowledgeBaseResponse {
   documents: KnowledgeBaseDocument[];
   total_count: number;
+}
+
+// ============================================================================
+// Training Observability Types
+// ============================================================================
+
+export interface BatchMetricsData {
+  step: number;
+  batch_idx: number;
+  loss: number;
+  accuracy: number | null;
+  f1: number | null;
+  epoch: number;
+  timestamp: number;
+  client_id?: string;
+  round_num?: number;
+}
+
+export interface BatchMetricsDataPoint {
+  step: number;
+  loss: number;
+  accuracy: number | null;
+  f1: number | null;
+  timestamp: number;
 }

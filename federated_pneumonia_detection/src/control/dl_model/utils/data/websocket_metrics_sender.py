@@ -243,3 +243,102 @@ class MetricsWebSocketSender:
         )
         self.send_metrics(payload_data, "round_metrics")
         self.logger.info(f"[WebSocketSender] ✅ Round {round_num} metrics sent")
+
+    def send_batch_metrics(
+        self,
+        step: int,
+        batch_idx: int,
+        loss: float,
+        accuracy: Optional[float],
+        epoch: int,
+        recall: Optional[float] = None,
+        f1: Optional[float] = None,
+        client_id: Optional[int] = None,
+        round_num: Optional[int] = None,
+    ) -> None:
+        """
+        Send batch-level metrics for real-time observability.
+
+        Args:
+            step: Global training step
+            batch_idx: Batch index within epoch
+            loss: Batch loss value
+            accuracy: Batch accuracy (if available)
+            epoch: Current epoch number
+            recall: Batch recall (if available)
+            f1: Batch F1 score (if available)
+            client_id: Optional client ID for federated learning
+            round_num: Optional round number for federated learning
+        """
+        payload_data = {
+            "step": step,
+            "batch_idx": batch_idx,
+            "loss": loss,
+            "accuracy": accuracy,
+            "recall": recall,
+            "f1": f1,
+            "epoch": epoch,
+            "timestamp": datetime.now().timestamp(),
+        }
+
+        # Add federated context if applicable
+        if client_id is not None:
+            payload_data["client_id"] = client_id
+        if round_num is not None:
+            payload_data["round_num"] = round_num
+
+        self.send_metrics(payload_data, "batch_metrics")
+
+    def send_gradient_stats(
+        self,
+        step: int,
+        total_norm: float,
+        layer_norms: Dict[str, float],
+        max_norm: float,
+        min_norm: float,
+    ) -> None:
+        """
+        Send gradient statistics for monitoring gradient flow.
+
+        Args:
+            step: Global training step
+            total_norm: Sum of all gradient norms
+            layer_norms: Dictionary mapping layer names to gradient norms
+            max_norm: Maximum gradient norm across layers
+            min_norm: Minimum gradient norm across layers
+        """
+        payload_data = {
+            "step": step,
+            "total_norm": total_norm,
+            "layer_norms": layer_norms,
+            "max_norm": max_norm,
+            "min_norm": min_norm,
+        }
+        self.send_metrics(payload_data, "gradient_stats")
+
+    def send_lr_update(
+        self,
+        current_lr: float,
+        step: int,
+        epoch: int,
+        scheduler_type: Optional[str] = None,
+    ) -> None:
+        """
+        Send learning rate update for LR schedule visualization.
+
+        Args:
+            current_lr: Current learning rate value
+            step: Global training step
+            epoch: Current epoch number
+            scheduler_type: Optional name of the LR scheduler being used
+        """
+        payload_data = {
+            "current_lr": current_lr,
+            "step": step,
+            "epoch": epoch,
+        }
+
+        if scheduler_type is not None:
+            payload_data["scheduler_type"] = scheduler_type
+
+        self.send_metrics(payload_data, "lr_update")

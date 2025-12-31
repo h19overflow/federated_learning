@@ -270,6 +270,10 @@ class CentralizedTrainer:
                 f"[CentralizedTrainer] Federated mode enabled for client_id={client_id}, round={round_number}"
             )
 
+        # Get sampling intervals from config
+        batch_interval = self.config.get("experiment.batch_sample_interval", 10)
+        gradient_interval = self.config.get("experiment.gradient_sample_interval", 20)
+
         callback_config = prepare_trainer_and_callbacks_pl(
             train_df_for_weights=train_df,
             class_column=self.config.get("columns.target"),
@@ -283,6 +287,8 @@ class CentralizedTrainer:
             is_federated=is_federated,
             client_id=client_id,
             round_number=round_number,
+            batch_sample_interval=batch_interval,
+            gradient_sample_interval=gradient_interval,
         )
 
         # Enhanced v3 - Balanced configuration for high accuracy, precision, recall, AND F1

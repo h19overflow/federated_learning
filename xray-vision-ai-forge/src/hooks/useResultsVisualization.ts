@@ -181,16 +181,28 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
   }, [activeResults]);
 
   // Transform metrics for chart (used by primary metrics display)
+  // Uses BEST validation metrics from metadata for consistency with cards display
   const metricsChartData = useMemo((): MetricsChartData[] => {
-    if (!activeResults?.final_metrics) return [];
+    if (!activeResults?.metadata) {
+      console.warn('[useResultsVisualization] No metadata in activeResults:', activeResults);
+      return [];
+    }
 
-    const metrics = activeResults.final_metrics;
+    const metadata = activeResults.metadata;
+    console.log('[useResultsVisualization] metricsChartData metadata:', {
+      best_val_accuracy: metadata.best_val_accuracy,
+      best_val_precision: metadata.best_val_precision,
+      best_val_recall: metadata.best_val_recall,
+      best_val_f1: metadata.best_val_f1,
+      best_val_auroc: metadata.best_val_auroc,
+    });
+
     return [
-      { name: 'Accuracy', value: metrics.accuracy },
-      { name: 'Precision', value: metrics.precision },
-      { name: 'Recall', value: metrics.recall },
-      { name: 'F1-Score', value: metrics.f1_score },
-      { name: 'AUC', value: metrics.auc },
+      { name: 'Accuracy', value: metadata.best_val_accuracy || 0 },
+      { name: 'Precision', value: metadata.best_val_precision || 0 },
+      { name: 'Recall', value: metadata.best_val_recall || 0 },
+      { name: 'F1-Score', value: metadata.best_val_f1 || 0 },
+      { name: 'AUC', value: metadata.best_val_auroc || 0 },
     ];
   }, [activeResults]);
 
@@ -237,16 +249,17 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
   }, [comparisonData]);
 
   // Centralized-specific data transformations
+  // Uses BEST validation metrics from metadata for consistency
   const centralizedMetricsData = useMemo((): MetricsChartData[] => {
-    if (!centralizedResults?.final_metrics) return [];
+    if (!centralizedResults?.metadata) return [];
 
-    const metrics = centralizedResults.final_metrics;
+    const metadata = centralizedResults.metadata;
     return [
-      { name: 'Accuracy', value: metrics.accuracy },
-      { name: 'Precision', value: metrics.precision },
-      { name: 'Recall', value: metrics.recall },
-      { name: 'F1-Score', value: metrics.f1_score },
-      { name: 'AUC', value: metrics.auc },
+      { name: 'Accuracy', value: metadata.best_val_accuracy || 0 },
+      { name: 'Precision', value: metadata.best_val_precision || 0 },
+      { name: 'Recall', value: metadata.best_val_recall || 0 },
+      { name: 'F1-Score', value: metadata.best_val_f1 || 0 },
+      { name: 'AUC', value: metadata.best_val_auroc || 0 },
     ];
   }, [centralizedResults]);
 

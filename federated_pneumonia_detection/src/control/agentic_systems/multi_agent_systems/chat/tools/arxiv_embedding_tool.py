@@ -55,20 +55,30 @@ def _get_vectorstore() -> PGVector:
 async def _download_paper_via_mcp(paper_id: str) -> Dict[str, Any]:
     """
     Download paper using MCP arxiv server.
-    
+
     Args:
         paper_id: Arxiv paper ID
-        
+
     Returns:
         Dict with 'status', 'path', and optionally 'error'
     """
     from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
         MCPManager,
     )
-    
+
     manager = MCPManager.get_instance()
+
+    # Ensure MCP Manager is initialized before checking availability
     if not manager.is_available:
-        return {"status": "error", "error": "MCP Manager not available"}
+        logger.info("[EmbedTool] MCP Manager not initialized, attempting initialization...")
+        try:
+            await manager.initialize()
+        except Exception as e:
+            logger.error(f"[EmbedTool] Failed to initialize MCP Manager: {e}", exc_info=True)
+            return {"status": "error", "error": f"Failed to initialize MCP Manager: {str(e)}"}
+
+    if not manager.is_available:
+        return {"status": "error", "error": "MCP Manager not available after initialization attempt"}
     
     tools = manager.get_arxiv_tools()
     download_tool = next((t for t in tools if t.name == "download_paper"), None)
@@ -78,7 +88,9 @@ async def _download_paper_via_mcp(paper_id: str) -> Dict[str, Any]:
     
     try:
         result = await download_tool.ainvoke({"paper_id": paper_id})
-        
+        logger.info(f"[EmbedTool] Raw download result type: {type(result)}")
+        logger.info(f"[EmbedTool] Raw download result: {str(result)[:500]}...")
+
         # Parse result - it's a list with a dict containing 'text' key
         text_content = ""
         if isinstance(result, list):
@@ -88,9 +100,12 @@ async def _download_paper_via_mcp(paper_id: str) -> Dict[str, Any]:
                     break
         elif isinstance(result, str):
             text_content = result
-            
+
+        logger.info(f"[EmbedTool] Extracted text content: {text_content[:200]}...")
+
         if text_content:
             data = json.loads(text_content)
+            logger.info(f"[EmbedTool] Parsed JSON data keys: {data.keys()}")
             return data
         else:
             return {"status": "error", "error": "Empty response from download tool"}
@@ -164,19 +179,24 @@ async def embed_arxiv_paper_async(paper_id: str) -> Dict[str, Any]:
         Dict with status and details
     """
     logger.info(f"[EmbedTool] Starting embedding for paper {paper_id}")
-    
+
     # Step 1: Download paper via MCP
     download_result = await _download_paper_via_mcp(paper_id)
-    
+    logger.info(f"[EmbedTool] Download result: {download_result}")
+
     if download_result.get("status") == "error":
+        error_msg = download_result.get("error", "Download failed")
+        logger.error(f"[EmbedTool] Download failed: {error_msg}")
         return {
             "success": False,
-            "error": download_result.get("error", "Download failed"),
+            "error": error_msg,
         }
-    
-    # Step 2: Get file path
-    file_path = download_result.get("path")
+
+    # Step 2: Get file path (MCP returns 'resource_uri' instead of 'path')
+    file_path = download_result.get("resource_uri") or download_result.get("path")
+    logger.info(f"[EmbedTool] File path from download: {file_path}")
     if not file_path:
+        logger.error(f"[EmbedTool] No 'resource_uri' or 'path' key in download_result. Keys present: {download_result.keys()}")
         return {
             "success": False,
             "error": "No file path returned from download",
@@ -200,8 +220,14 @@ async def embed_arxiv_paper_async(paper_id: str) -> Dict[str, Any]:
     # Step 5: Insert into vector store
     try:
         vectorstore = _get_vectorstore()
-        vectorstore.add_documents(documents)
+        logger.info(f"[EmbedTool] Inserting {len(documents)} chunks into vectorstore...")
+
+        # Add documents to the vector store
+        ids = vectorstore.add_documents(documents)
+
         logger.info(f"[EmbedTool] Successfully embedded {len(documents)} chunks for {paper_id}")
+        logger.info(f"[EmbedTool] Document IDs: {ids[:3]}..." if len(ids) > 3 else f"[EmbedTool] Document IDs: {ids}")
+
     except Exception as e:
         logger.error(f"[EmbedTool] Failed to insert into vectorstore: {e}", exc_info=True)
         return {"success": False, "error": f"Vector store insertion failed: {str(e)}"}
