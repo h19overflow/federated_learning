@@ -272,4 +272,37 @@
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
     pointer-events: none;
   }
+
+  /* Accessibility: Respect prefers-reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    /* Disable all SVG animations */
+    .centralized-diagram svg *,
+    .federated-diagram svg * {
+      animation: none !important;
+      animation-play-state: paused !important;
+    }
+
+    /* Hide animated particles */
+    .data-particle,
+    .gradient-particle-up,
+    .model-particle-down {
+      display: none;
+    }
+
+    /* Stop pulsing animations */
+    .pulse-ring,
+    .pulse-ring-fed,
+    .animate-pulse {
+      animation: none !important;
+    }
+
+    /* Disable all motion-based animations */
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
