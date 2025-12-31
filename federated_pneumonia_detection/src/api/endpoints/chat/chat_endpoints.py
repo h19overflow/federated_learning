@@ -1,3 +1,26 @@
+"""
+Chat Endpoints Module
+=====================
+
+Provides REST API endpoints for chat functionality including streaming responses,
+session management, and conversation history.
+
+Architecture Notes
+------------------
+1. **Inner Generator Pattern**: Streaming endpoints use an inner `generate()` function
+   because `yield` can only exist inside a generator. The outer endpoint returns a
+   `StreamingResponse(generate())` which lazily consumes the generator as the client reads.
+
+2. **Helper Functions**: Common logic (SSE formatting, DB session checks, query enhancement)
+   is extracted into module-level helpers. This moves try/except blocks out of the main flow,
+   keeping the streaming logic flat and readable.
+
+3. **Guard Clauses**: Instead of deeply nested if/else blocks, we use early `return` statements
+   after yielding errors. This keeps the "happy path" at a low indentation level.
+
+4. **Closure**: The inner `generate()` function has access to the outer function's variables
+   (like `message`, `use_arxiv`) without needing them passed as arguments.
+"""
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Dict, Any, Optional, List
@@ -25,6 +48,60 @@ import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# ==============================================================================
+# HELPER FUNCTIONS (Extracted to reduce nesting in endpoints)
+# ==============================================================================
+
+def sse_pack(data: dict) -> str:
+    """
+    Pack a dictionary into Server-Sent Events format.
+    
+    This standardizes the SSE output so we don't repeat the formatting everywhere.
+    """
+    return f"data: {json.dumps(data)}\n\n"
+
+
+def sse_error(message: str, error_type: str = "error") -> str:
+    """Create a formatted SSE error message."""
+    return sse_pack({"type": error_type, "message": message})
+
+
+def ensure_db_session(session_id: str, query: str) -> None:
+    """
+    Ensure a chat session exists in the database.
+    
+    This is a non-critical operation - if it fails, we log and continue.
+    The chat will still work, just without persistent session tracking.
+    """
+    try:
+        existing_session = get_chat_session(session_id)
+        if not existing_session:
+            logger.info(f"[Helper] Creating new DB session: {session_id}")
+            create_chat_session(title=query[:50] + "...", session_id=session_id)
+    except Exception as e:
+        # Non-fatal: we can still chat even if DB session tracking fails
+        logger.warning(f"[Helper] Failed to ensure DB session (non-fatal): {e}")
+
+
+def prepare_enhanced_query(query: str, run_id: Optional[int]) -> str:
+    """
+    Enhance a query with run context if a run_id is provided.
+    
+    If enhancement fails, returns the original query (graceful degradation).
+    """
+    if run_id is None:
+        return query
+    
+    try:
+        logger.info(f"[Helper] Enhancing query with run context for run_id: {run_id}")
+        enhanced = enhance_query_with_run_context(query, run_id)
+        logger.info("[Helper] Query enhanced successfully")
+        return enhanced
+    except Exception as e:
+        logger.error(f"[Helper] Failed to enhance query (using original): {e}")
+        return query  # Graceful degradation
 
 router = APIRouter(
     prefix="/chat",
@@ -95,55 +172,6 @@ async def delete_existing_chat_session(session_id: str):
     return {"message": f"Session {session_id} deleted"}
 
 
-@router.post("/query", response_model=ChatResponse)
-async def query_chat(message: ChatMessage) -> ChatResponse:
-    """
-    Query the retrieval-augmented generation system with a user message.
-    Supports session-based conversation history and run-specific context.
-
-    Args:
-        message: ChatMessage containing the user query, optional session_id, and optional run context
-
-    Returns:
-        ChatResponse with answer, source documents, and session_id
-    """
-    if query_engine is None:
-        raise HTTPException(
-            status_code=500, detail="QueryEngine not initialized properly"
-        )
-
-    try:
-        # Generate session_id if not provided
-        session_id = message.session_id or str(uuid.uuid4())
-        
-        # Ensure session exists in DB
-        existing_session = get_chat_session(session_id)
-        if not existing_session:
-            create_chat_session(title=message.query[:50] + "...", session_id=session_id)
-
-        # Enhance query with run context if provided
-        enhanced_query = message.query
-        if message.run_id is not None:
-            enhanced_query = enhance_query_with_run_context(
-                message.query, message.run_id
-            )
-
-        # Use query_with_history for session-based queries
-        result = query_engine.query_with_history(enhanced_query, session_id, original_query=message.query)
-
-        sources = []
-        if "context" in result:
-            sources = [
-                doc.metadata.get("source", "Unknown") for doc in result["context"]
-            ]
-
-        return ChatResponse(
-            answer=result.get("answer", ""), sources=sources, session_id=session_id
-        )
-    except Exception as e:
-        logger.error(f"Error processing query: {e}")
-        raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
-
 
 @router.get("/arxiv/status")
 async def get_arxiv_status() -> Dict[str, Any]:
@@ -175,118 +203,92 @@ async def query_chat_stream(message: ChatMessage):
     Returns:
         StreamingResponse with SSE format containing tokens
     """
-    logger.info(f"[STREAM] Received streaming query request - Query: '{message.query[:100]}...', "
-                f"Session ID: {message.session_id}, Run ID: {message.run_id}, "
-                f"Arxiv Enabled: {message.arxiv_enabled}")
+    logger.info(f"[STREAM] Query: '{message.query[:100]}...', "
+                f"Session: {message.session_id}, Run: {message.run_id}, "
+                f"Arxiv: {message.arxiv_enabled}")
     
-    # Use ArxivAugmentedEngine when arxiv is enabled, else use QueryEngine
     use_arxiv = message.arxiv_enabled
-    logger.info(f"[STREAM] Using {'ArxivAugmentedEngine' if use_arxiv else 'QueryEngine'}")
 
+    # --- GUARD CLAUSE: Fail fast if no engine is available ---
     if not use_arxiv and query_engine is None:
-        logger.error("[STREAM] QueryEngine not initialized - cannot process request")
-        raise HTTPException(
-            status_code=500, detail="QueryEngine not initialized properly"
-        )
+        logger.error("[STREAM] QueryEngine not initialized")
+        raise HTTPException(status_code=500, detail="QueryEngine not initialized properly")
 
     async def generate():
+        """
+        The inner generator. Now much flatter and easier to read.
+        Each section has one job.
+        """
+        # =====================================================================
+        # SECTION 1: Setup Session
+        # =====================================================================
+        session_id = message.session_id or str(uuid.uuid4())
+        logger.info(f"[STREAM] Session ID: {session_id}")
+        
+        # Helper handles the try/except internally - non-fatal if it fails
+        ensure_db_session(session_id, message.query)
+        
+        # Tell the frontend what session we're using
+        yield sse_pack({'type': 'session', 'session_id': session_id})
+
+        # =====================================================================
+        # SECTION 2: Prepare Query
+        # =====================================================================
+        enhanced_query = prepare_enhanced_query(message.query, message.run_id)
+        logger.info(f"[STREAM] Final query: '{enhanced_query[:100]}...'")
+
+        # =====================================================================
+        # SECTION 3: Choose Engine (Guard Clause Style)
+        # =====================================================================
+        if use_arxiv:
+            try:
+                engine = get_arxiv_engine()
+                logger.info("[STREAM] Using ArxivAugmentedEngine")
+            except Exception as e:
+                logger.error(f"[STREAM] Failed to initialize ArxivAugmentedEngine: {e}")
+                yield sse_error(f"Failed to initialize Arxiv engine: {e}")
+                return  # Early exit - no nesting needed!
+        else:
+            engine = query_engine
+            logger.info("[STREAM] Using standard QueryEngine")
+
+        # =====================================================================
+        # SECTION 4: Stream Response (The Main Event)
+        # =====================================================================
+        chunk_count = 0
         try:
-            logger.info("[STREAM] Starting stream generation")
+            # Unified streaming logic - both engines expose similar interfaces
+            if use_arxiv:
+                stream = engine.query_stream(
+                    enhanced_query, session_id, 
+                    arxiv_enabled=True, original_query=message.query
+                )
+            else:
+                stream = engine.query_with_history_stream(
+                    enhanced_query, session_id, original_query=message.query
+                )
             
-            # Generate session_id
-            session_id = message.session_id or str(uuid.uuid4())
-            logger.info(f"[STREAM] Session ID: {session_id}")
-
-            # Ensure session exists in DB
-            try:
-                existing_session = get_chat_session(session_id)
-                if not existing_session:
-                    logger.info(f"[STREAM] Creating new session in DB: {session_id}")
-                    # Passing session_id to create_chat_session as well (need to update CRUD)
-                    create_chat_session(title=message.query[:50] + "...", session_id=session_id)
-            except Exception as e:
-                logger.warning(f"[STREAM] Failed to ensure session exists in DB: {e}")
-
-            # Send session_id first so frontend knows it
-            session_data = {'type': 'session', 'session_id': session_id}
-            logger.debug(f"[STREAM] Sending session data: {session_data}")
-            yield f"data: {json.dumps(session_data)}\n\n"
-
-            # Enhance query with run context if provided
-            enhanced_query = message.query
-            if message.run_id is not None:
-                logger.info(f"[STREAM] Enhancing query with run context for run_id: {message.run_id}")
-                try:
-                    enhanced_query = enhance_query_with_run_context(
-                        message.query, message.run_id
-                    )
-                    logger.info(f"[STREAM] Query enhanced successfully")
-                except Exception as e:
-                    logger.error(f"[STREAM] Failed to enhance query with run context: {e}", exc_info=True)
-                    # Continue with original query if enhancement fails
-                    enhanced_query = message.query
+            async for chunk in stream:
+                chunk_count += 1
+                if chunk_count % 10 == 0:
+                    logger.debug(f"[STREAM] Chunk #{chunk_count}: {chunk.get('type', 'unknown')}")
+                yield sse_pack(chunk)
             
-            logger.info(f"[STREAM] Final query to process: '{enhanced_query[:100]}...'")
+            logger.info(f"[STREAM] Completed - {chunk_count} chunks streamed")
 
-            chunk_count = 0
-            try:
-                if use_arxiv:
-                    # Use ArxivAugmentedEngine with arxiv tools
-                    logger.info("[STREAM] Initializing ArxivAugmentedEngine")
-                    try:
-                        arxiv_engine = get_arxiv_engine()
-                        logger.info("[STREAM] ArxivAugmentedEngine initialized successfully")
-                    except Exception as e:
-                        logger.error(f"[STREAM] Failed to initialize ArxivAugmentedEngine: {e}", exc_info=True)
-                        error_data = {'type': 'error', 'message': f'Failed to initialize Arxiv engine: {str(e)}'}
-                        yield f"data: {json.dumps(error_data)}\n\n"
-                        return
-                    
-                    logger.info("[STREAM] Starting arxiv query stream")
-                    async for chunk in arxiv_engine.query_stream(
-                        enhanced_query, session_id, arxiv_enabled=True, original_query=message.query
-                    ):
-                        chunk_count += 1
-                        if chunk_count % 10 == 0:  # Log every 10th chunk to avoid spam
-                            logger.debug(f"[STREAM] Arxiv chunk #{chunk_count}: {chunk.get('type', 'unknown')}")
-                        yield f"data: {json.dumps(chunk)}\n\n"
-                    
-                    logger.info(f"[STREAM] Arxiv stream completed - Total chunks: {chunk_count}")
-                else:
-                    # Use standard QueryEngine
-                    logger.info("[STREAM] Starting standard query stream")
-                    try:
-                        async for chunk in query_engine.query_with_history_stream(
-                            enhanced_query, session_id, original_query=message.query
-                        ):
-                            chunk_count += 1
-                            if chunk_count % 10 == 0:  # Log every 10th chunk to avoid spam
-                                logger.debug(f"[STREAM] Standard chunk #{chunk_count}: {chunk.get('type', 'unknown')}")
-                            yield f"data: {json.dumps(chunk)}\n\n"
-                        
-                        logger.info(f"[STREAM] Standard stream completed - Total chunks: {chunk_count}")
-                    except Exception as e:
-                        logger.error(f"[STREAM] Error in query_with_history_stream: {e}", exc_info=True)
-                        error_data = {'type': 'error', 'message': f'Query engine error: {str(e)}'}
-                        yield f"data: {json.dumps(error_data)}\n\n"
-                        return
-                
-                if chunk_count == 0:
-                    logger.warning("[STREAM] No chunks were generated - this may cause empty message on frontend")
-                    error_data = {'type': 'error', 'message': 'No response generated from the query engine'}
-                    yield f"data: {json.dumps(error_data)}\n\n"
-                    
-            except Exception as e:
-                logger.error(f"[STREAM] Error during streaming iteration: {e}", exc_info=True)
-                error_data = {'type': 'error', 'message': f'Streaming error: {str(e)}'}
-                yield f"data: {json.dumps(error_data)}\n\n"
-                
         except Exception as e:
-            logger.error(f"[STREAM] Critical error in generate function: {e}", exc_info=True)
-            error_data = {'type': 'error', 'message': f'Critical streaming error: {str(e)}'}
-            yield f"data: {json.dumps(error_data)}\n\n"
+            logger.error(f"[STREAM] Streaming error: {e}", exc_info=True)
+            yield sse_error(f"Streaming error: {e}")
+            return
 
-    logger.info("[STREAM] Returning StreamingResponse")
+        # =====================================================================
+        # SECTION 5: Validation (Post-Stream Check)
+        # =====================================================================
+        if chunk_count == 0:
+            logger.warning("[STREAM] No chunks generated - empty response")
+            yield sse_error("No response generated from the query engine")
+
+    # Return the streaming response with proper SSE headers
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",

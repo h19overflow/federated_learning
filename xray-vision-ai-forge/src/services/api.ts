@@ -245,17 +245,6 @@ export const experimentsApi = {
   },
 
   /**
-   * Get training status
-   */
-  async getTrainingStatus(experimentId: string): Promise<TrainingStatusResponse> {
-    const response = await fetchWithTimeout(
-      `${API_BASE_URL}/experiments/status/${experimentId}`
-    );
-
-    return handleResponse<TrainingStatusResponse>(response);
-  },
-
-  /**
    * List all experiments
    */
   async listExperiments(): Promise<{ experiments: TrainingStatusResponse[] }> {

@@ -35,17 +35,8 @@ def run_federated_training_task(
     Returns:
         Dictionary containing training status and tracking information
     """
-    task_logger = get_logger(f"{__name__}._task")
-
-    task_logger.info("=" * 80)
-    task_logger.info("FEDERATED TRAINING - Pneumonia Detection (Background Task)")
-    task_logger.info("=" * 80)
 
     try:
-        task_logger.info(f"  Source: {source_path}")
-        task_logger.info(f"  Experiment: {experiment_name}")
-        task_logger.info(f"  CSV File: {csv_filename}")
-        task_logger.info(f"  Server Rounds: {num_server_rounds}")
 
         # Construct the full paths for training data
         csv_path = os.path.join(source_path, csv_filename)

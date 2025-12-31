@@ -313,8 +313,6 @@ class QueryEngine:
 
             logger.info(f"[QueryEngine] Streaming completed. Generated {chunk_count} chunks. Response length: {len(full_response)}")
 
-            # After streaming completes, save to history
-            # After streaming completes, save to history
             history_query = original_query if original_query is not None else query
             self.add_to_history(session_id, history_query, full_response)
             yield {"type": "done", "session_id": session_id}
