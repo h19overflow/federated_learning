@@ -1,0 +1,22 @@
+{
+  "experiment_name": "federated_pneumonia_detection",
+  "start_time": "2025-12-28T22:52:03.775230",
+  "end_time": "2025-12-28T23:48:49.756594",
+  "total_epochs": 2,
+  "best_epoch": 1,
+  "best_val_recall": 0.8903088569641113,
+  "best_val_loss": 0.10973940044641495,
+  "training_mode": "federated",
+  "client_id": 13487203628532598895,
+  "round_number": 0,
+  "run_id": 114,
+  "max_epochs": 2,
+  "num_devices": 1,
+  "accelerator": "CPUAccelerator",
+  "precision": "32-true",
+  "model_class": "LitResNetEnhanced",
+  "total_parameters": 24049089,
+  "trainable_parameters": 541057,
+  "training_duration_seconds": 3405.981364,
+  "training_duration_formatted": "0:56:45.981364"
+}

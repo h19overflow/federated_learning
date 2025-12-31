@@ -1,0 +1,56 @@
+{
+  "config": {
+    "archive_path": "C:\\Users\\User\\Projects\\FYP2\\archive.zip",
+    "output_dir": "results\\analysis",
+    "num_runs": 10,
+    "epochs": 10,
+    "num_rounds": 10,
+    "local_epochs": 2,
+    "learning_rate": 0.001,
+    "batch_size": 256,
+    "validation_split": 0.2,
+    "base_seed": 42,
+    "csv_filename": "stage2_train_metadata.csv",
+    "num_clients": 2
+  },
+  "summary_stats": {
+    "centralized": {
+      "accuracy": {
+        "mean": 0.7776381134986877,
+        "std": 0.02836255572574799,
+        "min": 0.7224611043930054,
+        "max": 0.8087992072105408,
+        "n": 10
+      },
+      "precision": {
+        "mean": 0.6076153218746185,
+        "std": 0.04100670901034798,
+        "min": 0.5356160402297974,
+        "max": 0.6680017709732056,
+        "n": 10
+      },
+      "recall": {
+        "mean": 0.8634222865104675,
+        "std": 0.037322856486799956,
+        "min": 0.785452663898468,
+        "max": 0.9167974591255188,
+        "n": 10
+      },
+      "f1_score": {
+        "mean": 0.7114619731903076,
+        "std": 0.018967537737940122,
+        "min": 0.6761868000030518,
+        "max": 0.7345773577690125,
+        "n": 10
+      },
+      "auroc": {
+        "mean": 0.8890361607074737,
+        "std": 0.0076210417490381495,
+        "min": 0.8776483535766602,
+        "max": 0.9010740518569946,
+        "n": 10
+      }
+    }
+  },
+  "statistical_tests": {}
+}
