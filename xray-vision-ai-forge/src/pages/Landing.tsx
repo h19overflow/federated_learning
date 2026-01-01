@@ -204,7 +204,7 @@ const Landing = () => {
       // Step cards: sequential reveal
       gsap.from('.step-card', {
         scrollTrigger: {
-          trigger: '.steps-grid',
+          trigger: '.how-it-works-section',
           start: ANIMATION_CONFIG.scrollTriggerStart,
           toggleActions: 'play none none none',
         },
@@ -218,7 +218,7 @@ const Landing = () => {
       // Step icons: scale up animation
       gsap.from('.step-icon', {
         scrollTrigger: {
-          trigger: '.steps-grid',
+          trigger: '.how-it-works-section',
           start: ANIMATION_CONFIG.scrollTriggerStart,
           toggleActions: 'play none none none',
         },
@@ -227,21 +227,6 @@ const Landing = () => {
         duration: 0.6,
         ease: 'back.out(1.7)',
         delay: 0.3,
-      });
-
-      // Connector lines: animate width
-      gsap.from('.step-connector', {
-        scrollTrigger: {
-          trigger: '.steps-grid',
-          start: ANIMATION_CONFIG.scrollTriggerStart,
-          toggleActions: 'play none none none',
-        },
-        scaleX: 0,
-        transformOrigin: 'left center',
-        stagger: ANIMATION_CONFIG.staggerDelay,
-        duration: 0.5,
-        ease: ANIMATION_CONFIG.ease,
-        delay: 0.5,
       });
 
       // CTA Section - ScrollTriggered
@@ -304,6 +289,28 @@ const Landing = () => {
             <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-[hsl(210_60%_90%)] rounded-full blur-[100px] opacity-25" />
           </div>
 
+          {/* Hero AI Lung Visualization - Right side with soft rounded edges */}
+          <div className="absolute right-[-5%] top-1/2 -translate-y-1/2 w-[50%] h-[80%] pointer-events-none hidden lg:block">
+            <div
+              className="relative w-full h-full"
+              style={{
+                maskImage: 'radial-gradient(ellipse 80% 70% at 70% 50%, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, transparent 80%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 80% 70% at 70% 50%, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, transparent 80%)'
+              }}
+            >
+              {/* Image container - crops bottom-right Gemini logo */}
+              <div className="absolute inset-0 overflow-hidden">
+                <img
+                  src="/images/Lungs.png"
+                  alt="AI-powered neural network visualization of lung analysis"
+                  className="w-[115%] h-[115%] object-cover object-left-top opacity-50"
+                />
+              </div>
+              {/* Teal tint overlay for brand cohesion */}
+              <div className="absolute inset-0 bg-[hsl(172_50%_60%)]/10 mix-blend-overlay" />
+            </div>
+          </div>
+
           <div className="relative z-10 max-w-4xl mx-auto text-center">
             {/* Trust badge */}
             <div className="hero-trust-badge inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full bg-white/60 backdrop-blur-sm border border-[hsl(172_30%_85%)] shadow-sm">
@@ -363,8 +370,19 @@ const Landing = () => {
         </section>
 
         {/* Features Section - Minimal Grid */}
-        <section className="features-section py-32 px-6 bg-white">
-          <div className="max-w-6xl mx-auto">
+        <section className="features-section py-32 px-6 bg-white relative overflow-hidden">
+          {/* Subtle hexagon pattern background */}
+          <div
+            className="absolute inset-0 opacity-[0.35] pointer-events-none"
+            style={{
+              backgroundImage: 'url(/images/hexagon_grid.png)',
+              backgroundSize: '400px 400px',
+              backgroundRepeat: 'repeat',
+              maskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 70%)',
+              WebkitMaskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 70%)'
+            }}
+          />
+          <div className="max-w-6xl mx-auto relative z-10">
             <div className="features-title text-center mb-20">
               <h2 className="text-4xl md:text-5xl font-semibold text-[hsl(172_43%_15%)] mb-6">
                 Why Choose Our Platform?
@@ -420,6 +438,16 @@ const Landing = () => {
         {/* Comparison Section - Clean & Sophisticated */}
         <section ref={comparisonRef} className="comparison-section py-32 px-6 bg-trust-gradient relative overflow-hidden">
           <div className="absolute inset-0 noise-overlay" />
+          {/* Subtle hexagon pattern overlay */}
+          <div
+            className="absolute inset-0 opacity-20 pointer-events-none"
+            style={{
+              backgroundImage: 'url(/images/hexagon_grid.png)',
+              backgroundSize: '350px 350px',
+              backgroundRepeat: 'repeat',
+              mixBlendMode: 'multiply'
+            }}
+          />
 
           <div className="relative z-10 max-w-6xl mx-auto">
             <div className="comparison-title text-center mb-20">
@@ -434,209 +462,36 @@ const Landing = () => {
             <div className="comparison-cards grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Centralized Learning Card */}
               <div className="centralized-card relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-[hsl(210_80%_95%)] to-[hsl(210_60%_90%)] rounded-[2rem] blur-xl opacity-50 group-hover:opacity-70 transition-opacity" />
-                <div className="relative bg-white/90 backdrop-blur-sm rounded-[2rem] p-10 border border-[hsl(210_30%_90%)] shadow-lg hover:shadow-2xl transition-all duration-500">
+                <div className="absolute inset-0 bg-gradient-to-br from-[hsl(172_50%_92%)] to-[hsl(168_40%_87%)] rounded-[2rem] blur-xl opacity-50 group-hover:opacity-70 transition-opacity" />
+                <div className="relative bg-white/90 backdrop-blur-sm rounded-[2rem] p-10 border border-[hsl(172_30%_88%)] shadow-lg hover:shadow-2xl transition-all duration-500">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-8">
                     <div>
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[hsl(210_80%_95%)] text-[hsl(210_60%_45%)] text-sm font-medium mb-4">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[hsl(172_40%_94%)] text-[hsl(172_50%_35%)] text-sm font-medium mb-4">
                         Traditional
                       </div>
                       <h3 className="text-2xl font-semibold text-[hsl(172_43%_15%)]">
                         Centralized Learning
                       </h3>
                     </div>
-                    <div className="p-3 rounded-2xl bg-[hsl(210_80%_96%)]">
-                      <svg className="w-8 h-8 text-[hsl(210_60%_45%)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <div className="p-3 rounded-2xl bg-[hsl(172_40%_94%)]">
+                      <svg className="w-8 h-8 text-[hsl(172_50%_35%)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <rect x="4" y="4" width="16" height="16" rx="2" />
                         <path d="M4 9h16M9 4v16" />
                       </svg>
                     </div>
                   </div>
 
-                  {/* Animated Flow Diagram - Centralized */}
-                  <div className="centralized-diagram relative h-56 mb-8 rounded-2xl bg-gradient-to-br from-[hsl(210_40%_98%)] to-[hsl(210_50%_95%)] overflow-hidden">
-                    <svg viewBox="0 0 300 200" className="w-full h-full" aria-label="Centralized learning data flow diagram showing patient data flowing from hospitals to central server">
-                      <defs>
-                        {/* Gradient for data particles */}
-                        <linearGradient id="dataGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="hsl(210 60% 60%)" />
-                          <stop offset="100%" stopColor="hsl(210 60% 45%)" />
-                        </linearGradient>
-
-                        {/* Pulsing glow for server */}
-                        <filter id="glow">
-                          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                          <feMerge>
-                            <feMergeNode in="coloredBlur"/>
-                            <feMergeNode in="SourceGraphic"/>
-                          </feMerge>
-                        </filter>
-                      </defs>
-
-                      {/* Hospital nodes at bottom */}
-                      {[0, 1, 2].map((i) => (
-                        <g key={i} transform={`translate(${75 + i * 75}, 150)`} className="data-node">
-                          {/* Hospital building */}
-                          <rect x="-15" y="-15" width="30" height="30" rx="6" fill="white" stroke="hsl(210 60% 75%)" strokeWidth="2" />
-                          {/* Database icon */}
-                          <path d="M-8,-8 L8,-8 M-8,-2 L8,-2 M-8,4 L8,4" stroke="hsl(210 60% 45%)" strokeWidth="1.5" strokeLinecap="round" />
-                          {/* Unlocked indicator (privacy concern) */}
-                          <g transform="translate(10, -10)">
-                            <circle r="6" fill="hsl(35 70% 50%)" opacity="0.9" />
-                            <path d="M-2,-1 L-2,-3 A2,2 0 0,1 2,-3 L2,-2" stroke="white" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                            <rect x="-2.5" y="-1" width="5" height="4" rx="1" fill="white" />
-                          </g>
-                        </g>
-                      ))}
-
-                      {/* Central server at top */}
-                      <g transform="translate(150, 40)">
-                        {/* Pulsing glow */}
-                        <circle className="pulse-ring" r="35" fill="hsl(210 60% 88%)" opacity="0.4">
-                          <animate attributeName="r" values="35;40;35" dur="2s" repeatCount="indefinite" />
-                          <animate attributeName="opacity" values="0.4;0.2;0.4" dur="2s" repeatCount="indefinite" />
-                        </circle>
-                        {/* Server box */}
-                        <rect x="-40" y="-20" width="80" height="40" rx="8" fill="white" stroke="hsl(210 60% 70%)" strokeWidth="2.5" filter="url(#glow)" />
-                        {/* Server rack lines */}
-                        <path d="M-30,-8 L30,-8 M-30,0 L30,0 M-30,8 L30,8" stroke="hsl(210 60% 50%)" strokeWidth="1.5" />
-                        {/* Activity indicator */}
-                        <circle cx="-25" cy="-8" r="2" fill="hsl(210 60% 50%)" className="animate-pulse" />
-                        <circle cx="-25" cy="0" r="2" fill="hsl(210 60% 50%)" className="animate-pulse" style={{ animationDelay: '0.3s' }} />
-                        <circle cx="-25" cy="8" r="2" fill="hsl(210 60% 50%)" className="animate-pulse" style={{ animationDelay: '0.6s' }} />
-                        {/* Label below the server box */}
-                        <text x="0" y="35" textAnchor="middle" fontSize="10" fontWeight="600" fill="hsl(210 60% 35%)">Central Server</text>
-                      </g>
-
-                      {/* Animated data particles flowing upward */}
-                      {[0, 1, 2].map((pathIndex) => (
-                        <g key={pathIndex}>
-                          {/* Flow path (invisible) */}
-                          <path
-                            id={`flow-path-${pathIndex}`}
-                            d={`M ${75 + pathIndex * 75} 135 L ${75 + pathIndex * 75} 80`}
-                            fill="none"
-                            stroke="none"
-                          />
-
-                          {/* Path line */}
-                          <line
-                            x1={75 + pathIndex * 75}
-                            y1="135"
-                            x2={75 + pathIndex * 75}
-                            y2="80"
-                            stroke="hsl(210 60% 80%)"
-                            strokeWidth="2"
-                            strokeDasharray="4 4"
-                            opacity="0.5"
-                          />
-
-                          {/* Data particles */}
-                          {[0, 1, 2].map((particleIndex) => (
-                            <g key={particleIndex}>
-                              <circle
-                                className={`data-particle data-particle-${pathIndex}-${particleIndex}`}
-                                r="4"
-                                fill="url(#dataGradient)"
-                                stroke="white"
-                                strokeWidth="1"
-                                opacity="0"
-                              >
-                                {/* Initial position at bottom */}
-                                <animateMotion
-                                  dur="2.5s"
-                                  repeatCount="indefinite"
-                                  begin={`${pathIndex * 0.3 + particleIndex * 0.8}s`}
-                                  path={`M ${75 + pathIndex * 75} 135 L ${75 + pathIndex * 75} 80`}
-                                />
-                                {/* Fade in/out */}
-                                <animate
-                                  attributeName="opacity"
-                                  values="0;1;1;0"
-                                  keyTimes="0;0.1;0.85;1"
-                                  dur="2.5s"
-                                  repeatCount="indefinite"
-                                  begin={`${pathIndex * 0.3 + particleIndex * 0.8}s`}
-                                />
-                              </circle>
-                              {/* Document icon inside particle */}
-                              <g opacity="0">
-                                <rect
-                                  width="4"
-                                  height="5"
-                                  rx="0.5"
-                                  fill="white"
-                                  opacity="0.8"
-                                />
-                                <animateMotion
-                                  dur="2.5s"
-                                  repeatCount="indefinite"
-                                  begin={`${pathIndex * 0.3 + particleIndex * 0.8}s`}
-                                  path={`M ${75 + pathIndex * 75 - 2} ${135 - 2.5} L ${75 + pathIndex * 75 - 2} ${80 - 2.5}`}
-                                />
-                                <animate
-                                  attributeName="opacity"
-                                  values="0;0.8;0.8;0"
-                                  keyTimes="0;0.1;0.85;1"
-                                  dur="2.5s"
-                                  repeatCount="indefinite"
-                                  begin={`${pathIndex * 0.3 + particleIndex * 0.8}s`}
-                                />
-                              </g>
-                            </g>
-                          ))}
-                        </g>
-                      ))}
-
-                      {/* Convergence arrows */}
-                      {[0, 1, 2].map((i) => (
-                        <g key={i} opacity="0.6">
-                          <path
-                            d={`M ${75 + i * 75} 80 Q ${75 + i * 75} 60 150 60 L 150 60`}
-                            fill="none"
-                            stroke="hsl(210 60% 75%)"
-                            strokeWidth="1.5"
-                            strokeDasharray="3 3"
-                          />
-                          <polygon
-                            points="148,55 155,60 148,65"
-                            fill="hsl(210 60% 75%)"
-                          />
-                        </g>
-                      ))}
-
-                      {/* Centralized Learning Step Labels */}
-                      {/* Step 1: Collect Data - at data source nodes */}
-                      <g transform="translate(75, 175)">
-                        <rect x="-30" y="-8" width="60" height="16" rx="4" fill="hsl(210 50% 92%)" stroke="hsl(210 55% 75%)" strokeWidth="1" />
-                        <text x="0" y="4" textAnchor="middle" fontSize="8" fontWeight="600" fill="hsl(210 55% 30%)">1. Collect Data</text>
-                      </g>
-
-                      {/* Step 2: Upload to Server - on the upward path */}
-                      <g transform="translate(25, 105)">
-                        <rect x="-28" y="-8" width="56" height="16" rx="4" fill="hsl(210 50% 90%)" stroke="hsl(210 55% 70%)" strokeWidth="1" />
-                        <text x="0" y="4" textAnchor="middle" fontSize="8" fontWeight="600" fill="hsl(210 55% 28%)">2. Upload</text>
-                      </g>
-
-                      {/* Step 3: Train Model - at the central server */}
-                      <g transform="translate(150, 12)">
-                        <rect x="-28" y="-7" width="56" height="14" rx="4" fill="hsl(210 55% 88%)" stroke="hsl(210 60% 65%)" strokeWidth="1" />
-                        <text x="0" y="3" textAnchor="middle" fontSize="8" fontWeight="600" fill="hsl(210 60% 28%)">3. Train Model</text>
-                      </g>
-
-                      {/* Step 4: Deploy - on the right side */}
-                      <g transform="translate(275, 105)">
-                        <rect x="-25" y="-8" width="50" height="16" rx="4" fill="hsl(210 50% 90%)" stroke="hsl(210 55% 70%)" strokeWidth="1" />
-                        <text x="0" y="4" textAnchor="middle" fontSize="8" fontWeight="600" fill="hsl(210 55% 28%)">4. Deploy</text>
-                      </g>
-
-                      {/* Privacy warning indicator */}
-                      <g transform="translate(150, 175)">
-                        <rect x="-32" y="-8" width="64" height="16" rx="4" fill="hsl(35 70% 92%)" stroke="hsl(35 65% 70%)" strokeWidth="1" />
-                        <text x="0" y="4" textAnchor="middle" fontSize="7" fontWeight="500" fill="hsl(35 70% 35%)">⚠ Data Leaves</text>
-                      </g>
-                    </svg>
+                  {/* Centralized Learning Illustration */}
+                  <div className="centralized-diagram relative h-64 mb-8 rounded-2xl bg-gradient-to-br from-[hsl(172_30%_97%)] to-[hsl(168_40%_93%)] overflow-hidden">
+                    {/* Real centralized learning image */}
+                    <img
+                      src="/images/centralizied.png"
+                      alt="Centralized learning diagram showing hospitals sending data to central server with warning indicators"
+                      className="absolute inset-0 w-full h-full object-contain p-2"
+                    />
+                    {/* Subtle overlay for blending */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[hsl(168_40%_93%)]/60 via-transparent to-transparent" />
                   </div>
 
                   {/* Benefits */}
@@ -656,7 +511,7 @@ const Landing = () => {
                   </div>
 
                   {/* Considerations */}
-                  <div className="mt-6 pt-6 border-t border-[hsl(210_15%_92%)] space-y-4">
+                  <div className="mt-6 pt-6 border-t border-[hsl(172_20%_92%)] space-y-4">
                     <h4 className="text-sm font-semibold text-[hsl(35_70%_45%)] uppercase tracking-wide flex items-center gap-2">
                       <Lock className="w-4 h-4" />
                       Considerations
@@ -700,9 +555,19 @@ const Landing = () => {
                     </div>
                   </div>
 
-                  {/* Animated Flow Diagram - Federated */}
-                  <div className="federated-diagram relative h-56 mb-8 rounded-2xl bg-gradient-to-br from-[hsl(172_30%_97%)] to-[hsl(168_40%_93%)] overflow-hidden">
-                    <svg viewBox="0 0 300 200" className="w-full h-full" aria-label="Federated learning diagram showing model updates flowing between global server and local hospitals while data stays secure">
+                  {/* Federated Learning Illustration */}
+                  <div className="federated-diagram relative h-64 mb-8 rounded-2xl bg-gradient-to-br from-[hsl(172_30%_97%)] to-[hsl(168_40%_93%)] overflow-hidden">
+                    {/* Real distributed learning image */}
+                    <img
+                      src="/images/distributed_learning.png"
+                      alt="Federated learning diagram showing hospitals with privacy shields connected to central aggregation server"
+                      className="absolute inset-0 w-full h-full object-contain p-2"
+                    />
+                    {/* Subtle overlay for blending */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[hsl(168_40%_93%)]/60 via-transparent to-transparent" />
+
+                    {/* Hidden SVG - kept for animation particles only */}
+                    <svg viewBox="0 0 300 200" className="absolute inset-0 w-full h-full opacity-0 pointer-events-none" aria-hidden="true">
                       <defs>
                         {/* Gradient for upward gradient packets */}
                         <linearGradient id="gradientUp" x1="0%" y1="100%" x2="0%" y2="0%">
@@ -1022,100 +887,147 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* How It Works - Apple Style Steps */}
-        <section className="how-it-works-section py-32 px-6 bg-white">
-          <div className="max-w-6xl mx-auto">
-            <div className="how-it-works-title text-center mb-20">
+        {/* How It Works - Horizontal Scroll Section */}
+        <section className="how-it-works-section py-32 bg-white relative overflow-hidden">
+          {/* Centered lungs diagnostic visual as background */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div
+              className="w-[600px] h-[600px] opacity-[0.08]"
+              style={{
+                maskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 40%, transparent 70%)',
+                WebkitMaskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 40%, transparent 70%)'
+              }}
+            >
+              <div className="w-full h-full overflow-hidden">
+                <img
+                  src="/images/lungs2.png"
+                  alt=""
+                  className="w-[120%] h-[120%] object-cover object-left-top"
+                  style={{ filter: 'saturate(0.5) contrast(1.1)' }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-10">
+            <div className="how-it-works-title text-center mb-16 px-6">
               <h2 className="text-4xl md:text-5xl font-semibold text-[hsl(172_43%_15%)] mb-6">
                 How It Works
               </h2>
               <p className="text-xl text-[hsl(215_15%_45%)] max-w-2xl mx-auto">
-                Four simple steps to train your AI model.
+                From data upload to model comparison — a streamlined ML pipeline.
               </p>
             </div>
 
-            <div className="steps-grid grid grid-cols-1 md:grid-cols-4 gap-6">
-              {[
-                {
-                  step: '01',
-                  title: 'Upload Dataset',
-                  description: 'Upload your chest X-ray images in standard format.',
-                  icon: (
-                    <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-                      <rect x="4" y="8" width="24" height="20" rx="3" stroke="currentColor" strokeWidth="2" />
-                      <path d="M4 14h24" stroke="currentColor" strokeWidth="2" />
-                      <circle cx="9" cy="11" r="1.5" fill="currentColor" />
-                      <circle cx="14" cy="11" r="1.5" fill="currentColor" />
-                      <path d="M12 22l4-4 3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )
-                },
-                {
-                  step: '02',
-                  title: 'Configure',
-                  description: 'Choose training mode and fine-tune parameters.',
-                  icon: (
-                    <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-                      <circle cx="16" cy="16" r="12" stroke="currentColor" strokeWidth="2" />
-                      <path d="M16 8v4m0 8v4m-8-8h4m8 0h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                      <circle cx="16" cy="16" r="3" fill="currentColor" />
-                    </svg>
-                  )
-                },
-                {
-                  step: '03',
-                  title: 'Train',
-                  description: 'Watch your model learn with real-time metrics.',
-                  icon: (
-                    <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-                      <path d="M4 24l7-7 5 5 12-12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      <circle cx="26" cy="10" r="3" fill="currentColor" />
-                    </svg>
-                  )
-                },
-                {
-                  step: '04',
-                  title: 'Compare & Analyze',
-                  description: 'Compare performance across training modes.',
-                  icon: (
-                    <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-                      <rect x="4" y="18" width="6" height="10" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
-                      <rect x="13" y="12" width="6" height="16" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
-                      <rect x="22" y="8" width="6" height="20" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
-                      <path d="M7 18L16 12L25 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )
-                }
-              ].map((item, index) => (
-                <div
-                  key={index}
-                  className="step-card relative group"
-                >
-                  <div className="p-8 rounded-3xl bg-[hsl(168_25%_98%)] border border-[hsl(168_20%_92%)] hover:bg-white hover:shadow-xl hover:shadow-[hsl(172_40%_85%)]/30 transition-all duration-500 hover:-translate-y-1 text-center">
-                    {/* Step number */}
-                    <div className="text-xs font-bold text-[hsl(172_63%_35%)] tracking-widest mb-4">
-                      STEP {item.step}
+            {/* Simple 4-card grid */}
+            <div className="max-w-6xl mx-auto px-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                  {
+                    step: '01',
+                    title: 'Upload Dataset',
+                    description: 'Upload chest X-ray images with NORMAL/PNEUMONIA folder structure.',
+                    icon: (
+                      <svg className="w-8 h-8" viewBox="0 0 40 40" fill="none">
+                        <rect x="5" y="10" width="30" height="25" rx="4" stroke="currentColor" strokeWidth="2" />
+                        <path d="M5 17h30" stroke="currentColor" strokeWidth="2" />
+                        <circle cx="11" cy="13.5" r="1.5" fill="currentColor" />
+                        <circle cx="17" cy="13.5" r="1.5" fill="currentColor" />
+                        <path d="M15 27l5-5 4 4 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    ),
+                    color: 'hsl(172 63% 35%)'
+                  },
+                  {
+                    step: '02',
+                    title: 'Configure Training',
+                    description: 'Set hyperparameters and choose Centralized or Federated mode.',
+                    icon: (
+                      <svg className="w-8 h-8" viewBox="0 0 40 40" fill="none">
+                        <circle cx="20" cy="20" r="14" stroke="currentColor" strokeWidth="2" />
+                        <path d="M20 10v5m0 10v5m-10-10h5m10 0h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        <circle cx="20" cy="20" r="4" fill="currentColor" />
+                      </svg>
+                    ),
+                    color: 'hsl(200 70% 45%)'
+                  },
+                  {
+                    step: '03',
+                    title: 'Train Model',
+                    description: 'PyTorch Lightning training with real-time metrics via WebSocket.',
+                    icon: (
+                      <svg className="w-8 h-8" viewBox="0 0 40 40" fill="none">
+                        <path d="M5 30l8-8 6 6 16-16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <circle cx="33" cy="14" r="4" fill="currentColor" />
+                        <path d="M5 35h30" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" />
+                      </svg>
+                    ),
+                    color: 'hsl(152 60% 40%)'
+                  },
+                  {
+                    step: '04',
+                    title: 'Compare Results',
+                    description: 'Analyze Centralized vs Federated performance with detailed metrics.',
+                    icon: (
+                      <svg className="w-8 h-8" viewBox="0 0 40 40" fill="none">
+                        <rect x="5" y="8" width="13" height="24" rx="2" stroke="currentColor" strokeWidth="2" />
+                        <rect x="22" y="8" width="13" height="24" rx="2" stroke="currentColor" strokeWidth="2" />
+                        <path d="M9 14h5M9 19h5M9 24h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        <path d="M26 14h5M26 19h5M26 24h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        <path d="M18 16l2 2 2-2M18 24l2-2 2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    ),
+                    color: 'hsl(260 60% 55%)'
+                  }
+                ].map((item, index) => (
+                  <div
+                    key={index}
+                    className="step-card relative group"
+                  >
+                    <div className="h-full p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] shadow-lg hover:shadow-xl hover:shadow-[hsl(172_40%_85%)]/30 transition-all duration-300 hover:-translate-y-1">
+                      {/* Step indicator */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <div
+                          className="text-xs font-bold tracking-widest px-2.5 py-0.5 rounded-full"
+                          style={{
+                            backgroundColor: `${item.color}15`,
+                            color: item.color
+                          }}
+                        >
+                          STEP {item.step}
+                        </div>
+                      </div>
+
+                      {/* Icon */}
+                      <div
+                        className="step-icon mb-4 w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-105"
+                        style={{
+                          backgroundColor: `${item.color}12`,
+                          color: item.color
+                        }}
+                      >
+                        {item.icon}
+                      </div>
+
+                      <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] mb-2">
+                        {item.title}
+                      </h3>
+                      <p className="text-[hsl(215_15%_45%)] text-sm leading-relaxed">
+                        {item.description}
+                      </p>
                     </div>
 
-                    {/* Icon */}
-                    <div className="step-icon mb-6 mx-auto w-16 h-16 rounded-2xl bg-[hsl(172_40%_94%)] flex items-center justify-center text-[hsl(172_63%_28%)] group-hover:bg-[hsl(172_63%_22%)] group-hover:text-white transition-all duration-300">
-                      {item.icon}
-                    </div>
-
-                    <h3 className="text-xl font-semibold text-[hsl(172_43%_15%)] mb-3">
-                      {item.title}
-                    </h3>
-                    <p className="text-[hsl(215_15%_45%)] text-sm leading-relaxed">
-                      {item.description}
-                    </p>
+                    {/* Connector arrow (hidden on last card and on mobile) */}
+                    {index < 3 && (
+                      <div className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
+                        <svg className="w-5 h-5 text-[hsl(172_40%_75%)]" viewBox="0 0 24 24" fill="none">
+                          <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
-
-                  {/* Connector line */}
-                  {index < 3 && (
-                    <div className="step-connector hidden md:block absolute top-1/2 -right-3 w-6 h-px bg-gradient-to-r from-[hsl(172_40%_80%)] to-[hsl(172_40%_90%)]" />
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -1128,8 +1040,31 @@ const Landing = () => {
             <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[hsl(172_70%_18%)] rounded-full blur-[120px] opacity-40" />
           </div>
 
+          {/* Health Orb Background Image - centered and covering section */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {/* Full-section centered orb */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div
+                className="w-full h-full max-w-[1200px] max-h-[800px]"
+                style={{
+                  maskImage: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 50%, transparent 80%)',
+                  WebkitMaskImage: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 50%, transparent 80%)'
+                }}
+              >
+                {/* Crop bottom-right Gemini logo by oversizing and repositioning */}
+                <div className="w-full h-full overflow-hidden">
+                  <img
+                    src="/images/health_orb.png"
+                    alt=""
+                    className="w-[115%] h-[120%] object-cover object-left-top opacity-40 mix-blend-soft-light"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="relative z-10 max-w-3xl mx-auto text-center">
-            {/* Medical cross icon */}
+            {/* Medical cross icon - now enhanced with orb imagery visible behind */}
             <div className="cta-icon mb-8 mx-auto w-20 h-20 rounded-3xl bg-white/10 backdrop-blur flex items-center justify-center">
               <svg className="w-10 h-10 text-white" viewBox="0 0 40 40" fill="none">
                 <path d="M20 8v24M8 20h24" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
