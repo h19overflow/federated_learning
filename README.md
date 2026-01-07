@@ -140,15 +140,15 @@ graph TB
 
 This system follows **Clean Architecture** with **Entity-Control-Boundary (ECB)** pattern:
 
-| Layer | Purpose | Directory |
-|-------|---------|-----------|
-| **Frontend** | React dashboard for experiment monitoring | `xray-vision-ai-forge/` |
-| **API Layer** | FastAPI REST endpoints & WebSocket server for client communication | `src/api/` |
-| **Control Layer** | Training orchestration (centralized/federated), data partitioning, experiment comparison | `src/control/` |
-| **Entities Layer** | Core domain objects: models, datasets, configuration | `src/entities/` |
-| **Boundary Layer** | Data access objects (DAOs) for database persistence | `src/boundary/` |
-| **Utils Layer** | Shared utilities: config loading, metrics broadcasting, logging | `src/utils/` |
-| **Data Layer** | PostgreSQL for metrics/runs, file system for datasets/checkpoints | External |
+| Layer              | Purpose                                                                                  | Directory               |
+| ------------------ | ---------------------------------------------------------------------------------------- | ----------------------- |
+| **Frontend**       | React dashboard for experiment monitoring                                                | `xray-vision-ai-forge/` |
+| **API Layer**      | FastAPI REST endpoints & WebSocket server for client communication                       | `src/api/`              |
+| **Control Layer**  | Training orchestration (centralized/federated), data partitioning, experiment comparison | `src/control/`          |
+| **Entities Layer** | Core domain objects: models, datasets, configuration                                     | `src/entities/`         |
+| **Boundary Layer** | Data access objects (DAOs) for database persistence                                      | `src/boundary/`         |
+| **Utils Layer**    | Shared utilities: config loading, metrics broadcasting, logging                          | `src/utils/`            |
+| **Data Layer**     | PostgreSQL for metrics/runs, file system for datasets/checkpoints                        | External                |
 
 ### Separation of Concerns
 
@@ -162,14 +162,14 @@ This system follows **Clean Architecture** with **Entity-Control-Boundary (ECB)*
 
 Each module has detailed documentation explaining its purpose, components, and usage:
 
-| Module | Purpose | Link |
-|--------|---------|------|
-| **API Layer** | REST endpoints, WebSocket integration, request validation | [src/api/README.md](federated_pneumonia_detection/src/api/README.md) |
-| **Control Layer** | Training orchestration, federated learning, experiment management | [src/control/README.md](federated_pneumonia_detection/src/control/README.md) |
-| **Entities Layer** | Model architecture, dataset definitions, configuration objects | [src/entities/README.md](federated_pneumonia_detection/src/entities/README.md) |
-| **Boundary Layer** | Database schema, ORM mappings, data access objects | [src/boundary/README.md](federated_pneumonia_detection/src/boundary/README.md) |
-| **Utils Layer** | Configuration loading, metrics broadcasting, error handling | [src/utils/README.md](federated_pneumonia_detection/src/utils/README.md) |
-| **Federated Learning** | Flower framework, server/client apps, data partitioning | [src/control/federated_new_version/README.md](federated_pneumonia_detection/src/control/federated_new_version/README.md) |
+| Module                 | Purpose                                                           | Link                                                                                                                     |
+| ---------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **API Layer**          | REST endpoints, WebSocket integration, request validation         | [src/api/README.md](federated_pneumonia_detection/src/api/README.md)                                                     |
+| **Control Layer**      | Training orchestration, federated learning, experiment management | [src/control/README.md](federated_pneumonia_detection/src/control/README.md)                                             |
+| **Entities Layer**     | Model architecture, dataset definitions, configuration objects    | [src/entities/README.md](federated_pneumonia_detection/src/entities/README.md)                                           |
+| **Boundary Layer**     | Database schema, ORM mappings, data access objects                | [src/boundary/README.md](federated_pneumonia_detection/src/boundary/README.md)                                           |
+| **Utils Layer**        | Configuration loading, metrics broadcasting, error handling       | [src/utils/README.md](federated_pneumonia_detection/src/utils/README.md)                                                 |
+| **Federated Learning** | Flower framework, server/client apps, data partitioning           | [src/control/federated_new_version/README.md](federated_pneumonia_detection/src/control/federated_new_version/README.md) |
 
 ## LLM Observability & Evaluation
 
@@ -188,20 +188,20 @@ All LLM interactions are traced and logged to LangSmith, providing:
 
 The system automatically evaluates LLM responses using a **25% sampling rate** with the following metrics:
 
-| Metric | Description | Threshold |
-|--------|-------------|-----------|
-| **Hallucination Detection** | Identifies fabricated information not grounded in source documents | Score 0-1 (lower is better) |
-| **Answer Relevance** | Measures how well the response addresses the user's query | Score 0-1 (higher is better) |
-| **Composite Score** | Weighted combination of hallucination and relevance metrics | Score 0-1 (higher is better) |
+| Metric                      | Description                                                        | Threshold                    |
+| --------------------------- | ------------------------------------------------------------------ | ---------------------------- |
+| **Hallucination Detection** | Identifies fabricated information not grounded in source documents | Score 0-1 (lower is better)  |
+| **Answer Relevance**        | Measures how well the response addresses the user's query          | Score 0-1 (higher is better) |
+| **Composite Score**         | Weighted combination of hallucination and relevance metrics        | Score 0-1 (higher is better) |
 
 <p align="center">
-  <img src="docs/images/langsmith-tracing.png" alt="LangSmith Tracing Dashboard" width="800"/>
+  <img src="docs/images/image-1.png" alt="LangSmith Tracing Dashboard" width="800"/>
   <br/>
   <em>LangSmith tracing dashboard showing conversation flows and metrics</em>
 </p>
 
 <p align="center">
-  <img src="docs/images/langsmith-evaluation.png" alt="LangSmith Evaluation Results" width="800"/>
+  <img src="docs/images/image.png" alt="LangSmith Evaluation Results" width="800"/>
   <br/>
   <em>Automated evaluation results with hallucination and relevance scoring</em>
 </p>
@@ -250,53 +250,53 @@ print(f'Config loaded. Batch size: {config.batch_size}')
 
 ### Core Deep Learning
 
-| Technology | Purpose | Version |
-|-----------|---------|---------|
-| **PyTorch** | Deep learning framework | Latest |
-| **PyTorch Lightning** | Training abstraction & logging | Latest |
-| **PyTorch Lightning Advanced** | Callbacks, strategies, plugins | Latest |
+| Technology                     | Purpose                        | Version |
+| ------------------------------ | ------------------------------ | ------- |
+| **PyTorch**                    | Deep learning framework        | Latest  |
+| **PyTorch Lightning**          | Training abstraction & logging | Latest  |
+| **PyTorch Lightning Advanced** | Callbacks, strategies, plugins | Latest  |
 
 ### Federated Learning
 
-| Technology | Purpose | Version |
-|-----------|---------|---------|
-| **Flower** | Federated learning framework | Latest |
-| **NumPy** | Numerical computations | Latest |
-| **Scikit-learn** | Data partitioning utilities | Latest |
+| Technology       | Purpose                      | Version |
+| ---------------- | ---------------------------- | ------- |
+| **Flower**       | Federated learning framework | Latest  |
+| **NumPy**        | Numerical computations       | Latest  |
+| **Scikit-learn** | Data partitioning utilities  | Latest  |
 
 ### API & Infrastructure
 
-| Technology | Purpose | Version |
-|-----------|---------|---------|
-| **FastAPI** | REST API framework | Latest |
-| **Uvicorn** | ASGI server | Latest |
-| **WebSockets** | Real-time metric streaming | WebSocket Protocol |
-| **Pydantic** | Request/response validation | Latest |
+| Technology     | Purpose                     | Version            |
+| -------------- | --------------------------- | ------------------ |
+| **FastAPI**    | REST API framework          | Latest             |
+| **Uvicorn**    | ASGI server                 | Latest             |
+| **WebSockets** | Real-time metric streaming  | WebSocket Protocol |
+| **Pydantic**   | Request/response validation | Latest             |
 
 ### Data & Storage
 
-| Technology | Purpose | Version |
-|-----------|---------|---------|
-| **SQLAlchemy 2.0** | ORM for database access | 2.0+ |
-| **PostgreSQL** | Metrics & experiment runs storage | 12+ |
-| **Pandas** | Data manipulation & analysis | Latest |
-| **Pillow** | Image processing | Latest |
+| Technology         | Purpose                           | Version |
+| ------------------ | --------------------------------- | ------- |
+| **SQLAlchemy 2.0** | ORM for database access           | 2.0+    |
+| **PostgreSQL**     | Metrics & experiment runs storage | 12+     |
+| **Pandas**         | Data manipulation & analysis      | Latest  |
+| **Pillow**         | Image processing                  | Latest  |
 
 ### Monitoring & Logging
 
-| Technology | Purpose | Version |
-|-----------|---------|---------|
-| **Weights & Biases** | Experiment tracking (optional) | Latest |
-| **TensorBoard** | Metric visualization | Latest |
-| **Python Logging** | Structured logging | Built-in |
+| Technology           | Purpose                        | Version  |
+| -------------------- | ------------------------------ | -------- |
+| **Weights & Biases** | Experiment tracking (optional) | Latest   |
+| **TensorBoard**      | Metric visualization           | Latest   |
+| **Python Logging**   | Structured logging             | Built-in |
 
 ### Frontend
 
-| Technology | Purpose | Version |
-|-----------|---------|---------|
-| **React** | UI framework | 18+ |
-| **TypeScript** | Type-safe JavaScript | Latest |
-| **Chart.js** | Real-time metric charts | Latest |
+| Technology     | Purpose                 | Version |
+| -------------- | ----------------------- | ------- |
+| **React**      | UI framework            | 18+     |
+| **TypeScript** | Type-safe JavaScript    | Latest  |
+| **Chart.js**   | Real-time metric charts | Latest  |
 
 ## File Structure
 
@@ -441,6 +441,7 @@ npm start
 All parameters are centralized in **one YAML file**: `federated_pneumonia_detection/config/default_config.yaml`
 
 This single source of truth controls:
+
 - Image preprocessing (size, normalization, augmentation)
 - Model architecture (learning rate, dropout, freeze layers)
 - Training (epochs, batch size, early stopping)
@@ -616,6 +617,7 @@ trainer = FederatedTrainer(partition_strategy="stratified")
 This system uses **Flower**, a production-ready federated learning framework:
 
 **Server-Side**:
+
 - Manages global model weights
 - Orchestrates client selection
 - Aggregates client updates using FedAvg
@@ -623,6 +625,7 @@ This system uses **Flower**, a production-ready federated learning framework:
 - Broadcasts metrics to frontend
 
 **Client-Side** (Simulated):
+
 - Receives global weights
 - Trains locally on its data partition
 - Computes local metrics
@@ -641,6 +644,7 @@ Backend Training → MetricsWebSocketSender → WebSocket Server → React Dashb
 ```
 
 **Streamed Metrics**:
+
 - Per-epoch: loss, accuracy, precision, recall, F1, AUC-ROC
 - Per-round (FL): client updates, aggregation stats
 - Training events: start, end, early stopping, errors
@@ -685,6 +689,7 @@ trainer = LitResNet(..., logger=logger)
 ### Common Patterns
 
 **Dependency Injection**:
+
 ```python
 class CentralizedTrainer:
     def __init__(self, config: ExperimentConfig, data_module: XRayDataModule):
@@ -693,6 +698,7 @@ class CentralizedTrainer:
 ```
 
 **Result Objects**:
+
 ```python
 @dataclass
 class TrainingResult:
@@ -702,6 +708,7 @@ class TrainingResult:
 ```
 
 **Error Handling**:
+
 ```python
 try:
     result = train_model(config)
@@ -714,14 +721,14 @@ except FileNotFoundError as e:
 
 The system tracks comprehensive metrics for medical AI:
 
-| Metric | Purpose | Formula |
-|--------|---------|---------|
-| **Accuracy** | Correct predictions / Total predictions | (TP + TN) / (TP + TN + FP + FN) |
-| **Precision** | True positives / Predicted positives | TP / (TP + FP) |
-| **Recall (Sensitivity)** | True positives / Actual positives | TP / (TP + FN) |
-| **F1 Score** | Harmonic mean of precision & recall | 2 * (P * R) / (P + R) |
-| **Specificity** | True negatives / Actual negatives | TN / (TN + FP) |
-| **AUC-ROC** | Area under receiver operating curve | 0.0-1.0 (higher better) |
+| Metric                   | Purpose                                 | Formula                         |
+| ------------------------ | --------------------------------------- | ------------------------------- |
+| **Accuracy**             | Correct predictions / Total predictions | (TP + TN) / (TP + TN + FP + FN) |
+| **Precision**            | True positives / Predicted positives    | TP / (TP + FP)                  |
+| **Recall (Sensitivity)** | True positives / Actual positives       | TP / (TP + FN)                  |
+| **F1 Score**             | Harmonic mean of precision & recall     | 2 _ (P _ R) / (P + R)           |
+| **Specificity**          | True negatives / Actual negatives       | TN / (TN + FP)                  |
+| **AUC-ROC**              | Area under receiver operating curve     | 0.0-1.0 (higher better)         |
 
 Where: TP=True Positives, TN=True Negatives, FP=False Positives, FN=False Negatives
 
@@ -772,6 +779,7 @@ For questions, issues, or collaboration opportunities:
 ---
 
 **Note**: This is a research project for educational purposes. When deploying medical AI systems in clinical settings, always:
+
 - Consult with medical professionals
 - Follow regulatory guidelines (FDA, HIPAA, etc.)
 - Validate models on clinically representative data
