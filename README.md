@@ -171,6 +171,41 @@ Each module has detailed documentation explaining its purpose, components, and u
 | **Utils Layer** | Configuration loading, metrics broadcasting, error handling | [src/utils/README.md](federated_pneumonia_detection/src/utils/README.md) |
 | **Federated Learning** | Flower framework, server/client apps, data partitioning | [src/control/federated_new_version/README.md](federated_pneumonia_detection/src/control/federated_new_version/README.md) |
 
+## LLM Observability & Evaluation
+
+The system includes comprehensive LLM observability through **LangSmith** for the research assistant agent:
+
+### Tracing & Monitoring
+
+All LLM interactions are traced and logged to LangSmith, providing:
+
+- **Full conversation traces** with input/output capture
+- **Token usage tracking** for cost monitoring
+- **Latency metrics** for performance optimization
+- **Error tracking** with full stack traces
+
+### Automated Evaluation (25% Sampling)
+
+The system automatically evaluates LLM responses using a **25% sampling rate** with the following metrics:
+
+| Metric | Description | Threshold |
+|--------|-------------|-----------|
+| **Hallucination Detection** | Identifies fabricated information not grounded in source documents | Score 0-1 (lower is better) |
+| **Answer Relevance** | Measures how well the response addresses the user's query | Score 0-1 (higher is better) |
+| **Composite Score** | Weighted combination of hallucination and relevance metrics | Score 0-1 (higher is better) |
+
+<p align="center">
+  <img src="docs/images/langsmith-tracing.png" alt="LangSmith Tracing Dashboard" width="800"/>
+  <br/>
+  <em>LangSmith tracing dashboard showing conversation flows and metrics</em>
+</p>
+
+<p align="center">
+  <img src="docs/images/langsmith-evaluation.png" alt="LangSmith Evaluation Results" width="800"/>
+  <br/>
+  <em>Automated evaluation results with hallucination and relevance scoring</em>
+</p>
+
 ## Quick Start
 
 ### Prerequisites

@@ -11,8 +11,10 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str
     BASE_LLM: str
     POSTGRES_DB_URI: str
-    OPIK_API_KEY: str
-    OPIK_WORKSPACE:str
+    LANGSMITH_TRACING: bool
+    LANGSMITH_ENDPOINT: str
+    LANGSMITH_API_KEY: str
+    LANGSMITH_PROJECT: str
 
     def get_postgres_db_uri(self) -> str:
         return self.POSTGRES_DB_URI

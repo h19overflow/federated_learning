@@ -4,7 +4,6 @@ Arxiv Agent Prompts - XML-style prompts for arxiv-augmented research assistant.
 Defines system and user prompts with tool selection guidelines.
 """
 
-import opik
 
 ARXIV_AGENT_SYSTEM_PROMPT = """<system>
 <role>
@@ -78,12 +77,6 @@ Format your responses using Markdown for readability:
 </context_awareness>
 </system>"""
 
-# Versioned ChatPrompt - auto-versions when content changes
-ARXIV_SYSTEM_CHAT_PROMPT = opik.ChatPrompt(
-    name="arxiv-agent-system-prompt",
-    messages=[{"role": "system", "content": ARXIV_AGENT_SYSTEM_PROMPT}],
-    metadata={"agent": "arxiv-augmented-engine", "domain": "federated-learning"},
-)
 
 ARXIV_AGENT_USER_TEMPLATE = """<user_query>
 <conversation_history>

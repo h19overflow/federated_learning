@@ -14,15 +14,11 @@ from __future__ import annotations
 import logging
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-import opik
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-from opik.integrations.langchain import OpikTracer
-from opik.opik_context import update_current_trace
 
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent_prompts import (
     ARXIV_AGENT_SYSTEM_PROMPT,
-    ARXIV_SYSTEM_CHAT_PROMPT,
 )
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
     MCPManager,
@@ -40,8 +36,9 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 from .content import chunk_content, normalize_content
 from .history import ChatHistoryManager
 from .streaming import SSEEventType, create_sse_event, execute_tool_async
+from dotenv import load_dotenv
 
-
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 
@@ -74,12 +71,6 @@ class ArxivAugmentedEngine:
         except Exception as e:
             logger.error(f"[ArxivEngine] Failed to initialize LLM: {e}", exc_info=True)
             raise
-
-        # Initialize Opik tracer for LangChain integration
-        self._opik_tracer = OpikTracer(
-            project_name="arxiv-augmented-engine",
-            tags=["federated-learning", "research-assistant"],
-        )
 
         # Initialize RAG tool (optional - may fail if DB unavailable)
         self._query_engine = None
@@ -176,8 +167,6 @@ class ArxivAugmentedEngine:
     # =========================================================================
     # Streaming query
     # =========================================================================
-
-    @opik.track(name="arxiv_query_stream")
     async def query_stream(
         self,
         query: str,
@@ -202,11 +191,7 @@ class ArxivAugmentedEngine:
             f"query: '{query[:50]}...', arxiv={arxiv_enabled}"
         )
 
-        # Link versioned prompt to trace
-        update_current_trace(
-            prompts=[ARXIV_SYSTEM_CHAT_PROMPT],
-            metadata={"session_id": session_id, "arxiv_enabled": arxiv_enabled},
-        )
+   
 
         tools = self._get_tools(arxiv_enabled)
         logger.info(f"[ArxivEngine] Retrieved {len(tools)} tools: {[t.name for t in tools]}")
@@ -229,7 +214,9 @@ class ArxivAugmentedEngine:
 
             # First call - check if model wants to use tools
             logger.info("[ArxivEngine] Invoking model to check for tool calls...")
-            response = await model_with_tools.ainvoke(messages)
+            response = await model_with_tools.ainvoke(
+                messages
+            )
 
             # Tool execution loop
             if response.tool_calls:
@@ -264,7 +251,9 @@ class ArxivAugmentedEngine:
 
                     # Check for more tool calls
                     logger.info("[ArxivEngine] Checking for more tool calls...")
-                    response = await model_with_tools.ainvoke(messages)
+                    response = await model_with_tools.ainvoke(
+                        messages
+                    )
                     
                     if not response.tool_calls:
                         logger.info("[ArxivEngine] No more tool calls. Generating final response.")
@@ -285,7 +274,9 @@ class ArxivAugmentedEngine:
                 else:
                     # Try streaming if no content
                     logger.info("[ArxivEngine] No content, attempting stream...")
-                    async for chunk in self.llm.astream(messages):
+                    async for chunk in self.llm.astream(
+                        messages
+                    ):
                         if hasattr(chunk, "content"):
                             content = normalize_content(chunk.content)
                             if content:
@@ -298,7 +289,9 @@ class ArxivAugmentedEngine:
             else:
                 # No tools needed - direct streaming
                 logger.info("[ArxivEngine] No tool calls. Streaming direct response...")
-                async for chunk in model_with_tools.astream(messages):
+                async for chunk in model_with_tools.astream(
+                    messages
+                ):
                     if hasattr(chunk, "content") and chunk.content:
                         content = normalize_content(chunk.content)
                         if content:
@@ -309,6 +302,7 @@ class ArxivAugmentedEngine:
             # Save to history
             history_query = original_query if original_query is not None else query
             self.add_to_history(session_id, history_query, full_response)
+
             yield create_sse_event(SSEEventType.DONE, session_id=session_id)
 
         except Exception as e:
@@ -318,8 +312,6 @@ class ArxivAugmentedEngine:
     # =========================================================================
     # Non-streaming query
     # =========================================================================
-
-    @opik.track(name="arxiv_query")
     async def query(
         self,
         query: str,
