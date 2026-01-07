@@ -195,13 +195,13 @@ The system automatically evaluates LLM responses using a **25% sampling rate** w
 | **Composite Score**         | Weighted combination of hallucination and relevance metrics        | Score 0-1 (higher is better) |
 
 <p align="center">
-  <img src="docs/images/image-1.png" alt="LangSmith Tracing Dashboard" width="800"/>
+  <img src="docs/images/image-1.png" alt="LangSmith" width="800"/>
   <br/>
   <em>LangSmith tracing dashboard showing conversation flows and metrics</em>
 </p>
 
 <p align="center">
-  <img src="docs/images/image.png" alt="LangSmith Evaluation Results" width="800"/>
+  <img src="docs/images/image.png" alt="LangSmith" width="800"/>
   <br/>
   <em>Automated evaluation results with hallucination and relevance scoring</em>
 </p>
