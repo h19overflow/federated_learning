@@ -24,6 +24,7 @@ data/
 *.dcm
 *.zip
 !Training_Sample_5pct/**/*.png
+!docs/langsmith/**/*.png
 !Training_Sample_5pct/**/*.jpg
 !Training_Sample_5pct/**/*.jpeg
 
