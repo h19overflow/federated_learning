@@ -58,6 +58,8 @@ extracted_data/
 
 # Claude Flow generated files
 .claude/settings.local.json
+.claude/mind.mv2
+*.mv2
 .mcp.json
 claude-flow.config.json
 .swarm/
