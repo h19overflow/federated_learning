@@ -426,7 +426,7 @@ def create_trainer_from_config(
         max_epochs=epochs,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=1 if torch.cuda.is_available() else "auto",
-        precision="16-mixed" if torch.cuda.is_available() else 32,
+        precision=32,  # Force FP32 to avoid focal loss underflow (FP16 causes gradient underflow)
         log_every_n_steps=10,
         enable_checkpointing=True,
         enable_progress_bar=True,

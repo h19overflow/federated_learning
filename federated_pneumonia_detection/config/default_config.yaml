@@ -17,11 +17,11 @@ experiment:
   edge_enhancement: false
   edge_strength: 1.0
   epochs: 10
-  file-path: C:\Users\User\AppData\Local\Temp\tmp820847p0\extracted\Training_Sample_5pct\stage2_train_metadata.csv
+  file-path: C:\Users\User\AppData\Local\Temp\experiment_data_7u7dh_j0\stage2_train_metadata.csv
   fine_tune_layers_count: 5
   freeze_backbone: true
   gradient_sample_interval: 20
-  image-dir: C:\Users\User\AppData\Local\Temp\tmp820847p0\extracted\Training_Sample_5pct\Images
+  image-dir: C:\Users\User\AppData\Local\Temp\experiment_data_7u7dh_j0\Training\Images
   learning_rate: 0.001
   local_epochs: 1
   lower_percentile: 5.0
@@ -40,7 +40,7 @@ experiment:
   prefetch_factor: 2
   reduce_lr_factor: 0.5
   reduce_lr_patience: 3
-  seed: 50
+  seed: 46
   upper_percentile: 95.0
   use_custom_preprocessing: false
   use_imagenet_norm: true

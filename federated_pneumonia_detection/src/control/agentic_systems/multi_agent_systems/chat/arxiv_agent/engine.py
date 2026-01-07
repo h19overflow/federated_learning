@@ -14,11 +14,15 @@ from __future__ import annotations
 import logging
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
+import opik
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from opik.integrations.langchain import OpikTracer
+from opik.opik_context import update_current_trace
 
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent_prompts import (
     ARXIV_AGENT_SYSTEM_PROMPT,
+    ARXIV_SYSTEM_CHAT_PROMPT,
 )
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
     MCPManager,
@@ -63,13 +67,19 @@ class ArxivAugmentedEngine:
         try:
             logger.info("[ArxivEngine] Initializing ChatGoogleGenerativeAI...")
             self.llm = ChatGoogleGenerativeAI(
-                model="gemini-3-flash-preview",
+                model="gemini-3-pro-preview",
                 temperature=0.7,
             )
             logger.info("[ArxivEngine] LLM initialized successfully")
         except Exception as e:
             logger.error(f"[ArxivEngine] Failed to initialize LLM: {e}", exc_info=True)
             raise
+
+        # Initialize Opik tracer for LangChain integration
+        self._opik_tracer = OpikTracer(
+            project_name="arxiv-augmented-engine",
+            tags=["federated-learning", "research-assistant"],
+        )
 
         # Initialize RAG tool (optional - may fail if DB unavailable)
         self._query_engine = None
@@ -166,7 +176,8 @@ class ArxivAugmentedEngine:
     # =========================================================================
     # Streaming query
     # =========================================================================
-    
+
+    @opik.track(name="arxiv_query_stream")
     async def query_stream(
         self,
         query: str,
@@ -189,6 +200,12 @@ class ArxivAugmentedEngine:
         logger.info(
             f"[ArxivEngine] Starting stream for session {session_id}, "
             f"query: '{query[:50]}...', arxiv={arxiv_enabled}"
+        )
+
+        # Link versioned prompt to trace
+        update_current_trace(
+            prompts=[ARXIV_SYSTEM_CHAT_PROMPT],
+            metadata={"session_id": session_id, "arxiv_enabled": arxiv_enabled},
         )
 
         tools = self._get_tools(arxiv_enabled)
@@ -301,7 +318,8 @@ class ArxivAugmentedEngine:
     # =========================================================================
     # Non-streaming query
     # =========================================================================
-    
+
+    @opik.track(name="arxiv_query")
     async def query(
         self,
         query: str,

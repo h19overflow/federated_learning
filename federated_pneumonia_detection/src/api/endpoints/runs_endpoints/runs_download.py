@@ -18,12 +18,8 @@ from .shared.exporters import (
     TextReportExporter,
     DownloadService
 )
-
 router = APIRouter()
 logger = get_logger(__name__)
-
-
-
 
 @router.get("/{run_id}/download/csv")
 async def download_metrics_csv(run_id: int):

@@ -12,3 +12,6 @@ class Settings(BaseSettings):
     BASE_URL: str = Field(default=DEFAULT_BASE_URL)
     API_VERSION: str = Field(default=DEFAULT_API_VERSION)
     API_PREFIX: str = Field(default=DEFAULT_API_PREFIX)
+    OPIK_API_KEY: str = Field(default="")
+    OPIK_WORKSPACE:str = Field(default="")
+
