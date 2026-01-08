@@ -24,17 +24,14 @@ Architecture Notes
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Dict, Any, Optional, List
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import (
-    QueryEngine,
-)
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
-    MCPManager,
-)
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent import (
-    ArxivAugmentedEngine,
-)
 from ..schema import ChatMessage, ChatResponse, ChatHistoryResponse, ChatSessionSchema
-from .chat_utils import enhance_query_with_run_context
+from .chat_utils import (
+    sse_pack,
+    sse_error,
+    ensure_db_session,
+    prepare_enhanced_query,
+)
+from ...deps import get_query_engine, get_mcp_manager, get_arxiv_engine
 from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
     get_all_chat_sessions,
     create_chat_session,
@@ -44,91 +41,14 @@ from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
 
 import logging
 import uuid
-import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-# ==============================================================================
-# HELPER FUNCTIONS (Extracted to reduce nesting in endpoints)
-# ==============================================================================
-
-def sse_pack(data: dict) -> str:
-    """
-    Pack a dictionary into Server-Sent Events format.
-    
-    This standardizes the SSE output so we don't repeat the formatting everywhere.
-    """
-    return f"data: {json.dumps(data)}\n\n"
-
-
-def sse_error(message: str, error_type: str = "error") -> str:
-    """Create a formatted SSE error message."""
-    return sse_pack({"type": error_type, "message": message})
-
-
-def ensure_db_session(session_id: str, query: str) -> None:
-    """
-    Ensure a chat session exists in the database.
-    
-    This is a non-critical operation - if it fails, we log and continue.
-    The chat will still work, just without persistent session tracking.
-    """
-    try:
-        existing_session = get_chat_session(session_id)
-        if not existing_session:
-            logger.info(f"[Helper] Creating new DB session: {session_id}")
-            create_chat_session(title=query[:50] + "...", session_id=session_id)
-    except Exception as e:
-        # Non-fatal: we can still chat even if DB session tracking fails
-        logger.warning(f"[Helper] Failed to ensure DB session (non-fatal): {e}")
-
-
-def prepare_enhanced_query(query: str, run_id: Optional[int]) -> str:
-    """
-    Enhance a query with run context if a run_id is provided.
-    
-    If enhancement fails, returns the original query (graceful degradation).
-    """
-    if run_id is None:
-        return query
-    
-    try:
-        logger.info(f"[Helper] Enhancing query with run context for run_id: {run_id}")
-        enhanced = enhance_query_with_run_context(query, run_id)
-        logger.info("[Helper] Query enhanced successfully")
-        return enhanced
-    except Exception as e:
-        logger.error(f"[Helper] Failed to enhance query (using original): {e}")
-        return query  # Graceful degradation
 
 router = APIRouter(
     prefix="/chat",
     tags=["chat"],
 )
-
-# Initialize QueryEngine once (may fail if PostgreSQL unavailable)
-query_engine = None
-try:
-    query_engine = QueryEngine()
-    logger.info("QueryEngine initialized successfully")
-except Exception as e:
-    logger.warning(f"QueryEngine initialization failed (database unavailable): {e}")
-
-# Get MCP manager singleton
-mcp_manager = MCPManager.get_instance()
-
-# Lazy-initialized ArxivAugmentedEngine
-_arxiv_engine: Optional[ArxivAugmentedEngine] = None
-
-
-def get_arxiv_engine() -> ArxivAugmentedEngine:
-    """Get or create ArxivAugmentedEngine instance."""
-    global _arxiv_engine
-    if _arxiv_engine is None:
-        _arxiv_engine = ArxivAugmentedEngine()
-    return _arxiv_engine
 
 
 @router.get("/sessions", response_model=List[ChatSessionSchema])
@@ -164,11 +84,10 @@ async def delete_existing_chat_session(session_id: str):
     success = delete_chat_session(session_id)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     # Also clear history in the agent for this session if it's in memory/persistent store
-    arxiv_engine = get_arxiv_engine()
-    arxiv_engine.clear_history(session_id)
-    
+    get_arxiv_engine().clear_history(session_id)
+
     return {"message": f"Session {session_id} deleted"}
 
 
@@ -181,6 +100,7 @@ async def get_arxiv_status() -> Dict[str, Any]:
     Returns:
         Dict with availability status and available tool names
     """
+    mcp_manager = get_mcp_manager()
     return {
         "available": mcp_manager.is_available,
         "tools": (
@@ -206,11 +126,11 @@ async def query_chat_stream(message: ChatMessage):
     logger.info(f"[STREAM] Query: '{message.query[:100]}...', "
                 f"Session: {message.session_id}, Run: {message.run_id}, "
                 f"Arxiv: {message.arxiv_enabled}")
-    
+
     use_arxiv = message.arxiv_enabled
 
     # --- GUARD CLAUSE: Fail fast if no engine is available ---
-    if not use_arxiv and query_engine is None:
+    if not use_arxiv and get_query_engine() is None:
         logger.error("[STREAM] QueryEngine not initialized")
         raise HTTPException(status_code=500, detail="QueryEngine not initialized properly")
 
@@ -249,7 +169,7 @@ async def query_chat_stream(message: ChatMessage):
                 yield sse_error(f"Failed to initialize Arxiv engine: {e}")
                 return  # Early exit - no nesting needed!
         else:
-            engine = query_engine
+            engine = get_query_engine()
             logger.info("[STREAM] Using standard QueryEngine")
 
         # =====================================================================
@@ -311,14 +231,13 @@ async def get_chat_history(session_id: str) -> ChatHistoryResponse:
     Returns:
         ChatHistoryResponse with conversation history
     """
-    if query_engine is None:
+    if get_query_engine() is None:
         raise HTTPException(
             status_code=500, detail="QueryEngine not initialized properly"
         )
 
     try:
-        arxiv_engine = get_arxiv_engine()
-        history = arxiv_engine.get_history(session_id)
+        history = get_arxiv_engine().get_history(session_id)
         formatted_history = [
             {"user": user_msg, "assistant": ai_msg} for user_msg, ai_msg in history
         ]
@@ -341,14 +260,13 @@ async def clear_chat_history(session_id: str) -> Dict[str, str]:
     Returns:
         Success message
     """
-    if query_engine is None:
+    if get_query_engine() is None:
         raise HTTPException(
             status_code=500, detail="QueryEngine not initialized properly"
         )
 
     try:
-        arxiv_engine = get_arxiv_engine()
-        arxiv_engine.clear_history(session_id)
+        get_arxiv_engine().clear_history(session_id)
         return {"message": f"History cleared for session {session_id}"}
     except Exception as e:
         logger.error(f"Error clearing history: {e}")
@@ -366,6 +284,7 @@ async def retrieve_documents(message: ChatMessage) -> Dict[str, Any]:
     Returns:
         Dict with retrieved documents and their metadata
     """
+    query_engine = get_query_engine()
     if query_engine is None:
         raise HTTPException(
             status_code=500, detail="QueryEngine not initialized properly"

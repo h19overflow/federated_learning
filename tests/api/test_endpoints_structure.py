@@ -72,7 +72,7 @@ class TestConfigurationEndpoint:
 
     def test_configuration_schema_completeness(self):
         """Configuration schema should cover all configuration sections."""
-        from federated_pneumonia_detection.src.api.endpoints.configuration_settings.schemas import (
+        from federated_pneumonia_detection.src.api.endpoints.schema.configuration_schemas import (
             ConfigurationUpdateRequest,
         )
 
@@ -89,7 +89,7 @@ class TestConfigurationEndpoint:
 
     def test_experiment_config_schema_includes_federated_params(self):
         """ExperimentConfig schema should include federated learning parameters."""
-        from federated_pneumonia_detection.src.api.endpoints.configuration_settings.schemas import (
+        from federated_pneumonia_detection.src.api.endpoints.schema.configuration_schemas import (
             ExperimentConfig as ExperimentConfigSchema,
         )
 
@@ -104,7 +104,7 @@ class TestConfigurationEndpoint:
 
     def test_experiment_config_schema_includes_standard_params(self):
         """ExperimentConfig schema should include standard training parameters."""
-        from federated_pneumonia_detection.src.api.endpoints.configuration_settings.schemas import (
+        from federated_pneumonia_detection.src.api.endpoints.schema.configuration_schemas import (
             ExperimentConfig as ExperimentConfigSchema,
         )
 
