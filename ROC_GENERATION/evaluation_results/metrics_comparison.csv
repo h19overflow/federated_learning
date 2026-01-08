@@ -1,0 +1,10 @@
+Metric,Centralized,Federated,Difference (Fed - Cent)
+Accuracy,0.7567,0.7483,-0.0084
+Precision,0.7561,0.7538,-0.0023
+Recall,0.9923,0.9815,-0.0108
+F1 Score,0.8582,0.8527,-0.0056
+AUROC,0.8030,0.7256,-0.0774
+Sensitivity,0.9923,0.9815,-0.0108
+Specificity,0.0786,0.0771,-0.0015
+FNR,0.0077,0.0185,0.0108
+FPR,0.9214,0.9229,0.0015

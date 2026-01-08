@@ -1,0 +1,20 @@
+2025-12-28 21:39:11,499 - __main__ - INFO - Initializing comparative ML experiment framework
+2025-12-28 21:39:11,499 - __main__ - INFO - Configuration loaded: ExperimentConfig(archive_path=WindowsPath('C:/Users/User/Projects/FYP2/archive.zip'), output_dir=WindowsPath('results/analysis'), num_runs=10, epochs=10, num_rounds=5, local_epochs=2, learning_rate=0.001, batch_size=256, validation_split=0.2, base_seed=42, csv_filename='stage2_train_metadata.csv', num_clients=2, run_centralized=False, run_federated=True)
+2025-12-28 21:39:11,499 - experiment_orchestrator - INFO - ================================================================================
+2025-12-28 21:39:11,501 - experiment_orchestrator - INFO - COMPARATIVE ML EXPERIMENT - Centralized vs Federated
+2025-12-28 21:39:11,501 - experiment_orchestrator - INFO - ================================================================================
+2025-12-28 21:39:11,501 - experiment_orchestrator - INFO - Configuration: 10 runs per paradigm
+2025-12-28 21:39:11,501 - experiment_orchestrator - INFO - Archive: C:\Users\User\Projects\FYP2\archive.zip
+2025-12-28 21:39:11,502 - experiment_orchestrator - INFO - Extracting C:\Users\User\Projects\FYP2\archive.zip to C:\Users\User\AppData\Local\Temp\experiment_data_1qh2vetz
+2025-12-28 21:40:15,762 - experiment_orchestrator - INFO - Extraction complete: C:\Users\User\AppData\Local\Temp\experiment_data_1qh2vetz
+2025-12-28 21:40:15,999 - experiment_orchestrator - INFO - Data paths resolved: CSV=C:\Users\User\AppData\Local\Temp\experiment_data_1qh2vetz\stage2_train_metadata.csv, Images=C:\Users\User\AppData\Local\Temp\experiment_data_1qh2vetz\Training\Images
+2025-12-28 21:40:15,999 - experiment_orchestrator - INFO - Skipping centralized experiments (run_centralized=False)
+2025-12-28 21:40:15,999 - experiment_orchestrator - INFO - ----------------------------------------
+2025-12-28 21:40:15,999 - experiment_orchestrator - INFO - PHASE 2: Federated Learning Experiments
+2025-12-28 21:40:15,999 - experiment_orchestrator - INFO - ----------------------------------------
+2025-12-28 21:40:15,999 - experiment_orchestrator - INFO - [Federated Run 0] Starting with seed=42
+2025-12-28 21:40:19,662 - federated_pneumonia_detection.config.config_manager - INFO - Saving configuration to C:\Users\User\Projects\FYP2\federated_pneumonia_detection\config\default_config.yaml
+2025-12-28 21:40:19,668 - federated_pneumonia_detection.config.utils.loader - INFO - Saved configuration to C:\Users\User\Projects\FYP2\federated_pneumonia_detection\config\default_config.yaml
+2025-12-28 21:40:38,392 - datasets - INFO - PyTorch version 2.9.1+cu128 available.
+2025-12-28 21:40:39,462 - experiment_orchestrator - INFO - Configuration synced to pyproject.toml
+2025-12-28 21:40:39,462 - experiment_orchestrator - INFO - Executing: powershell -ExecutionPolicy Bypass -File C:\Users\User\Projects\FYP2\federated_pneumonia_detection\src\rf.ps1

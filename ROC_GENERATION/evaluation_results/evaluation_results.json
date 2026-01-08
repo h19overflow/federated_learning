@@ -1,0 +1,48 @@
+{
+  "test_data_path": "C:\\Users\\User\\Projects\\FYP2",
+  "num_samples": 5232,
+  "class_distribution": {
+    "normal": 1349,
+    "pneumonia": 3883
+  },
+  "centralized": {
+    "checkpoint": "pneumonia_model_00_0.980.ckpt",
+    "accuracy": 0.7566896024464832,
+    "precision": 0.756083202511774,
+    "recall": 0.9922740149369045,
+    "f1_score": 0.858224746631028,
+    "auroc": 0.8029566449485096,
+    "confusion_matrix": {
+      "tn": 106,
+      "fp": 1243,
+      "fn": 30,
+      "tp": 3853
+    },
+    "clinical_metrics": {
+      "sensitivity": 0.9922740149369045,
+      "specificity": 0.07857672349888807,
+      "fnr": 0.007725985063095545,
+      "fpr": 0.9214232765011119
+    }
+  },
+  "federated": {
+    "checkpoint": "pneumonia_model_01_0.988.ckpt",
+    "accuracy": 0.7482798165137615,
+    "precision": 0.7537579113924051,
+    "recall": 0.9814576358485707,
+    "f1_score": 0.8526680836782637,
+    "auroc": 0.7255739460005761,
+    "confusion_matrix": {
+      "tn": 104,
+      "fp": 1245,
+      "fn": 72,
+      "tp": 3811
+    },
+    "clinical_metrics": {
+      "sensitivity": 0.9814576358485707,
+      "specificity": 0.0770941438102298,
+      "fnr": 0.01854236415142931,
+      "fpr": 0.9229058561897702
+    }
+  }
+}
