@@ -24,7 +24,13 @@ Architecture Notes
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Dict, Any, Optional, List
-from ..schema import ChatMessage, ChatResponse, ChatHistoryResponse, ChatSessionSchema
+from ..schema import (
+    ChatMessage,
+    ChatResponse,
+    ChatHistoryResponse,
+    ChatSessionSchema,
+    CreateSessionRequest,
+)
 from .chat_utils import (
     sse_pack,
     sse_error,
@@ -67,8 +73,23 @@ async def list_chat_sessions():
 
 
 @router.post("/sessions", response_model=ChatSessionSchema)
-async def create_new_chat_session(title: Optional[str] = None):
-    """Create a new chat session."""
+async def create_new_chat_session(request: CreateSessionRequest = CreateSessionRequest()):
+    """
+    Create a new chat session with optional auto-generated title.
+
+    Args:
+        request: Session creation request with optional title or initial_query
+    """
+    title = request.title
+
+    # Generate title from initial query if provided and no explicit title
+    if request.initial_query and not title:
+        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.title_generator import (
+            generate_chat_title,
+        )
+        title = generate_chat_title(request.initial_query)
+        logger.info(f"[Session] Generated title from query: '{title}'")
+
     session = create_chat_session(title=title)
     return ChatSessionSchema(
         id=session.id,

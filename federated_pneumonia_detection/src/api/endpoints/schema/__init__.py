@@ -4,7 +4,13 @@ Exports schema definitions for chat and runs endpoints, centralizing
 all data models in one location following SRP.
 """
 
-from .chat_schemas import ChatMessage, ChatResponse, ChatHistoryResponse, ChatSessionSchema
+from .chat_schemas import (
+    ChatMessage,
+    ChatResponse,
+    ChatHistoryResponse,
+    ChatSessionSchema,
+    CreateSessionRequest,
+)
 from .runs_schemas import (
     ModeMetrics,
     RunDetail,
@@ -20,6 +26,7 @@ __all__ = [
     "ChatResponse",
     "ChatHistoryResponse",
     "ChatSessionSchema",
+    "CreateSessionRequest",
     "ModeMetrics",
     "RunDetail",
     "AnalyticsSummaryResponse",

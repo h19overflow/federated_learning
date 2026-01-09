@@ -65,7 +65,9 @@ class ArxivAugmentedEngine:
             logger.info("[ArxivEngine] Initializing ChatGoogleGenerativeAI...")
             self.llm = ChatGoogleGenerativeAI(
                 model="gemini-3-pro-preview",
-                temperature=0.7,
+                temperature=1.0,  # Gemini 3 default - prevents infinite loops
+                max_tokens=2048,  # Limit response length for concise answers
+                thinking_level="low",  # Fast reasoning for research queries
             )
             logger.info("[ArxivEngine] LLM initialized successfully")
         except Exception as e:

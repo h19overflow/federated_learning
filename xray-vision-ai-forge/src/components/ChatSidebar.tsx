@@ -136,27 +136,41 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     }
   };
 
-  const createNewSession = async () => {
+  const createNewSession = async (initialQuery?: string) => {
     try {
       setIsLoading(true);
+      const requestBody: { title?: string; initial_query?: string } = {};
+
+      // If we have an initial query, use it to generate title
+      if (initialQuery) {
+        requestBody.initial_query = initialQuery;
+      } else {
+        requestBody.title = "New Chat";
+      }
+
       const response = await fetch(`${apiUrl}/chat/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "New Chat" }),
+        body: JSON.stringify(requestBody),
       });
       if (response.ok) {
         const newSession = await response.json();
         setSessionId(newSession.id);
         localStorage.setItem("chat_session_id", newSession.id);
-        setMessages([]);
+        // Only clear messages if this is a manual "New Chat" (no initial query)
+        if (!initialQuery) {
+          setMessages([]);
+        }
         setShowHistory(false);
         fetchSessions();
+        return newSession.id;
       }
     } catch (error) {
       console.error("Error creating new session:", error);
     } finally {
       setIsLoading(false);
     }
+    return null;
   };
 
   const handleSwitchSession = (sid: string) => {
@@ -365,9 +379,18 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     setAgentStatus(null); // Reset agent status
 
     try {
+      // If this is the first message (empty history), create a session with title generation
+      let currentSessionId = sessionId;
+      if (messages.length === 0) {
+        const newSessionId = await createNewSession(userMessage);
+        if (newSessionId) {
+          currentSessionId = newSessionId;
+        }
+      }
+
       const requestBody: any = {
         query: userMessage,
-        session_id: sessionId,
+        session_id: currentSessionId,
         arxiv_enabled: arxivEnabled,
       };
 

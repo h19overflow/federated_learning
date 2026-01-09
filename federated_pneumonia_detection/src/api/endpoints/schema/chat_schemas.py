@@ -58,3 +58,9 @@ class ChatSessionSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CreateSessionRequest(BaseModel):
+    """Request model for creating a new chat session."""
+    title: Optional[str] = None
+    initial_query: Optional[str] = None

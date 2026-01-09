@@ -28,9 +28,11 @@ class QueryEngine:
         Args:
             max_history: Maximum number of conversation turns to keep in memory
         """
+        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent.history import ChatHistoryManager
+
         logger.info(f"[QueryEngine] Initializing with max_history={max_history}")
         self.max_history = max_history
-        self.conversation_history: Dict[str, List[Tuple[str, str]]] = {}
+        self.history_manager = ChatHistoryManager(table_name="message_store", max_history=max_history)
 
         try:
             logger.info("[QueryEngine] Connecting to PGVector store...")
@@ -91,16 +93,7 @@ class QueryEngine:
             user_message: The user's query
             ai_response: The AI's response
         """
-        if session_id not in self.conversation_history:
-            self.conversation_history[session_id] = []
-
-        self.conversation_history[session_id].append((user_message, ai_response))
-
-        # Keep only the last max_history turns
-        if len(self.conversation_history[session_id]) > self.max_history:
-            self.conversation_history[session_id] = self.conversation_history[
-                session_id
-            ][-self.max_history :]
+        self.history_manager.add_to_history(session_id, user_message, ai_response)
 
     def get_history(self, session_id: str) -> List[Tuple[str, str]]:
         """
@@ -112,7 +105,7 @@ class QueryEngine:
         Returns:
             List of (user_message, ai_response) tuples
         """
-        return self.conversation_history.get(session_id, [])
+        return self.history_manager.get_history(session_id)
 
     def clear_history(self, session_id: str):
         """
@@ -121,8 +114,7 @@ class QueryEngine:
         Args:
             session_id: Unique identifier for the conversation session
         """
-        if session_id in self.conversation_history:
-            del self.conversation_history[session_id]
+        self.history_manager.clear_history(session_id)
 
     def format_history_for_context(self, session_id: str) -> str:
         """
@@ -134,14 +126,7 @@ class QueryEngine:
         Returns:
             Formatted history string
         """
-        history = self.get_history(session_id)
-        if not history:
-            return ""
-
-        formatted = "Previous conversation:\n"
-        for user_msg, ai_msg in history:
-            formatted += f"User: {user_msg}\nAssistant: {ai_msg}\n\n"
-        return formatted
+        return self.history_manager.format_for_context(session_id)
 
     def query(self, query: str):
         try:
