@@ -183,3 +183,16 @@ class ResNetWithCustomHead(nn.Module):
             Feature maps tensor
         """
         return extract_features(self.features, x, layer_name, self.logger)
+
+    def _unfreeze_last_n_layers(self, n_layers: int) -> None:
+        """
+        Unfreeze the last n layers of the backbone.
+
+        Args:
+            n_layers: Number of layers to unfreeze from the end
+
+        Note:
+            This is a progressive unfreezing method used by callbacks.
+        """
+        from .resnet_with_custom_head_utils.model_builder import unfreeze_last_n_layers
+        unfreeze_last_n_layers(self.features, n_layers, self.logger)

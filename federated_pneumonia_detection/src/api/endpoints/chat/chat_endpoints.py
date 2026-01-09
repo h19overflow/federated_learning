@@ -150,11 +150,6 @@ async def query_chat_stream(message: ChatMessage):
 
     use_arxiv = message.arxiv_enabled
 
-    # --- GUARD CLAUSE: Fail fast if no engine is available ---
-    if not use_arxiv and get_query_engine() is None:
-        logger.error("[STREAM] QueryEngine not initialized")
-        raise HTTPException(status_code=500, detail="QueryEngine not initialized properly")
-
     async def generate():
         """
         The inner generator. Now much flatter and easier to read.
@@ -179,35 +174,26 @@ async def query_chat_stream(message: ChatMessage):
         logger.info(f"[STREAM] Final query: '{enhanced_query[:100]}...'")
 
         # =====================================================================
-        # SECTION 3: Choose Engine (Guard Clause Style)
+        # SECTION 3: Initialize Engine with Router
         # =====================================================================
-        if use_arxiv:
-            try:
-                engine = get_arxiv_engine()
-                logger.info("[STREAM] Using ArxivAugmentedEngine")
-            except Exception as e:
-                logger.error(f"[STREAM] Failed to initialize ArxivAugmentedEngine: {e}")
-                yield sse_error(f"Failed to initialize Arxiv engine: {e}")
-                return  # Early exit - no nesting needed!
-        else:
-            engine = get_query_engine()
-            logger.info("[STREAM] Using standard QueryEngine")
+        try:
+            engine = get_arxiv_engine()
+            logger.info(f"[STREAM] Using ArxivAugmentedEngine (arxiv_enabled={use_arxiv})")
+        except Exception as e:
+            logger.error(f"[STREAM] Failed to initialize ArxivAugmentedEngine: {e}")
+            yield sse_error(f"Failed to initialize engine: {e}")
+            return
 
         # =====================================================================
-        # SECTION 4: Stream Response (The Main Event)
+        # SECTION 4: Stream Response with Router
         # =====================================================================
         chunk_count = 0
         try:
-            # Unified streaming logic - both engines expose similar interfaces
-            if use_arxiv:
-                stream = engine.query_stream(
-                    enhanced_query, session_id, 
-                    arxiv_enabled=True, original_query=message.query
-                )
-            else:
-                stream = engine.query_with_history_stream(
-                    enhanced_query, session_id, original_query=message.query
-                )
+            # ArxivAugmentedEngine handles routing internally
+            stream = engine.query_stream(
+                enhanced_query, session_id,
+                arxiv_enabled=use_arxiv, original_query=message.query
+            )
             
             async for chunk in stream:
                 chunk_count += 1

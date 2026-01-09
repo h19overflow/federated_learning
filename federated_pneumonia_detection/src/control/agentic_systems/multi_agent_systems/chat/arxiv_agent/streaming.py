@@ -77,27 +77,33 @@ async def execute_tool_async(
 ) -> tuple[Any, Optional[str]]:
     """
     Execute a tool by name with given arguments.
-    
+
     Args:
         tool_name: Name of the tool to execute
         tool_args: Arguments to pass to the tool
         tools: List of available tool objects
-    
+
     Returns:
         Tuple of (result, error_message). Error is None on success.
     """
     import logging
     logger = logging.getLogger(__name__)
-    
+
+    logger.debug(f"[ToolExec] Searching for tool '{tool_name}' among {len(tools)} available tools")
+
     for tool in tools:
         if tool.name == tool_name:
             try:
+                logger.debug(f"[ToolExec] Found tool '{tool_name}'. Invoking with args: {tool_args}")
                 result = await tool.ainvoke(tool_args)
-                logger.info(f"Tool {tool_name} executed successfully. Result length: {len(str(result))}")
+                result_preview = str(result)[:200] if result else "None"
+                logger.info(f"[ToolExec] Tool {tool_name} executed successfully. Result length: {len(str(result))}, Preview: {result_preview}")
                 return result, None
             except Exception as e:
                 error_msg = f"Tool error: {str(e)}"
-                logger.error(f"Tool {tool_name} failed: {e}", exc_info=True)
+                logger.error(f"[ToolExec] Tool {tool_name} failed with exception: {e}", exc_info=True)
                 return error_msg, str(e)
-    
+
+    available_tools = [t.name for t in tools]
+    logger.error(f"[ToolExec] Tool '{tool_name}' not found. Available tools: {available_tools}")
     return None, f"Tool '{tool_name}' not found"

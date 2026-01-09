@@ -6,17 +6,17 @@ experiment:
   adaptive_histogram: false
   augmentation_strength: 1.0
   batch_sample_interval: 10
-  batch_size: 32
+  batch_size: 256
   clients_per_round: 2
   clip_limit: 2.0
   color_mode: RGB
   contrast_stretch: true
   device: auto
   dropout_rate: 0.3
-  early_stopping_patience: 5
+  early_stopping_patience: 3
   edge_enhancement: false
   edge_strength: 1.0
-  epochs: 10
+  epochs: 2
   file-path: C:\Users\User\AppData\Local\Temp\experiment_data_7u7dh_j0\stage2_train_metadata.csv
   fine_tune_layers_count: 5
   freeze_backbone: true
