@@ -16,6 +16,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.agents import create_agent
 
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent_prompts import (
     ARXIV_AGENT_SYSTEM_PROMPT,
@@ -112,7 +113,7 @@ class ArxivAugmentedEngine:
     # =========================================================================
     # Tool management
     # =========================================================================
-    
+
     def _get_tools(self, arxiv_enabled: bool) -> list:
         """
         Build tool list based on arxiv availability.
@@ -134,7 +135,7 @@ class ArxivAugmentedEngine:
                 arxiv_tools = mcp_manager.get_arxiv_tools()
                 tools.extend(arxiv_tools)
                 logger.info(f"Added {len(arxiv_tools)} arxiv tools")
-                
+
                 # Add embedding tool for knowledge base expansion
                 embedding_tool = create_arxiv_embedding_tool()
                 tools.append(embedding_tool)
@@ -143,6 +144,24 @@ class ArxivAugmentedEngine:
                 logger.warning("Arxiv requested but MCP manager not available")
 
         return tools
+
+    def _create_agent(self, tools: list, system_prompt: str):
+        """
+        Create a LangChain agent with tools for research orchestration.
+
+        Args:
+            tools: List of LangChain tools for the agent
+            system_prompt: System prompt defining agent behavior
+
+        Returns:
+            Configured agent for tool-augmented generation
+        """
+        agent = create_agent(
+            model=self.llm,
+            tools=tools,
+            system_prompt=system_prompt,
+        )
+        return agent
 
     # =========================================================================
     # Message building
@@ -250,153 +269,64 @@ class ArxivAugmentedEngine:
                     return
 
             else:
-                # Research mode: Tool-augmented generation
+                # Research mode: Tool-augmented generation with agent
                 yield create_sse_event(SSEEventType.STATUS, content="Analyzing your query...")
 
-                # Bind tools to model
-                model_with_tools = self.llm.bind_tools(tools)
+                # Create agent with tools
+                logger.info("[ArxivEngine] Creating agent with tools for research mode...")
+                agent = self._create_agent(tools, RESEARCH_MODE_SYSTEM_PROMPT)
 
-                # First call - check if model wants to use tools
-                logger.info("[ArxivEngine] Invoking model to check for tool calls...")
-                response = await model_with_tools.ainvoke(messages)
+                # Build input dict for agent
+                agent_input = {"messages": messages}
+                logger.info(f"[ArxivEngine] Invoking agent with {len(messages)} messages...")
 
-                # Tool execution loop
-                if response.tool_calls:
-                    while response.tool_calls:
-                        logger.info(f"[ArxivEngine] Model requested {len(response.tool_calls)} tool calls")
+                # Stream agent response
+                try:
+                    chunk_count = 0
+                    async for event in agent.astream(agent_input):
+                        chunk_count += 1
 
-                        for tool_call in response.tool_calls:
-                            tool_name = tool_call["name"]
-                            tool_args = tool_call["args"]
-                            logger.info(f"[ArxivEngine] Executing tool: {tool_name} with args: {tool_args}")
+                        # Handle agent event types
+                        if "messages" in event:
+                            # Final or intermediate messages from agent
+                            for msg in event["messages"]:
+                                # Tool call events
+                                if hasattr(msg, "tool_calls") and msg.tool_calls:
+                                    for tool_call in msg.tool_calls:
+                                        tool_name = tool_call.get("name", "unknown")
+                                        tool_args = tool_call.get("args", {})
+                                        logger.info(f"[ArxivEngine] Agent using tool: {tool_name}")
 
-                            # Yield user-friendly status
-                            friendly_name = tool_name.replace("_", " ").title()
-                            yield create_sse_event(SSEEventType.STATUS, content=f"Using {friendly_name}...")
-                            yield create_sse_event(SSEEventType.TOOL_CALL, tool=tool_name, args=tool_args)
+                                        # Yield user-friendly status
+                                        friendly_name = tool_name.replace("_", " ").title()
+                                        yield create_sse_event(SSEEventType.STATUS, content=f"Using {friendly_name}...")
+                                        yield create_sse_event(SSEEventType.TOOL_CALL, tool=tool_name, args=tool_args)
 
-                            # Execute tool
-                            try:
-                                tool_result, error = await execute_tool_async(tool_name, tool_args, tools)
-                                if error:
-                                    logger.error(f"[ArxivEngine] Tool {tool_name} returned error: {error}")
-                                    yield create_sse_event(SSEEventType.ERROR, message=f"Tool {tool_name} failed: {error}")
-                                    return
-                                logger.info(f"[ArxivEngine] Tool {tool_name} succeeded. Result length: {len(str(tool_result))}")
-                                tool_calls_made.append({
-                                    "name": tool_name,
-                                    "args": tool_args,
-                                    "result": tool_result,
-                                })
-                            except Exception as e:
-                                logger.error(f"[ArxivEngine] Exception executing tool {tool_name}: {e}", exc_info=True)
-                                yield create_sse_event(SSEEventType.ERROR, message=f"Tool execution failed: {str(e)}")
-                                return
+                                        tool_calls_made.append({
+                                            "name": tool_name,
+                                            "args": tool_args,
+                                        })
 
-                        # Append tool results to messages
-                        try:
-                            messages.append(response)
-                            logger.info(f"[ArxivEngine] Appending {len(response.tool_calls)} tool results to messages")
-                            for tc, made in zip(response.tool_calls, tool_calls_made[-len(response.tool_calls):]):
-                                tool_msg = ToolMessage(
-                                    content=str(made["result"]),
-                                    tool_call_id=tc["id"],
-                                )
-                                messages.append(tool_msg)
-                                logger.debug(f"[ArxivEngine] Added ToolMessage for {made['name']}, content length: {len(str(made['result']))}")
-                        except Exception as e:
-                            logger.error(f"[ArxivEngine] Failed to append tool results to messages: {e}", exc_info=True)
-                            yield create_sse_event(SSEEventType.ERROR, message=f"Internal error processing tool results: {str(e)}")
-                            return
-
-                        # Check for more tool calls
-                        logger.info("[ArxivEngine] Checking for more tool calls...")
-                        try:
-                            response = await model_with_tools.ainvoke(messages)
-                            logger.info(f"[ArxivEngine] Model invoked. Has tool_calls: {bool(response.tool_calls)}, Has content: {bool(response.content)}")
-                        except Exception as e:
-                            logger.error(f"[ArxivEngine] Failed to invoke model for additional tool calls: {e}", exc_info=True)
-                            yield create_sse_event(SSEEventType.ERROR, message=f"Model invocation failed: {str(e)}")
-                            return
-
-                        if not response.tool_calls:
-                            logger.info("[ArxivEngine] No more tool calls. Generating final response.")
-                            break
-
-                    yield create_sse_event(SSEEventType.STATUS, content="Generating response...")
-
-                    # Stream final response after tools
-                    try:
-                        if response.content:
-                            logger.info(f"[ArxivEngine] Response has content. Length: {len(response.content)}")
-                            content = normalize_content(response.content)
-                            if content:
-                                logger.info(f"[ArxivEngine] Normalized content length: {len(content)}")
-                                chunk_count = 0
-                                for chunk_text in chunk_content(content):
-                                    full_response += chunk_text
-                                    yield create_sse_event(SSEEventType.TOKEN, content=chunk_text)
-                                    chunk_count += 1
-                                logger.info(f"[ArxivEngine] Yielded {chunk_count} chunks. Total response length: {len(full_response)}")
-                            else:
-                                logger.error("[ArxivEngine] Content normalized to empty string")
-                                yield create_sse_event(SSEEventType.ERROR, message="Model generated empty response after normalization")
-                                return
-                        else:
-                            # Try streaming if no content
-                            logger.info("[ArxivEngine] No content in response, attempting astream...")
-                            logger.debug(f"[ArxivEngine] Messages count before astream: {len(messages)}")
-
-                            chunk_count = 0
-                            try:
-                                async for chunk in self.llm.astream(messages):
-                                    chunk_count += 1
-                                    if chunk_count <= 3:
-                                        logger.debug(f"[ArxivEngine] Chunk {chunk_count}: {chunk}")
-
-                                    if hasattr(chunk, "content"):
-                                        content = normalize_content(chunk.content)
+                                # Content streaming from agent
+                                if hasattr(msg, "content") and msg.content:
+                                    if isinstance(msg, AIMessage):
+                                        content = normalize_content(msg.content)
                                         if content:
                                             full_response += content
                                             yield create_sse_event(SSEEventType.TOKEN, content=content)
 
-                                logger.info(f"[ArxivEngine] Astream complete. Received {chunk_count} chunks, full_response length: {len(full_response)}")
-                            except Exception as e:
-                                logger.error(f"[ArxivEngine] Exception during astream: {e}", exc_info=True)
-                                yield create_sse_event(SSEEventType.ERROR, message=f"Streaming error: {str(e)}")
-                                return
+                    logger.info(f"[ArxivEngine] Agent stream complete. Events: {chunk_count}, Response length: {len(full_response)}")
 
-                            if not full_response:
-                                logger.error(f"[ArxivEngine] No response after tool execution. Chunks received: {chunk_count}, Messages: {len(messages)}")
-                                yield create_sse_event(SSEEventType.ERROR, message="No response generated after tool execution. Please try rephrasing your question.")
-                                return
-                    except Exception as e:
-                        logger.error(f"[ArxivEngine] Exception during response generation: {e}", exc_info=True)
-                        yield create_sse_event(SSEEventType.ERROR, message=f"Response generation failed: {str(e)}")
+                    # If no response collected from events, try extracting from final state
+                    if not full_response:
+                        logger.warning("[ArxivEngine] No response in agent stream. This may indicate agent didn't generate text.")
+                        yield create_sse_event(SSEEventType.ERROR, message="Agent completed but produced no response. Please try rephrasing.")
                         return
 
-                else:
-                    # No tools needed - direct streaming
-                    logger.info("[ArxivEngine] No tool calls. Streaming direct response...")
-                    chunk_count = 0
-                    try:
-                        async for chunk in model_with_tools.astream(messages):
-                            chunk_count += 1
-                            if hasattr(chunk, "content") and chunk.content:
-                                content = normalize_content(chunk.content)
-                                if content:
-                                    full_response += content
-                                    yield create_sse_event(SSEEventType.TOKEN, content=content)
-                        logger.info(f"[ArxivEngine] Direct stream complete. Chunks: {chunk_count}, Length: {len(full_response)}")
-
-                        if not full_response:
-                            logger.error(f"[ArxivEngine] Direct stream produced no response. Chunks received: {chunk_count}")
-                            yield create_sse_event(SSEEventType.ERROR, message="No response generated. Please try again.")
-                            return
-                    except Exception as e:
-                        logger.error(f"[ArxivEngine] Exception in direct streaming: {e}", exc_info=True)
-                        yield create_sse_event(SSEEventType.ERROR, message=f"Streaming failed: {str(e)}")
-                        return
+                except Exception as e:
+                    logger.error(f"[ArxivEngine] Exception during agent streaming: {e}", exc_info=True)
+                    yield create_sse_event(SSEEventType.ERROR, message=f"Agent execution failed: {str(e)}")
+                    return
 
             # Save to history
             try:

@@ -6,7 +6,6 @@ This endpoint fetches SERVER-SIDE evaluation metrics (centralized test set evalu
 """
 
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Any, List
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
@@ -14,13 +13,14 @@ from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+from ..schema.runs_schemas import FederatedRoundsResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/{run_id}/federated-rounds")
-async def get_federated_rounds(run_id: int) -> Dict[str, Any]:
+@router.get("/{run_id}/federated-rounds", response_model=FederatedRoundsResponse)
+async def get_federated_rounds(run_id: int) -> FederatedRoundsResponse:
     """
     Get federated round metrics for visualization.
 

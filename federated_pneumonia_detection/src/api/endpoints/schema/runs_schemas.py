@@ -6,7 +6,7 @@ All schemas include comprehensive validation using Pydantic Field constraints.
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 
 class ModeMetrics(BaseModel):
@@ -66,13 +66,19 @@ class AnalyticsSummaryResponse(BaseModel):
 
     Attributes:
         total_runs: Total number of runs across all modes.
-        success_rate: Percentage of successful runs (0-1).
+        success_rate: Proportion of filtered runs relative to all runs with same status (0-1).
+                     This is NOT a success/completion rate, but a filtering ratio showing
+                     what fraction of all status-matching runs passed through additional filters.
         centralized: Aggregated metrics for centralized training.
         federated: Aggregated metrics for federated training.
         top_runs: Top performing runs by accuracy.
     """
     total_runs: int = Field(ge=0, description="Total number of runs")
-    success_rate: float = Field(ge=0, le=1, description="Success rate")
+    success_rate: float = Field(
+        ge=0,
+        le=1,
+        description="Proportion of filtered runs to total status-matching runs (filtered_count / all_status_count)"
+    )
     centralized: ModeMetrics = Field(description="Centralized mode metrics")
     federated: ModeMetrics = Field(description="Federated mode metrics")
     top_runs: List[RunDetail] = Field(default=[], description="Top performing runs")
@@ -154,3 +160,56 @@ class BackfillResponse(BaseModel):
     success: bool = Field(description="Operation success status")
     message: str = Field(description="Status message")
     rounds_processed: int = Field(ge=0, description="Rounds processed")
+
+
+class MetricsResponse(BaseModel):
+    """Response model for GET /{run_id}/metrics endpoint.
+
+    Attributes:
+        experiment_id: Unique experiment identifier.
+        status: Current run status.
+        final_metrics: Final epoch metrics (accuracy, precision, recall, f1, auc, loss).
+        training_history: Per-epoch metrics across training.
+        total_epochs: Total number of training epochs.
+        metadata: Additional metadata including best metrics and timestamps.
+        confusion_matrix: Optional confusion matrix from final epoch.
+    """
+    experiment_id: str = Field(description="Experiment identifier")
+    status: str = Field(description="Run status")
+    final_metrics: Dict[str, float] = Field(description="Final epoch metrics")
+    training_history: List[Dict[str, Any]] = Field(description="Per-epoch training history")
+    total_epochs: int = Field(ge=0, description="Total epochs")
+    metadata: Dict[str, Any] = Field(description="Additional metadata")
+    confusion_matrix: Optional[Dict[str, Any]] = Field(None, description="Confusion matrix")
+
+
+class FederatedRoundsResponse(BaseModel):
+    """Response model for GET /{run_id}/federated-rounds endpoint.
+
+    Attributes:
+        is_federated: Whether this is a federated training run.
+        num_rounds: Number of federated rounds completed.
+        num_clients: Number of participating clients.
+        rounds: List of per-round metrics.
+    """
+    is_federated: bool = Field(description="Federated training flag")
+    num_rounds: int = Field(ge=0, description="Number of rounds")
+    num_clients: int = Field(ge=0, description="Number of clients")
+    rounds: List[Dict[str, Any]] = Field(default=[], description="Per-round metrics")
+
+
+class ServerEvaluationResponse(BaseModel):
+    """Response model for GET /{run_id}/server-evaluation endpoint.
+
+    Attributes:
+        run_id: Run identifier.
+        is_federated: Whether this is a federated training run.
+        has_server_evaluation: Whether server evaluation data exists.
+        evaluations: List of server evaluations per round.
+        summary: Summary statistics across all rounds.
+    """
+    run_id: int = Field(gt=0, description="Run identifier")
+    is_federated: bool = Field(description="Federated training flag")
+    has_server_evaluation: bool = Field(description="Has evaluation data")
+    evaluations: List[Dict[str, Any]] = Field(default=[], description="Server evaluations")
+    summary: Dict[str, Any] = Field(default={}, description="Summary statistics")

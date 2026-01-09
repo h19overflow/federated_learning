@@ -10,27 +10,62 @@ Usage:
 """
 
 import logging
+from pydantic import BaseModel, Field, field_validator
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
+from langchain.agents import create_agent
 from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# Singleton model instance for performance
-_title_model = None
+
+# Pydantic model for structured output
+class ChatTitle(BaseModel):
+    """Structured chat title with validation constraints."""
+
+    title: str = Field(
+        description="A concise 3-4 word title in title case, no punctuation",
+        max_length=60,  # Character limit to ensure brevity
+    )
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        """Validate and normalize title format."""
+        # Remove quotes and extra punctuation
+        v = v.replace('"', '').replace("'", '').strip()
+        v = ''.join(char for char in v if char.isalnum() or char.isspace())
+
+        # Enforce max 4 words
+        words = v.split()
+        if len(words) > 4:
+            v = ' '.join(words[:4])
+
+        # Apply title case
+        v = v.title()
+
+        return v
 
 
-def _get_title_model() -> ChatGoogleGenerativeAI:
-    """Get or create the title generation model instance."""
-    global _title_model
-    if _title_model is None:
-        _title_model = ChatGoogleGenerativeAI(
+# Singleton agent instance for performance
+_title_agent = None
+
+
+def _get_title_agent():
+    """Get or create the title generation agent with structured output."""
+    global _title_agent
+    if _title_agent is None:
+        base_model = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash-exp",
             temperature=0.3,  # Low temp for consistent titles
             max_tokens=20,    # Titles are short
         )
-    return _title_model
+        _title_agent = create_agent(
+            model=base_model,
+            tools=[],  # No tools needed for title generation
+            response_format=ChatTitle,
+        )
+    return _title_agent
 
 
 def generate_chat_title(query: str) -> str:
@@ -53,7 +88,7 @@ def generate_chat_title(query: str) -> str:
     try:
         logger.info(f"[TitleGen] Generating title for query: '{query[:50]}...'")
 
-        model = _get_title_model()
+        agent = _get_title_agent()
 
         prompt = f"""Summarize the following query into exactly 3-4 words for a chat session title.
 Rules:
@@ -66,19 +101,14 @@ Query: {query}
 
 Title:"""
 
-        response = model.invoke([HumanMessage(content=prompt)])
-        title = response.content.strip()
+        result = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
 
-        # Clean up the title
-        title = title.replace('"', '').replace("'", '').strip()
+        # Extract structured response from agent result
+        response: ChatTitle = result.get("structured_response")
+        logger.debug(f"[TitleGen] Structured response: title='{response.title}'")
 
-        # Validate length (max 4 words)
-        words = title.split()
-        if len(words) > 4:
-            title = ' '.join(words[:4])
-
-        logger.info(f"[TitleGen] Generated title: '{title}'")
-        return title
+        logger.info(f"[TitleGen] Generated title: '{response.title}'")
+        return response.title
 
     except Exception as e:
         logger.warning(f"[TitleGen] Failed to generate title: {e}")

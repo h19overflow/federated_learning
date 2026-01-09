@@ -87,9 +87,8 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
     Important: Converts epochs from 0-indexed (database) to 1-indexed (display)
     """
 
-    # Group metrics by epoch (step)
+    # Group metrics by epoch (step) - build complete structure first
     metrics_by_epoch = defaultdict(dict)
-    final_metrics = {}
 
     for metric in run.metrics:
         epoch = metric.step
@@ -99,13 +98,7 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
         # Store in epoch-based structure
         metrics_by_epoch[epoch][metric_name] = value
 
-        # Track final (last epoch) metrics
-        if epoch >= max(metrics_by_epoch.keys(), default=0):
-            if metric_name in ['val_accuracy', 'val_acc', 'val_precision', 'val_recall',
-                              'val_f1', 'val_auroc', 'val_auc', 'val_loss']:
-                final_metrics[metric_name] = value
-
-    # Build training history
+    # Build training history after metrics are fully populated
     training_history = []
     for epoch in sorted(metrics_by_epoch.keys()):
         epoch_data = metrics_by_epoch[epoch]
@@ -123,16 +116,17 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
             "val_auroc": epoch_data.get("val_auroc", epoch_data.get("val_auc", 0.0)),
         })
 
-    # Extract final metrics (use last epoch values or best values)
+    # Extract final metrics from the LAST epoch (highest epoch number)
+    # IMPORTANT: Do this AFTER metrics_by_epoch is fully populated to avoid out-of-order issues
     last_epoch_data = metrics_by_epoch[max(metrics_by_epoch.keys())] if metrics_by_epoch else {}
 
-    # Calculate final metrics from last epoch
-    accuracy = final_metrics.get("val_accuracy", final_metrics.get("val_acc", 0.0))
-    precision = final_metrics.get("val_precision", 0.0)
-    recall = final_metrics.get("val_recall", 0.0)
-    f1 = final_metrics.get("val_f1", 0.0)
-    auc = final_metrics.get("val_auroc", final_metrics.get("val_auc", 0.0))
-    loss = final_metrics.get("val_loss", 0.0)
+    # Calculate final metrics from last epoch data
+    accuracy = last_epoch_data.get("val_accuracy", last_epoch_data.get("val_acc", 0.0))
+    precision = last_epoch_data.get("val_precision", 0.0)
+    recall = last_epoch_data.get("val_recall", 0.0)
+    f1 = last_epoch_data.get("val_f1", 0.0)
+    auc = last_epoch_data.get("val_auroc", last_epoch_data.get("val_auc", 0.0))
+    loss = last_epoch_data.get("val_loss", 0.0)
 
     # Extract confusion matrix values from last epoch
     confusion_matrix_obj = None

@@ -67,19 +67,22 @@ def generate_analytics_summary(
     all_run_details = [d for d in all_run_details if d is not None]  # Filter None
     top_runs = RunRanker.get_top_runs(all_run_details, metric="best_accuracy", limit=10)
 
-    # Calculate success rate
+    # Calculate filtered run ratio: proportion of filtered runs to all runs with same status
+    # This is NOT a success/completion rate - it's a filtering ratio showing what fraction
+    # of all status-matching runs passed through additional filters (training_mode, days, etc.)
     total_runs = len(runs)
     all_status_runs = run_crud.get_by_status(db, status)
-    success_rate = total_runs / len(all_status_runs) if len(all_status_runs) > 0 else 0.0
+    filtered_run_ratio = total_runs / len(all_status_runs) if len(all_status_runs) > 0 else 0.0
 
     logger.info(
         f"Analytics summary generated: {total_runs} runs "
-        f"({len(centralized_runs)} centralized, {len(federated_runs)} federated)"
+        f"({len(centralized_runs)} centralized, {len(federated_runs)} federated). "
+        f"Filtering ratio: {filtered_run_ratio:.4f} ({total_runs}/{len(all_status_runs)} status-matching runs)"
     )
 
     return AnalyticsSummaryResponse(
         total_runs=total_runs,
-        success_rate=round(success_rate, 4),
+        success_rate=round(filtered_run_ratio, 4),  # Proportion: filtered_count / all_status_count
         centralized=ModeMetrics(**centralized_stats),
         federated=ModeMetrics(**federated_stats),
         top_runs=top_runs

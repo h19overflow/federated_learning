@@ -6,19 +6,19 @@ for a specific run from the database.
 """
 
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Any
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
-from .utils import _transform_run_to_results
+from .shared.utils import _transform_run_to_results
+from ..schema.runs_schemas import MetricsResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/{run_id}/metrics")
-async def get_run_metrics(run_id: int) -> Dict[str, Any]:
+@router.get("/{run_id}/metrics", response_model=MetricsResponse)
+async def get_run_metrics(run_id: int) -> MetricsResponse:
     """
     Get complete training results for a specific run.
 

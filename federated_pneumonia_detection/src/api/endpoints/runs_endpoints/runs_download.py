@@ -11,7 +11,7 @@ from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 
-from .utils import _transform_run_to_results
+from .shared.utils import _transform_run_to_results
 from .shared.exporters import (
     JSONExporter,
     CSVExporter,

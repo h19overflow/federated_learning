@@ -13,27 +13,44 @@ Usage:
 """
 
 import logging
+from typing import Literal
+from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
+from langchain.agents import create_agent
 from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# Singleton model instance for performance
-_router_model = None
+
+# Pydantic model for structured output
+class QueryClassification(BaseModel):
+    """Structured classification response with constrained mode field."""
+
+    mode: Literal["research", "basic"] = Field(
+        description="Query mode: 'research' requires tools (search, retrieval), 'basic' is conversational"
+    )
 
 
-def _get_router_model() -> ChatGoogleGenerativeAI:
-    """Get or create the router classification model instance."""
-    global _router_model
-    if _router_model is None:
-        _router_model = ChatGoogleGenerativeAI(
+# Singleton agent instance for performance
+_router_agent = None
+
+
+def _get_router_agent():
+    """Get or create the router classification agent with structured output."""
+    global _router_agent
+    if _router_agent is None:
+        base_model = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash-exp",
             temperature=0.0,  # Deterministic classification
             max_tokens=10,    # Single word response
         )
-    return _router_model
+        _router_agent = create_agent(
+            model=base_model,
+            tools=[],  # No tools needed for classification
+            response_format=QueryClassification,
+        )
+    return _router_agent
 
 
 ROUTER_CLASSIFICATION_PROMPT = """Classify this query as either "research" or "basic".
@@ -70,24 +87,18 @@ def classify_query(query: str) -> str:
     try:
         logger.info(f"[QueryRouter] Classifying query: '{query[:50]}...'")
 
-        model = _get_router_model()
+        agent = _get_router_agent()
         prompt = ROUTER_CLASSIFICATION_PROMPT.format(query=query)
 
-        logger.debug(f"[QueryRouter] Invoking classification model...")
-        response = model.invoke([HumanMessage(content=prompt)])
-        logger.debug(f"[QueryRouter] Raw response: '{response.content}'")
+        logger.debug(f"[QueryRouter] Invoking classification agent with structured output...")
+        result = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
 
-        classification = response.content.strip().lower()
+        # Extract structured response from agent result
+        response: QueryClassification = result.get("structured_response")
+        logger.debug(f"[QueryRouter] Structured response: mode={response.mode}")
 
-        # Validate classification
-        if classification not in ["research", "basic"]:
-            logger.warning(
-                f"[QueryRouter] Invalid classification '{classification}', defaulting to research"
-            )
-            return "research"
-
-        logger.info(f"[QueryRouter] Classification: {classification}")
-        return classification
+        logger.info(f"[QueryRouter] Classification: {response.mode}")
+        return response.mode
 
     except Exception as e:
         logger.error(f"[QueryRouter] Classification failed: {e}", exc_info=True)
