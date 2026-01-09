@@ -1,0 +1,1 @@
+"""Utilities for ResNetWithCustomHead model."""
