@@ -18,9 +18,7 @@ import {
   Plus,
   History,
   Database,
-  Library,
 } from "lucide-react";
-import { KnowledgeBasePanel } from "./KnowledgeBasePanel";
 
 import { cn } from "@/lib/utils";
 import api from "@/services/api";
@@ -76,7 +74,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -178,7 +175,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     localStorage.setItem("chat_session_id", sid);
     loadHistory(sid);
     setShowHistory(false);
-    setShowKnowledgeBase(false);
   };
 
   const handleDeleteSession = async (sid: string, e: React.MouseEvent) => {
@@ -632,8 +628,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 <p className="text-xs text-[hsl(215_15%_50%)]">
                   {showHistory
                     ? "Conversation History"
-                    : showKnowledgeBase
-                    ? "Research Collection"
                     : "AI-powered insights"}
                 </p>
               </div>
@@ -642,37 +636,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={createNewSession}
-                title="New chat"
-                className="h-9 w-9 rounded-xl text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)] transition-all"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  const newState = !showKnowledgeBase;
-                  setShowKnowledgeBase(newState);
-                  if (newState) setShowHistory(false);
-                }}
-                title="Knowledge Base"
-                className={cn(
-                  "h-9 w-9 rounded-xl transition-all",
-                  showKnowledgeBase
-                    ? "text-[hsl(172_63%_22%)] bg-[hsl(172_40%_94%)]"
-                    : "text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)]"
-                )}
-              >
-                <Library className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
                 onClick={() => {
                   const newState = !showHistory;
                   setShowHistory(newState);
-                  if (newState) setShowKnowledgeBase(false);
                   if (newState) fetchSessions();
                 }}
                 title="History"
@@ -688,11 +654,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleClearChat}
-                title="Clear current chat"
+                onClick={() => createNewSession()}
+                title="New chat"
                 className="h-9 w-9 rounded-xl text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)] transition-all"
               >
-                <Trash2 className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -775,7 +741,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={(e) => handleDeleteSession(session.id, e)}
+                            onClickCapture={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDeleteSession(session.id, e);
+                            }}
                             className="opacity-0 group-hover:opacity-100 h-8 w-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-all"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -786,17 +756,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   </div>
                 )}
               </ScrollArea>
-            </motion.div>
-          ) : showKnowledgeBase ? (
-            <motion.div
-              key="knowledge"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-              className="flex-1 flex flex-col overflow-hidden"
-            >
-              <KnowledgeBasePanel />
             </motion.div>
           ) : (
             <motion.div
