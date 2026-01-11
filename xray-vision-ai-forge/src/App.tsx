@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import SavedExperiments from "./pages/SavedExperiments";
+import Inference from "./pages/Inference";
 import { ChatProvider } from "./context/ChatContext";
 import { ChatSidebar } from "./components/ChatSidebar";
 
@@ -26,6 +27,7 @@ const App = () => (
                 <Route path="/" element={<Landing />} />
                 <Route path="/experiment" element={<Index />} />
                 <Route path="/saved-experiments" element={<SavedExperiments />} />
+                <Route path="/inference" element={<Inference />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

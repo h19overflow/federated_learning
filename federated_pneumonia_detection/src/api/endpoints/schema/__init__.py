@@ -27,7 +27,9 @@ from .inference_schemas import (
     ClinicalInterpretation,
     InferenceResponse,
     InferenceError,
-    BatchInferenceRequest,
+    SingleImageResult,
+    BatchSummaryStats,
+    BatchInferenceResponse,
     HealthCheckResponse,
 )
 
@@ -50,6 +52,8 @@ __all__ = [
     "ClinicalInterpretation",
     "InferenceResponse",
     "InferenceError",
-    "BatchInferenceRequest",
+    "SingleImageResult",
+    "BatchSummaryStats",
+    "BatchInferenceResponse",
     "HealthCheckResponse",
 ]

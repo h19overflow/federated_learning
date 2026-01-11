@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Save, HelpCircle, Plus } from 'lucide-react';
+import { Save, HelpCircle, Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   NavigationMenu,
@@ -46,12 +46,24 @@ const Header = ({ onShowHelp }: HeaderProps = {}) => {
 
           <NavigationMenu>
             <NavigationMenuList className="flex gap-2">
+              <NavigationMenuItem>
+                <Link to="/inference">
+                  <Button
+                    size="sm"
+                    className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] flex items-center gap-2 rounded-xl shadow-sm hover:shadow-md transition-all"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    <span className="hidden sm:inline">Analyze X-Ray</span>
+                  </Button>
+                </Link>
+              </NavigationMenuItem>
               {!isExperimentPage && (
                 <NavigationMenuItem>
                   <Link to="/experiment">
                     <Button
                       size="sm"
-                      className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] flex items-center gap-2 rounded-xl shadow-sm hover:shadow-md transition-all"
+                      variant="outline"
+                      className="flex items-center gap-2 border-[hsl(210_15%_88%)] text-[hsl(172_43%_20%)] hover:bg-[hsl(168_25%_96%)] hover:border-[hsl(172_30%_80%)] rounded-xl transition-all"
                     >
                       <Plus className="h-4 w-4" />
                       <span className="hidden sm:inline">New Experiment</span>

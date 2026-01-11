@@ -93,15 +93,63 @@ class InferenceError(BaseModel):
     detail: str
 
 
-class BatchInferenceRequest(BaseModel):
-    """Request model for batch inference (future use).
+class SingleImageResult(BaseModel):
+    """Result for a single image in batch inference.
 
     Attributes:
-        include_clinical_interpretation: Whether to generate AI interpretation.
-        priority: Processing priority for the batch.
+        filename: Original filename of the image.
+        success: Whether inference succeeded for this image.
+        prediction: Prediction result if successful.
+        clinical_interpretation: Optional clinical interpretation.
+        error: Error message if inference failed.
+        processing_time_ms: Time taken for this image.
     """
-    include_clinical_interpretation: bool = True
-    priority: str = Field(default="normal", description="normal, high, or urgent")
+    filename: str
+    success: bool = True
+    prediction: Optional[InferencePrediction] = None
+    clinical_interpretation: Optional[ClinicalInterpretation] = None
+    error: Optional[str] = None
+    processing_time_ms: float = Field(ge=0.0, default=0.0)
+
+
+class BatchSummaryStats(BaseModel):
+    """Aggregate statistics for batch inference results.
+
+    Attributes:
+        total_images: Total number of images processed.
+        successful: Number of successful predictions.
+        failed: Number of failed predictions.
+        normal_count: Number of NORMAL predictions.
+        pneumonia_count: Number of PNEUMONIA predictions.
+        avg_confidence: Average confidence across all predictions.
+        avg_processing_time_ms: Average processing time per image.
+        high_risk_count: Number of HIGH/CRITICAL risk assessments.
+    """
+    total_images: int
+    successful: int
+    failed: int
+    normal_count: int
+    pneumonia_count: int
+    avg_confidence: float = Field(ge=0.0, le=1.0)
+    avg_processing_time_ms: float = Field(ge=0.0)
+    high_risk_count: int = 0
+
+
+class BatchInferenceResponse(BaseModel):
+    """Complete response from batch inference endpoint.
+
+    Attributes:
+        success: Whether batch processing completed.
+        results: List of individual image results.
+        summary: Aggregate statistics for the batch.
+        model_version: Version of the model used.
+        total_processing_time_ms: Total time for entire batch.
+    """
+    success: bool = True
+    results: List[SingleImageResult]
+    summary: BatchSummaryStats
+    model_version: str = Field(default="pneumonia_model_01_0.988-v2")
+    total_processing_time_ms: float = Field(ge=0.0)
 
 
 class HealthCheckResponse(BaseModel):
