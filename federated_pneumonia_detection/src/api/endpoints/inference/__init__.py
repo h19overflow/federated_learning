@@ -1,13 +1,15 @@
 """Inference endpoints for X-ray pneumonia detection.
 
-This module provides the API endpoints for running inference on chest X-ray images.
-Uses the layered architecture:
+This module provides API endpoints for running inference on chest X-ray images.
+Uses layered architecture:
 - Control layer: InferenceEngine (core logic)
 - Agentic layer: ClinicalInterpretationAgent (LLM agent)
 - Boundary layer: InferenceService (service abstraction)
 - API layer: This module (endpoints + schemas)
 """
 
-from .inference_endpoints import router
+from .health_endpoints import router as health_router
+from .prediction_endpoints import router as prediction_router
+from .batch_prediction_endpoints import router as batch_prediction_router
 
-__all__ = ["router"]
+__all__ = ["health_router", "prediction_router", "batch_prediction_router"]

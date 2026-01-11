@@ -23,8 +23,14 @@ from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import (
 from federated_pneumonia_detection.src.api.endpoints.chat import (
     chat_router,
 )
-from federated_pneumonia_detection.src.api.endpoints.inference import (
-    router as inference_router,
+from federated_pneumonia_detection.src.api.endpoints.inference.health_endpoints import (
+    router as inference_health_router,
+)
+from federated_pneumonia_detection.src.api.endpoints.inference.prediction_endpoints import (
+    router as inference_prediction_router,
+)
+from federated_pneumonia_detection.src.api.endpoints.inference.batch_prediction_endpoints import (
+    router as inference_batch_router,
 )
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
     MCPManager,
@@ -241,7 +247,9 @@ app.include_router(federated_endpoints.router)
 app.include_router(status_endpoints.router)
 app.include_router(runs_endpoints_router)
 app.include_router(chat_router)
-app.include_router(inference_router)
+app.include_router(inference_health_router)
+app.include_router(inference_prediction_router)
+app.include_router(inference_batch_router)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,80 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            3n7lb7jx3rpl9ouzlwp9kld940r8o8xo:
+                args:
+                    - federated_pneumonia_detection.src.api.main:app
+                    - --reload
+                    - --host
+                    - 127.0.0.1
+                    - --port
+                    - "8001"
+                cpu_count: 6
+                cpu_count_logical: 12
+                cudaVersion: "13.1"
+                disk:
+                    /:
+                        total: "1999529570304"
+                        used: "1060117311488"
+                email: projectontheside25@gmail.com
+                executable: C:\Users\User\Projects\FYP2\.venv\Scripts\python.exe
+                git:
+                    commit: de04d647d207c12bb8ae009f922f75c30dfb97cc
+                    remote: https://github.com/h19overflow/federated_learning.git
+                gpu: NVIDIA GeForce RTX 5060 Ti
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Blackwell
+                      cudaCores: 4608
+                      memoryTotal: "17103323136"
+                      name: NVIDIA GeForce RTX 5060 Ti
+                      uuid: GPU-337040fd-c436-69f4-9c7f-3ae2b5a9a50e
+                host: Adonis2
+                memory:
+                    total: "33409286144"
+                os: Windows-11-10.0.26200-SP0
+                program: <python with no main file>
+                python: CPython 3.12.11
+                root: C:\Users\User\Projects\FYP2
+                startedAt: "2026-01-11T10:29:28.440698Z"
+                writerId: 3n7lb7jx3rpl9ouzlwp9kld940r8o8xo
+        m: []
+        python_version: 3.12.11
+        t:
+            "1":
+                - 1
+                - 5
+                - 9
+                - 11
+                - 41
+                - 49
+                - 53
+                - 103
+                - 105
+            "2":
+                - 1
+                - 5
+                - 9
+                - 11
+                - 41
+                - 49
+                - 51
+                - 53
+                - 75
+                - 86
+                - 103
+                - 105
+            "3":
+                - 16
+            "4": 3.12.11
+            "5": 0.23.1
+            "6": 4.57.3
+            "8":
+                - 3
+            "12": 0.23.1
+            "13": windows-amd64
+endpoint_type:
+    value: inference
+model_version:
+    value: unknown
