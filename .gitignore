@@ -91,3 +91,18 @@ hive-mind-prompt-*.txt
 
 # Conductor data directory
 conductor/
+AGENTS.md*
+
+# Planning and documentation artifacts (temporary/generated)
+.planning/*.md
+
+# Generated data files (results, analysis, plots)
+*.pdf
+*.csv
+*.json
+
+# Exceptions: Keep critical configuration files
+!package.json
+!pyproject.toml
+!composer.json
+!uv.lock
