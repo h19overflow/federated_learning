@@ -30,6 +30,9 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
     MCPManager,
 )
 from federated_pneumonia_detection.src.boundary.engine import create_tables
+from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
+    get_wandb_tracker,
+)
 import os
 from pathlib import Path
 
@@ -76,6 +79,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"MCP manager initialization failed (arxiv unavailable): {e}")
 
+    # Initialize W&B inference tracker
+    try:
+        tracker = get_wandb_tracker()
+        if tracker.initialize(
+            entity="projectontheside25-multimedia-university",
+            project="FYP2",
+            job_type="inference",
+        ):
+            logger.info("W&B inference tracker initialized")
+        else:
+            logger.warning("W&B inference tracker initialization failed")
+    except Exception as e:
+        logger.warning(f"W&B tracker initialization failed (tracking disabled): {e}")
+
     yield
 
     # Shutdown
@@ -84,6 +101,14 @@ async def lifespan(app: FastAPI):
         logger.info("MCP manager shutdown complete")
     except Exception as e:
         logger.error(f"Error during MCP manager shutdown: {e}")
+
+    # Finish W&B run
+    try:
+        tracker = get_wandb_tracker()
+        tracker.finish()
+        logger.info("W&B inference tracker shutdown complete")
+    except Exception as e:
+        logger.warning(f"Error during W&B tracker shutdown: {e}")
 
 
 app = FastAPI(

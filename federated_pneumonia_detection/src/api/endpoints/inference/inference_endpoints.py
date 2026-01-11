@@ -28,6 +28,9 @@ from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas im
 )
 from federated_pneumonia_detection.src.api.deps import get_inference_service
 from federated_pneumonia_detection.src.boundary.inference_service import InferenceService
+from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
+    get_wandb_tracker,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -147,17 +150,35 @@ async def predict(
                 clinical_interpretation = _generate_fallback_interpretation(prediction)
 
         processing_time_ms = (time.time() - start_time) * 1000
+        model_version = service.engine.model_version if service.engine else "unknown"
+
+        # Log to W&B
+        tracker = get_wandb_tracker()
+        if tracker.is_active:
+            tracker.log_single_prediction(
+                predicted_class=predicted_class,
+                confidence=confidence,
+                pneumonia_probability=pneumonia_prob,
+                normal_probability=normal_prob,
+                processing_time_ms=processing_time_ms,
+                clinical_interpretation_used=clinical_interpretation is not None,
+                model_version=model_version,
+            )
 
         return InferenceResponse(
             success=True,
             prediction=prediction,
             clinical_interpretation=clinical_interpretation,
-            model_version=service.engine.model_version if service.engine else "unknown",
+            model_version=model_version,
             processing_time_ms=processing_time_ms,
         )
 
     except Exception as e:
         logger.error(f"Inference failed: {e}", exc_info=True)
+        # Log error to W&B
+        tracker = get_wandb_tracker()
+        if tracker.is_active:
+            tracker.log_error("inference", str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Inference failed: {str(e)}",
@@ -388,10 +409,30 @@ async def predict_batch(
         high_risk_count=high_risk_count,
     )
 
+    total_batch_time_ms = (time.time() - batch_start_time) * 1000
+    model_version = service.engine.model_version if service.engine else "unknown"
+
+    # Log batch summary to W&B
+    tracker = get_wandb_tracker()
+    if tracker.is_active:
+        tracker.log_batch_prediction(
+            total_images=len(files),
+            successful=successful_count,
+            failed=failed_count,
+            normal_count=normal_count,
+            pneumonia_count=pneumonia_count,
+            avg_confidence=avg_confidence,
+            avg_processing_time_ms=avg_processing_time,
+            total_processing_time_ms=total_batch_time_ms,
+            high_risk_count=high_risk_count,
+            clinical_interpretation_used=include_clinical_interpretation,
+            model_version=model_version,
+        )
+
     return BatchInferenceResponse(
         success=True,
         results=results,
         summary=summary,
-        model_version=service.engine.model_version if service.engine else "unknown",
-        total_processing_time_ms=(time.time() - batch_start_time) * 1000,
+        model_version=model_version,
+        total_processing_time_ms=total_batch_time_ms,
     )
