@@ -16,7 +16,8 @@ from torchvision import transforms
 logger = logging.getLogger(__name__)
 
 # Default checkpoint path (relative to this module)
-DEFAULT_CHECKPOINT_PATH = Path(__file__).parent / "pneumonia_model_01_0.988-v2.ckpt"
+# Using the balanced model (0.928 recall) instead of the biased model (0.988) which over-predicts pneumonia
+DEFAULT_CHECKPOINT_PATH = Path(__file__).parent / "pneumonia_model_07_0.928.ckpt"
 
 
 class InferenceEngine:

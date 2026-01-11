@@ -107,3 +107,8 @@ AGENTS.md*
 !composer.json
 !uv.lock
 Training_Sample_5pct/
+# WandB artifacts
+wandb/
+
+# Logs
+*.log
