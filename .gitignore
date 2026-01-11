@@ -106,3 +106,4 @@ AGENTS.md*
 !pyproject.toml
 !composer.json
 !uv.lock
+Training_Sample_5pct/

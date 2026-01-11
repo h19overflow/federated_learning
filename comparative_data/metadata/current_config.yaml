@@ -1,0 +1,72 @@
+columns:
+  filename: filename
+  patient_id: patientId
+  target: Target
+experiment:
+  adaptive_histogram: false
+  augmentation_strength: 1.0
+  batch_sample_interval: 10
+  batch_size: 32
+  clients_per_round: 2
+  clip_limit: 2.0
+  color_mode: RGB
+  contrast_stretch: true
+  device: auto
+  dropout_rate: 0.3
+  early_stopping_patience: 5
+  edge_enhancement: false
+  edge_strength: 1.0
+  epochs: 10
+  file-path: C:\Users\User\AppData\Local\Temp\experiment_data_1qh2vetz\stage2_train_metadata.csv
+  fine_tune_layers_count: 5
+  freeze_backbone: true
+  gradient_sample_interval: 20
+  image-dir: C:\Users\User\AppData\Local\Temp\experiment_data_1qh2vetz\Training\Images
+  learning_rate: 0.001
+  local_epochs: 2
+  lower_percentile: 5.0
+  max-epochs: 2
+  min_lr: 1.0e-07
+  monitor_metric: val_loss
+  num-server-rounds: 5
+  num_classes: 1
+  num_clients: 2
+  num_rounds: 10
+  num_workers: 0
+  options:
+    num-supernodes: 2
+  persistent_workers: false
+  pin_memory: true
+  prefetch_factor: 2
+  reduce_lr_factor: 0.5
+  reduce_lr_patience: 3
+  seed: 42
+  upper_percentile: 95.0
+  use_custom_preprocessing: false
+  use_imagenet_norm: true
+  validate_images_on_init: true
+  validation_split: 0.2
+  weight_decay: 0.0001
+logging:
+  file_logging: true
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+output:
+  checkpoint_dir: models/checkpoints
+  log_dir: logs
+  results_dir: results
+paths:
+  base_path: .
+  images_subfolder: Images
+  main_images_folder: Images
+  metadata_filename: stage2_train_metadata.csv
+system:
+  batch_size: 128
+  image_extension: .png
+  img_size:
+  - 256
+  - 256
+  sample_fraction: 1.0
+  seed: 42
+  use_imagenet_norm: true
+  validation_split: 0.2

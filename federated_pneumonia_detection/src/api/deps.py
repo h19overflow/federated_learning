@@ -89,3 +89,40 @@ def get_arxiv_engine() -> "ArxivAugmentedEngine":
     return _arxiv_engine
 
 
+# ==============================================================================
+# INFERENCE DEPENDENCIES
+# ==============================================================================
+
+def get_inference_service() -> "InferenceService":
+    """Get an InferenceService instance for X-ray inference.
+
+    The service handles lazy loading of the model and clinical agent.
+    """
+    from federated_pneumonia_detection.src.boundary.inference_service import (
+        get_inference_service as _get_service,
+    )
+    return _get_service()
+
+
+def get_inference_engine() -> Optional["InferenceEngine"]:
+    """Get the InferenceEngine singleton.
+
+    Returns None if the model cannot be loaded.
+    """
+    from federated_pneumonia_detection.src.boundary.inference_service import (
+        get_inference_engine as _get_engine,
+    )
+    return _get_engine()
+
+
+def get_clinical_agent() -> Optional["ClinicalInterpretationAgent"]:
+    """Get the ClinicalInterpretationAgent singleton.
+
+    Returns None if the agent cannot be initialized.
+    """
+    from federated_pneumonia_detection.src.boundary.inference_service import (
+        get_clinical_agent as _get_agent,
+    )
+    return _get_agent()
+
+

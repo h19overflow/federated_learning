@@ -20,6 +20,16 @@ from .runs_schemas import (
     RunsListResponse,
     BackfillResponse,
 )
+from .inference_schemas import (
+    PredictionClass,
+    InferencePrediction,
+    RiskAssessment,
+    ClinicalInterpretation,
+    InferenceResponse,
+    InferenceError,
+    BatchInferenceRequest,
+    HealthCheckResponse,
+)
 
 __all__ = [
     "ChatMessage",
@@ -34,4 +44,12 @@ __all__ = [
     "RunSummary",
     "RunsListResponse",
     "BackfillResponse",
+    "PredictionClass",
+    "InferencePrediction",
+    "RiskAssessment",
+    "ClinicalInterpretation",
+    "InferenceResponse",
+    "InferenceError",
+    "BatchInferenceRequest",
+    "HealthCheckResponse",
 ]
