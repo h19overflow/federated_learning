@@ -64,13 +64,15 @@ async def lifespan(app: FastAPI):
 
     Manages WebSocket server and MCP manager lifecycle.
     """
-    # Startup
     try:
         logger.info("Ensuring database tables exist...")
         create_tables()
         logger.info("Database tables verified/created")
     except Exception as e:
-        logger.error(f"Failed to create database tables: {e}")
+        # Critical failure: app cannot operate without a database
+        logger.critical(f"DATABASE INITIALIZATION FAILED: {e}")
+        logger.critical("Cannot proceed with startup. Shutting down.")
+        raise  
 
     websocket_thread = threading.Thread(
         target=_start_websocket_server, daemon=True, name="WebSocket-Server-Thread"
@@ -78,14 +80,28 @@ async def lifespan(app: FastAPI):
     websocket_thread.start()
     logger.info("WebSocket server startup initiated in background thread")
 
-    # Initialize MCP manager for arxiv tools
     try:
         await mcp_manager.initialize()
-        logger.info("MCP manager initialized")
+        logger.info("MCP manager initialized successfully (arxiv integration available)")
+    except ConnectionError as e:
+        # Network issue: ArXiv might be temporarily down
+        logger.warning(
+            f"MCP initialization failed - network issue: {e} "
+            "(arxiv search will be unavailable)"
+        )
+    except ImportError as e:
+        # Missing dependency: websockets or other lib not installed
+        logger.warning(
+            f"MCP initialization failed - missing dependency: {e} "
+            "(arxiv search disabled)"
+        )
     except Exception as e:
-        logger.warning(f"MCP manager initialization failed (arxiv unavailable): {e}")
+        # Catch-all for unexpected errors in MCP initialization
+        logger.warning(
+            f"MCP initialization failed (unexpected error): {e} "
+            "(arxiv search will be unavailable, but app continues)"
+        )
 
-    # Initialize W&B inference tracker
     try:
         tracker = get_wandb_tracker()
         if tracker.initialize(
@@ -93,28 +109,46 @@ async def lifespan(app: FastAPI):
             project="FYP2",
             job_type="inference",
         ):
-            logger.info("W&B inference tracker initialized")
+            logger.info("W&B inference tracker initialized (experiment tracking enabled)")
         else:
-            logger.warning("W&B inference tracker initialization failed")
+            logger.warning(
+                "W&B tracker rejected configuration (check credentials). "
+                "Experiment tracking will be unavailable."
+            )
+    except ConnectionError as e:
+        logger.warning(
+            f"W&B connection failed: {e} "
+            "(experiment tracking disabled, but training continues)"
+        )
+    except ImportError as e:
+        logger.warning(
+            f"W&B not installed: {e} (install with: pip install wandb) "
+            "(experiment tracking disabled)"
+        )
     except Exception as e:
-        logger.warning(f"W&B tracker initialization failed (tracking disabled): {e}")
+        logger.warning(
+            f"W&B initialization failed (unexpected): {e} "
+            "(experiment tracking will be unavailable)"
+        )
 
     yield
-
-    # Shutdown
     try:
         await mcp_manager.shutdown()
         logger.info("MCP manager shutdown complete")
     except Exception as e:
-        logger.error(f"Error during MCP manager shutdown: {e}")
-
-    # Finish W&B run
+        logger.warning(
+            f"MCP manager shutdown had issues: {e} "
+            "(this is non-fatal, app still shutting down)"
+        )
     try:
         tracker = get_wandb_tracker()
         tracker.finish()
         logger.info("W&B inference tracker shutdown complete")
     except Exception as e:
-        logger.warning(f"Error during W&B tracker shutdown: {e}")
+        logger.warning(
+            f"W&B tracker shutdown had issues: {e} "
+            "(this is non-fatal, app still shutting down)"
+        )
 
 
 app = FastAPI(
@@ -123,7 +157,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS for frontend integration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -177,7 +210,15 @@ def _start_websocket_server():
         connected_clients: Set[websockets.WebSocketServerProtocol] = set()
 
         async def handler(websocket: websockets.WebSocketServerProtocol) -> None:
-            """Handle WebSocket connections and broadcast metrics."""
+            """
+            Handle WebSocket connections and broadcast metrics to all connected clients.
+
+            PATTERN 3: PER-MESSAGE ERROR HANDLING (Catch specific types, skip gracefully)
+            ============================================================================
+            - Incoming messages may be malformed (invalid JSON, missing fields)
+            - Log warning, skip the problematic message, continue processing next message
+            - Never crash the handler or disconnect the client on bad data
+            """
             connected_clients.add(websocket)
             logger.info(
                 f"WebSocket client connected. Total clients: {len(connected_clients)}"
@@ -185,6 +226,12 @@ def _start_websocket_server():
 
             try:
                 async for message in websocket:
+                    # PATTERN 3: Per-message error handling
+                    # ======================================
+                    # Incoming data may be invalid. We want to:
+                    # 1. Catch specific JSON errors (not generic Exception)
+                    # 2. Log a warning (not error) because it's a client issue, not our fault
+                    # 3. Continue to next message (don't disconnect or crash)
                     try:
                         data = json.loads(message)
                         message_type = data.get("type", "unknown")
@@ -193,29 +240,59 @@ def _start_websocket_server():
                             f"Broadcasting {message_type} to {len(connected_clients)} clients"
                         )
 
-                        # Broadcast to all clients except sender
-                        if connected_clients:
-                            tasks = []
-                            for client in connected_clients:
-                                if client != websocket:
-                                    tasks.append(client.send(message))
+                        await _broadcast_to_clients(message, websocket, connected_clients)
 
-                            await asyncio.gather(*tasks, return_exceptions=True)
-
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Invalid JSON received: {e}")
+                    except json.JSONDecodeError:
+                        # Client sent invalid JSON. This is a client error, not our fault.
+                        # Warning level: it's noteworthy but expected in prod (network glitches, bad clients)
+                        # Continue: skip this message and process the next one
+                        logger.warning(f"Received malformed JSON from client, skipping message")
+                        continue
+                    except KeyError as e:
+                        # Message structure is wrong (missing expected field)
+                        # This is a protocol violation by the client
+                        logger.warning(
+                            f"WebSocket message missing required field '{e}', skipping"
+                        )
+                        continue
                     except Exception as e:
-                        logger.error(f"Error processing WebSocket message: {e}")
+                        # Unexpected error during message processing
+                        # Log as warning to not alert ops unnecessarily
+                        # But still continue processing (don't drop the connection)
+                        logger.warning(
+                            f"Unexpected error processing WebSocket message: {e}, continuing"
+                        )
+                        continue
 
             except websockets.exceptions.ConnectionClosed:
-                logger.debug("Client disconnected")
+                # Client closed connection explicitly (expected, not an error)
+                logger.debug("Client closed WebSocket connection gracefully")
             except Exception as e:
-                logger.error(f"WebSocket handler error: {e}")
+                # Unexpected connection error (network issue, etc.)
+                # This is concerning but out of our control
+                logger.warning(f"WebSocket handler unexpected error: {e}")
             finally:
+                # CLEANUP: Always remove the client from the set when exiting
                 connected_clients.discard(websocket)
                 logger.debug(
                     f"WebSocket client removed. Total clients: {len(connected_clients)}"
                 )
+
+        async def _broadcast_to_clients(
+            message: str, sender: websockets.WebSocketServerProtocol, clients: set
+        ) -> None:
+            """
+            Broadcast a message to all connected clients except the sender.
+
+            EXTRACTED HELPER: Reduces nesting and makes the main handler cleaner.
+            By separating this logic, the handler focuses on message reception
+            and error handling, not broadcast details.
+            """
+            tasks = [client.send(message) for client in clients if client != sender]
+            if tasks:
+                # return_exceptions=True prevents one failed client from breaking others
+                # Each client's send() failure is logged separately
+                await asyncio.gather(*tasks, return_exceptions=True)
 
         async def run_server():
             """Run the WebSocket server."""
@@ -233,11 +310,26 @@ def _start_websocket_server():
         asyncio.run(run_server())
 
     except ImportError as e:
-        logger.error(
-            f"WebSocket server failed to start: {e}. Install with: pip install websockets"
+        # websockets library is missing. This is a startup dependency issue.
+        # Log warning (non-fatal): WebSocket features won't work but core API still functions.
+        logger.warning(
+            f"WebSocket server failed to start: Missing required library. "
+            f"Install with: pip install websockets (metrics streaming will be unavailable)"
+        )
+    except OSError as e:
+        # Port already in use or permission denied
+        # This is concerning but WebSocket is optional (nice-to-have feature)
+        logger.warning(
+            f"WebSocket server could not bind to port: {e}. "
+            f"(metrics streaming unavailable, but app continues)"
         )
     except Exception as e:
-        logger.error(f"Failed to start WebSocket server: {e}")
+        # Unexpected error in WebSocket setup
+        # Warning level: WebSocket is optional, don't fail startup
+        logger.warning(
+            f"WebSocket server startup had unexpected error: {e} "
+            f"(metrics streaming will be unavailable)"
+        )
 
 
 app.include_router(configuration_endpoints.router)
