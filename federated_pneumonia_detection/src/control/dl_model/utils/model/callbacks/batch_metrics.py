@@ -13,7 +13,7 @@ class BatchMetricsCallback(pl.Callback):
     """
     Callback to sample and send batch-level metrics during training.
 
-    Sends metrics every Nth batch to prevent overwhelming the frontend
+    Sends metrics every Nth batch to prevent overwhelming frontend
     with updates. Supports both centralized and federated training modes.
     """
 
@@ -50,7 +50,7 @@ class BatchMetricsCallback(pl.Callback):
         batch_idx: int,
     ) -> None:
         """
-        Called when the training batch ends.
+        Called when training batch ends.
 
         Args:
             trainer: PyTorch Lightning trainer

@@ -4,7 +4,6 @@ Includes Focal Loss, Cosine Annealing with Warmup, and progressive unfreezing.
 """
 
 import logging
-import math
 from typing import Optional, Dict, Any, Tuple, TYPE_CHECKING
 
 import torch
@@ -22,67 +21,12 @@ from federated_pneumonia_detection.src.control.dl_model.utils.model.focal_loss i
     FocalLoss,
     FocalLossWithLabelSmoothing,
 )
-
-
-class CosineAnnealingWarmupScheduler:
-    """
-    Cosine Annealing with Linear Warmup scheduler.
-
-    Combines linear warmup with cosine annealing for stable training.
-    """
-
-    def __init__(
-        self,
-        optimizer: optim.Optimizer,
-        warmup_epochs: int,
-        total_epochs: int,
-        min_lr: float = 1e-7,
-        warmup_start_lr: float = 1e-7,
-    ):
-        """
-        Initialize scheduler.
-
-        Args:
-            optimizer: PyTorch optimizer
-            warmup_epochs: Number of warmup epochs
-            total_epochs: Total training epochs
-            min_lr: Minimum learning rate after annealing
-            warmup_start_lr: Starting learning rate for warmup
-        """
-        self.optimizer = optimizer
-        self.warmup_epochs = warmup_epochs
-        self.total_epochs = total_epochs
-        self.min_lr = min_lr
-        self.warmup_start_lr = warmup_start_lr
-        self.base_lrs = [group["lr"] for group in optimizer.param_groups]
-        self.current_epoch = 0
-
-    def step(self, epoch: Optional[int] = None):
-        """Update learning rate based on current epoch."""
-        if epoch is not None:
-            self.current_epoch = epoch
-        else:
-            self.current_epoch += 1
-
-        for param_group, base_lr in zip(self.optimizer.param_groups, self.base_lrs):
-            if self.current_epoch < self.warmup_epochs:
-                # Linear warmup
-                lr = self.warmup_start_lr + (base_lr - self.warmup_start_lr) * (
-                    self.current_epoch / self.warmup_epochs
-                )
-            else:
-                # Cosine annealing
-                progress = (self.current_epoch - self.warmup_epochs) / (
-                    self.total_epochs - self.warmup_epochs
-                )
-                lr = self.min_lr + (base_lr - self.min_lr) * 0.5 * (
-                    1 + math.cos(math.pi * progress)
-                )
-            param_group["lr"] = lr
-
-    def get_last_lr(self):
-        """Get current learning rates."""
-        return [group["lr"] for group in self.optimizer.param_groups]
+from federated_pneumonia_detection.src.control.dl_model.utils.model.optimizers.schedulers import (
+    CosineAnnealingWarmupScheduler,
+)
+from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.progressive import (
+    ProgressiveUnfreezeCallback,
+)
 
 
 class LitResNetEnhanced(pl.LightningModule):
@@ -441,39 +385,3 @@ class LitResNetEnhanced(pl.LightningModule):
         })
         return model_info
 
-
-class ProgressiveUnfreezeCallback(pl.Callback):
-    """
-    Callback for progressive unfreezing during training.
-
-    Gradually unfreezes backbone layers as training progresses.
-    """
-
-    def __init__(
-        self,
-        unfreeze_epochs: list = None,
-        layers_per_unfreeze: int = 2,
-    ):
-        """
-        Initialize callback.
-
-        Args:
-            unfreeze_epochs: Epochs at which to unfreeze layers.
-                             Default: [5, 10, 15] for a 20-epoch training.
-            layers_per_unfreeze: Number of layers to unfreeze each time.
-        """
-        super().__init__()
-        self.unfreeze_epochs = unfreeze_epochs or [5, 10, 15]
-        self.layers_per_unfreeze = layers_per_unfreeze
-        self.logger = logging.getLogger(__name__)
-
-    def on_train_epoch_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-        """Check if we should unfreeze layers at this epoch."""
-        current_epoch = trainer.current_epoch
-
-        if current_epoch in self.unfreeze_epochs:
-            if hasattr(pl_module, "progressive_unfreeze"):
-                pl_module.progressive_unfreeze(self.layers_per_unfreeze)
-                self.logger.info(
-                    f"Epoch {current_epoch}: Unfroze {self.layers_per_unfreeze} more layers"
-                )
