@@ -18,7 +18,7 @@ from sklearn.utils import class_weight
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector import (
+from federated_pneumonia_detection.src.control.dl_model.utils.model.collectors import (
     MetricsCollectorCallback,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
