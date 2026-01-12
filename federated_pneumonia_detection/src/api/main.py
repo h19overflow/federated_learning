@@ -132,6 +132,13 @@ async def lifespan(app: FastAPI):
         )
 
     yield
+    
+    try:
+        from federated_pneumonia_detection.src.boundary.engine import dispose_engine
+        dispose_engine()
+    except Exception as e:
+        logger.warning(f"Error disposing database connections: {e}")
+    
     try:
         await mcp_manager.shutdown()
         logger.info("MCP manager shutdown complete")
@@ -179,10 +186,6 @@ async def read_root():
     return {"message": "Federated Pneumonia Detection API"}
 
 
-# ============================================================================
-# WebSocket Server Auto-Start
-# ============================================================================
-
 
 def _start_websocket_server():
     """
@@ -214,10 +217,6 @@ def _start_websocket_server():
             Handle WebSocket connections and broadcast metrics to all connected clients.
 
             PATTERN 3: PER-MESSAGE ERROR HANDLING (Catch specific types, skip gracefully)
-            ============================================================================
-            - Incoming messages may be malformed (invalid JSON, missing fields)
-            - Log warning, skip the problematic message, continue processing next message
-            - Never crash the handler or disconnect the client on bad data
             """
             connected_clients.add(websocket)
             logger.info(
@@ -226,12 +225,6 @@ def _start_websocket_server():
 
             try:
                 async for message in websocket:
-                    # PATTERN 3: Per-message error handling
-                    # ======================================
-                    # Incoming data may be invalid. We want to:
-                    # 1. Catch specific JSON errors (not generic Exception)
-                    # 2. Log a warning (not error) because it's a client issue, not our fault
-                    # 3. Continue to next message (don't disconnect or crash)
                     try:
                         data = json.loads(message)
                         message_type = data.get("type", "unknown")
@@ -243,36 +236,24 @@ def _start_websocket_server():
                         await _broadcast_to_clients(message, websocket, connected_clients)
 
                     except json.JSONDecodeError:
-                        # Client sent invalid JSON. This is a client error, not our fault.
-                        # Warning level: it's noteworthy but expected in prod (network glitches, bad clients)
-                        # Continue: skip this message and process the next one
                         logger.warning(f"Received malformed JSON from client, skipping message")
                         continue
                     except KeyError as e:
-                        # Message structure is wrong (missing expected field)
-                        # This is a protocol violation by the client
                         logger.warning(
                             f"WebSocket message missing required field '{e}', skipping"
                         )
                         continue
                     except Exception as e:
-                        # Unexpected error during message processing
-                        # Log as warning to not alert ops unnecessarily
-                        # But still continue processing (don't drop the connection)
                         logger.warning(
                             f"Unexpected error processing WebSocket message: {e}, continuing"
                         )
                         continue
 
             except websockets.exceptions.ConnectionClosed:
-                # Client closed connection explicitly (expected, not an error)
                 logger.debug("Client closed WebSocket connection gracefully")
             except Exception as e:
-                # Unexpected connection error (network issue, etc.)
-                # This is concerning but out of our control
                 logger.warning(f"WebSocket handler unexpected error: {e}")
             finally:
-                # CLEANUP: Always remove the client from the set when exiting
                 connected_clients.discard(websocket)
                 logger.debug(
                     f"WebSocket client removed. Total clients: {len(connected_clients)}"

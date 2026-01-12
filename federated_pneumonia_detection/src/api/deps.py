@@ -13,12 +13,41 @@ logger = logging.getLogger(__name__)
 
 
 def get_db() -> Session:
-    """Get a database session"""
+    """Get a database session from the global connection pool.
+
+    This is a FastAPI dependency that provides a database session for each request.
+    The session is automatically closed after the request completes via the try/finally
+    block, ensuring proper connection pool management.
+
+    The session is created from the global pooled engine (see engine.py's get_session()),
+    which uses SQLAlchemy's QueuePool for efficient connection reuse across requests.
+
+    Usage Example:
+        ```python
+        from fastapi import Depends
+        from sqlalchemy.orm import Session
+
+        @router.get("/api/runs/{run_id}")
+        async def get_run(
+            run_id: int,
+            db: Session = Depends(get_db)  # Automatically closed after request
+        ):
+            return crud.get_run(db, run_id)
+        ```
+
+    Yields:
+        Session: SQLAlchemy database session from the connection pool
+
+    Note:
+        FastAPI calls this generator function as a dependency and will execute the
+        finally block after the route handler completes, ensuring session.close() is
+        always called even if an exception occurs during request processing.
+    """
     session = get_session()
     try:
-        return session
-    except Exception as e:
-        raise e
+        yield session
+    finally:
+        session.close()
 
 
 def get_config() -> ConfigManager:
@@ -40,6 +69,10 @@ def get_run_metric_crud() -> RunMetricCRUD:
 # CHAT ENGINE DEPENDENCIES
 # ==============================================================================
 
+# QueryEngine singleton uses PGVector which benefits from the global
+# pooled engine in engine.py. The singleton pattern is intentional as
+# QueryEngine holds expensive embedding model resources and vector database
+# connections that are reused across requests, not per-request.
 _query_engine = None
 _mcp_manager = None
 _arxiv_engine: Optional["ArxivAugmentedEngine"] = None
@@ -87,11 +120,6 @@ def get_arxiv_engine() -> "ArxivAugmentedEngine":
         _arxiv_engine = ArxivAugmentedEngine()
         logger.info("ArxivAugmentedEngine initialized successfully")
     return _arxiv_engine
-
-
-# ==============================================================================
-# INFERENCE DEPENDENCIES
-# ==============================================================================
 
 def get_inference_service() -> "InferenceService":
     """Get an InferenceService instance for X-ray inference.
