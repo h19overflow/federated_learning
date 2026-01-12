@@ -7,7 +7,6 @@ import pytest
 import pandas as pd
 import torch
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
 from torch.utils.data import DataLoader
 
 from federated_pneumonia_detection.src.control.federated_learning.data_manager import (

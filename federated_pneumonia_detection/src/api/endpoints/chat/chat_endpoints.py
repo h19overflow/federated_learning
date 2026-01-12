@@ -23,10 +23,9 @@ Architecture Notes
 """
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from ..schema import (
     ChatMessage,
-    ChatResponse,
     ChatHistoryResponse,
     ChatSessionSchema,
     CreateSessionRequest,
@@ -41,8 +40,7 @@ from ...deps import get_query_engine, get_mcp_manager, get_arxiv_engine
 from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
     get_all_chat_sessions,
     create_chat_session,
-    delete_chat_session,
-    get_chat_session
+    delete_chat_session
 )
 
 import logging
@@ -326,7 +324,7 @@ async def list_knowledge_base_documents() -> Dict[str, Any]:
     Returns:
         Dict with list of documents and their sources
     """
-    from federated_pneumonia_detection.src.boundary.engine import settings, get_engine
+    from federated_pneumonia_detection.src.boundary.engine import get_engine
     from sqlalchemy import text
     
     try:

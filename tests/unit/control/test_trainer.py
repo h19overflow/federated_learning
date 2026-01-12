@@ -6,10 +6,8 @@ Tests orchestration of federated learning pipeline.
 import pytest
 import torch
 import pandas as pd
-import numpy as np
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch, call
-from typing import List, Dict, Any
+from unittest.mock import Mock, patch
 
 from federated_pneumonia_detection.src.control.federated_learning.trainer import (
     FederatedTrainer,

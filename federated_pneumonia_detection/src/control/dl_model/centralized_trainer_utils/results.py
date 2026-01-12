@@ -91,7 +91,7 @@ def collect_training_results(
     )
 
     logger.info(
-        f"Saving metrics to: results/centralized/metrics_output/metrics.json"
+        "Saving metrics to: results/centralized/metrics_output/metrics.json"
     )
 
     output_path = os.path.join(logs_dir, "metrics_output", "metrics.json")

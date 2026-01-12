@@ -5,7 +5,6 @@ for model monitoring and drift detection.
 """
 
 import logging
-import os
 from typing import Optional
 from threading import Lock
 

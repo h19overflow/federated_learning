@@ -10,8 +10,7 @@ Tests all CRUD classes with full coverage:
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch, call
-from datetime import datetime
+from unittest.mock import Mock, patch
 from sqlalchemy.exc import SQLAlchemyError
 
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD

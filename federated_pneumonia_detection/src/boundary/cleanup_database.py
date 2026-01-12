@@ -172,7 +172,7 @@ def delete_runs_by_mode(training_mode: str) -> None:
 
         # Get run IDs to delete
         result = db.execute(
-            text(f"SELECT id FROM runs WHERE training_mode = :mode"),
+            text("SELECT id FROM runs WHERE training_mode = :mode"),
             {"mode": training_mode}
         )
         run_ids = [row[0] for row in result]

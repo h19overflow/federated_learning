@@ -7,8 +7,6 @@ import pytest
 import torch
 import torch.nn as nn
 import numpy as np
-from unittest.mock import Mock, MagicMock, patch
-from collections import OrderedDict
 
 from federated_pneumonia_detection.src.control.federated_learning.client import (
     FlowerClient,
@@ -18,7 +16,6 @@ from federated_pneumonia_detection.src.control.federated_learning.client import 
     evaluate,
 )
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
-from federated_pneumonia_detection.models.system_constants import SystemConstants
 
 
 class SimpleTestNet(nn.Module):

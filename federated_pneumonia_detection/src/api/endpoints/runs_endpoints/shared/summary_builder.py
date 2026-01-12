@@ -1,6 +1,6 @@
 """Shared run summary construction logic for centralized and federated modes."""
 
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from federated_pneumonia_detection.src.boundary.engine import Run
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (

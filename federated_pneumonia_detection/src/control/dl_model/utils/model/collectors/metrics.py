@@ -68,7 +68,7 @@ class MetricsCollectorCallback(pl.Callback):
                 f"[MetricsCollector] Initialized in FEDERATED mode for client_id={self.client_id}, round={self.current_round}"
             )
         else:
-            self.logger.info(f"[MetricsCollector] Initialized in CENTRALIZED mode")
+            self.logger.info("[MetricsCollector] Initialized in CENTRALIZED mode")
 
         # Initialize file persister
         self.file_persister = MetricsFilePersister(save_dir, experiment_name)

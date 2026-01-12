@@ -1,16 +1,11 @@
 from flwr.app import ArrayRecord, Context
 from flwr.serverapp import ServerApp, Grid
 from datetime import datetime
-from typing import Dict, Any
-import logging
 import os
 from pathlib import Path
 import torch
 from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
     ConfigurableFedAvg,
-)
-from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import (
-    LitResNet,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet_enhanced import (
     LitResNetEnhanced,

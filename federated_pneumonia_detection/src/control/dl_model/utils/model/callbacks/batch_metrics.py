@@ -6,7 +6,6 @@ Samples and sends batch metrics at configurable intervals.
 import logging
 from typing import Optional
 import pytorch_lightning as pl
-from datetime import datetime
 
 
 class BatchMetricsCallback(pl.Callback):

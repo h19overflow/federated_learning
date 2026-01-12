@@ -6,11 +6,10 @@ Covers both centralized and federated learning modes.
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch, call
+from unittest.mock import Mock, patch
 from datetime import datetime
-from typing import Dict, List, Any
 
-from federated_pneumonia_detection.src.boundary.engine import Run, RunMetric, ServerEvaluation
+from federated_pneumonia_detection.src.boundary.engine import Run
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import server_evaluation_crud
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import (

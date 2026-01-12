@@ -9,13 +9,9 @@ Tests the full flow:
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
-from datetime import datetime
-from typing import Dict, Any
+from unittest.mock import Mock, patch
 
-from federated_pneumonia_detection.src.boundary.engine import ServerEvaluation
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
-    server_evaluation_crud,
     ServerEvaluationCRUD,
 )
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import (
@@ -352,9 +348,6 @@ class TestServerEvaluationAPIIntegration:
 
     def test_server_evaluation_response_structure(self):
         """Test that server evaluation API response has correct structure."""
-        from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.runs_server_evaluation import (
-            get_server_evaluation,
-        )
 
         # Mock response should include:
         expected_response = {

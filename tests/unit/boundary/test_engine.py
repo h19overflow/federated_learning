@@ -3,17 +3,11 @@ Unit tests for boundary layer database engine and models.
 Tests SQLAlchemy models, relationships, and database operations.
 """
 
-import pytest
-from datetime import datetime
-from unittest.mock import Mock, MagicMock, patch, call
-from sqlalchemy import Column, Integer, String, Text, Float, TIMESTAMP, ForeignKey
-from sqlalchemy.orm import relationship
+from unittest.mock import MagicMock, patch
 from sqlalchemy.types import (
     String as StringType,
-    Text as TextType,
     Integer as IntegerType,
     Float as FloatType,
-    TIMESTAMP as TimestampType,
 )
 
 from federated_pneumonia_detection.src.boundary.engine import (

@@ -22,7 +22,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from federated_pneumonia_detection.config.settings import Settings
 
-from .models import Base, Run, Client, Round, RunMetric, ServerEvaluation
+from .models import Base
 
 # Initialize settings and logger
 settings = Settings()

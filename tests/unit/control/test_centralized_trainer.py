@@ -4,7 +4,6 @@ Tests orchestration of centralized training pipeline with mocked components.
 """
 
 import pytest
-import os
 import pandas as pd
 from unittest.mock import Mock, MagicMock, patch
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import CentralizedTrainer

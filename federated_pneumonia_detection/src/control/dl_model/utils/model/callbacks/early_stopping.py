@@ -51,7 +51,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
                 break
 
         if self.websocket_sender:
-            self.logger.info(f"[EarlyStoppingSignal] WebSocket sender available")
+            self.logger.info("[EarlyStoppingSignal] WebSocket sender available")
         else:
             self.logger.warning("[EarlyStoppingSignal] No WebSocket sender provided!")
 

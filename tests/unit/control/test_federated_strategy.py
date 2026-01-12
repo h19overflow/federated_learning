@@ -4,7 +4,7 @@ Tests client configuration and metrics aggregation math.
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from flwr.app import ArrayRecord, Message, ConfigRecord
 from flwr.serverapp import Grid
 from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import ConfigurableFedAvg

@@ -6,7 +6,6 @@ Focuses on achieving 100% code coverage through exhaustive testing of all method
 import pytest
 import torch
 import pandas as pd
-import numpy as np
 from pathlib import Path
 from PIL import Image
 import torch.nn as nn
@@ -14,7 +13,6 @@ from unittest.mock import MagicMock, patch
 
 from federated_pneumonia_detection.src.entities.custom_image_dataset import CustomImageDataset
 from federated_pneumonia_detection.src.entities.resnet_with_custom_head import ResNetWithCustomHead
-from federated_pneumonia_detection.config.config_manager import ConfigManager
 from tests.fixtures.sample_data import SampleDataFactory
 
 

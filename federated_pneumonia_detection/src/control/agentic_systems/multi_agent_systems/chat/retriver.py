@@ -17,7 +17,6 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 load_dotenv()
-from langchain_community.document_loaders.pdf import PyPDFium2Loader
 
 
 class QueryEngine:

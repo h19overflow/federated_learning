@@ -14,12 +14,11 @@ from __future__ import annotations
 import logging
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import create_agent
 
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent_prompts import (
-    ARXIV_AGENT_SYSTEM_PROMPT,
     RESEARCH_MODE_SYSTEM_PROMPT,
     BASIC_MODE_SYSTEM_PROMPT,
 )
@@ -39,9 +38,9 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
     create_arxiv_embedding_tool,
 )
 
-from .content import chunk_content, normalize_content
+from .content import normalize_content
 from .history import ChatHistoryManager
-from .streaming import SSEEventType, create_sse_event, execute_tool_async
+from .streaming import SSEEventType, create_sse_event
 from dotenv import load_dotenv
 
 load_dotenv()

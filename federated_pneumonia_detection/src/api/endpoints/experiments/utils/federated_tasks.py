@@ -10,7 +10,6 @@ import os
 from typing import Any, Dict
 from pathlib import Path
 
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 from federated_pneumonia_detection.config.config_manager import ConfigManager
 
 
@@ -129,7 +128,7 @@ def run_federated_training_task(
             task_logger.warning(f"[WARN] Missing environment variables: {missing_vars}")
             task_logger.warning("Database persistence may fail!")
         else:
-            task_logger.info(f"[OK] All required environment variables present")
+            task_logger.info("[OK] All required environment variables present")
 
         ps_cmd = [
             "powershell",

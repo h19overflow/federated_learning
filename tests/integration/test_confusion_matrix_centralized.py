@@ -9,14 +9,12 @@ Tests the full flow:
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from datetime import datetime
-from typing import Dict, Any
 import torch
 
-from federated_pneumonia_detection.src.boundary.engine import Run, RunMetric
+from federated_pneumonia_detection.src.boundary.engine import Run
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import (
     _calculate_summary_statistics,
     _transform_run_to_results,

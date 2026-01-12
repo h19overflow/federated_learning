@@ -90,7 +90,7 @@ def classify_query(query: str) -> str:
         agent = _get_router_agent()
         prompt = ROUTER_CLASSIFICATION_PROMPT.format(query=query)
 
-        logger.debug(f"[QueryRouter] Invoking classification agent with structured output...")
+        logger.debug("[QueryRouter] Invoking classification agent with structured output...")
         result = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
 
         # Extract structured response from agent result

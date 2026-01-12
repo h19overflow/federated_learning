@@ -236,7 +236,7 @@ def _start_websocket_server():
                         await _broadcast_to_clients(message, websocket, connected_clients)
 
                     except json.JSONDecodeError:
-                        logger.warning(f"Received malformed JSON from client, skipping message")
+                        logger.warning("Received malformed JSON from client, skipping message")
                         continue
                     except KeyError as e:
                         logger.warning(
@@ -290,12 +290,12 @@ def _start_websocket_server():
         # Run the server
         asyncio.run(run_server())
 
-    except ImportError as e:
+    except ImportError:
         # websockets library is missing. This is a startup dependency issue.
         # Log warning (non-fatal): WebSocket features won't work but core API still functions.
         logger.warning(
-            f"WebSocket server failed to start: Missing required library. "
-            f"Install with: pip install websockets (metrics streaming will be unavailable)"
+            "WebSocket server failed to start: Missing required library. "
+            "Install with: pip install websockets (metrics streaming will be unavailable)"
         )
     except OSError as e:
         # Port already in use or permission denied

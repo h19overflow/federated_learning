@@ -1,4 +1,3 @@
-import tomli
 import tomli_w
 
 try:

@@ -1,6 +1,6 @@
 """Validation utilities for CustomImageDataset."""
 
-from typing import Union, Tuple
+from typing import Tuple
 from pathlib import Path
 import pandas as pd
 import numpy as np

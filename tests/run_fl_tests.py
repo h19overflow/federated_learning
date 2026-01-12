@@ -6,7 +6,6 @@ Provides convenient interface to run different test suites.
 import sys
 import subprocess
 import argparse
-from pathlib import Path
 
 
 def run_command(cmd: list) -> int:

@@ -65,13 +65,13 @@ class DataSourceExtractor:
 
         try:
             if is_zip:
-                self.logger.info(f"Processing ZIP file...")
+                self.logger.info("Processing ZIP file...")
                 result = self._process_zip(source_path, csv_filename)
             else:
-                self.logger.info(f"Processing directory...")
+                self.logger.info("Processing directory...")
                 result = self._process_directory(source_path, csv_filename)
 
-            self.logger.info(f"✓ Data source processing completed successfully")
+            self.logger.info("✓ Data source processing completed successfully")
             return result
 
         except FileNotFoundError as e:
@@ -129,20 +129,20 @@ class DataSourceExtractor:
             self.temp_extract_dir = tempfile.mkdtemp(prefix="pneumonia_training_")
             self.logger.info(f"  Created temporary directory: {self.temp_extract_dir}")
 
-            self.logger.info(f"  Extracting ZIP contents...")
+            self.logger.info("  Extracting ZIP contents...")
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 file_count = len(zip_ref.namelist())
                 self.logger.info(f"  ZIP contains {file_count} files")
                 zip_ref.extractall(self.temp_extract_dir)
-            self.logger.info(f"  ✓ Extraction completed")
+            self.logger.info("  ✓ Extraction completed")
 
-            self.logger.info(f"  Searching for CSV file...")
+            self.logger.info("  Searching for CSV file...")
             csv_path = self._find_csv_file(self.temp_extract_dir, csv_filename)
             self.logger.info(f"  ✓ CSV file found: {os.path.basename(csv_path)}")
 
-            self.logger.info(f"  Searching for image directory...")
+            self.logger.info("  Searching for image directory...")
             image_dir = self._find_image_directory(self.temp_extract_dir)
-            self.logger.info(f"  ✓ Image directory found")
+            self.logger.info("  ✓ Image directory found")
 
             return image_dir, csv_path
         except Exception as e:
@@ -155,7 +155,7 @@ class DataSourceExtractor:
             if not os.path.isdir(directory_path):
                 self.logger.error(f"  ✗ Path is not a directory: {directory_path}")
                 raise ValueError(f"Path is not a directory: {directory_path}")
-            self.logger.info(f"  ✓ Directory verified")
+            self.logger.info("  ✓ Directory verified")
 
             csv_path = self._find_csv_file(directory_path, csv_filename)
             self.logger.info(f"  ✓ CSV file found: {os.path.basename(csv_path)}")

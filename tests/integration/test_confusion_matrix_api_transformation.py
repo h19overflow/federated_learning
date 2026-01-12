@@ -6,9 +6,8 @@ including summary statistics calculation and response formatting.
 """
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from datetime import datetime
-from typing import Dict, Any
 
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import (
     _calculate_summary_statistics,

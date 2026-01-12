@@ -2,7 +2,6 @@
 Top-level pytest configuration.
 Defines custom markers and plugins for the entire test suite.
 """
-import pytest
 
 pytest_plugins = []
 

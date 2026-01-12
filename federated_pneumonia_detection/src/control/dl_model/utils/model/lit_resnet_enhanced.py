@@ -21,12 +21,6 @@ from federated_pneumonia_detection.src.control.dl_model.utils.model.focal_loss i
     FocalLoss,
     FocalLossWithLabelSmoothing,
 )
-from federated_pneumonia_detection.src.control.dl_model.utils.model.optimizers.schedulers import (
-    CosineAnnealingWarmupScheduler,
-)
-from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.progressive import (
-    ProgressiveUnfreezeCallback,
-)
 
 
 class LitResNetEnhanced(pl.LightningModule):

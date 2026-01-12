@@ -306,7 +306,7 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
     db = None
     try:
         db = get_session()
-        logger.info(f"[OK] Database session created successfully")
+        logger.info("[OK] Database session created successfully")
         logger.info(f"Processing {len(server_metrics)} server evaluation rounds...")
 
         for round_num_str, metric_record in server_metrics.items():
@@ -364,7 +364,7 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
         logger.info("=" * 80)
     except Exception as e:
         logger.error("=" * 80)
-        logger.error(f"[ERROR] CRITICAL ERROR: Failed to persist server evaluations")
+        logger.error("[ERROR] CRITICAL ERROR: Failed to persist server evaluations")
         logger.error(f"Error type: {type(e).__name__}")
         logger.error(f"Error message: {e}", exc_info=True)
         logger.error("=" * 80)

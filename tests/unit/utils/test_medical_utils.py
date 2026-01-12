@@ -8,12 +8,10 @@ import pandas as pd
 import numpy as np
 import os
 import logging
-from pathlib import Path
 from PIL import Image
 import torch
 import torchvision.transforms as transforms
-from unittest.mock import MagicMock, patch
-import warnings
+from unittest.mock import patch
 from tests.fixtures.sample_data import SampleDataFactory, TempDataStructure
 
 from federated_pneumonia_detection.src.utils.data_processing_functions import (
@@ -31,7 +29,6 @@ from federated_pneumonia_detection.src.utils.image_transforms import (
     get_transforms,
     create_preprocessing_function
 )
-from federated_pneumonia_detection.config.config_manager import ConfigManager
 
 
 class TestDataProcessingFunctions:

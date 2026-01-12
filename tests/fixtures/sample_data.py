@@ -8,7 +8,6 @@ import numpy as np
 from typing import Dict, List, Tuple
 from pathlib import Path
 import tempfile
-import os
 from PIL import Image
 
 

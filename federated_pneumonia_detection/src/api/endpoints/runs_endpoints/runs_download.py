@@ -13,9 +13,7 @@ from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 
 from .shared.utils import _transform_run_to_results
 from .shared.exporters import (
-    JSONExporter,
     CSVExporter,
-    TextReportExporter,
     DownloadService
 )
 router = APIRouter()

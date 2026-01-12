@@ -1,6 +1,6 @@
 """DataLoader configuration utilities for XRayDataModule."""
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import torch
 import numpy as np
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
