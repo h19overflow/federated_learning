@@ -8,7 +8,8 @@ Uses shared modules for summary building and backfill services following SOLID p
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
-from federated_pneumonia_detection.src.boundary.engine import get_session, Run
+from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.boundary.models import Run
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 

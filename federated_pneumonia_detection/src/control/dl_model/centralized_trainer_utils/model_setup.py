@@ -1,21 +1,23 @@
 """Model and trainer setup utilities."""
 
-import os
 import logging
-from typing import Optional, Tuple, Any
+import os
+from typing import Any, Optional, Tuple
 
 import pandas as pd
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
+from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.progressive import (
+    ProgressiveUnfreezeCallback,
+)
 from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.setup import (
-    prepare_trainer_and_callbacks_pl,
     create_trainer_from_config,
+    prepare_trainer_and_callbacks_pl,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet_enhanced import (
     LitResNetEnhanced,
-    ProgressiveUnfreezeCallback,
 )
 
 

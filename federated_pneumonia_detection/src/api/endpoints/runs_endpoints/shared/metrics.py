@@ -9,7 +9,7 @@ from typing import List, Dict, Optional, Any
 from abc import ABC, abstractmethod
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.boundary.engine import Run
+from federated_pneumonia_detection.src.boundary.models import Run
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
