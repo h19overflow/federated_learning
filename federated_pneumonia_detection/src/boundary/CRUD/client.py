@@ -1,6 +1,7 @@
-from ..engine import get_session, Client
 from typing import List, Optional
 import datetime
+from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.boundary.models import Client
 # TODO : If clients are part of multiple rounds they are not being recordeed for the multiple rounds only the first round , in the db
 class ClientCRUD:
 

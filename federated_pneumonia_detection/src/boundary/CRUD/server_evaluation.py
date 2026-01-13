@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-from federated_pneumonia_detection.src.boundary.engine import ServerEvaluation
+from federated_pneumonia_detection.src.boundary.models import ServerEvaluation
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 import logging
 

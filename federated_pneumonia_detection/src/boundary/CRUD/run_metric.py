@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
-from federated_pneumonia_detection.src.boundary.engine import RunMetric
+from federated_pneumonia_detection.src.boundary.models import RunMetric
 
 # TODO: run metrics are still not being recordede for the federated training mode
 class RunMetricCRUD(BaseCRUD[RunMetric]):

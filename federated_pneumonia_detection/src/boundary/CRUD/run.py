@@ -4,7 +4,7 @@ import logging
 from sqlalchemy.orm import Session
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
-from federated_pneumonia_detection.src.boundary.engine import Run
+from federated_pneumonia_detection.src.boundary.models import Run
 
 
 class RunCRUD(BaseCRUD[Run]):

@@ -1,7 +1,7 @@
-from ..engine import  get_session,Client
-from ..engine import Round
 from typing import List, Optional
 from datetime import datetime
+from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.boundary.models import Round, Client
 
 class RoundCRUD:
 
