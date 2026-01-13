@@ -6,8 +6,14 @@ from federated_pneumonia_detection.config.config_manager import (
 )
 from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 import logging
+
+if TYPE_CHECKING:
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import QueryEngine
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import MCPManager
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent import ArxivAugmentedEngine
+    from federated_pneumonia_detection.src.boundary.inference_service import InferenceService, InferenceEngine, ClinicalInterpretationAgent
 
 logger = logging.getLogger(__name__)
 

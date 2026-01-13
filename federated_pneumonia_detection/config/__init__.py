@@ -5,15 +5,15 @@ This module provides centralized configuration management through the ConfigMana
 """
 
 from .config_manager import (
-    ConfigManager, 
-    get_config_manager, 
-    quick_get, 
+    ConfigManager,
+    get_config_manager,
+    quick_get,
     quick_set
 )
 
 __all__ = [
     'ConfigManager',
-    'get_config_manager', 
+    'get_config_manager',
     'quick_get',
     'quick_set'
 ]

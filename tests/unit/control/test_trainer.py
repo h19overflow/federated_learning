@@ -193,7 +193,7 @@ class TestFederatedTrainerClientFn:
             mock_client_instance.to_client = Mock(return_value=Mock())
             mock_client_class.return_value = mock_client_instance
 
-            result = trainer._client_fn("0")
+            _result = trainer._client_fn("0")
 
             # Should call FlowerClient constructor
             mock_client_class.assert_called_once()
@@ -246,10 +246,10 @@ class TestFederatedTrainerCreateEvaluateFn:
         evaluate_fn = trainer._create_evaluate_fn(mock_val_loader)
 
         # Get initial parameters
-        params = trainer._get_initial_parameters()
+        _params = trainer._get_initial_parameters()
 
         # This would require proper parameter format, so we'll just verify
-        # that the function can be called
+        # that function can be called
         assert callable(evaluate_fn)
 
     def test_evaluate_fn_has_logging(self):

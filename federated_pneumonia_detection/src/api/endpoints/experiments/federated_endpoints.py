@@ -70,7 +70,7 @@ async def start_federated_training(
     - `num_server_rounds`: Number of rounds that will be executed
     - `status`: "queued" indicating the task has been accepted
     """
-    temp_dir = None
+    _temp_dir = None
     try:
         # Extract uploaded ZIP file
         source_path = await prepare_zip(data_zip, logger, experiment_name)

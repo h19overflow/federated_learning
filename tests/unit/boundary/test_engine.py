@@ -379,7 +379,7 @@ class TestGetSessionFunction:
         mock_session = MagicMock()
         mock_session_factory.return_value = mock_session
 
-        result = get_session()
+        _result = get_session()
 
         mock_create_engine.assert_called_once()
 

@@ -45,7 +45,7 @@ async def handler(websocket: websockets.WebSocketServerProtocol, path: str) -> N
                 # Parse incoming metric message
                 data = json.loads(message)
                 message_type = data.get('type', 'unknown')
-                timestamp = data.get('timestamp', datetime.now().isoformat())
+                _timestamp = data.get('timestamp', datetime.now().isoformat())
                 
                 logger.info(
                     f"Received {message_type} from backend - "

@@ -217,7 +217,7 @@ class TestHelpers:
         Returns:
             True if configurations are equal
         """
-        if type(config1) != type(config2):
+        if not isinstance(config1, type(config2)) or not isinstance(config2, type(config1)):
             return False
 
         if hasattr(config1, 'to_dict'):

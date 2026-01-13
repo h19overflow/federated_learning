@@ -382,7 +382,6 @@ def get_image_directory_path(
     Returns:
         Full path to image directory
     """
-    logger = get_logger(__name__)
     
     if config_or_constants is None:
         from federated_pneumonia_detection.config.config_manager import ConfigManager
@@ -414,7 +413,6 @@ def get_data_statistics(df: pd.DataFrame, target_column: str) -> dict:
     Returns:
         Dictionary with statistics
     """
-    logger = get_logger(__name__)
     stats = {
         "total_samples": len(df),
         "class_distribution": df[target_column].value_counts().to_dict(),

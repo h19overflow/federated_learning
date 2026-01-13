@@ -221,7 +221,6 @@ class DataSourceExtractor:
         if csv_filename:
             matching_files = [f for f in csv_files if f.name == csv_filename]
             if not matching_files:
-                available = [f.name for f in csv_files]
                 self.logger.error(f"    ✗ Specified CSV not found: {csv_filename}")
             self.logger.debug(f"    ✓ Matched CSV file: {matching_files[0].name}")
             return str(matching_files[0])

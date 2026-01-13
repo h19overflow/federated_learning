@@ -3,7 +3,9 @@ Checkpoint callback for tracking highest validation recall.
 """
 
 import logging
+
 import pytorch_lightning as pl
+import torch
 
 
 class HighestValRecallCallback(pl.Callback):

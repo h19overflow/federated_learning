@@ -389,19 +389,6 @@ class TestTrainFunction:
         # Just verify it ran without error
 
 
-class MockDataLoader:
-    """Mock DataLoader class for testing."""
-    def __init__(self, data):
-        self.data = data
-        self.dataset = list(range(sum(len(batch[0]) for batch in data)))
-    
-    def __iter__(self):
-        return iter(self.data)
-    
-    def __len__(self):
-        return len(self.dataset)
-
-
 class TestEvaluateFunction:
     """Tests for evaluate function."""
 

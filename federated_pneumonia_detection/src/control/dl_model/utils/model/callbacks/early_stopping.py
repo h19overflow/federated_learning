@@ -3,9 +3,16 @@ Early stopping signal callback for detecting and signaling early stopping events
 """
 
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.callbacks import EarlyStopping
+
+if TYPE_CHECKING:
+    from federated_pneumonia_detection.src.utils.metrics_websocket_sender import (
+        MetricsWebSocketSender,
+    )
 
 
 class EarlyStoppingSignalCallback(pl.Callback):

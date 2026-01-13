@@ -3,6 +3,7 @@ Standalone test file for confusion matrix functions.
 Can run without conftest.py dependencies.
 """
 
+import pytest
 from datetime import datetime
 from unittest.mock import Mock
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import (

@@ -7,10 +7,13 @@ using Flower (flwr) framework via rf.ps1 script.
 
 import subprocess
 import os
+import logging
 from typing import Any, Dict
 from pathlib import Path
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
+
+task_logger = logging.getLogger(__name__)
 
 
 def run_federated_training_task(

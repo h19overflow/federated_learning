@@ -61,7 +61,7 @@ class TestBaseCRUD:
         
         with patch('federated_pneumonia_detection.src.boundary.CRUD.base.get_session', return_value=mock_session):
             with pytest.raises(SQLAlchemyError):
-                with base_crud.get_db_session() as session:
+                with base_crud.get_db_session() as _session:
                     pass
             
             mock_session.rollback.assert_called_once()

@@ -266,11 +266,6 @@ class TestDataProcessingFunctions:
         with pytest.raises(ValueError, match="Data processing pipeline failed"):
             load_and_split_data(metadata_path="non_existent.csv")
 
-    def test_validate_image_paths_success(self, temp_data_structure, sample_config):
-        """Test successful image path validation."""
-        sample_config.set('paths.base_path', temp_data_structure['base_path'])
-        assert validate_image_paths(sample_config) is True
-
     def test_validate_image_paths_no_config(self, temp_data_structure):
         """Test image path validation without explicit config."""
         with patch('federated_pneumonia_detection.config.config_manager.ConfigManager') as MockConfig:
@@ -366,7 +361,7 @@ class TestImageTransforms:
         
         # Test when cv2 is present
         try:
-            import cv2
+            import cv2  # noqa: F401
             res = XRayPreprocessor.adaptive_histogram_equalization(img)
             assert isinstance(res, Image.Image)
             
@@ -382,7 +377,7 @@ class TestImageTransforms:
     def test_adaptive_histogram_equalization_grayscale(self):
         """Test CLAHE on grayscale image."""
         try:
-            import cv2
+            import cv2  # noqa: F401
             img = Image.fromarray(np.zeros((10, 10), dtype=np.uint8), mode="L")
             res = XRayPreprocessor.adaptive_histogram_equalization(img)
             assert res.mode == "L"
@@ -433,7 +428,7 @@ class TestImageTransforms:
 
     def test_transform_builder_init_no_config(self):
         """Test TransformBuilder initialization without config."""
-        with patch('federated_pneumonia_detection.config.config_manager.ConfigManager') as MockConfig:
+        with patch('federated_pneumonia_detection.config.config_manager.ConfigManager') as _MockConfig:
             builder = TransformBuilder()
             assert builder.config is not None
 

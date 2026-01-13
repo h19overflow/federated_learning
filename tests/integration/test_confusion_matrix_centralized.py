@@ -321,7 +321,7 @@ class TestConfusionMatrixCentralizedFlow:
 
     def test_run_crud_persist_metrics_includes_confusion_matrix(self, mock_db):
         """Test that run_crud.persist_metrics saves confusion matrix metrics."""
-        with patch("federated_pneumonia_detection.src.boundary.CRUD.run.RunMetric") as MockRunMetric:
+        with patch("federated_pneumonia_detection.src.boundary.CRUD.run.RunMetric") as _MockRunMetric:
             # Setup mock run creation
             mock_run = Mock()
             mock_run.id = 1

@@ -76,7 +76,7 @@ class TestConfusionMatrixFederatedFlow:
             mock_create.return_value = mock_eval
 
             # Create evaluation with flat format metrics
-            result = crud.create_evaluation(
+            _result = crud.create_evaluation(
                 mock_db,
                 run_id=1,
                 round_number=1,
@@ -112,7 +112,7 @@ class TestConfusionMatrixFederatedFlow:
             mock_create.return_value = mock_eval
 
             # Create evaluation with nested format metrics
-            result = crud.create_evaluation(
+            _result = crud.create_evaluation(
                 mock_db,
                 run_id=1,
                 round_number=1,
@@ -146,7 +146,7 @@ class TestConfusionMatrixFederatedFlow:
             mock_eval = Mock()
             mock_create.return_value = mock_eval
 
-            result = crud.create_evaluation(
+            _result = crud.create_evaluation(
                 mock_db,
                 run_id=1,
                 round_number=1,
@@ -294,7 +294,7 @@ class TestConfusionMatrixFederatedFlow:
 
     def test_server_evaluation_confusion_matrix_format_detection(self, mock_db):
         """Test that CM format is correctly detected and extracted."""
-        crud = ServerEvaluationCRUD()
+        _crud = ServerEvaluationCRUD()
 
         # Test that flat format is detected
         flat_metrics = {"server_cm_tp": 100}
@@ -306,7 +306,7 @@ class TestConfusionMatrixFederatedFlow:
 
     def test_server_evaluation_with_missing_cm_values(self, mock_db):
         """Test handling of server evaluation when CM values are missing."""
-        crud = ServerEvaluationCRUD()
+        _crud = ServerEvaluationCRUD()
 
         # Metrics without CM values
         incomplete_metrics = {
@@ -315,11 +315,11 @@ class TestConfusionMatrixFederatedFlow:
             "precision": 0.91,
         }
 
-        with patch.object(crud, "create") as mock_create:
+        with patch.object(_crud, "create") as mock_create:
             mock_eval = Mock()
             mock_create.return_value = mock_eval
 
-            result = crud.create_evaluation(
+            _result = _crud.create_evaluation(
                 mock_db,
                 run_id=1,
                 round_number=1,
