@@ -41,6 +41,7 @@ dependencies = [
     "tomli>=2.3.0",
     "sentence-transformers>=5.1.2",
     "langchain-mcp-adapters>=0.2.1",
+    "onnxruntime>=1.23.2",
 ]
 
 [tool.uv.sources]

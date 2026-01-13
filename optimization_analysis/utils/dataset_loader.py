@@ -17,7 +17,9 @@ class DatasetLoader:
         images = []
         for ext in extensions:
             images.extend(self.image_dir.rglob(f'*{ext}'))
-        random.shuffle(images)
+        # REMOVED: random.shuffle(images) - shuffling breaks label-image correspondence
+        # Images maintain directory order: normal/ first (alphabetically), then pneumonia/
+        # This ensures labels (created in same order) match images correctly
         return images[:self.max_images]
 
     def load_images(self, count: int = None) -> List[Image.Image]:

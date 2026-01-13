@@ -116,27 +116,48 @@ class BenchmarkSuite:
             'classification': timer.get_statistics('classification'),
         }
         
-        # Calculate total time from individual stages
-        total_times = []
-        for i in range(min(len(stage_stats['preprocessing'].get('data', [])),
-                          len(stage_stats['feature_extraction'].get('data', [])),
-                          len(stage_stats['classification'].get('data', [])))):
-            preprocess_time = stage_stats['preprocessing']['data'][i] if 'data' in stage_stats['preprocessing'] else 0
-            feature_time = stage_stats['feature_extraction']['data'][i] if 'data' in stage_stats['feature_extraction'] else 0
-            classify_time = stage_stats['classification']['data'][i] if 'data' in stage_stats['classification'] else 0
-            total_times.append(preprocess_time + feature_time + classify_time)
-        
-        stage_stats['total'] = {
-            'mean': np.mean(total_times),
-            'median': np.median(total_times),
-            'p50': np.percentile(total_times, 50),
-            'p95': np.percentile(total_times, 95),
-            'p99': np.percentile(total_times, 99),
-            'min': np.min(total_times),
-            'max': np.max(total_times),
-            'stddev': np.std(total_times),
-            'count': len(total_times)
-        }
+        # Calculate total time statistics from individual stage means
+        # Total time is sum of individual stages
+        if all(stats.get('count', 0) > 0 for stats in stage_stats.values()):
+            stage_stats['total'] = {
+                'mean': stage_stats['preprocessing'].get('mean', 0) +
+                        stage_stats['feature_extraction'].get('mean', 0) +
+                        stage_stats['classification'].get('mean', 0),
+                'median': stage_stats['preprocessing'].get('median', 0) +
+                         stage_stats['feature_extraction'].get('median', 0) +
+                         stage_stats['classification'].get('median', 0),
+                'p50': stage_stats['preprocessing'].get('p50', 0) +
+                       stage_stats['feature_extraction'].get('p50', 0) +
+                       stage_stats['classification'].get('p50', 0),
+                'p95': stage_stats['preprocessing'].get('p95', 0) +
+                       stage_stats['feature_extraction'].get('p95', 0) +
+                       stage_stats['classification'].get('p95', 0),
+                'p99': stage_stats['preprocessing'].get('p99', 0) +
+                       stage_stats['feature_extraction'].get('p99', 0) +
+                       stage_stats['classification'].get('p99', 0),
+                'min': stage_stats['preprocessing'].get('min', 0) +
+                      stage_stats['feature_extraction'].get('min', 0) +
+                      stage_stats['classification'].get('min', 0),
+                'max': stage_stats['preprocessing'].get('max', 0) +
+                      stage_stats['feature_extraction'].get('max', 0) +
+                      stage_stats['classification'].get('max', 0),
+                'count': stage_stats['preprocessing'].get('count', 0),
+                'stddev': (stage_stats['preprocessing'].get('stddev', 0) ** 2 +
+                         stage_stats['feature_extraction'].get('stddev', 0) ** 2 +
+                         stage_stats['classification'].get('stddev', 0) ** 2) ** 0.5
+            }
+        else:
+            stage_stats['total'] = {
+                'mean': 0,
+                'median': 0,
+                'p50': 0,
+                'p95': 0,
+                'p99': 0,
+                'min': 0,
+                'max': 0,
+                'stddev': 0,
+                'count': 0
+            }
         
         # Calculate accuracy if labels provided
         accuracy_metrics = {}

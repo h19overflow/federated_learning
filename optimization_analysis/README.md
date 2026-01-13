@@ -10,19 +10,66 @@ Modular benchmarking infrastructure for measuring and optimizing pneumonia detec
 
 ## Architecture
 
+### Module Structure
+
 ```
 optimization_analysis/
-├── benchmark/                      # Benchmark orchestration
-│   ├── benchmark_suite.py          # Main benchmark orchestrator
-│   ├── stage_timer.py            # Stage timing utilities
-│   └── results_collector.py      # Results aggregation
-├── inference_wrappers/             # Pluggable inference implementations
-│   ├── base_inference.py         # Abstract base class
-│   └── pytorch_inference.py      # PyTorch FP32 baseline
-├── metrics/                       # Metrics calculation
-│   └── performance_metrics.py     # Statistical calculations
-└── utils/                        # Utilities
-    └── dataset_loader.py         # Image loading
+ ├── benchmark/                      # Benchmark orchestration
+ │   ├── benchmark_suite.py          # Main benchmark orchestrator
+ │   ├── stage_timer.py            # Stage timing utilities
+ │   └── results_collector.py      # Results aggregation
+ ├── inference_wrappers/             # Pluggable inference implementations
+ │   ├── base_inference.py         # Abstract base class
+ │   ├── pytorch_inference.py      # PyTorch FP32 baseline
+ │   └── onnx_inference.py       # ONNX FP32 & FP16 wrappers
+ ├── metrics/                       # Metrics calculation
+ │   └── performance_metrics.py     # Statistical calculations
+ ├── utils/                        # Utilities
+ │   └── dataset_loader.py         # Image loading
+ └── data/                         # Benchmark results
+     ├── baseline/                   # PyTorch FP32 results
+     ├── onnx_fp32/                 # ONNX FP32 results
+     └── onnx_fp16/                 # ONNX FP16 results
+```
+
+### System Architecture
+
+```mermaid
+graph TB
+    subgraph "Optimization Analysis System"
+        A[DatasetLoader<br/>Load test images] --> B[BenchmarkSuite<br/>Orchestrate benchmarks]
+        B --> C[StageTimer<br/>Time individual stages]
+        B --> D[ResultsCollector<br/>Aggregate results]
+
+        subgraph "Inference Wrappers"
+            E[BaseInferenceWrapper<br/>Abstract interface]
+            F[PyTorchInferenceWrapper<br/>FP32 baseline]
+            G[ONNXInferenceWrapper<br/>FP32 optimization]
+            H[ONNXFP16InferenceWrapper<br/>FP16 optimization]
+
+            E --> F
+            E --> G
+            E --> H
+        end
+
+        subgraph "Metrics"
+            I[PerformanceMetrics<br/>Statistical calculations]
+            J[ClassificationMetrics<br/>Accuracy, Precision, Recall, F1]
+        end
+
+        B --> F
+        B --> G
+        B --> H
+        C --> I
+        B --> J
+    end
+
+    subgraph "Data Flow"
+        K[(Test Images<br/>1334 samples)] --> A
+        F --> L[(PyTorch FP32<br/>Results)]
+        G --> M[(ONNX FP32<br/>Results)]
+        H --> N[(ONNX FP16<br/>Results)]
+    end
 ```
 
 ---
@@ -256,34 +303,38 @@ print(f"Recall: {metrics['recall']:.4f}")
 
 ## Benchmark Workflow
 
-```
-1. INITIALIZATION
-   └─ Create BenchmarkSuite with image_dir, num_samples, num_warmup
+```mermaid
+flowchart TD
+    A[Start Benchmark] --> B[Initialize BenchmarkSuite<br/>image_dir, num_samples, num_warmup]
+    B --> C[Load Test Images<br/>DatasetLoader.load_images]
+    C --> D[Create Inference Wrapper<br/>PyTorch/ONNX/FP16/INT8]
 
-2. IMAGE LOADING
-   └─ load_images() → List[PIL.Image]
+    subgraph "Warmup Phase"
+        D --> E[Run 10 Warmup Iterations<br/>No timing recorded]
+        E --> F[Model Fully Initialized]
+    end
 
-3. WARMUP PHASE (10 iterations default)
-   └─ Runs warmup without timing
-       └─ Ensures model is fully initialized
+    F --> G{Start Timed Benchmark}
 
-4. BENCHMARK PHASE
-   ├─ For each image:
-   │   ├─ time_stage('preprocessing')
-   │   ├─ time_stage('feature_extraction')
-   │   ├─ time_stage('classification')
-   │   └─ Collect predictions
-   └─ Calculate statistics (mean, p50, p95, p99, etc.)
+    subgraph "For Each Image (1334 total)"
+        G --> H[Preprocessing<br/>StageTimer: preprocessing]
+        H --> I[Feature Extraction<br/>StageTimer: feature_extraction]
+        I --> J[Classification<br/>StageTimer: classification]
+        J --> K[Collect Prediction]
+    end
 
-5. ACCURACY CALCULATION (if labels provided)
-   └─ Uses sklearn for accuracy, precision, recall, F1, AUROC
+    K --> L[All Images Processed?]
+    L -->|No| G
+    L -->|Yes| M[Calculate Statistics<br/>mean, median, p50, p95, p99, stddev]
 
-6. RESULTS COLLECTION
-   ├─ Add to ResultsCollector
-   └─ Save to JSON file
+    M --> N{Labels Provided?}
+    N -->|Yes| O[Calculate Accuracy Metrics<br/>sklearn: accuracy, precision, recall, F1]
+    N -->|No| P[Skip Accuracy Calculation]
 
-7. COMPARISON (optional)
-   └─ Run multiple wrappers and compare results
+    O --> Q[Generate Plots<br/>timing, confusion_matrix, metrics]
+    P --> Q
+    Q --> R[Save Results<br/>JSON + TXT + PNGs]
+    R --> S[End]
 ```
 
 ---
