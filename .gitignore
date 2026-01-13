@@ -25,6 +25,7 @@ data/
 *.zip
 !Training_Sample_5pct/**/*.png
 !docs/langsmith/**/*.png
+!docs/W&B/**/*.png
 !Training_Sample_5pct/**/*.jpg
 !Training_Sample_5pct/**/*.jpeg
 
