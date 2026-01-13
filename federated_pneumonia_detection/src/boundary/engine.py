@@ -78,7 +78,7 @@ def _get_engine():
             pool_pre_ping=True,
             pool_recycle=3600,
             echo=False,
-            connect_args={"timeout": 10}
+            connect_args={"connect_timeout": 10}
         )
 
         # Create session factory bound to the global engine
