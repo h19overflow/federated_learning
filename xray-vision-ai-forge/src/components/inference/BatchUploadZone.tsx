@@ -16,7 +16,7 @@ interface BatchUploadZoneProps {
   disabled?: boolean;
 }
 
-const MAX_FILES = 50;
+const MAX_FILES = 500;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 

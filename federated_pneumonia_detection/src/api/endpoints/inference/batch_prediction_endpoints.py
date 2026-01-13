@@ -3,30 +3,33 @@
 Provides endpoint for running inference on multiple chest X-ray images
 with aggregated results and summary statistics.
 """
+
 import logging
 import time
 from io import BytesIO
 from typing import List
 
-from fastapi import APIRouter, File, UploadFile, HTTPException, Query, Depends
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from PIL import Image
 
 from federated_pneumonia_detection.src.api.deps import get_inference_service
-from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
-    PredictionClass,
-    InferencePrediction,
-    RiskAssessment,
-    ClinicalInterpretation,
-    SingleImageResult,
-    BatchSummaryStats,
-    BatchInferenceResponse,
-)
-from federated_pneumonia_detection.src.boundary.inference_service import InferenceService
-from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
-    get_wandb_tracker,
-)
 from federated_pneumonia_detection.src.api.endpoints.inference.inference_utils import (
     _generate_fallback_interpretation,
+)
+from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
+    BatchInferenceResponse,
+    BatchSummaryStats,
+    ClinicalInterpretation,
+    InferencePrediction,
+    PredictionClass,
+    RiskAssessment,
+    SingleImageResult,
+)
+from federated_pneumonia_detection.src.boundary.inference_service import (
+    InferenceService,
+)
+from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
+    get_wandb_tracker,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,7 +39,9 @@ router = APIRouter(prefix="/api/inference", tags=["inference"])
 
 @router.post("/predict-batch", response_model=BatchInferenceResponse)
 async def predict_batch(
-    files: List[UploadFile] = File(..., description="Multiple chest X-ray images (PNG, JPEG)"),
+    files: List[UploadFile] = File(
+        ..., description="Multiple chest X-ray images (PNG, JPEG)"
+    ),
     include_clinical_interpretation: bool = Query(
         default=False,
         description="Whether to include AI-generated clinical interpretation (slower)",
@@ -64,10 +69,10 @@ async def predict_batch(
             detail="Inference model is not available. Please try again later.",
         )
 
-    if len(files) > 50:
+    if len(files) > 500:
         raise HTTPException(
             status_code=400,
-            detail="Maximum 50 images allowed per batch request.",
+            detail="Maximum 500 images allowed per batch request.",
         )
 
     results: List[SingleImageResult] = []
@@ -94,7 +99,9 @@ async def predict_batch(
             image = Image.open(BytesIO(contents))
             logger.info(f"Batch processing: {file.filename}, size: {image.size}")
 
-            predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(image)
+            predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(
+                image
+            )
 
             prediction = InferencePrediction(
                 predicted_class=PredictionClass(predicted_class),
@@ -128,8 +135,13 @@ async def predict_batch(
                     if agent_response.risk_level in ["HIGH", "CRITICAL"]:
                         high_risk_count += 1
                 else:
-                    clinical_interpretation = _generate_fallback_interpretation(prediction)
-                    if clinical_interpretation.risk_assessment.risk_level in ["HIGH", "CRITICAL"]:
+                    clinical_interpretation = _generate_fallback_interpretation(
+                        prediction
+                    )
+                    if clinical_interpretation.risk_assessment.risk_level in [
+                        "HIGH",
+                        "CRITICAL",
+                    ]:
                         high_risk_count += 1
 
             results.append(
@@ -156,8 +168,14 @@ async def predict_batch(
     # Calculate summary statistics
     successful_count = len(successful_predictions)
     failed_count = len(files) - successful_count
-    normal_count = sum(1 for p in successful_predictions if p.predicted_class == PredictionClass.NORMAL)
-    pneumonia_count = sum(1 for p in successful_predictions if p.predicted_class == PredictionClass.PNEUMONIA)
+    normal_count = sum(
+        1 for p in successful_predictions if p.predicted_class == PredictionClass.NORMAL
+    )
+    pneumonia_count = sum(
+        1
+        for p in successful_predictions
+        if p.predicted_class == PredictionClass.PNEUMONIA
+    )
     avg_confidence = (
         sum(p.confidence for p in successful_predictions) / successful_count
         if successful_count > 0

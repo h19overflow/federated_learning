@@ -446,7 +446,7 @@ const Inference = () => {
                       Upload Multiple Images
                     </h2>
                     <p className="text-[hsl(215_15%_45%)]">
-                      Upload up to 50 chest X-ray images for batch analysis
+                      Upload up to 500 chest X-ray images for batch analysis
                     </p>
                   </div>
 
