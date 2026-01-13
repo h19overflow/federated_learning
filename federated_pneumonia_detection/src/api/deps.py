@@ -71,14 +71,6 @@ def get_run_metric_crud() -> RunMetricCRUD:
     return RunMetricCRUD()
 
 
-# ==============================================================================
-# CHAT ENGINE DEPENDENCIES
-# ==============================================================================
-
-# QueryEngine singleton uses PGVector which benefits from the global
-# pooled engine in engine.py. The singleton pattern is intentional as
-# QueryEngine holds expensive embedding model resources and vector database
-# connections that are reused across requests, not per-request.
 _query_engine = None
 _mcp_manager = None
 _arxiv_engine: Optional["ArxivAugmentedEngine"] = None

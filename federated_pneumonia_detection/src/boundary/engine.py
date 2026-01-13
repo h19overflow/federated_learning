@@ -55,12 +55,7 @@ def _get_engine():
         sqlalchemy.engine.Engine: The global SQLAlchemy engine instance
 
     Raises:
-        SQLAlchemyError: If engine creation fails
-
-    Example:
-        >>> from federated_pneumonia_detection.src.boundary.engine import _get_engine
-        >>> engine = _get_engine()
-        >>> print(f"Pool size: {engine.pool.size()}")
+        SQLAlchemyError: If engine creation `fails
     """
     global _engine, SessionLocal
 
@@ -162,45 +157,6 @@ def get_session():
 
     Raises:
         SQLAlchemyError: If session creation fails
-
-    Example:
-        >>> from federated_pneumonia_detection.src.boundary.engine import get_session
-        >>> from federated_pneumonia_detection.src.boundary.engine import Run
-
-        >>> session = get_session()
-        >>> try:
-        ...     # Create a new run
-        ...     run = Run(
-        ...         training_mode="centralized",
-        ...         status="in_progress",
-        ...         start_time=datetime.now()
-        ...     )
-        ...     session.add(run)
-        ...     session.commit()
-        ...     print(f"Run created with ID: {run.id}")
-        ... except Exception as e:
-        ...     session.rollback()
-        ...     print(f"Error: {e}")
-        ... finally:
-        ...     session.close()  # Always close to return connection to pool
-
-        >>> # Alternative: Use context manager for automatic cleanup
-        >>> from contextlib import contextmanager
-        >>> @contextmanager
-        ... def session_scope():
-        ...     session = get_session()
-        ...     try:
-        ...         yield session
-        ...         session.commit()
-        ...     except:
-        ...         session.rollback()
-        ...         raise
-        ...     finally:
-        ...         session.close()
-
-        >>> with session_scope() as session:
-        ...     # Session automatically committed/closed
-        ...     run = session.query(Run).first()
     """
     try:
         # Initialize engine if not already created
@@ -228,18 +184,6 @@ def get_engine():
 
     Raises:
         SQLAlchemyError: If engine initialization fails
-
-    Example:
-        >>> from federated_pneumonia_detection.src.boundary.engine import get_engine
-
-        >>> engine = get_engine()
-        >>> print(f"Engine connected to: {engine.url}")
-        >>> print(f"Pool status: {engine.pool.status()}")
-
-        >>> # Inspect connection pool
-        >>> with engine.connect() as conn:
-        ...     result = conn.execute("SELECT version()")
-        ...     print(f"PostgreSQL version: {result.fetchone()[0]}")
     """
     global _engine
 
@@ -264,22 +208,6 @@ def dispose_engine():
     Raises:
         SQLAlchemyError: If engine disposal fails
 
-    Example:
-        >>> from federated_pneumonia_detection.src.boundary.engine import dispose_engine
-
-        >>> # Application shutdown
-        >>> try:
-        ...     # Perform cleanup
-        ...     logger.info("Shutting down application...")
-        ... finally:
-        ...     # Close database connections
-        ...     dispose_engine()
-        ...     logger.info("Database connections closed")
-
-        >>> # In a FastAPI application:
-        >>> # @app.on_event("shutdown")
-        >>> # async def shutdown_event():
-        >>> #     dispose_engine()
     """
     global _engine, SessionLocal
 
