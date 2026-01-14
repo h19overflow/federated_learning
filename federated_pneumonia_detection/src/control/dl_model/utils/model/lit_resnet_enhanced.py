@@ -7,19 +7,24 @@ import logging
 from typing import Optional, Dict, Any, Tuple, TYPE_CHECKING
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import pytorch_lightning as pl
-import torchmetrics
+from pytorch_lightning.utilities.types import OptimizerLRSchedulerConfig, LRSchedulerTypeUnion, OptimizerConfig
 from torchvision.models import ResNet50_Weights
+from torchmetrics import Metric
 
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
 from federated_pneumonia_detection.src.entities.resnet_with_custom_head import ResNetWithCustomHead
-from federated_pneumonia_detection.src.control.dl_model.utils.model.focal_loss import (
-    FocalLoss,
-    FocalLossWithLabelSmoothing,
+from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_model_helpers import (
+    validate_config,
+    setup_metrics,
+    setup_loss_function,
+    calculate_loss,
+    get_predictions,
+    prepare_targets_for_metrics,
+    get_model_summary,
 )
 
 
@@ -71,29 +76,25 @@ class LitResNetEnhanced(pl.LightningModule):
             from federated_pneumonia_detection.config.config_manager import ConfigManager
             config = ConfigManager()
 
-        self.config = config
-        self.num_classes = num_classes
-        self.monitor_metric = monitor_metric
-        self.logger_obj = logging.getLogger(__name__)
+        self.config: "ConfigManager" = config
+        self.num_classes: int = num_classes
+        self.monitor_metric: str = monitor_metric
+        self.logger_obj: logging.Logger = logging.getLogger(__name__)
 
-        # Enhanced options
-        self.use_focal_loss = use_focal_loss
-        self.focal_alpha = focal_alpha
-        self.focal_gamma = focal_gamma
-        self.label_smoothing = label_smoothing
-        self.use_cosine_scheduler = use_cosine_scheduler
-        self.warmup_epochs = warmup_epochs
+        self.use_focal_loss: bool = use_focal_loss
+        self.focal_alpha: float = focal_alpha
+        self.focal_gamma: float = focal_gamma
+        self.label_smoothing: float = label_smoothing
+        self.use_cosine_scheduler: bool = use_cosine_scheduler
+        self.warmup_epochs: int = warmup_epochs
 
-        # Save hyperparameters
         self.save_hyperparameters(ignore=[
             "config", "base_model_weights", "class_weights_tensor"
         ])
 
-        # Validate configuration
         self._validate_config()
 
-        # Initialize model
-        self.model = ResNetWithCustomHead(
+        self.model: ResNetWithCustomHead = ResNetWithCustomHead(
             config=self.config,
             base_model_weights=base_model_weights,
             num_classes=num_classes,
@@ -101,27 +102,34 @@ class LitResNetEnhanced(pl.LightningModule):
             fine_tune_layers_count=self.config.get("experiment.fine_tune_layers_count", 0)
         )
 
-        # Apply torch.compile if enabled (PyTorch 2.0+ performance optimization)
         if self.config.get('experiment.use_torch_compile', False):
             compile_mode = self.config.get('experiment.torch_compile_mode', 'default')
             self.logger_obj.info(f"Applying torch.compile with mode='{compile_mode}'")
             try:
-                self.model = torch.compile(self.model, mode=compile_mode)
+                self.model = torch.compile(self.model, mode=compile_mode)  # type: ignore[assignment]
                 self.logger_obj.info("Model compiled successfully")
             except Exception as e:
                 self.logger_obj.warning(f"torch.compile failed, falling back to eager mode: {e}")
 
-        # Store class weights
-        self.class_weights_tensor = class_weights_tensor
+        self.class_weights_tensor: Optional[torch.Tensor] = class_weights_tensor
 
-        # Initialize metrics
+        self.train_accuracy: Metric
+        self.train_f1: Metric
+        self.val_accuracy: Metric
+        self.val_precision: Metric
+        self.val_recall: Metric
+        self.val_f1: Metric
+        self.val_auroc: Metric
+        self.val_confusion: Metric
+        self.test_accuracy: Metric
+        self.test_precision: Metric
+        self.test_recall: Metric
+        self.test_f1: Metric
+        self.test_auroc: Metric
+
         self._setup_metrics()
-
-        # Setup loss function
         self._setup_loss_function()
-
-        # Progressive unfreezing state
-        self.unfrozen_layers = 0
+        self.unfrozen_layers: int = 0
 
         self.logger_obj.info(
             f"LitResNetEnhanced initialized with {self.model.get_model_info()['total_parameters']} parameters"
@@ -133,66 +141,24 @@ class LitResNetEnhanced(pl.LightningModule):
 
     def _validate_config(self) -> None:
         """Validate configuration parameters."""
-        lr = self.config.get("experiment.learning_rate", 0)
-        if lr <= 0:
-            raise ValueError("Learning rate must be positive")
-
-        wd = self.config.get("experiment.weight_decay", -1)
-        if wd < 0:
-            raise ValueError("Weight decay must be non-negative")
+        validate_config(self.config, self.logger_obj)
 
     def _setup_metrics(self) -> None:
         """Initialize torchmetrics for tracking performance."""
-        num_classes = 2 if self.num_classes == 1 else self.num_classes
-        task_type = "binary" if self.num_classes == 1 else "multiclass"
-
-        # Training metrics
-        self.train_accuracy = torchmetrics.Accuracy(task=task_type, num_classes=num_classes)
-        self.train_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
-
-        # Validation metrics
-        self.val_accuracy = torchmetrics.Accuracy(task=task_type, num_classes=num_classes)
-        self.val_precision = torchmetrics.Precision(task=task_type, num_classes=num_classes)
-        self.val_recall = torchmetrics.Recall(task=task_type, num_classes=num_classes)
-        self.val_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
-        self.val_auroc = torchmetrics.AUROC(task=task_type, num_classes=num_classes)
-        self.val_confusion = torchmetrics.ConfusionMatrix(task=task_type, num_classes=num_classes)
-
-        # Test metrics
-        self.test_accuracy = torchmetrics.Accuracy(task=task_type, num_classes=num_classes)
-        self.test_precision = torchmetrics.Precision(task=task_type, num_classes=num_classes)
-        self.test_recall = torchmetrics.Recall(task=task_type, num_classes=num_classes)
-        self.test_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
-        self.test_auroc = torchmetrics.AUROC(task=task_type, num_classes=num_classes)
+        metrics = setup_metrics(self.num_classes, train=True, validation=True, test=True)
+        for name, metric in metrics.items():
+            setattr(self, name, metric)
 
     def _setup_loss_function(self) -> None:
         """Setup loss function with enhanced options."""
-        pos_weight = None
-        if self.class_weights_tensor is not None:
-            pos_weight = self.class_weights_tensor[1] / (self.class_weights_tensor[0] + 1e-8)
-            self.logger_obj.info(f"Using positive class weight: {pos_weight}")
-
-        if self.use_focal_loss:
-            if self.label_smoothing > 0:
-                self.loss_fn = FocalLossWithLabelSmoothing(
-                    alpha=self.focal_alpha,
-                    gamma=self.focal_gamma,
-                    smoothing=self.label_smoothing,
-                    pos_weight=pos_weight,
-                )
-                self.logger_obj.info(
-                    f"Using FocalLoss with label smoothing ({self.label_smoothing})"
-                )
-            else:
-                self.loss_fn = FocalLoss(
-                    alpha=self.focal_alpha,
-                    gamma=self.focal_gamma,
-                    pos_weight=pos_weight,
-                )
-                self.logger_obj.info("Using FocalLoss")
-        else:
-            self.loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-            self.logger_obj.info("Using BCEWithLogitsLoss")
+        self.loss_fn = setup_loss_function(
+            use_focal_loss=self.use_focal_loss,
+            focal_alpha=self.focal_alpha,
+            focal_gamma=self.focal_gamma,
+            label_smoothing=self.label_smoothing,
+            class_weights_tensor=self.class_weights_tensor,
+            logger=self.logger_obj
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the model."""
@@ -200,16 +166,15 @@ class LitResNetEnhanced(pl.LightningModule):
 
     def _calculate_loss(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """Calculate loss based on task type."""
-        targets = targets.float().unsqueeze(1) if targets.dim() == 1 else targets.float()
-        return self.loss_fn(logits, targets)
+        return calculate_loss(self.loss_fn, logits, targets)
 
     def _get_predictions(self, logits: torch.Tensor) -> torch.Tensor:
         """Convert logits to predictions."""
-        return torch.sigmoid(logits)
+        return get_predictions(logits)
 
     def _prepare_targets_for_metrics(self, targets: torch.Tensor) -> torch.Tensor:
         """Prepare targets for metric computation."""
-        return targets.int().unsqueeze(1) if targets.dim() == 1 else targets.int()
+        return prepare_targets_for_metrics(targets)
 
     def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
         """Perform training step."""
@@ -278,7 +243,7 @@ class LitResNetEnhanced(pl.LightningModule):
 
         return loss
 
-    def configure_optimizers(self) -> Dict[str, Any]:
+    def configure_optimizers(self) -> OptimizerLRSchedulerConfig:
         """Configure optimizer and learning rate scheduler."""
         optimizer = optim.AdamW(
             self.parameters(),
@@ -323,7 +288,10 @@ class LitResNetEnhanced(pl.LightningModule):
 
     def on_train_epoch_start(self) -> None:
         """Called at the start of each training epoch."""
-        current_lr = self.optimizers().param_groups[0]["lr"]
+        optimizer = self.optimizers()
+        if isinstance(optimizer, list):
+            optimizer = optimizer[0]
+        current_lr = optimizer.param_groups[0]["lr"]  # type: ignore[index]
         self.log("learning_rate", current_lr, on_epoch=True)
 
     def on_validation_epoch_end(self) -> None:
@@ -363,19 +331,15 @@ class LitResNetEnhanced(pl.LightningModule):
 
     def get_model_summary(self) -> Dict[str, Any]:
         """Get comprehensive model summary."""
-        model_info = self.model.get_model_info()
-        model_info.update({
-            "lightning_module": "LitResNetEnhanced",
-            "optimizer": "AdamW",
-            "learning_rate": self.config.get("experiment.learning_rate", 0),
-            "weight_decay": self.config.get("experiment.weight_decay", 0),
-            "scheduler": "CosineAnnealingWarmRestarts" if self.use_cosine_scheduler else "ReduceLROnPlateau",
-            "loss_function": "FocalLoss" if self.use_focal_loss else "BCEWithLogitsLoss",
-            "label_smoothing": self.label_smoothing,
-            "focal_alpha": self.focal_alpha if self.use_focal_loss else None,
-            "focal_gamma": self.focal_gamma if self.use_focal_loss else None,
-            "unfrozen_layers": self.unfrozen_layers,
-            "device": str(self.device)
-        })
-        return model_info
+        return get_model_summary(
+            model=self.model,
+            config=self.config,
+            lightning_module_name="LitResNetEnhanced",
+            use_focal_loss=self.use_focal_loss,
+            label_smoothing=self.label_smoothing,
+            focal_alpha=self.focal_alpha,
+            focal_gamma=self.focal_gamma,
+            unfrozen_layers=self.unfrozen_layers,
+            device=self.device
+        )
 
