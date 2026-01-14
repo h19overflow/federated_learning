@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, Tuple, TYPE_CHECKING
 import torch
 import torch.optim as optim
 import pytorch_lightning as pl
-from pytorch_lightning.utilities.types import OptimizerLRSchedulerConfig, LRSchedulerTypeUnion, OptimizerConfig
+from pytorch_lightning.utilities.types import OptimizerLRSchedulerConfig
 from torchvision.models import ResNet50_Weights
 from torchmetrics import Metric
 
