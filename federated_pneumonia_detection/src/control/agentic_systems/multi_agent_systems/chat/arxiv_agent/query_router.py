@@ -14,10 +14,11 @@ Usage:
 
 import logging
 from typing import Literal
-from pydantic import BaseModel, Field
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import create_agent
+
 from dotenv import load_dotenv
+from langchain.agents import create_agent
+from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import BaseModel, Field
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -41,9 +42,9 @@ def _get_router_agent():
     global _router_agent
     if _router_agent is None:
         base_model = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.0-flash",
             temperature=0.0,  # Deterministic classification
-            max_tokens=10,    # Single word response
+            max_tokens=10,  # Single word response
         )
         _router_agent = create_agent(
             model=base_model,
@@ -90,7 +91,9 @@ def classify_query(query: str) -> str:
         agent = _get_router_agent()
         prompt = ROUTER_CLASSIFICATION_PROMPT.format(query=query)
 
-        logger.debug("[QueryRouter] Invoking classification agent with structured output...")
+        logger.debug(
+            "[QueryRouter] Invoking classification agent with structured output..."
+        )
         result = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
 
         # Extract structured response from agent result

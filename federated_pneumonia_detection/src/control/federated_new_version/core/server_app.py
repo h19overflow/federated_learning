@@ -1,33 +1,31 @@
-from flwr.app import ArrayRecord, Context
-from flwr.serverapp import ServerApp, Grid
-from datetime import datetime
 import os
+from datetime import datetime
 from pathlib import Path
+
 import torch
-from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
-    ConfigurableFedAvg,
+from flwr.app import ArrayRecord, Context
+from flwr.serverapp import Grid, ServerApp
+
+from federated_pneumonia_detection.config.config_manager import ConfigManager
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
+    MetricsWebSocketSender,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet_enhanced import (
     LitResNetEnhanced,
 )
-from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
-    read_configs_to_toml,
+from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
+    ConfigurableFedAvg,
 )
-from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
-    MetricsWebSocketSender,
-)
-from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-
 from federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation import (
     create_central_evaluate_fn,
 )
-from federated_pneumonia_detection.src.utils.loggers.logger import setup_logger
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
     _convert_metric_record_to_dict,
     _persist_server_evaluations,
 )
+from federated_pneumonia_detection.src.utils.loggers.logger import setup_logger
 
 # Setup logger for server app
 logger = setup_logger(__name__)
@@ -38,32 +36,12 @@ app = ServerApp()
 @app.lifespan()
 def lifespan(app: ServerApp):
     """Lifecycle management for ServerApp.
-
+    
     Note: Configuration sync should happen BEFORE Flower starts (in federated_tasks.py).
     This lifespan hook runs after Flower has already loaded pyproject.toml,
     so we just verify and log the configuration here.
     """
-    logger.info("=" * 80)
-    logger.info("SERVER LIFESPAN: Starting up...")
-    logger.info("=" * 80)
-
-    # Verify configuration is in sync
-    logger.info("Verifying configuration synchronization...")
-    flwr_configs = read_configs_to_toml()
-
-    if flwr_configs:
-        logger.info(f"[OK] Configuration verified: {flwr_configs}")
-        logger.info(
-            "NOTE: Config should have been synced to pyproject.toml before Flower started"
-        )
-    else:
-        logger.warning("[WARN] No federated configs found in default_config.yaml")
-
     yield
-
-    logger.info("=" * 80)
-    logger.info("SERVER LIFESPAN: Shutting down...")
-    logger.info("=" * 80)
 
 
 @app.main()
@@ -112,7 +90,9 @@ def main(grid: Grid, context: Context) -> None:
     # Load ConfigManager FIRST (before any config access)
     # Make config path configurable via environment or use default relative path
     default_config_path = (
-        Path(__file__).parent.parent.parent.parent.parent / "config" / "default_config.yaml"
+        Path(__file__).parent.parent.parent.parent.parent
+        / "config"
+        / "default_config.yaml"
     )
     config_path = os.getenv("CONFIG_PATH", str(default_config_path))
     config_manager = ConfigManager(config_path=str(config_path))

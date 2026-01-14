@@ -6,10 +6,10 @@ Provides background task execution for centralized machine learning training.
 
 from typing import Any, Dict
 
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import (
     CentralizedTrainer,
 )
+from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
 
 
 def run_centralized_training_task(

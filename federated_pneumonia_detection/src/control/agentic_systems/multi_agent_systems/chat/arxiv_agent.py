@@ -18,7 +18,7 @@ New preferred import (directly from package):
 """
 
 # Re-export from the refactored package
-# Note: Since this file is arxiv_agent.py and the package is arxiv_agent/, 
+# Note: Since this file is arxiv_agent.py and the package is arxiv_agent/,
 # Python will prefer the .py file. We need to import from the package submodules directly.
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent.engine import (
     ArxivAugmentedEngine,
@@ -30,6 +30,6 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 
 __all__ = [
     "ArxivAugmentedEngine",
-    "SSEEventType", 
+    "SSEEventType",
     "create_sse_event",
 ]

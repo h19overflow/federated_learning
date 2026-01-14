@@ -7,11 +7,13 @@ Follows Flower conventions for:
 - Configuration passing to clients
 """
 
-from typing import Optional, Dict, Any
 from collections.abc import Iterable
+from typing import Any, Dict, Optional
+
 from flwr.app import ArrayRecord, ConfigRecord, Message
 from flwr.serverapp import Grid
 from flwr.serverapp.strategy import FedAvg
+
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
     MetricsWebSocketSender,
 )
