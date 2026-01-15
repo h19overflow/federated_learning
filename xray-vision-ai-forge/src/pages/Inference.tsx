@@ -8,7 +8,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Activity, RefreshCw, Sparkles, Layers, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
+import { Activity, RefreshCw, Sparkles, Layers, Image as ImageIcon, Eye, EyeOff, FileText, Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ImageDropzone from '@/components/inference/ImageDropzone';
@@ -19,7 +19,7 @@ import BatchSummaryStats from '@/components/inference/BatchSummaryStats';
 import BatchResultsGrid from '@/components/inference/BatchResultsGrid';
 import BatchExportButton from '@/components/inference/BatchExportButton';
 import HeatmapOverlay from '@/components/inference/HeatmapOverlay';
-import { predictImage, batchPredictImages } from '@/services/inferenceApi';
+import { predictImage, batchPredictImages, generatePdfReport, generateBatchPdfReportWithImages } from '@/services/inferenceApi';
 import { InferenceResponse, BatchInferenceResponse } from '@/types/inference';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
@@ -43,6 +43,7 @@ const Inference = () => {
   const [result, setResult] = useState<InferenceResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   // Batch mode state
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -50,6 +51,7 @@ const Inference = () => {
   const [batchLoading, setBatchLoading] = useState(false);
   const [imageUrls, setImageUrls] = useState<Map<string, string>>(new Map());
   const [imageFiles, setImageFiles] = useState<Map<string, File>>(new Map());
+  const [generatingBatchPdf, setGeneratingBatchPdf] = useState(false);
 
   const mainRef = useRef<HTMLElement>(null);
   const { toast } = useToast();
@@ -117,6 +119,77 @@ const Inference = () => {
 
   const toggleHeatmap = () => {
     setShowHeatmap((prev) => !prev);
+  };
+
+  const handleGeneratePdf = async () => {
+    if (!selectedImage) return;
+
+    setGeneratingPdf(true);
+    try {
+      const blob = await generatePdfReport(selectedImage, true, false);
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `xray_report_${selectedImage.name.replace(/\.[^/.]+$/, '')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Report Generated',
+        description: 'PDF report downloaded successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Report Generation Failed',
+        description: error.message || 'Failed to generate PDF report',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  const handleGenerateBatchPdf = async () => {
+    if (!batchResult) return;
+
+    setGeneratingBatchPdf(true);
+    try {
+      // Use the new endpoint with images for comprehensive report
+      const blob = await generateBatchPdfReportWithImages(
+        selectedImages,
+        batchResult.results,
+        batchResult.summary,
+        true, // include heatmaps
+        10    // max 10 images in appendix
+      );
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'batch_analysis_report.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Report Generated',
+        description: 'Comprehensive PDF report with image appendix downloaded',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Report Generation Failed',
+        description: error.message || 'Failed to generate batch PDF report',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingBatchPdf(false);
+    }
   };
 
   // Batch mode handlers
@@ -348,7 +421,25 @@ const Inference = () => {
                   )}
 
                   {result && (
-                    <div className="mt-6">
+                    <div className="mt-6 space-y-3">
+                      <Button
+                        onClick={handleGeneratePdf}
+                        disabled={generatingPdf}
+                        size="lg"
+                        className="w-full bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white py-7 rounded-2xl shadow-lg shadow-[hsl(172_63%_22%)]/20 hover:shadow-xl transition-all duration-300"
+                      >
+                        {generatingPdf ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Generating Report...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="mr-2 h-5 w-5" />
+                            Download PDF Report
+                          </>
+                        )}
+                      </Button>
                       <Button
                         onClick={handleTryAnother}
                         variant="outline"
@@ -564,7 +655,27 @@ const Inference = () => {
                           Download batch analysis data in CSV or JSON format
                         </p>
                       </div>
-                      <BatchExportButton data={batchResult} />
+                      <div className="flex flex-wrap gap-3">
+                        <BatchExportButton data={batchResult} />
+                        <Button
+                          onClick={handleGenerateBatchPdf}
+                          disabled={generatingBatchPdf}
+                          variant="outline"
+                          className="rounded-xl border-2 border-[hsl(172_30%_80%)] text-[hsl(172_43%_25%)] hover:bg-[hsl(168_25%_94%)]"
+                        >
+                          {generatingBatchPdf ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="mr-2 h-4 w-4" />
+                              PDF Report
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="content-card batch-results">

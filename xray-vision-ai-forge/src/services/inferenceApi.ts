@@ -175,10 +175,138 @@ export async function batchPredictImages(
   return handleResponse<BatchInferenceResponse>(response);
 }
 
+/**
+ * Generate a PDF report for a single X-ray prediction
+ *
+ * @param file - X-ray image file (PNG or JPEG)
+ * @param includeHeatmap - Include GradCAM heatmap in report
+ * @param includeClinical - Include clinical interpretation
+ * @returns PDF blob for download
+ */
+export async function generatePdfReport(
+  file: File,
+  includeHeatmap: boolean = true,
+  includeClinical: boolean = false
+): Promise<Blob> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('include_heatmap', String(includeHeatmap));
+  formData.append('include_clinical', String(includeClinical));
+
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}/api/inference/report/single`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    60000 // 60 second timeout for PDF generation
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new InferenceApiError(
+      errorData.detail || 'Failed to generate PDF report',
+      response.status,
+      errorData
+    );
+  }
+
+  return response.blob();
+}
+
+/**
+ * Generate a summary PDF report for batch predictions
+ *
+ * @param results - Array of prediction results
+ * @param summary - Summary statistics
+ * @returns PDF blob for download
+ */
+export async function generateBatchPdfReport(
+  results: any[],
+  summary: any
+): Promise<Blob> {
+  const formData = new FormData();
+  formData.append('results_json', JSON.stringify(results));
+  formData.append('summary_json', JSON.stringify(summary));
+
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}/api/inference/report/batch-summary`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    60000 // 60 second timeout for PDF generation
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new InferenceApiError(
+      errorData.detail || 'Failed to generate batch PDF report',
+      response.status,
+      errorData
+    );
+  }
+
+  return response.blob();
+}
+
+/**
+ * Generate a comprehensive PDF report with image appendix
+ *
+ * @param files - Array of image files to include in appendix
+ * @param results - Array of prediction results
+ * @param summary - Summary statistics
+ * @param includeHeatmaps - Whether to generate heatmaps (default: true)
+ * @param maxAppendixImages - Maximum images to include in appendix (default: 10)
+ * @returns PDF blob for download
+ */
+export async function generateBatchPdfReportWithImages(
+  files: File[],
+  results: any[],
+  summary: any,
+  includeHeatmaps: boolean = true,
+  maxAppendixImages: number = 10
+): Promise<Blob> {
+  const formData = new FormData();
+
+  // Add files
+  files.slice(0, maxAppendixImages).forEach((file) => {
+    formData.append('files', file);
+  });
+
+  formData.append('results_json', JSON.stringify(results));
+  formData.append('summary_json', JSON.stringify(summary));
+  formData.append('include_heatmaps', String(includeHeatmaps));
+  formData.append('max_appendix_images', String(maxAppendixImages));
+
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}/api/inference/report/batch-with-images`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    180000 // 3 minute timeout for report with images/heatmaps
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new InferenceApiError(
+      errorData.detail || 'Failed to generate batch PDF report with images',
+      response.status,
+      errorData
+    );
+  }
+
+  return response.blob();
+}
+
 // Export API module
 export default {
   checkHealth: checkInferenceHealth,
   predict: predictImage,
   generateHeatmap,
+  generatePdfReport,
+  generateBatchPdfReport,
+  generateBatchPdfReportWithImages,
   batchPredict: batchPredictImages,
 };
