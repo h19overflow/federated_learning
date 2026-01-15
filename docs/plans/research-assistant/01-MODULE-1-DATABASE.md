@@ -1,15 +1,17 @@
-# Module 1: Knowledge Base & Database
+# Module 1: Knowledge Base & Database (Updated)
 
 **Agent Assignment:** backend-logic-architect
 **Priority:** P0 (Start immediately)
-**Dependencies:** None
-**Estimated Effort:** 1-2 days
+**Dependencies:** None (reuses existing database)
+**Estimated Effort:** 0.5-1 day (significantly reduced)
 
 ---
 
 ## Purpose
 
-Provide persistent storage for all experiment runs, results, and research sessions. Acts as the "memory" for the research assistant.
+Provide persistent storage for research assistant experiments by **reusing the existing database infrastructure** (`runs`, `run_metrics` tables and CRUD operations).
+
+**Key Change:** We do NOT create new tables. Instead, we create a lightweight adapter/repository layer on top of your existing `federated_pneumonia_detection.src.boundary` database.
 
 ---
 
@@ -18,72 +20,74 @@ Provide persistent storage for all experiment runs, results, and research sessio
 ```
 federated_pneumonia_detection/src/control/agentic_systems/research_assistant/knowledge_base/
 ├── __init__.py
-├── schemas.py              # Pydantic models
-├── database.py             # SQLAlchemy models + CRUD operations
-└── migrations/             # Database migrations (Alembic)
-    └── versions/
+├── schemas.py              # Pydantic models (same as before)
+├── repository.py           # NEW: Adapter for existing database
+└── queries.py              # NEW: Helper queries for research assistant
 ```
+
+**No changes needed to:**
+- ❌ `boundary/models/` (no new tables)
+- ❌ `boundary/CRUD/` (no new CRUD operations)
+- ✅ Just add adapter layer to translate research concepts → existing schema
 
 ---
 
-## Database Schema
+## How Research Assistant Uses Existing Schema
 
-### Tables
+### Mapping Research Concepts → Database Tables
 
-**1. research_sessions**
-```sql
-CREATE TABLE research_sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP,
-    total_experiments INTEGER DEFAULT 0,
-    best_centralized_recall REAL,
-    best_federated_recall REAL,
-    stopping_reason TEXT,
-    config JSON  -- max_experiments, target_recall, etc.
-);
+| Research Concept | Existing Table | How We Use It |
+|------------------|----------------|---------------|
+| **Research Session** | `runs` | One run per research session, `run_description` stores session config |
+| **Experiment** | `run_metrics` (group by `step`) | Each `step` = one experiment with hyperparameters + results |
+| **Hyperparameters** | `run_metrics` | Stored as metrics with prefix `hp_` (e.g., `hp_learning_rate`) |
+| **Results** | `run_metrics` | Stored as metrics (`recall`, `accuracy`, `f1`, etc.) |
+| **Agent Reasoning** | `run_metrics` | Stored as special metric `agent_reasoning` (truncated to float hash) |
+
+### Example: Research Session → `runs` table
+
+```python
+# Create research session
+run = run_crud.create(
+    db,
+    run_description=json.dumps({
+        "type": "autonomous_research",
+        "max_experiments": 30,
+        "target_recall": 0.95,
+        "paradigm": "both",
+        "stopping_reason": None  # Filled when complete
+    }),
+    training_mode="both",  # or "centralized", "federated"
+    status="in_progress",
+    start_time=datetime.now()
+)
 ```
 
-**2. experiments**
-```sql
-CREATE TABLE experiments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER NOT NULL,
-    experiment_number INTEGER NOT NULL,  -- 1, 2, 3...
-    timestamp TIMESTAMP NOT NULL,
-    paradigm TEXT NOT NULL,  -- "centralized" or "federated"
-    status TEXT NOT NULL,  -- "completed", "failed", "running"
+### Example: Experiment → `run_metrics` (step-based)
 
-    -- Hyperparameters (JSON)
-    hyperparameters JSON NOT NULL,
+```python
+# Experiment #1: lr=0.001, batch=32, dropout=0.3
+# Results: recall=0.933, accuracy=0.91
 
-    -- Results (JSON)
-    metrics JSON,  -- {recall, accuracy, f1, auroc, confusion_matrix}
+# Store hyperparameters
+run_metric_crud.create(db, run_id=run.id, metric_name="hp_learning_rate", metric_value=0.001, step=1, dataset_type="config")
+run_metric_crud.create(db, run_id=run.id, metric_name="hp_batch_size", metric_value=32.0, step=1, dataset_type="config")
+run_metric_crud.create(db, run_id=run.id, metric_name="hp_dropout_rate", metric_value=0.3, step=1, dataset_type="config")
 
-    -- Metadata
-    training_time_seconds REAL,
-    error_message TEXT,
-    agent_reasoning TEXT,  -- Why this experiment was proposed
+# Store results
+run_metric_crud.create(db, run_id=run.id, metric_name="recall", metric_value=0.933, step=1, dataset_type="val")
+run_metric_crud.create(db, run_id=run.id, metric_name="accuracy", metric_value=0.91, step=1, dataset_type="val")
+run_metric_crud.create(db, run_id=run.id, metric_name="f1", metric_value=0.92, step=1, dataset_type="val")
 
-    FOREIGN KEY (session_id) REFERENCES research_sessions(id)
-);
-```
-
-**3. hyperparameter_ranges**
-```sql
-CREATE TABLE hyperparameter_ranges (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    parameter_name TEXT NOT NULL,
-    min_value REAL,
-    max_value REAL,
-    suggested_values JSON,  -- List of discrete values to try
-    explored_count INTEGER DEFAULT 0
-);
+# Store paradigm tested
+run_metric_crud.create(db, run_id=run.id, metric_name="paradigm_centralized", metric_value=1.0, step=1, dataset_type="meta")
 ```
 
 ---
 
 ## Pydantic Models (schemas.py)
+
+**Same as original design** - these are for type safety and API contracts:
 
 ```python
 from pydantic import BaseModel, Field
@@ -100,6 +104,9 @@ class ExperimentProposal(BaseModel):
     expected_outcome: str = Field(description="What we expect to learn")
     priority: int = Field(ge=1, le=10, description="Priority level")
     paradigm: str = Field(pattern="^(centralized|federated)$")
+    exploration_phase: str = Field(
+        pattern="^(broad_exploration|smart_refinement|fine_tuning)$"
+    )
 
 class ExperimentResults(BaseModel):
     """Output from Module 3 (Browser Automation)"""
@@ -122,23 +129,19 @@ class ExperimentResults(BaseModel):
     error_message: Optional[str] = None
 
 class ExperimentRun(BaseModel):
-    """Full experiment record (stored in DB)"""
-    id: int
-    session_id: int
-    experiment_number: int
-    timestamp: datetime
+    """Full experiment record (reconstructed from run_metrics)"""
+    experiment_number: int  # step number
     paradigm: str
     hyperparameters: Dict[str, Any]
     metrics: Optional[Dict[str, float]]
-    confusion_matrix: Optional[Dict[str, int]]
     training_time_seconds: Optional[float]
     status: str
     error_message: Optional[str]
     agent_reasoning: str
 
 class ResearchSession(BaseModel):
-    """Research session metadata"""
-    id: int
+    """Research session metadata (from run + aggregated metrics)"""
+    run_id: int
     start_time: datetime
     end_time: Optional[datetime]
     total_experiments: int
@@ -150,196 +153,462 @@ class ResearchSession(BaseModel):
 
 ---
 
-## CRUD Operations (database.py)
+## Repository Adapter (repository.py)
+
+**Lightweight adapter to translate research assistant operations → existing CRUD:**
 
 ```python
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
+from typing import List, Dict, Any, Optional
 from datetime import datetime
+from sqlalchemy.orm import Session
 import json
 
-class ExperimentDatabase:
-    def __init__(self, db_url: str = "sqlite:///research_assistant.db"):
-        self.engine = create_engine(db_url)
-        self._create_tables()
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
+from federated_pneumonia_detection.src.boundary.engine import get_db
+
+from .schemas import (
+    ExperimentProposal,
+    ExperimentResults,
+    ExperimentRun,
+    ResearchSession
+)
+
+class ResearchRepository:
+    """
+    Adapter to use existing database for research assistant
+
+    Translates research assistant operations → existing run/run_metric CRUD
+    """
+
+    def __init__(self):
+        self.db_generator = get_db()
+        self.db: Session = next(self.db_generator)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.db.close()
 
     # Session Management
-    def create_session(self, config: dict) -> int:
-        """Start a new research session"""
-        # Returns session_id
-        pass
 
-    def end_session(self, session_id: int, stopping_reason: str):
-        """Mark session as complete"""
-        pass
+    def create_research_session(self, config: Dict[str, Any]) -> int:
+        """
+        Create a new research session (as a Run)
+
+        Args:
+            config: Session configuration (max_experiments, target_recall, etc.)
+
+        Returns:
+            run_id for the research session
+        """
+        run_description = json.dumps({
+            "type": "autonomous_research",
+            **config
+        })
+
+        run = run_crud.create(
+            self.db,
+            run_description=run_description,
+            training_mode=config.get("paradigm", "both"),
+            status="in_progress",
+            start_time=datetime.now(),
+            source_path=config.get("dataset_path")
+        )
+
+        self.db.commit()
+        return run.id
+
+    def end_research_session(self, run_id: int, stopping_reason: str):
+        """Mark research session as complete"""
+
+        # Get current run description and update with stopping reason
+        run = run_crud.get(self.db, run_id)
+        if run:
+            config = json.loads(run.run_description)
+            config["stopping_reason"] = stopping_reason
+
+            run_crud.update(
+                self.db,
+                run_id,
+                run_description=json.dumps(config),
+                status="completed",
+                end_time=datetime.now()
+            )
+            self.db.commit()
+
+    def get_research_session(self, run_id: int) -> Optional[ResearchSession]:
+        """Get research session metadata"""
+
+        run = run_crud.get(self.db, run_id)
+        if not run:
+            return None
+
+        config = json.loads(run.run_description)
+
+        # Get experiment count (max step number)
+        metrics = run_metric_crud.get_by_run(self.db, run_id)
+        total_experiments = max([m.step for m in metrics], default=0)
+
+        # Get best recalls
+        best_cent = self._get_best_recall(run_id, "centralized")
+        best_fed = self._get_best_recall(run_id, "federated")
+
+        return ResearchSession(
+            run_id=run.id,
+            start_time=run.start_time,
+            end_time=run.end_time,
+            total_experiments=total_experiments,
+            best_centralized_recall=best_cent,
+            best_federated_recall=best_fed,
+            stopping_reason=config.get("stopping_reason"),
+            config=config
+        )
 
     # Experiment CRUD
+
     def save_experiment(
         self,
-        session_id: int,
+        run_id: int,
+        experiment_number: int,
         proposal: ExperimentProposal,
         results: ExperimentResults
     ) -> int:
-        """Save completed experiment, returns experiment_id"""
-        pass
+        """
+        Save experiment to database
 
-    def get_all_experiments(self, session_id: int) -> List[ExperimentRun]:
-        """Get all experiments for a session, ordered by timestamp"""
-        pass
+        Args:
+            run_id: Research session ID
+            experiment_number: Experiment number (1, 2, 3, ...)
+            proposal: Experiment configuration
+            results: Experiment results
 
-    def get_experiment_by_id(self, experiment_id: int) -> ExperimentRun:
-        """Get single experiment"""
-        pass
+        Returns:
+            experiment_number (same as input, for consistency)
+        """
 
-    def update_experiment_status(self, experiment_id: int, status: str, error_msg: str = None):
-        """Update experiment status (for tracking running experiments)"""
-        pass
+        # 1. Store hyperparameters as metrics
+        for hp_name, hp_value in proposal.proposed_hyperparameters.items():
+            run_metric_crud.create(
+                self.db,
+                run_id=run_id,
+                metric_name=f"hp_{hp_name}",
+                metric_value=float(hp_value),
+                step=experiment_number,
+                dataset_type="config"
+            )
+
+        # 2. Store paradigm
+        paradigm_value = 1.0 if proposal.paradigm == "centralized" else 0.0
+        run_metric_crud.create(
+            self.db,
+            run_id=run_id,
+            metric_name="paradigm_centralized",
+            metric_value=paradigm_value,
+            step=experiment_number,
+            dataset_type="meta"
+        )
+
+        # 3. Store results (if completed)
+        if results.status == "completed" and results.metrics:
+            for metric_name, metric_value in results.metrics.items():
+                run_metric_crud.create(
+                    self.db,
+                    run_id=run_id,
+                    metric_name=metric_name,
+                    metric_value=metric_value,
+                    step=experiment_number,
+                    dataset_type="val"
+                )
+
+            # Store training time
+            run_metric_crud.create(
+                self.db,
+                run_id=run_id,
+                metric_name="training_time_seconds",
+                metric_value=results.training_time_seconds,
+                step=experiment_number,
+                dataset_type="meta"
+            )
+
+        # 4. Store status
+        status_value = 1.0 if results.status == "completed" else 0.0
+        run_metric_crud.create(
+            self.db,
+            run_id=run_id,
+            metric_name="experiment_status_completed",
+            metric_value=status_value,
+            step=experiment_number,
+            dataset_type="meta"
+        )
+
+        self.db.commit()
+        return experiment_number
+
+    def get_all_experiments(self, run_id: int) -> List[ExperimentRun]:
+        """
+        Get all experiments for a research session
+
+        Returns experiments ordered by experiment_number
+        """
+
+        # Get all metrics for this run
+        all_metrics = run_metric_crud.get_by_run(self.db, run_id)
+
+        # Group by step (each step = one experiment)
+        experiments_by_step = {}
+        for metric in all_metrics:
+            step = metric.step
+            if step not in experiments_by_step:
+                experiments_by_step[step] = []
+            experiments_by_step[step].append(metric)
+
+        # Reconstruct experiments
+        experiments = []
+        for step in sorted(experiments_by_step.keys()):
+            experiment = self._reconstruct_experiment(step, experiments_by_step[step])
+            experiments.append(experiment)
+
+        return experiments
+
+    def get_experiment_by_number(self, run_id: int, experiment_number: int) -> Optional[ExperimentRun]:
+        """Get single experiment by number"""
+
+        metrics = run_metric_crud.get_by_step(self.db, run_id, experiment_number)
+        if not metrics:
+            return None
+
+        return self._reconstruct_experiment(experiment_number, metrics)
+
+    def _reconstruct_experiment(self, step: int, metrics: List) -> ExperimentRun:
+        """Reconstruct ExperimentRun from run_metrics"""
+
+        hyperparameters = {}
+        result_metrics = {}
+        paradigm = "centralized"
+        status = "completed"
+        training_time = None
+
+        for metric in metrics:
+            # Hyperparameters (hp_ prefix)
+            if metric.metric_name.startswith("hp_"):
+                hp_name = metric.metric_name[3:]  # Remove "hp_" prefix
+                hyperparameters[hp_name] = metric.metric_value
+
+            # Paradigm
+            elif metric.metric_name == "paradigm_centralized":
+                paradigm = "centralized" if metric.metric_value == 1.0 else "federated"
+
+            # Status
+            elif metric.metric_name == "experiment_status_completed":
+                status = "completed" if metric.metric_value == 1.0 else "failed"
+
+            # Training time
+            elif metric.metric_name == "training_time_seconds":
+                training_time = metric.metric_value
+
+            # Result metrics (dataset_type='val')
+            elif metric.dataset_type == "val":
+                result_metrics[metric.metric_name] = metric.metric_value
+
+        return ExperimentRun(
+            experiment_number=step,
+            paradigm=paradigm,
+            hyperparameters=hyperparameters,
+            metrics=result_metrics if result_metrics else None,
+            training_time_seconds=training_time,
+            status=status,
+            error_message=None,
+            agent_reasoning=""  # Not stored (too verbose for float values)
+        )
 
     # Analytics Queries
-    def get_best_result(self, session_id: int, paradigm: str, metric: str = "recall") -> ExperimentRun:
-        """Get best experiment for a given paradigm and metric"""
-        pass
 
-    def get_experiments_by_paradigm(self, session_id: int, paradigm: str) -> List[ExperimentRun]:
-        """Filter experiments by paradigm"""
-        pass
+    def _get_best_recall(self, run_id: int, paradigm: str) -> Optional[float]:
+        """Get best recall for a specific paradigm"""
 
-    def get_hyperparameter_exploration_history(
-        self,
-        session_id: int,
-        parameter_name: str
-    ) -> List[tuple]:
-        """Get all tested values for a specific hyperparameter
-        Returns: [(value, recall), ...]
-        """
-        pass
+        experiments = self.get_all_experiments(run_id)
+        paradigm_exps = [e for e in experiments if e.paradigm == paradigm and e.metrics]
 
-    def get_recent_experiments(self, session_id: int, n: int = 5) -> List[ExperimentRun]:
-        """Get last N experiments (for convergence detection)"""
-        pass
+        if not paradigm_exps:
+            return None
 
-    def get_session_summary(self, session_id: int) -> dict:
+        recalls = [e.metrics.get("recall", 0) for e in paradigm_exps]
+        return max(recalls) if recalls else None
+
+    def get_session_summary(self, run_id: int) -> Dict[str, Any]:
         """Get session statistics"""
-        # Returns: {
-        #   "total_experiments": 25,
-        #   "best_centralized_recall": 0.947,
-        #   "best_federated_recall": 0.931,
-        #   "avg_training_time": 120.5,
-        #   "failed_experiments": 2
-        # }
-        pass
+
+        experiments = self.get_all_experiments(run_id)
+        completed = [e for e in experiments if e.status == "completed"]
+
+        return {
+            "total_experiments": len(experiments),
+            "completed_experiments": len(completed),
+            "failed_experiments": len(experiments) - len(completed),
+            "best_centralized_recall": self._get_best_recall(run_id, "centralized") or 0.0,
+            "best_federated_recall": self._get_best_recall(run_id, "federated") or 0.0,
+            "avg_training_time": (
+                sum(e.training_time_seconds for e in completed if e.training_time_seconds) / len(completed)
+                if completed else 0.0
+            )
+        }
+
+
+# Singleton instance
+research_repository = ResearchRepository()
 ```
 
 ---
 
-## API Endpoints (FastAPI)
+## Helper Queries (queries.py)
+
+**Optional helper functions for common research assistant queries:**
 
 ```python
-from fastapi import FastAPI, HTTPException
-from typing import List
+from typing import List, Tuple
+from sqlalchemy.orm import Session
 
-app = FastAPI()
+from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 
-@app.post("/sessions", response_model=int)
-def create_research_session(config: dict):
-    """Start new research session"""
-    pass
+def get_hyperparameter_exploration_history(
+    db: Session,
+    run_id: int,
+    parameter_name: str
+) -> List[Tuple[float, float]]:
+    """
+    Get all tested values for a specific hyperparameter with their recalls
 
-@app.get("/sessions/{session_id}/experiments", response_model=List[ExperimentRun])
-def get_session_experiments(session_id: int):
-    """Get all experiments for a session"""
-    pass
+    Returns:
+        List of (parameter_value, recall) tuples
+    """
 
-@app.post("/experiments", response_model=int)
-def save_experiment(
-    session_id: int,
-    proposal: ExperimentProposal,
-    results: ExperimentResults
-):
-    """Save experiment results"""
-    pass
+    # Get all steps that tested this hyperparameter
+    hp_metrics = run_metric_crud.get_by_metric_name(db, run_id, f"hp_{parameter_name}")
 
-@app.get("/experiments/{experiment_id}", response_model=ExperimentRun)
-def get_experiment(experiment_id: int):
-    """Get experiment by ID"""
-    pass
+    results = []
+    for hp_metric in hp_metrics:
+        # Get recall for this step
+        recall_metric = run_metric_crud.get_by_step(db, run_id, hp_metric.step)
+        recall = next((m.metric_value for m in recall_metric if m.metric_name == "recall"), None)
 
-@app.get("/sessions/{session_id}/best")
-def get_best_experiments(session_id: int, paradigm: str = None):
-    """Get best results for session"""
-    pass
+        if recall is not None:
+            results.append((hp_metric.metric_value, recall))
 
-@app.get("/sessions/{session_id}/summary")
-def get_session_summary(session_id: int):
-    """Get session statistics"""
-    pass
+    return results
+
+
+def get_recent_experiments(db: Session, run_id: int, n: int = 5) -> List[int]:
+    """
+    Get last N experiment numbers (steps)
+
+    Returns:
+        List of step numbers (e.g., [23, 24, 25, 26, 27])
+    """
+
+    all_metrics = run_metric_crud.get_by_run(db, run_id)
+    steps = sorted(set(m.step for m in all_metrics), reverse=True)
+
+    return steps[:n]
 ```
 
 ---
 
 ## Testing Strategy
 
-**Unit Tests:**
 ```python
-# test_database.py
-def test_create_session():
-    db = ExperimentDatabase(":memory:")
-    session_id = db.create_session({"max_experiments": 30})
-    assert session_id > 0
+# test_repository.py
+import pytest
+from .repository import ResearchRepository
+from .schemas import ExperimentProposal, ExperimentResults
+
+def test_create_research_session():
+    """Test creating research session"""
+    repo = ResearchRepository()
+
+    run_id = repo.create_research_session({
+        "max_experiments": 30,
+        "target_recall": 0.95,
+        "paradigm": "both"
+    })
+
+    assert run_id > 0
+
+    session = repo.get_research_session(run_id)
+    assert session.run_id == run_id
+    assert session.config["max_experiments"] == 30
 
 def test_save_and_retrieve_experiment():
-    db = ExperimentDatabase(":memory:")
-    session_id = db.create_session({})
+    """Test saving and retrieving experiment"""
+    repo = ResearchRepository()
+
+    run_id = repo.create_research_session({"max_experiments": 5})
 
     proposal = ExperimentProposal(
-        proposed_hyperparameters={"lr": 0.001},
+        proposed_hyperparameters={"learning_rate": 0.001, "batch_size": 32},
         reasoning="Test",
         expected_outcome="Test",
         priority=5,
-        paradigm="centralized"
+        paradigm="centralized",
+        exploration_phase="broad_exploration"
     )
+
     results = ExperimentResults(
-        metrics={"recall": 0.93},
+        metrics={"recall": 0.933, "accuracy": 0.91},
         training_time_seconds=120.0,
         status="completed"
     )
 
-    exp_id = db.save_experiment(session_id, proposal, results)
-    retrieved = db.get_experiment_by_id(exp_id)
+    repo.save_experiment(run_id, 1, proposal, results)
 
-    assert retrieved.metrics["recall"] == 0.93
-    assert retrieved.paradigm == "centralized"
+    experiment = repo.get_experiment_by_number(run_id, 1)
 
-def test_get_best_result():
-    # Test with multiple experiments, verify best is returned
-    pass
+    assert experiment.experiment_number == 1
+    assert experiment.paradigm == "centralized"
+    assert experiment.hyperparameters["learning_rate"] == 0.001
+    assert experiment.metrics["recall"] == 0.933
 
-def test_hyperparameter_exploration_history():
-    # Test tracking of parameter values over time
-    pass
+def test_get_session_summary():
+    """Test session summary statistics"""
+    repo = ResearchRepository()
+
+    run_id = repo.create_research_session({})
+
+    # Save multiple experiments
+    for i in range(5):
+        proposal = ExperimentProposal(...)
+        results = ExperimentResults(metrics={"recall": 0.90 + i*0.01}, ...)
+        repo.save_experiment(run_id, i+1, proposal, results)
+
+    summary = repo.get_session_summary(run_id)
+
+    assert summary["total_experiments"] == 5
+    assert summary["best_centralized_recall"] > 0.9
 ```
+
+---
+
+## Benefits of This Approach
+
+✅ **No database migrations** - Uses existing schema as-is
+✅ **Minimal code** - Adapter layer only, ~200 lines vs 500+ for new tables
+✅ **Reuses existing CRUD** - Leverages your well-tested operations
+✅ **Consistent data model** - Research sessions stored alongside regular training runs
+✅ **Existing UI compatibility** - Your current dashboard can query research runs
+✅ **Easy to extend** - If you need new fields, just add new metric names
 
 ---
 
 ## Acceptance Criteria
 
-- ✅ Database schema supports all required fields
-- ✅ CRUD operations work correctly with Pydantic models
-- ✅ Can store and retrieve experiments with full fidelity
-- ✅ Analytics queries return correct results
-- ✅ FastAPI endpoints functional and documented
+- ✅ ResearchRepository successfully creates research sessions
+- ✅ Experiments stored and retrieved with full fidelity
+- ✅ Hyperparameters correctly encoded as `hp_*` metrics
+- ✅ Session summary statistics accurate
+- ✅ Works with both centralized and federated paradigms
 - ✅ Unit tests achieve >90% coverage
-- ✅ Database migrations work (Alembic)
-
----
-
-## Notes for Implementation
-
-1. Use SQLAlchemy for ORM (easier testing)
-2. Support both SQLite (dev) and PostgreSQL (production)
-3. Add indexes on frequently queried columns (session_id, paradigm, timestamp)
-4. JSON fields for flexibility (hyperparameters, metrics)
-5. Consider adding a `tags` field for categorizing experiments
+- ✅ No changes required to existing boundary/CRUD code
 
 ---
 
