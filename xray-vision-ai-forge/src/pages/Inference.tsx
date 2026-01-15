@@ -2,23 +2,23 @@
  * Inference Page
  *
  * AI-powered chest X-ray analysis page with drag-and-drop upload,
- * real-time prediction, and clinical interpretation.
+ * real-time prediction, and GradCAM heatmap visualization.
  * Supports both single image and batch analysis modes.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Activity, RefreshCw, Sparkles, Layers, Image as ImageIcon } from 'lucide-react';
+import { Activity, RefreshCw, Sparkles, Layers, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ImageDropzone from '@/components/inference/ImageDropzone';
 import PredictionResult from '@/components/inference/PredictionResult';
-import ClinicalInterpretation from '@/components/inference/ClinicalInterpretation';
 import InferenceStatusBadge from '@/components/inference/InferenceStatusBadge';
 import BatchUploadZone from '@/components/inference/BatchUploadZone';
 import BatchSummaryStats from '@/components/inference/BatchSummaryStats';
 import BatchResultsGrid from '@/components/inference/BatchResultsGrid';
 import BatchExportButton from '@/components/inference/BatchExportButton';
+import HeatmapOverlay from '@/components/inference/HeatmapOverlay';
 import { predictImage, batchPredictImages } from '@/services/inferenceApi';
 import { InferenceResponse, BatchInferenceResponse } from '@/types/inference';
 import { useToast } from '@/hooks/use-toast';
@@ -39,16 +39,17 @@ const Inference = () => {
 
   // Single image state
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [result, setResult] = useState<InferenceResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [includeClinical, setIncludeClinical] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   // Batch mode state
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [batchResult, setBatchResult] = useState<BatchInferenceResponse | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
-  const [batchIncludeClinical, setBatchIncludeClinical] = useState(false);
   const [imageUrls, setImageUrls] = useState<Map<string, string>>(new Map());
+  const [imageFiles, setImageFiles] = useState<Map<string, File>>(new Map());
 
   const mainRef = useRef<HTMLElement>(null);
   const { toast } = useToast();
@@ -57,11 +58,20 @@ const Inference = () => {
   const handleImageSelect = (file: File) => {
     setSelectedImage(file);
     setResult(null);
+    setShowHeatmap(false);
+    // Create preview URL for heatmap overlay
+    const url = URL.createObjectURL(file);
+    setImagePreviewUrl(url);
   };
 
   const handleClear = () => {
     setSelectedImage(null);
     setResult(null);
+    setShowHeatmap(false);
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+      setImagePreviewUrl(null);
+    }
   };
 
   const handlePredict = async () => {
@@ -69,7 +79,7 @@ const Inference = () => {
 
     setLoading(true);
     try {
-      const response = await predictImage(selectedImage, includeClinical);
+      const response = await predictImage(selectedImage, false);
       setResult(response);
 
       gsap.from('.result-card', {
@@ -105,15 +115,22 @@ const Inference = () => {
     });
   };
 
+  const toggleHeatmap = () => {
+    setShowHeatmap((prev) => !prev);
+  };
+
   // Batch mode handlers
   const handleImagesSelect = (files: File[]) => {
     setSelectedImages(files);
     const newUrls = new Map<string, string>();
+    const newFiles = new Map<string, File>();
     files.forEach((file) => {
       const url = URL.createObjectURL(file);
       newUrls.set(file.name, url);
+      newFiles.set(file.name, file);
     });
     setImageUrls(newUrls);
+    setImageFiles(newFiles);
   };
 
   const handleBatchClear = () => {
@@ -121,6 +138,7 @@ const Inference = () => {
     setBatchResult(null);
     imageUrls.forEach((url) => URL.revokeObjectURL(url));
     setImageUrls(new Map());
+    setImageFiles(new Map());
   };
 
   const handleBatchPredict = async () => {
@@ -128,7 +146,7 @@ const Inference = () => {
 
     setBatchLoading(true);
     try {
-      const response = await batchPredictImages(selectedImages, batchIncludeClinical);
+      const response = await batchPredictImages(selectedImages, false);
       setBatchResult(response);
 
       gsap.from('.batch-results', {
@@ -177,8 +195,11 @@ const Inference = () => {
   useEffect(() => {
     return () => {
       imageUrls.forEach((url) => URL.revokeObjectURL(url));
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
     };
-  }, [imageUrls]);
+  }, [imageUrls, imagePreviewUrl]);
 
   // GSAP entrance animations
   useEffect(() => {
@@ -304,24 +325,7 @@ const Inference = () => {
                   />
 
                   {selectedImage && !result && (
-                    <div className="mt-6 space-y-4">
-                      <label className="flex items-center gap-3 p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] cursor-pointer hover:bg-white transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={includeClinical}
-                          onChange={(e) => setIncludeClinical(e.target.checked)}
-                          className="w-5 h-5 rounded border-[hsl(172_40%_75%)] text-[hsl(172_63%_28%)] focus:ring-[hsl(172_63%_28%)]"
-                        />
-                        <div className="flex-1">
-                          <span className="text-sm font-medium text-[hsl(172_43%_15%)]">
-                            Include Clinical Interpretation
-                          </span>
-                          <p className="text-xs text-[hsl(215_15%_50%)]">
-                            Get AI-generated clinical analysis with recommendations
-                          </p>
-                        </div>
-                      </label>
-
+                    <div className="mt-6">
                       <Button
                         onClick={handlePredict}
                         disabled={loading}
@@ -397,7 +401,7 @@ const Inference = () => {
                           Upload an X-Ray to Begin
                         </h3>
                         <p className="text-[hsl(215_15%_45%)] max-w-xs">
-                          Prediction results and clinical interpretation will appear here
+                          Prediction results and heatmap visualization will appear here
                         </p>
                       </div>
                     </div>
@@ -405,16 +409,53 @@ const Inference = () => {
 
                   {!loading && result && (
                     <div>
-                      <div className="mb-6">
-                        <h2 className="text-2xl font-semibold text-[hsl(172_43%_15%)] mb-2">
-                          Analysis Results
-                        </h2>
-                        <p className="text-[hsl(215_15%_45%)]">
-                          AI-powered pneumonia detection analysis
-                        </p>
+                      <div className="mb-6 flex items-center justify-between">
+                        <div>
+                          <h2 className="text-2xl font-semibold text-[hsl(172_43%_15%)] mb-2">
+                            Analysis Results
+                          </h2>
+                          <p className="text-[hsl(215_15%_45%)]">
+                            AI-powered pneumonia detection analysis
+                          </p>
+                        </div>
+                        {imagePreviewUrl && result.heatmap_base64 && (
+                          <Button
+                            onClick={toggleHeatmap}
+                            variant="outline"
+                            size="sm"
+                            className={`flex items-center gap-2 rounded-xl border-2 transition-all duration-300 ${
+                              showHeatmap
+                                ? 'bg-[hsl(172_63%_28%)] text-white border-[hsl(172_63%_28%)]'
+                                : 'border-[hsl(172_30%_80%)] text-[hsl(172_43%_25%)] hover:bg-[hsl(168_25%_94%)]'
+                            }`}
+                          >
+                            {showHeatmap ? (
+                              <>
+                                <EyeOff className="w-4 h-4" />
+                                Hide Heatmap
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-4 h-4" />
+                                Show Heatmap
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </div>
 
                       <div className="space-y-6">
+                        {/* Heatmap visualization */}
+                        {imagePreviewUrl && result.heatmap_base64 && showHeatmap && (
+                          <div className="result-card">
+                            <HeatmapOverlay
+                              originalImageUrl={imagePreviewUrl}
+                              heatmapBase64={result.heatmap_base64}
+                              prediction={result.prediction}
+                            />
+                          </div>
+                        )}
+
                         <div className="result-card">
                           <PredictionResult
                             prediction={result.prediction}
@@ -422,14 +463,6 @@ const Inference = () => {
                             processingTimeMs={result.processing_time_ms}
                           />
                         </div>
-
-                        {result.clinical_interpretation && (
-                          <div className="result-card">
-                            <ClinicalInterpretation
-                              interpretation={result.clinical_interpretation}
-                            />
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
@@ -458,24 +491,7 @@ const Inference = () => {
                   />
 
                   {selectedImages.length > 0 && !batchResult && (
-                    <div className="mt-6 space-y-4">
-                      <label className="flex items-center gap-3 p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] cursor-pointer hover:bg-white transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={batchIncludeClinical}
-                          onChange={(e) => setBatchIncludeClinical(e.target.checked)}
-                          className="w-5 h-5 rounded border-[hsl(172_40%_75%)] text-[hsl(172_63%_28%)] focus:ring-[hsl(172_63%_28%)]"
-                        />
-                        <div className="flex-1">
-                          <span className="text-sm font-medium text-[hsl(172_43%_15%)]">
-                            Include Clinical Interpretation
-                          </span>
-                          <p className="text-xs text-[hsl(215_15%_50%)]">
-                            Get AI-generated clinical analysis (increases processing time significantly)
-                          </p>
-                        </div>
-                      </label>
-
+                    <div className="mt-6">
                       <Button
                         onClick={handleBatchPredict}
                         disabled={batchLoading}
@@ -560,7 +576,7 @@ const Inference = () => {
                           Click on any image to view full prediction details
                         </p>
                       </div>
-                      <BatchResultsGrid results={batchResult.results} imageUrls={imageUrls} />
+                      <BatchResultsGrid results={batchResult.results} imageUrls={imageUrls} imageFiles={imageFiles} />
                     </div>
                   </div>
                 )}

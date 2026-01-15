@@ -13,6 +13,8 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
+from .gradcam import GradCAM, heatmap_to_base64
+
 logger = logging.getLogger(__name__)
 
 # Default checkpoint path (relative to this module)
@@ -42,9 +44,11 @@ class InferenceEngine:
         self.model = None
         self.model_version = self.checkpoint_path.stem
         self._transform = None
+        self._gradcam: Optional[GradCAM] = None
 
         self._load_model()
         self._setup_transforms()
+        self._setup_gradcam()
 
     def _load_model(self) -> None:
         """Load the model from checkpoint."""
@@ -85,6 +89,15 @@ class InferenceEngine:
                 std=[0.229, 0.224, 0.225],
             ),
         ])
+
+    def _setup_gradcam(self) -> None:
+        """Initialize GradCAM for heatmap generation."""
+        try:
+            self._gradcam = GradCAM(self.model)
+            logger.info("GradCAM initialized successfully")
+        except Exception as e:
+            logger.warning(f"GradCAM initialization failed: {e}")
+            self._gradcam = None
 
     def preprocess(self, image: Image.Image) -> torch.Tensor:
         """Preprocess a PIL image for inference.
@@ -128,6 +141,42 @@ class InferenceEngine:
         logger.debug(f"Inference: {predicted_class} ({confidence:.4f}) in {inference_time:.2f}ms")
 
         return predicted_class, confidence, pneumonia_prob, normal_prob
+
+    def generate_heatmap(
+        self,
+        image: Image.Image,
+        target_class: Optional[int] = None,
+    ) -> Optional[str]:
+        """Generate GradCAM heatmap for an image.
+
+        Args:
+            image: PIL Image to analyze.
+            target_class: Target class (0=normal, 1=pneumonia). None=use prediction.
+
+        Returns:
+            Base64-encoded PNG of heatmap overlay, or None if unavailable.
+        """
+        if self._gradcam is None:
+            logger.warning("GradCAM not available")
+            return None
+
+        try:
+            start_time = time.time()
+            input_tensor = self.preprocess(image)
+
+            # Generate heatmap
+            heatmap = self._gradcam(input_tensor, target_class)
+
+            # Convert to base64 overlay
+            base64_img = heatmap_to_base64(heatmap, image)
+
+            heatmap_time = (time.time() - start_time) * 1000
+            logger.debug(f"Heatmap generated in {heatmap_time:.2f}ms")
+
+            return base64_img
+        except Exception as e:
+            logger.error(f"Heatmap generation failed: {e}", exc_info=True)
+            return None
 
     @property
     def is_gpu(self) -> bool:

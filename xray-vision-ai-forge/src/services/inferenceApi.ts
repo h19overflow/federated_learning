@@ -88,17 +88,20 @@ export async function checkInferenceHealth(): Promise<HealthCheckResponse> {
  *
  * @param file - X-ray image file (PNG or JPEG)
  * @param includeClinicalInterpretation - Whether to include AI clinical interpretation
- * @returns Prediction results with optional clinical interpretation
+ * @param includeHeatmap - Whether to include GradCAM heatmap visualization
+ * @returns Prediction results with optional clinical interpretation and heatmap
  */
 export async function predictImage(
   file: File,
-  includeClinicalInterpretation: boolean = true
+  includeClinicalInterpretation: boolean = false,
+  includeHeatmap: boolean = true
 ): Promise<InferenceResponse> {
   const formData = new FormData();
   formData.append('file', file);
 
   const url = new URL(`${API_BASE_URL}/api/inference/predict`);
   url.searchParams.append('include_clinical_interpretation', String(includeClinicalInterpretation));
+  url.searchParams.append('include_heatmap', String(includeHeatmap));
 
   const response = await fetchWithTimeout(
     url.toString(),
@@ -110,6 +113,30 @@ export async function predictImage(
   );
 
   return handleResponse<InferenceResponse>(response);
+}
+
+/**
+ * Generate GradCAM heatmap for a single image (on-demand)
+ *
+ * Used in batch mode to generate heatmaps when viewing individual results.
+ *
+ * @param file - X-ray image file (PNG or JPEG)
+ * @returns Heatmap as base64-encoded PNG
+ */
+export async function generateHeatmap(file: File): Promise<{ heatmap_base64: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}/api/inference/heatmap`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    API_TIMEOUT
+  );
+
+  return handleResponse<{ heatmap_base64: string }>(response);
 }
 
 /**
@@ -152,5 +179,6 @@ export async function batchPredictImages(
 export default {
   checkHealth: checkInferenceHealth,
   predict: predictImage,
+  generateHeatmap,
   batchPredict: batchPredictImages,
 };

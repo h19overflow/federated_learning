@@ -32,6 +32,7 @@ export interface InferenceResponse {
   success: boolean;
   prediction: InferencePrediction;
   clinical_interpretation?: ClinicalInterpretation;
+  heatmap_base64?: string;
   model_version: string;
   processing_time_ms: number;
 }

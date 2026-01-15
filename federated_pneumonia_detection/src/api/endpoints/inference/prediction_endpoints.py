@@ -38,6 +38,10 @@ async def predict(
         default=True,
         description="Whether to include AI-generated clinical interpretation",
     ),
+    include_heatmap: bool = Query(
+        default=True,
+        description="Whether to include GradCAM heatmap visualization",
+    ),
     service: InferenceService = Depends(get_inference_service),
 ) -> InferenceResponse:
     """Run pneumonia detection on an uploaded chest X-ray image.
@@ -126,6 +130,11 @@ async def predict(
                 # Fallback to rule-based interpretation
                 clinical_interpretation = _generate_fallback_interpretation(prediction)
 
+        # Generate GradCAM heatmap if requested
+        heatmap_base64 = None
+        if include_heatmap:
+            heatmap_base64 = service.generate_heatmap(image)
+
         processing_time_ms = (time.time() - start_time) * 1000
         model_version = service.engine.model_version if service.engine else "unknown"
 
@@ -146,6 +155,7 @@ async def predict(
             success=True,
             prediction=prediction,
             clinical_interpretation=clinical_interpretation,
+            heatmap_base64=heatmap_base64,
             model_version=model_version,
             processing_time_ms=processing_time_ms,
         )
@@ -159,4 +169,61 @@ async def predict(
         raise HTTPException(
             status_code=500,
             detail=f"Inference failed: {str(e)}",
+        )
+
+
+@router.post("/heatmap")
+async def generate_heatmap(
+    file: UploadFile = File(..., description="Chest X-ray image file (PNG, JPEG)"),
+    service: InferenceService = Depends(get_inference_service),
+) -> dict:
+    """Generate GradCAM heatmap for an uploaded chest X-ray image.
+
+    This endpoint is optimized for on-demand heatmap generation,
+    useful for batch mode where heatmaps aren't pre-generated.
+
+    Args:
+        file: Uploaded image file.
+        service: Injected inference service.
+
+    Returns:
+        Dict with heatmap_base64 field containing the overlay image.
+
+    Raises:
+        HTTPException: If heatmap generation fails.
+    """
+    # Validate file type
+    if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type: {file.content_type}. Must be PNG or JPEG.",
+        )
+
+    if not service.is_ready():
+        raise HTTPException(
+            status_code=503,
+            detail="Inference model is not available.",
+        )
+
+    try:
+        contents = await file.read()
+        image = Image.open(BytesIO(contents))
+
+        heatmap_base64 = service.generate_heatmap(image)
+
+        if heatmap_base64 is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Heatmap generation unavailable.",
+            )
+
+        return {"heatmap_base64": heatmap_base64}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Heatmap generation failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Heatmap generation failed: {str(e)}",
         )

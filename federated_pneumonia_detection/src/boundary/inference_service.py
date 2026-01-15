@@ -77,6 +77,19 @@ class InferenceService:
             raise RuntimeError("Inference engine not available")
         return self.engine.predict(image)
 
+    def generate_heatmap(self, image: Image.Image) -> Optional[str]:
+        """Generate GradCAM heatmap for an image.
+
+        Args:
+            image: PIL Image to analyze.
+
+        Returns:
+            Base64-encoded PNG of heatmap overlay, or None if unavailable.
+        """
+        if self.engine is None:
+            return None
+        return self.engine.generate_heatmap(image)
+
     async def get_clinical_interpretation(
         self,
         predicted_class: str,
