@@ -13,7 +13,7 @@ from .lit_resnet_enhanced import LitResNetEnhanced
 from .xray_data_module import XRayDataModule
 
 # Focal Loss
-from .focal_loss import FocalLoss, FocalLossWithLabelSmoothing
+from .focal_loss import FocalLossWithLabelSmoothing
 
 # Submodules (expose for convenience)
 from . import optimizers
@@ -27,7 +27,6 @@ __all__ = [
     # Data
     "XRayDataModule",
     # Losses
-    "FocalLoss",
     "FocalLossWithLabelSmoothing",
     # Submodules
     "optimizers",

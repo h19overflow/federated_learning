@@ -11,7 +11,6 @@ import torch.nn as nn
 import torchmetrics
 
 from federated_pneumonia_detection.src.control.dl_model.utils.model.focal_loss import (
-    FocalLoss,
     FocalLossWithLabelSmoothing,
 )
 
@@ -112,23 +111,16 @@ def setup_loss_function(
             logger.info(f"Using positive class weight: {pos_weight}")
 
     if use_focal_loss:
-        if label_smoothing > 0:
-            loss_fn = FocalLossWithLabelSmoothing(
-                alpha=focal_alpha,
-                gamma=focal_gamma,
-                smoothing=label_smoothing,
-                pos_weight=pos_weight,
+        loss_fn = FocalLossWithLabelSmoothing(
+            alpha=focal_alpha,
+            gamma=focal_gamma,
+            smoothing=label_smoothing,
+            pos_weight=pos_weight,
+        )
+        if logger:
+            logger.info(
+                f"Using FocalLossWithLabelSmoothing (label_smoothing={label_smoothing})"
             )
-            if logger:
-                logger.info(f"Using FocalLoss with label smoothing ({label_smoothing})")
-        else:
-            loss_fn = FocalLoss(
-                alpha=focal_alpha,
-                gamma=focal_gamma,
-                pos_weight=pos_weight,
-            )
-            if logger:
-                logger.info("Using FocalLoss")
     else:
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         if logger:
@@ -218,7 +210,7 @@ def get_model_summary(
         "learning_rate": config.get("experiment.learning_rate", 0),
         "weight_decay": config.get("experiment.weight_decay", 0),
         "scheduler": "CosineAnnealingWarmRestarts" if use_focal_loss else "ReduceLROnPlateau",
-        "loss_function": "FocalLoss" if use_focal_loss else "BCEWithLogitsLoss",
+        "loss_function": "FocalLossWithLabelSmoothing" if use_focal_loss else "BCEWithLogitsLoss",
         "label_smoothing": label_smoothing,
         "focal_alpha": focal_alpha if use_focal_loss else None,
         "focal_gamma": focal_gamma if use_focal_loss else None,
