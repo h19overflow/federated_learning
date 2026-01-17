@@ -2,17 +2,7 @@
 """
 Endpoints for running centralized training experiments.
 
-This module provides HTTP endpoints to trigger centralized machine learning training
-on the pneumonia dataset. The training is executed asynchronously in the background,
-allowing the endpoint to return immediately while training proceeds.
-
-The training process:
-1. Loads the dataset from the configured Training directory
-2. Initializes a CentralizedTrainer with current configuration settings
-3. Trains the model using standard supervised learning approach
-4. Stores results and checkpoints in configured output directories
-
-Configuration should be set prior to invoking training via the configuration endpoints.
+Asynchronous background training on pneumonia dataset with checkpoint and log storage.
 """
 
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form
