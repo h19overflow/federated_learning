@@ -135,17 +135,9 @@ def main(grid: Grid, context: Context) -> None:
     )
 
     arrays = ArrayRecord(global_model.state_dict())
-<<<<<<< HEAD
 
-    # Initialize SSE sender to broadcast training mode
-    # Use experiment.name from config (set by frontend) for SSE routing
-    experiment_id = config_manager.get("experiment.name", f"federated_run_{run_id}")
-    ws_sender = MetricsSSESender(experiment_id=experiment_id)
-=======
-    
     # Initialize WebSocket sender to broadcast training mode
     ws_sender = MetricsWebSocketSender("ws://localhost:8765")
->>>>>>> parent of 2c0001a (Refactor: Replace WebSocket with SSE for metric streaming)
     
     # Signal to frontend that this is federated training
     ws_sender.send_training_mode(

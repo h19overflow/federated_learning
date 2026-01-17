@@ -42,24 +42,15 @@ from federated_pneumonia_detection.src.boundary.engine import create_tables
 from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
     get_wandb_tracker,
 )
-<<<<<<< HEAD
-from federated_pneumonia_detection.src.utils.loggers.logging_config import (
-    configure_logging,
-)
-=======
 import os
 from pathlib import Path
 
 # CRITICAL: Explicitly load .env file for environment variables
 # This ensures database credentials are available for subprocesses
 from dotenv import load_dotenv
->>>>>>> parent of 2c0001a (Refactor: Replace WebSocket with SSE for metric streaming)
 
 env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
-
-# Configure centralized logging (silences third-party libs)
-configure_logging()
 
 logger = logging.getLogger(__name__)
 logger.info(f"Loaded environment from: {env_path}")
@@ -90,14 +81,8 @@ async def lifespan(app: FastAPI):
     websocket_thread = threading.Thread(
         target=_start_websocket_server, daemon=True, name="WebSocket-Server-Thread"
     )
-<<<<<<< HEAD
-
-    event_manager = get_sse_event_manager()
-    logger.info("SSE Event Manager initialized")
-=======
     websocket_thread.start()
     logger.info("WebSocket server startup initiated in background thread")
->>>>>>> parent of 2c0001a (Refactor: Replace WebSocket with SSE for metric streaming)
 
     try:
         await mcp_manager.initialize()

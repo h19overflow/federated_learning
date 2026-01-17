@@ -19,16 +19,8 @@ from sklearn.utils import class_weight
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-<<<<<<< HEAD
-from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_sse_sender import (
-    MetricsSSESender,
-=======
-from federated_pneumonia_detection.src.control.dl_model.utils.model.collectors import (
-    MetricsCollectorCallback,
-)
 from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
     MetricsWebSocketSender,
->>>>>>> parent of 2c0001a (Refactor: Replace WebSocket with SSE for metric streaming)
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.batch_metrics import (
     BatchMetricsCallback,
@@ -132,16 +124,8 @@ def prepare_trainer_and_callbacks_pl(
 
     # Create default WebSocket sender if not provided
     if websocket_sender is None:
-<<<<<<< HEAD
-        experiment_id = f"exp_{experiment_name}_{run_id or 'unknown'}"
-        websocket_sender = MetricsSSESender(experiment_id=experiment_id)
-        logger.info(
-            f"[Training Callbacks] Created default SSE sender for {experiment_id}"
-        )
-=======
         websocket_sender = MetricsWebSocketSender(websocket_uri="ws://localhost:8765")
         logger.info("[Training Callbacks] Created default WebSocket sender")
->>>>>>> parent of 2c0001a (Refactor: Replace WebSocket with SSE for metric streaming)
 
     # Setup default values from config
     patience = config.get("experiment.early_stopping_patience", 7)
