@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import api from '@/services/api';
-import { createTrainingProgressWebSocket } from '@/services/websocket';
+import { createTrainingProgressSSE } from '@/services/sse';
 import { mapToBackendConfig, generateExperimentName } from '@/utils/configMapper';
 import type {
   EpochStartData,
@@ -57,7 +57,7 @@ export const useTrainingExecution = (
   });
 
   const messageIdRef = useRef(0);
-  const wsRef = useRef<ReturnType<typeof createTrainingProgressWebSocket> | null>(null);
+  const sseRef = useRef<ReturnType<typeof createTrainingProgressSSE> | null>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
   const messageBufferRef = useRef<StatusMessage[]>([]);
   const bufferTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -69,12 +69,12 @@ export const useTrainingExecution = (
     }
   }, [statusMessages]);
 
-  // Cleanup WebSocket on unmount
+  // Cleanup SSE on unmount
   useEffect(() => {
     return () => {
-      if (wsRef.current) {
-        wsRef.current.disconnect();
-        wsRef.current = null;
+      if (sseRef.current) {
+        sseRef.current.disconnect();
+        sseRef.current = null;
       }
       if (bufferTimerRef.current) {
         clearTimeout(bufferTimerRef.current);
@@ -142,15 +142,15 @@ export const useTrainingExecution = (
     bufferTimerRef.current = setTimeout(flushMessageBuffer, 500);
   };
 
-  const setupWebSocket = (expId: string) => {
-    const ws = createTrainingProgressWebSocket(expId);
-    wsRef.current = ws;
+  const setupSSE = (expId: string) => {
+    const sse = createTrainingProgressSSE(expId);
+    sseRef.current = sse;
 
-    ws.on('connected', () => {
+    sse.on('connected', () => {
       addStatusMessage('info', 'Connected to training progress stream', undefined, { immediate: true });
     });
 
-    ws.on('training_mode', (data: TrainingModeData) => {
+    sse.on('training_mode', (data: TrainingModeData) => {
       setIsFederatedTraining(data.is_federated);
       if (data.is_federated) {
         setFederatedContext({
@@ -166,7 +166,7 @@ export const useTrainingExecution = (
       }
     });
 
-    ws.on('round_metrics', (data: RoundMetricsData) => {
+    sse.on('round_metrics', (data: RoundMetricsData) => {
       setFederatedRounds(prev => [...prev, {
         round: data.round,
         metrics: data.metrics as Record<string, number>,
@@ -182,14 +182,14 @@ export const useTrainingExecution = (
       );
     });
 
-    ws.on('training_start', (data: TrainingStartData) => {
+    sse.on('training_start', (data: TrainingStartData) => {
       setRunId(data.run_id);
       setTotalEpochs(data.max_epochs);
       addStatusMessage('success', `Training started! Run ID: ${data.run_id}`, undefined, { immediate: true });
       addStatusMessage('info', `Training mode: ${data.training_mode}`, undefined, { immediate: true });
     });
 
-    ws.on('client_training_start', (data: ClientTrainingStartData) => {
+    sse.on('client_training_start', (data: ClientTrainingStartData) => {
       console.log('[TrainingExecution] client_training_start handler called:', data);
       if (data.run_id) setRunId(data.run_id);
 
@@ -220,7 +220,7 @@ export const useTrainingExecution = (
       );
     });
 
-    ws.on('round_start', (data: RoundStartData) => {
+    sse.on('round_start', (data: RoundStartData) => {
       console.log('[TrainingExecution] round_start handler called:', data);
       if (data.run_id) setRunId(data.run_id);
 
@@ -232,7 +232,7 @@ export const useTrainingExecution = (
       }
     });
 
-    ws.on('client_progress', (data: ClientProgressData) => {
+    sse.on('client_progress', (data: ClientProgressData) => {
       console.log('[TrainingExecution] client_progress handler called:', data);
       const metrics = data.metrics;
       const metricsStr = `loss: ${metrics.train_loss?.toFixed(4) || 'N/A'}, lr: ${metrics.learning_rate || 'N/A'}`;
@@ -256,7 +256,7 @@ export const useTrainingExecution = (
       );
     });
 
-    ws.on('client_complete', (data: ClientCompleteData) => {
+    sse.on('client_complete', (data: ClientCompleteData) => {
       console.log('[TrainingExecution] client_complete handler called:', data);
 
       const clientId = data.client_id?.toString() || '0';
@@ -274,7 +274,7 @@ export const useTrainingExecution = (
       );
     });
 
-    ws.on('round_end', (data: RoundEndData) => {
+    sse.on('round_end', (data: RoundEndData) => {
       console.log('[TrainingExecution] round_end handler called:', data);
       const fitMetrics = Object.entries(data.fit_metrics || {})
         .filter(([k, v]) => typeof v === 'number')
@@ -318,13 +318,13 @@ export const useTrainingExecution = (
     //   );
     // });
 
-    ws.on('epoch_start', (data: EpochStartData) => {
+    sse.on('epoch_start', (data: EpochStartData) => {
       addStatusMessage('info', `Starting epoch ${data.epoch}/${data.total_epochs}...`);
       const epochProgress = ((data.epoch - 1) / data.total_epochs) * 100;
       setProgress(Math.min(epochProgress, 95));
     });
 
-    ws.on('epoch_end', (data: EpochEndData) => {
+    sse.on('epoch_end', (data: EpochEndData) => {
       const metrics = data.metrics;
       const metricsStr = Object.entries(metrics)
         .filter(([_, v]) => typeof v === 'number')
@@ -343,7 +343,7 @@ export const useTrainingExecution = (
       }
     });
 
-    ws.on('status', (data: StatusData) => {
+    sse.on('status', (data: StatusData) => {
       if (data.message) {
         addStatusMessage('info', data.message);
       }
@@ -362,7 +362,7 @@ export const useTrainingExecution = (
       }
     });
 
-    ws.on('training_end', (data: TrainingEndData) => {
+    sse.on('training_end', (data: TrainingEndData) => {
       // Flush any remaining buffered messages before showing completion
       flushMessageBuffer();
 
@@ -388,13 +388,13 @@ export const useTrainingExecution = (
         toast.error('Training failed!');
       }
 
-      if (wsRef.current) {
-        wsRef.current.disconnect();
-        wsRef.current = null;
+      if (sseRef.current) {
+        sseRef.current.disconnect();
+        sseRef.current = null;
       }
     });
 
-    ws.on('early_stopping', (data: EarlyStoppingData) => {
+    sse.on('early_stopping', (data: EarlyStoppingData) => {
       console.log('[TrainingExecution] early_stopping handler called:', data);
 
       // Show prominent log messages
@@ -414,21 +414,21 @@ export const useTrainingExecution = (
       });
     });
 
-    ws.on('error', (data: ErrorData) => {
-      console.error('[TrainingExecution] WebSocket error:', data);
+    sse.on('error', (data: ErrorData) => {
+      console.error('[TrainingExecution] SSE error:', data);
       flushMessageBuffer(); // Flush before showing error
       setIsRunning(false);
       setOverallStatus('error');
       addStatusMessage('error', `Error: ${data.error}`, undefined, { immediate: true });
       toast.error(`Training error: ${data.error}`);
 
-      if (wsRef.current) {
-        wsRef.current.disconnect();
-        wsRef.current = null;
+      if (sseRef.current) {
+        sseRef.current.disconnect();
+        sseRef.current = null;
       }
     });
 
-    ws.on('disconnected', () => {
+    sse.on('disconnected', () => {
       flushMessageBuffer(); // Flush on disconnect
       addStatusMessage('info', 'Disconnected from training progress stream', undefined, { immediate: true });
       if (overallStatus === 'running') {
@@ -438,7 +438,7 @@ export const useTrainingExecution = (
       }
     });
 
-    ws.connect();
+    sse.connect();
   };
 
   const startTraining = async () => {
@@ -478,7 +478,7 @@ export const useTrainingExecution = (
       await api.configuration.setConfiguration(backendConfig);
       addStatusMessage('info', `Configuration set: Train ${trainSplit}% / Validation ${100 - trainSplit}%`, undefined, { immediate: true });
 
-      setupWebSocket(expName);
+      setupSSE(expName);
 
       let response;
       if (config.trainingMode === 'centralized') {
@@ -535,7 +535,7 @@ export const useTrainingExecution = (
     isFederatedTraining,
     federatedRounds,
     federatedContext,
-    // WebSocket instance for observability hooks
-    ws: wsRef.current,
+    // SSE instance for observability hooks
+    sse: sseRef.current,
   };
 };

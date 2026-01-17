@@ -9,8 +9,8 @@ from flwr.serverapp import Grid, ServerApp
 from federated_pneumonia_detection.config.config_manager import ConfigManager
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
-    MetricsWebSocketSender,
+from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_sse_sender import (
+    MetricsSSESender,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet_enhanced import (
     LitResNetEnhanced,
@@ -136,8 +136,9 @@ def main(grid: Grid, context: Context) -> None:
 
     arrays = ArrayRecord(global_model.state_dict())
     
-    # Initialize WebSocket sender to broadcast training mode
-    ws_sender = MetricsWebSocketSender("ws://localhost:8765")
+    # Initialize SSE sender to broadcast training mode
+    experiment_id = f"federated_run_{run_id}"
+    ws_sender = MetricsSSESender(experiment_id=experiment_id)
     
     # Signal to frontend that this is federated training
     ws_sender.send_training_mode(
@@ -165,7 +166,7 @@ def main(grid: Grid, context: Context) -> None:
         fraction_evaluate=1.0,  # Use all available clients for evaluation
         train_config=train_config,
         eval_config=eval_config,
-        websocket_uri="ws://localhost:8765",
+        experiment_id=experiment_id,
         run_id=run_id,  # Pass run_id for database persistence
     )
     

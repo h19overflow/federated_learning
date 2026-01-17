@@ -10,8 +10,8 @@ from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_file_persister import (
     MetricsFilePersister,
 )
-from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
-    MetricsWebSocketSender,
+from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_sse_sender import (
+    MetricsSSESender,
 )
 
 
@@ -30,7 +30,7 @@ class MetricsCollectorCallback(pl.Callback):
         experiment_id: Optional[int] = None,
         training_mode: str = "centralized",
         enable_db_persistence: bool = True,
-        websocket_uri: Optional[str] = "ws://localhost:8765",
+        experiment_id_param: Optional[str] = None,
         client_id: Optional[int] = None,
         round_number: int = 0,
     ):
@@ -44,7 +44,7 @@ class MetricsCollectorCallback(pl.Callback):
             experiment_id: Required for creating run if run_id doesn't exist
             training_mode: Training mode (centralized, federated, etc.)
             enable_db_persistence: Whether to save metrics to database
-            websocket_uri: Optional WebSocket URI for real-time metrics streaming
+            experiment_id_param: Optional SSE experiment ID for real-time metrics streaming
             client_id: Optional client ID for federated learning context
             round_number: Round number for federated learning
         """
@@ -73,10 +73,10 @@ class MetricsCollectorCallback(pl.Callback):
         # Initialize file persister
         self.file_persister = MetricsFilePersister(save_dir, experiment_name)
 
-        # Initialize WebSocket sender if URI provided
+        # Initialize SSE sender if experiment_id provided
         self.ws_sender = None
-        if websocket_uri:
-            self.ws_sender = MetricsWebSocketSender(websocket_uri)
+        if experiment_id_param:
+            self.ws_sender = MetricsSSESender(experiment_id=experiment_id_param)
 
         # Metrics storage
         self.epoch_metrics = []

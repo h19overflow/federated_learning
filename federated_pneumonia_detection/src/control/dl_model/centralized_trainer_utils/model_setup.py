@@ -42,7 +42,7 @@ def build_model_and_callbacks(
         checkpoint_dir: Directory for model checkpoints
         logs_dir: Directory for training logs
         logger: Logger instance
-        experiment_name: Name for the experiment
+        experiment_name: Name for the experiment (used as SSE experiment_id)
         run_id: Optional database run ID for metrics persistence
         is_federated: If True, uses local_epochs; if False, uses epochs
         client_id: Optional client ID for federated learning context
@@ -60,6 +60,13 @@ def build_model_and_callbacks(
     batch_interval = config.get("experiment.batch_sample_interval", 10)
     gradient_interval = config.get("experiment.gradient_sample_interval", 20)
 
+    # Import SSE sender at top of function
+    from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_sse_sender import MetricsSSESender
+
+    # Create SSE sender with experiment_name as experiment_id (matches frontend)
+    sse_sender = MetricsSSESender(experiment_id=experiment_name)
+    logger.info(f"[SSE] Created SSE sender for experiment_id: {experiment_name}")
+
     callback_config = prepare_trainer_and_callbacks_pl(
         train_df_for_weights=train_df,
         class_column=config.get("columns.target"),
@@ -70,6 +77,7 @@ def build_model_and_callbacks(
         experiment_name=experiment_name,
         run_id=run_id,
         enable_db_persistence=True,
+        websocket_sender=sse_sender,  # Pass SSE sender explicitly
         is_federated=is_federated,
         client_id=client_id,
         round_number=round_number,

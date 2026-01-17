@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 from federated_pneumonia_detection.src.control.dl_model.utils.model.collectors import (
     MetricsCollectorCallback,
 )
-from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
-    MetricsWebSocketSender,
+from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_sse_sender import (
+    MetricsSSESender,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.early_stopping import (
     EarlyStoppingSignalCallback,
@@ -81,7 +81,7 @@ def prepare_trainer_and_callbacks_pl(
     experiment_name: str = "pneumonia_detection",
     run_id: Optional[int] = None,
     enable_db_persistence: bool = True,
-    websocket_sender: Optional[MetricsWebSocketSender] = None,
+    websocket_sender: Optional[MetricsSSESender] = None,
     is_federated: bool = False,
     client_id: Optional[int] = None,
     round_number: int = 0,
@@ -101,7 +101,7 @@ def prepare_trainer_and_callbacks_pl(
         experiment_name: Name of the experiment for metrics tracking
         run_id: Optional database run ID for metrics persistence
         enable_db_persistence: Whether to persist metrics to database
-        websocket_sender: Optional MetricsWebSocketSender instance for frontend communication
+        websocket_sender: Optional MetricsSSESender instance for frontend communication
         is_federated: If True, uses local_epochs; if False, uses epochs
         client_id: Optional client ID for federated learning context
         round_number: Round number for federated learning
@@ -121,10 +121,11 @@ def prepare_trainer_and_callbacks_pl(
     # Create checkpoint directory
     os.makedirs(checkpoint_dir, exist_ok=True)
 
-    # Create default WebSocket sender if not provided
+    # Create default SSE sender if not provided
     if websocket_sender is None:
-        websocket_sender = MetricsWebSocketSender(websocket_uri="ws://localhost:8765")
-        logger.info("[Training Callbacks] Created default WebSocket sender")
+        experiment_id = f"exp_{experiment_name}_{run_id or 'unknown'}"
+        websocket_sender = MetricsSSESender(experiment_id=experiment_id)
+        logger.info(f"[Training Callbacks] Created default SSE sender for {experiment_id}")
 
     # Setup default values from config
     patience = config.get("experiment.early_stopping_patience", 7)
@@ -185,13 +186,16 @@ def prepare_trainer_and_callbacks_pl(
     # Metrics collector - save all training metrics
     if metrics_dir is None:
         metrics_dir = os.path.join(checkpoint_dir, "metrics")
+    # Note: experiment_id_param is used for SSE streaming, should match frontend's experiment_id
+    # If websocket_sender is provided, the MetricsCollectorCallback will create its own sender
+    # using this experiment_id_param. We pass experiment_name directly to match frontend format.
     metrics_collector = MetricsCollectorCallback(
         save_dir=metrics_dir,
         experiment_name=experiment_name,
         run_id=run_id,
         training_mode=training_mode,
         enable_db_persistence=True,
-        websocket_uri="ws://localhost:8765",
+        experiment_id_param=experiment_name,  # Use experiment_name directly (matches frontend)
         client_id=client_id,
         round_number=round_number,
     )

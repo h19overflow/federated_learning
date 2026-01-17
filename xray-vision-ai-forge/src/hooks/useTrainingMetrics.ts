@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { TrainingProgressWebSocket } from '@/services/websocket';
+import type { TrainingProgressSSE } from '@/services/sse';
 import type { BatchMetricsData, BatchMetricsDataPoint } from '@/types/api';
 
 const MAX_DATA_POINTS = 200;
@@ -21,7 +21,7 @@ interface UseTrainingMetricsReturn {
 }
 
 export function useTrainingMetrics(
-  ws: TrainingProgressWebSocket | null
+  sse: TrainingProgressSSE | null
 ): UseTrainingMetricsReturn {
   const [batchMetrics, setBatchMetrics] = useState<BatchMetricsDataPoint[]>([]);
   const [isReceiving, setIsReceiving] = useState(false);
@@ -50,7 +50,7 @@ export function useTrainingMetrics(
   }, [flushBuffers]);
 
   useEffect(() => {
-    if (!ws) return;
+    if (!sse) return;
 
     const handleBatchMetrics = (data: BatchMetricsData) => {
       setIsReceiving(true);
@@ -64,13 +64,13 @@ export function useTrainingMetrics(
       scheduleFlush();
     };
 
-    const unsubBatch = ws.on('batch_metrics', handleBatchMetrics);
+    const unsubBatch = sse.on('batch_metrics', handleBatchMetrics);
 
     return () => {
       unsubBatch();
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
     };
-  }, [ws, scheduleFlush]);
+  }, [sse, scheduleFlush]);
 
   const currentLoss = useMemo(() => {
     if (batchMetrics.length === 0) return null;

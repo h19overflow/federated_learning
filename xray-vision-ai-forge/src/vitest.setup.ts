@@ -30,6 +30,36 @@ class MockWebSocket {
 
 vi.stubGlobal("WebSocket", MockWebSocket);
 
+// Mock EventSource (for SSE)
+class MockEventSource {
+  url: string;
+  readyState: number = 0; // CONNECTING
+  onopen: ((event: Event) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  listeners: Map<string, ((event: MessageEvent) => void)[]> = new Map();
+
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSED = 2;
+
+  constructor(url: string) {
+    this.url = url;
+  }
+
+  addEventListener(type: string, listener: (event: MessageEvent) => void): void {
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, []);
+    }
+    this.listeners.get(type)!.push(listener);
+  }
+
+  close() {
+    this.readyState = MockEventSource.CLOSED;
+  }
+}
+
+vi.stubGlobal("EventSource", MockEventSource);
+
 // Mock ResizeObserver
 class MockResizeObserver {
   observe() {}
@@ -40,11 +70,13 @@ class MockResizeObserver {
 vi.stubGlobal("ResizeObserver", MockResizeObserver);
 
 // Mock URL.createObjectURL and URL.revokeObjectURL
-vi.stubGlobal("URL", {
-  ...URL,
-  createObjectURL: vi.fn(() => "blob:mock-url"),
-  revokeObjectURL: vi.fn(),
-});
+// Preserve the URL constructor while adding mock methods
+const OriginalURL = globalThis.URL;
+class MockURL extends OriginalURL {
+  static createObjectURL = vi.fn(() => "blob:mock-url");
+  static revokeObjectURL = vi.fn();
+}
+vi.stubGlobal("URL", MockURL);
 
 // Mock FileReader if needed (jsdom has basic support, but sometimes needs help)
 if (typeof FileReader === "undefined") {

@@ -16,12 +16,12 @@ experiment:
   early_stopping_patience: 3
   edge_enhancement: false
   edge_strength: 1.0
-  epochs: 1
-  file-path: C:\Users\User\AppData\Local\Temp\experiment_data_7u7dh_j0\stage2_train_metadata.csv
+  epochs: 2
+  file-path: C:\Users\User\AppData\Local\Temp\tmph2rxv_0l\extracted\Training_Sample_5pct\stage2_train_metadata.csv
   fine_tune_layers_count: 5
   freeze_backbone: true
   gradient_sample_interval: 20
-  image-dir: C:\Users\User\AppData\Local\Temp\experiment_data_7u7dh_j0\Training\Images
+  image-dir: C:\Users\User\AppData\Local\Temp\tmph2rxv_0l\extracted\Training_Sample_5pct\Images
   learning_rate: 0.001
   local_epochs: 1
   lower_percentile: 5.0

@@ -1,11 +1,11 @@
 /**
- * WebSocket Service for real-time training progress updates.
+ * SSE Service for real-time training progress updates.
  *
- * Manages WebSocket connections to the backend for live training progress streaming.
- * Provides auto-reconnect, event-based message handling, and type-safe listeners.
+ * Manages Server-Sent Events connections to the backend for live training streaming.
+ * Provides event-based message handling and type-safe listeners.
  *
  * Dependencies:
- * - Environment variables for WebSocket URL
+ * - Environment variables for API URL
  * - Type definitions from @/types/api
  */
 
@@ -36,16 +36,14 @@ import {
 // Configuration
 // ============================================================================
 
-const WS_BASE_URL = 'ws://localhost:8765';
-const RECONNECT_DELAY = 3000; // 3 seconds
+const API_BASE_URL = 'http://localhost:8001';
 const MAX_RECONNECT_ATTEMPTS = 10;
-const PING_INTERVAL = 30000; // 30 seconds
 
 // ============================================================================
 // Event Listener Types
 // ============================================================================
 
-type EventListener<T = any> = (data: T) => void;
+type EventListener<T = unknown> = (data: T) => void;
 
 interface EventListeners {
   connected: EventListener<{ experiment_id: string }>[];
@@ -64,10 +62,9 @@ interface EventListeners {
   status: EventListener<StatusData>[];
   error: EventListener<ErrorData>[];
   early_stopping: EventListener<EarlyStoppingData>[];
-  pong: EventListener<{}>[];
-  disconnected: EventListener<{}>[];
+  disconnected: EventListener<Record<string, never>>[];
   reconnecting: EventListener<{ attempt: number }>[];
-  reconnected: EventListener<{}>[];
+  reconnected: EventListener<Record<string, never>>[];
   // Training observability events
   batch_metrics: EventListener<BatchMetricsData>[];
   gradient_stats: EventListener<GradientStatsData>[];
@@ -75,11 +72,11 @@ interface EventListeners {
 }
 
 // ============================================================================
-// WebSocket Manager Class
+// SSE Manager Class
 // ============================================================================
 
-export class TrainingProgressWebSocket {
-  private ws: WebSocket | null = null;
+export class TrainingProgressSSE {
+  private eventSource: EventSource | null = null;
   private experimentId: string;
   private listeners: EventListeners = {
     connected: [],
@@ -98,18 +95,14 @@ export class TrainingProgressWebSocket {
     status: [],
     error: [],
     early_stopping: [],
-    pong: [],
     disconnected: [],
     reconnecting: [],
     reconnected: [],
-    // Training observability events
     batch_metrics: [],
     gradient_stats: [],
     lr_update: [],
   };
   private reconnectAttempts = 0;
-  private reconnectTimeout: number | null = null;
-  private pingInterval: number | null = null;
   private shouldReconnect = true;
   private isConnected = false;
 
@@ -118,71 +111,85 @@ export class TrainingProgressWebSocket {
   }
 
   /**
-   * Connect to WebSocket server
+   * Connect to SSE endpoint
    */
   connect(): void {
-    if (this.ws && this.isConnected) {
-      console.warn('WebSocket already connected');
+    if (this.eventSource && this.isConnected) {
+      console.warn('[SSE] Already connected');
       return;
     }
 
-    // Connect to simple WebSocket server (no experiment path needed)
-    // Backend sends all metrics to ws://localhost:8765
-    const url = WS_BASE_URL;
-    console.log(`🔌 [WebSocket] Attempting connection to: ${url} for experiment: ${this.experimentId}`);
+    const url = `${API_BASE_URL}/api/training/stream/${this.experimentId}`;
+    console.log(`🔌 [SSE] Connecting to: ${url}`);
 
     try {
-      this.ws = new WebSocket(url);
-      console.log(`🔌 [WebSocket] WebSocket object created, waiting for onopen...`);
+      this.eventSource = new EventSource(url);
 
-      this.ws.onopen = this.handleOpen.bind(this);
-      this.ws.onmessage = this.handleMessage.bind(this);
-      this.ws.onerror = this.handleError.bind(this);
-      this.ws.onclose = this.handleClose.bind(this);
+      // Register all event types
+      const messageTypes: (keyof EventListeners)[] = [
+        'connected',
+        'training_start',
+        'training_end',
+        'training_mode',
+        'round_metrics',
+        'epoch_start',
+        'epoch_end',
+        'round_start',
+        'round_end',
+        'local_epoch',
+        'client_training_start',
+        'client_progress',
+        'client_complete',
+        'status',
+        'error',
+        'early_stopping',
+        'batch_metrics',
+        'gradient_stats',
+        'lr_update',
+      ];
+
+      messageTypes.forEach((type) => {
+        this.eventSource!.addEventListener(type, (event: MessageEvent) => {
+          this.handleMessage(type, event.data);
+        });
+      });
+
+      this.eventSource.onopen = this.handleOpen.bind(this);
+      this.eventSource.onerror = this.handleError.bind(this);
     } catch (error) {
-      console.error('❌ [WebSocket] Failed to create WebSocket connection:', error);
+      console.error('❌ [SSE] Failed to create EventSource:', error);
       this.scheduleReconnect();
     }
   }
 
   /**
-   * Disconnect from WebSocket server
+   * Disconnect from SSE endpoint
    */
   disconnect(): void {
     this.shouldReconnect = false;
-    this.stopPing();
 
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
     }
 
     this.isConnected = false;
   }
 
   /**
-   * Check if WebSocket is connected
+   * Check if SSE is connected
    */
   isConnectedState(): boolean {
-    return this.isConnected && this.ws?.readyState === WebSocket.OPEN;
+    return this.isConnected && this.eventSource?.readyState === EventSource.OPEN;
   }
 
   /**
-   * Handle WebSocket open event
+   * Handle SSE connection open
    */
   private handleOpen(): void {
-    console.log(`✅ [WebSocket] Connected! Ready for metrics. Experiment: ${this.experimentId}`);
+    console.log(`✅ [SSE] Connected to experiment: ${this.experimentId}`);
     this.isConnected = true;
     this.reconnectAttempts = 0;
-    this.startPing();
-
-    // Emit connected event
-    this.emit('connected', { experiment_id: this.experimentId });
 
     if (this.reconnectAttempts > 0) {
       this.emit('reconnected', {});
@@ -190,39 +197,35 @@ export class TrainingProgressWebSocket {
   }
 
   /**
-   * Handle incoming WebSocket messages
+   * Handle incoming SSE messages
    */
-  private handleMessage(event: MessageEvent): void {
+  private handleMessage(eventType: string, data: string): void {
     try {
-      const message: WebSocketMessage = JSON.parse(event.data);
-
-      console.log(`📨 [WebSocket] Message received [${message.type}]:`, message.data);
+      const parsedData = JSON.parse(data);
+      console.log(`📨 [SSE] Message received [${eventType}]:`, parsedData);
 
       // Emit to appropriate listeners
-      this.emit(message.type, message.data);
+      this.emit(eventType as keyof EventListeners, parsedData);
     } catch (error) {
-      console.error('❌ [WebSocket] Failed to parse message:', error, 'Raw data:', event.data);
+      console.error('❌ [SSE] Failed to parse message:', error, 'Raw data:', data);
     }
   }
 
   /**
-   * Handle WebSocket error
+   * Handle SSE errors (connection lost, etc.)
    */
   private handleError(event: Event): void {
-    console.error('❌ [WebSocket] Error:', event);
-  }
+    console.error('❌ [SSE] Error:', event);
 
-  /**
-   * Handle WebSocket close event
-   */
-  private handleClose(event: CloseEvent): void {
-    console.log(`⚠️  [WebSocket] Connection closed: ${event.code} - ${event.reason}`);
-    this.isConnected = false;
-    this.stopPing();
-    this.emit('disconnected', {});
+    // EventSource auto-reconnects for network errors, but we track attempts
+    if (this.eventSource?.readyState === EventSource.CLOSED) {
+      console.log('⚠️  [SSE] Connection closed');
+      this.isConnected = false;
+      this.emit('disconnected', {});
 
-    if (this.shouldReconnect) {
-      this.scheduleReconnect();
+      if (this.shouldReconnect) {
+        this.scheduleReconnect();
+      }
     }
   }
 
@@ -231,66 +234,32 @@ export class TrainingProgressWebSocket {
    */
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.error('Max reconnection attempts reached. Giving up.');
+      console.error('[SSE] Max reconnection attempts reached. Giving up.');
       return;
     }
 
     this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Exponential backoff, max 30s
+
     console.log(
-      `Scheduling reconnect attempt ${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_DELAY}ms`
+      `[SSE] Scheduling reconnect attempt ${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${delay}ms`
     );
 
     this.emit('reconnecting', { attempt: this.reconnectAttempts });
 
-    this.reconnectTimeout = window.setTimeout(() => {
-      console.log('Attempting to reconnect...');
+    setTimeout(() => {
+      console.log('[SSE] Attempting to reconnect...');
       this.connect();
-    }, RECONNECT_DELAY);
-  }
-
-  /**
-   * Start periodic ping to keep connection alive
-   */
-  private startPing(): void {
-    this.stopPing();
-
-    this.pingInterval = window.setInterval(() => {
-      if (this.isConnectedState()) {
-        this.send({ type: 'ping' });
-      }
-    }, PING_INTERVAL);
-  }
-
-  /**
-   * Stop periodic ping
-   */
-  private stopPing(): void {
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = null;
-    }
-  }
-
-  /**
-   * Send message to server
-   */
-  private send(message: any): void {
-    if (this.ws && this.isConnected) {
-      this.ws.send(JSON.stringify(message));
-    } else {
-      console.warn('Cannot send message: WebSocket not connected');
-    }
+    }, delay);
   }
 
   /**
    * Emit event to listeners
    */
-  private emit<K extends keyof EventListeners>(
-    event: K,
-    data: any
-  ): void {
+  private emit<K extends keyof EventListeners>(event: K, data: unknown): void {
     const eventListeners = this.listeners[event];
-    console.log(`[WebSocket] Emitting event '${event}' to ${eventListeners?.length || 0} listeners`);
+    console.log(`[SSE] Emitting event '${event}' to ${eventListeners?.length || 0} listeners`);
+
     if (eventListeners && eventListeners.length > 0) {
       eventListeners.forEach((listener) => {
         try {
@@ -300,7 +269,7 @@ export class TrainingProgressWebSocket {
         }
       });
     } else {
-      console.warn(`[WebSocket] No listeners registered for event '${event}'`);
+      console.warn(`[SSE] No listeners registered for event '${event}'`);
     }
   }
 
@@ -337,34 +306,33 @@ export class TrainingProgressWebSocket {
    */
   removeAllListeners(event?: keyof EventListeners): void {
     if (event) {
-      this.listeners[event] = [] as any;
+      this.listeners[event] = [] as EventListeners[typeof event];
     } else {
       // Reset all listeners
       Object.keys(this.listeners).forEach((key) => {
-        this.listeners[key as keyof EventListeners] = [] as any;
+        const eventKey = key as keyof EventListeners;
+        this.listeners[eventKey] = [] as EventListeners[typeof eventKey];
       });
     }
   }
 }
 
 // ============================================================================
-// Convenience Hooks for React Components
+// Convenience Functions
 // ============================================================================
 
 /**
- * Create a WebSocket connection for an experiment
+ * Create an SSE connection for an experiment
  */
-export function createTrainingProgressWebSocket(
-  experimentId: string
-): TrainingProgressWebSocket {
-  return new TrainingProgressWebSocket(experimentId);
+export function createTrainingProgressSSE(experimentId: string): TrainingProgressSSE {
+  return new TrainingProgressSSE(experimentId);
 }
 
 /**
- * Get WebSocket base URL
+ * Get SSE base URL
  */
-export function getWebSocketBaseUrl(): string {
-  return WS_BASE_URL;
+export function getSSEBaseUrl(): string {
+  return API_BASE_URL;
 }
 
-export default TrainingProgressWebSocket;
+export default TrainingProgressSSE;

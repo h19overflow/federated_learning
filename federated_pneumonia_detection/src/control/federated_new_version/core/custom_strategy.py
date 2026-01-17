@@ -14,8 +14,8 @@ from flwr.app import ArrayRecord, ConfigRecord, Message
 from flwr.serverapp import Grid
 from flwr.serverapp.strategy import FedAvg
 
-from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
-    MetricsWebSocketSender,
+from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_sse_sender import (
+    MetricsSSESender,
 )
 
 
@@ -29,7 +29,7 @@ class ConfigurableFedAvg(FedAvg):
         self,
         train_config: Optional[Dict[str, Any]] = None,
         eval_config: Optional[Dict[str, Any]] = None,
-        websocket_uri: str = "ws://localhost:8765",
+        experiment_id: str = "federated_experiment",
         run_id: Optional[int] = None,
         **kwargs,
     ):
@@ -39,7 +39,7 @@ class ConfigurableFedAvg(FedAvg):
         Args:
             train_config: Dictionary of configuration parameters for training
             eval_config: Dictionary of configuration parameters for evaluation
-            websocket_uri: WebSocket URI for sending metrics
+            experiment_id: SSE experiment ID for sending metrics
             run_id: Database run ID for persisting metrics
             **kwargs: Additional arguments passed to FedAvg
 
@@ -50,7 +50,7 @@ class ConfigurableFedAvg(FedAvg):
         super().__init__(**kwargs)
         self.train_config = train_config or {}
         self.eval_config = eval_config or {}
-        self.ws_sender = MetricsWebSocketSender(websocket_uri)
+        self.ws_sender = MetricsSSESender(experiment_id=experiment_id)
         self.run_id = run_id
         self.total_rounds = 0
 
