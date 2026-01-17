@@ -12,8 +12,14 @@ from fastapi import APIRouter, File, UploadFile, HTTPException, Depends, Form
 from fastapi.responses import StreamingResponse
 from PIL import Image
 
-from federated_pneumonia_detection.src.api.deps import get_inference_service
-from federated_pneumonia_detection.src.boundary.inference_service import InferenceService
+from federated_pneumonia_detection.src.api.deps import (
+    get_inference_engine,
+    get_clinical_agent,
+)
+from federated_pneumonia_detection.src.control.model_inferance.inference_engine import InferenceEngine
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.clinical import (
+    ClinicalInterpretationAgent,
+)
 from federated_pneumonia_detection.src.control.report_generation import (
     generate_prediction_report,
     generate_batch_summary_report,
@@ -29,7 +35,8 @@ async def generate_single_report(
     file: UploadFile = File(..., description="Chest X-ray image file (PNG, JPEG)"),
     include_heatmap: bool = Form(default=True, description="Include GradCAM heatmap"),
     include_clinical: bool = Form(default=False, description="Include clinical interpretation"),
-    service: InferenceService = Depends(get_inference_service),
+    engine: Optional[InferenceEngine] = Depends(get_inference_engine),
+    clinical_agent: Optional[ClinicalInterpretationAgent] = Depends(get_clinical_agent),
 ):
     """Generate a PDF report for a single X-ray prediction.
 
@@ -41,7 +48,8 @@ async def generate_single_report(
         file: Uploaded X-ray image file
         include_heatmap: Whether to include GradCAM heatmap in report
         include_clinical: Whether to include AI clinical interpretation
-        service: Injected inference service
+        engine: Injected inference engine
+        clinical_agent: Injected clinical agent
 
     Returns:
         PDF file as streaming response
@@ -53,7 +61,7 @@ async def generate_single_report(
             detail=f"Invalid file type: {file.content_type}. Must be PNG or JPEG.",
         )
 
-    if not service.is_ready():
+    if engine is None:
         raise HTTPException(
             status_code=503,
             detail="Inference model is not available.",
@@ -67,18 +75,18 @@ async def generate_single_report(
         # Run inference
         import time
         start_time = time.time()
-        predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(image)
+        predicted_class, confidence, pneumonia_prob, normal_prob = engine.predict(image)
         processing_time_ms = (time.time() - start_time) * 1000
 
         # Generate heatmap if requested
         heatmap_base64 = None
         if include_heatmap:
-            heatmap_base64 = service.generate_heatmap(image)
+            heatmap_base64 = engine.generate_heatmap(image)
 
         # Get clinical interpretation if requested
         clinical_interpretation = None
-        if include_clinical:
-            agent_response = await service.get_clinical_interpretation(
+        if include_clinical and clinical_agent is not None:
+            agent_response = await clinical_agent.interpret(
                 predicted_class=predicted_class,
                 confidence=confidence,
                 pneumonia_probability=pneumonia_prob,
@@ -98,7 +106,7 @@ async def generate_single_report(
                 }
 
         # Get model version
-        model_version = service.engine.model_version if service.engine else "unknown"
+        model_version = engine.model_version
 
         # Generate PDF
         pdf_bytes = generate_prediction_report(
@@ -139,7 +147,7 @@ async def generate_single_report(
 async def generate_batch_report(
     results_json: str = Form(..., description="JSON string of batch results"),
     summary_json: str = Form(..., description="JSON string of summary statistics"),
-    service: InferenceService = Depends(get_inference_service),
+    engine: Optional[InferenceEngine] = Depends(get_inference_engine),
 ):
     """Generate a summary PDF report for batch predictions.
 
@@ -149,7 +157,7 @@ async def generate_batch_report(
     Args:
         results_json: JSON string containing list of prediction results
         summary_json: JSON string containing summary statistics
-        service: Injected inference service
+        engine: Injected inference engine
 
     Returns:
         PDF file as streaming response
@@ -166,7 +174,7 @@ async def generate_batch_report(
         )
 
     try:
-        model_version = service.engine.model_version if service.engine else "unknown"
+        model_version = engine.model_version if engine else "unknown"
 
         pdf_bytes = generate_batch_summary_report(
             results=results,
@@ -197,7 +205,7 @@ async def generate_batch_report_with_images(
     summary_json: str = Form(..., description="JSON string of summary statistics"),
     include_heatmaps: bool = Form(default=True, description="Generate heatmaps for appendix"),
     max_appendix_images: int = Form(default=10, description="Max images to include in appendix"),
-    service: InferenceService = Depends(get_inference_service),
+    engine: Optional[InferenceEngine] = Depends(get_inference_engine),
 ):
     """Generate a comprehensive PDF report with image appendix.
 
@@ -210,7 +218,7 @@ async def generate_batch_report_with_images(
         summary_json: JSON string containing summary statistics
         include_heatmaps: Whether to generate heatmaps for each image
         max_appendix_images: Maximum number of images to include in appendix
-        service: Injected inference service
+        engine: Injected inference engine
 
     Returns:
         PDF file as streaming response
@@ -227,7 +235,7 @@ async def generate_batch_report_with_images(
         )
 
     try:
-        model_version = service.engine.model_version if service.engine else "unknown"
+        model_version = engine.model_version if engine else "unknown"
 
         # Process images
         images = []
@@ -245,8 +253,8 @@ async def generate_batch_report_with_images(
                 images.append((file.filename, image))
 
                 # Generate heatmap if requested
-                if include_heatmaps and service.is_ready():
-                    heatmap_base64 = service.generate_heatmap(image)
+                if include_heatmaps and engine is not None:
+                    heatmap_base64 = engine.generate_heatmap(image)
                     if heatmap_base64:
                         heatmaps[file.filename] = heatmap_base64
 

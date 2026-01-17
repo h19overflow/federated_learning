@@ -13,7 +13,8 @@ if TYPE_CHECKING:
     from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import QueryEngine
     from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import MCPManager
     from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent import ArxivAugmentedEngine
-    from federated_pneumonia_detection.src.boundary.inference_service import InferenceService, InferenceEngine, ClinicalInterpretationAgent
+    from federated_pneumonia_detection.src.control.model_inferance.inference_engine import InferenceEngine
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.clinical import ClinicalInterpretationAgent
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,8 @@ def get_run_metric_crud() -> RunMetricCRUD:
 _query_engine = None
 _mcp_manager = None
 _arxiv_engine: Optional["ArxivAugmentedEngine"] = None
+_inference_engine: Optional["InferenceEngine"] = None
+_clinical_agent: Optional["ClinicalInterpretationAgent"] = None
 
 
 def get_query_engine() -> Optional["QueryEngine"]:
@@ -119,36 +122,64 @@ def get_arxiv_engine() -> "ArxivAugmentedEngine":
         logger.info("ArxivAugmentedEngine initialized successfully")
     return _arxiv_engine
 
-def get_inference_service() -> "InferenceService":
-    """Get an InferenceService instance for X-ray inference.
-
-    The service handles lazy loading of the model and clinical agent.
-    """
-    from federated_pneumonia_detection.src.boundary.inference_service import (
-        get_inference_service as _get_service,
-    )
-    return _get_service()
-
-
 def get_inference_engine() -> Optional["InferenceEngine"]:
-    """Get the InferenceEngine singleton.
+    """Get or create InferenceEngine singleton.
 
-    Returns None if the model cannot be loaded.
+    Returns None if initialization fails (graceful degradation).
     """
-    from federated_pneumonia_detection.src.boundary.inference_service import (
-        get_inference_engine as _get_engine,
-    )
-    return _get_engine()
+    global _inference_engine
+
+    if _inference_engine is None:
+        try:
+            from federated_pneumonia_detection.src.control.model_inferance.inference_engine import (
+                InferenceEngine,
+            )
+            _inference_engine = InferenceEngine()
+            logger.info("InferenceEngine initialized successfully")
+        except Exception as e:
+            logger.error(f"InferenceEngine initialization failed: {e}", exc_info=True)
+            return None
+
+    return _inference_engine
 
 
 def get_clinical_agent() -> Optional["ClinicalInterpretationAgent"]:
-    """Get the ClinicalInterpretationAgent singleton.
+    """Get or create ClinicalInterpretationAgent singleton.
 
-    Returns None if the agent cannot be initialized.
+    Returns None if initialization fails (graceful degradation).
     """
-    from federated_pneumonia_detection.src.boundary.inference_service import (
-        get_clinical_agent as _get_agent,
-    )
-    return _get_agent()
+    global _clinical_agent
+
+    if _clinical_agent is None:
+        try:
+            from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.clinical import (
+                ClinicalInterpretationAgent,
+            )
+            _clinical_agent = ClinicalInterpretationAgent()
+            logger.info("ClinicalInterpretationAgent initialized successfully")
+        except Exception as e:
+            logger.warning(f"ClinicalInterpretationAgent unavailable: {e}")
+            return None
+
+    return _clinical_agent
+
+
+def is_model_loaded() -> bool:
+    """Check if the inference model is loaded."""
+    return _inference_engine is not None
+
+
+def get_model_info() -> dict:
+    """Get information about the loaded model."""
+    if _inference_engine is None:
+        return {
+            "loaded": False,
+            "version": None,
+            "device": None,
+        }
+    return {
+        "loaded": True,
+        **_inference_engine.get_info(),
+    }
 
 

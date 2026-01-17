@@ -211,12 +211,12 @@ class ArxivAugmentedEngine:
 
         # Step 1: Classify query to determine if tools are needed
         query_mode = classify_query(query)
-        logger.info(f"[ArxivEngine] Query classified as: {query_mode}")
+        logger.debug(f"[ArxivEngine] Query classified as: {query_mode}")
 
         # Step 2: Conditionally load tools based on mode
         if query_mode == "research":
             tools = self._get_tools(arxiv_enabled)
-            logger.info(f"[ArxivEngine] Retrieved {len(tools)} tools: {[t.name for t in tools]}")
+            logger.debug(f"[ArxivEngine] Retrieved {len(tools)} tools: {[t.name for t in tools]}")
 
             if not tools:
                 logger.error("[ArxivEngine] No tools available")
@@ -226,7 +226,7 @@ class ArxivAugmentedEngine:
         try:
             # Build messages with appropriate prompt
             messages = self._build_messages(query, session_id, mode=query_mode)
-            logger.info(f"[ArxivEngine] Built {len(messages)} messages including history")
+            logger.debug(f"[ArxivEngine] Built {len(messages)} messages including history")
 
             full_response = ""
             tool_calls_made = []
@@ -234,7 +234,7 @@ class ArxivAugmentedEngine:
             # Step 3: Handle based on query mode
             if query_mode == "basic":
                 # Basic mode: Direct streaming without tools
-                logger.info("[ArxivEngine] Basic mode - streaming direct response...")
+                logger.debug("[ArxivEngine] Basic mode - streaming direct response...")
                 chunk_count = 0
                 try:
                     async for chunk in self.llm.astream(messages):
@@ -244,7 +244,7 @@ class ArxivAugmentedEngine:
                             if content:
                                 full_response += content
                                 yield create_sse_event(SSEEventType.TOKEN, content=content)
-                    logger.info(f"[ArxivEngine] Basic mode complete. Chunks: {chunk_count}, Length: {len(full_response)}")
+                    logger.debug(f"[ArxivEngine] Basic mode complete. Chunks: {chunk_count}, Length: {len(full_response)}")
 
                     if not full_response:
                         logger.error(f"[ArxivEngine] Basic mode produced no response. Chunks received: {chunk_count}")
@@ -319,7 +319,7 @@ class ArxivAugmentedEngine:
             try:
                 history_query = original_query if original_query is not None else query
                 self.add_to_history(session_id, history_query, full_response)
-                logger.info(f"[ArxivEngine] Saved to history. Session: {session_id}, Query length: {len(history_query)}, Response length: {len(full_response)}")
+                logger.debug(f"[ArxivEngine] Saved to history. Session: {session_id}, Query length: {len(history_query)}, Response length: {len(full_response)}")
             except Exception as e:
                 logger.error(f"[ArxivEngine] Failed to save to history: {e}", exc_info=True)
                 # Non-fatal - we already have the response

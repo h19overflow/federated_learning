@@ -5,8 +5,6 @@ Publishes training metrics to SSE event queues instead of WebSocket.
 Drop-in replacement for MetricsWebSocketSender.
 """
 import logging
-import asyncio
-import threading
 from typing import Dict, Any, Optional
 from datetime import datetime
 from federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_manager import (
@@ -20,6 +18,9 @@ class MetricsSSESender:
 
     Compatible API with MetricsWebSocketSender for easy migration.
     Publishes metrics to in-memory event queue instead of WebSocket.
+
+    Uses synchronous calls to thread-safe event manager (no asyncio.run()
+    needed), making it compatible with Ray actors in Flower simulation.
     """
 
     def __init__(self, experiment_id: str):
@@ -31,46 +32,16 @@ class MetricsSSESender:
         """
         self.experiment_id = experiment_id
         self.logger = logging.getLogger(__name__)
-        self._event_manager = None
-        self._loop = None
-        self._thread = None
-        self._start_event_loop()
+        self._event_manager = get_sse_event_manager()
         self.logger.info(f"MetricsSSESender initialized for: {experiment_id}")
 
-    def _start_event_loop(self):
-        """Start background event loop in a separate thread."""
-        def run_loop(loop):
-            asyncio.set_event_loop(loop)
-            loop.run_forever()
-
-        self._loop = asyncio.new_event_loop()
-        self._thread = threading.Thread(
-            target=run_loop,
-            args=(self._loop,),
-            daemon=True,
-            name=f"SSESender-{self.experiment_id}"
-        )
-        self._thread.start()
-        self.logger.debug(f"Started background event loop for {self.experiment_id}")
-
-    async def _get_event_manager(self):
-        """Lazy-load event manager."""
-        if self._event_manager is None:
-            self._event_manager = await get_sse_event_manager()
-        return self._event_manager
-
     def close(self):
-        """Stop the background event loop and cleanup resources."""
-        if self._loop is not None and self._loop.is_running():
-            self._loop.call_soon_threadsafe(self._loop.stop)
-            self.logger.debug(f"Stopped event loop for {self.experiment_id}")
+        """Cleanup resources (no-op for compatibility)."""
+        pass
 
     def __del__(self):
         """Cleanup on deletion."""
-        try:
-            self.close()
-        except Exception:
-            pass
+        pass
 
     def send_training_end(self, run_id: int, summary_data: Dict[str, Any]) -> None:
         """
@@ -96,6 +67,7 @@ class MetricsSSESender:
         Send metrics via SSE event queue.
 
         Compatible API with WebSocket sender for drop-in replacement.
+        Calls synchronous publish_event() directly (no asyncio needed).
 
         Args:
             metrics: Dictionary of metrics to send
@@ -112,35 +84,22 @@ class MetricsSSESender:
                 f"[SSESender] Publishing {metric_type} for {self.experiment_id}"
             )
 
-            # Schedule coroutine on the background event loop
-            asyncio.run_coroutine_threadsafe(
-                self._publish_async(payload),
-                self._loop
-            )
+            # Direct synchronous call - no asyncio needed
+            success = self._event_manager.publish_event(self.experiment_id, payload)
+
+            if success:
+                self.logger.debug(
+                    f"[SSESender] Successfully published {metric_type} "
+                    f"to {self.experiment_id}"
+                )
+            else:
+                self.logger.warning(
+                    f"[SSESender] Failed to publish {metric_type} to {self.experiment_id}"
+                )
 
         except Exception as e:
             self.logger.warning(
                 f"Failed to send metrics via SSE: {e}", exc_info=True
-            )
-
-    async def _publish_async(self, payload: Dict[str, Any]) -> None:
-        """
-        Async method to publish payload to event queue.
-
-        Args:
-            payload: Dictionary with 'type', 'timestamp', 'data' keys
-        """
-        try:
-            event_manager = await self._get_event_manager()
-            await event_manager.publish_event(self.experiment_id, payload)
-            self.logger.debug(
-                f"[SSESender] Successfully published {payload['type']} "
-                f"to {self.experiment_id}"
-            )
-        except Exception as e:
-            self.logger.error(
-                f"[SSESender] Failed to publish {payload['type']}: {e}",
-                exc_info=True,
             )
 
     def send_epoch_end(self, epoch: int, phase: str, metrics: Dict[str, Any]) -> None:

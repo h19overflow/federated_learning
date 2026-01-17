@@ -26,11 +26,14 @@ class ChatHistoryManager:
     with automatic UUID conversion for session IDs.
     """
 
+    # Class-level flag to ensure tables are created only once per application
+    _tables_initialized = False
+
     def __init__(
         self, table_name: str = "message_store", max_history: int = 10
     ) -> None:
         """
-        Initialize the history manager.
+        Initialize history manager.
 
         Args:
             table_name: PostgreSQL table name for message storage
@@ -38,6 +41,25 @@ class ChatHistoryManager:
         """
         self.table_name = table_name
         self.max_history = max_history
+        self._ensure_tables_created()
+
+    def _ensure_tables_created(self) -> None:
+        """
+        Ensure database tables exist (called only once per application).
+
+        Uses class-level flag to prevent redundant CREATE TABLE calls.
+        This eliminates the "Creating schema for table message_store" duplicate logs.
+        """
+        if not ChatHistoryManager._tables_initialized:
+            conn_info = settings.get_postgres_db_uri()
+            sync_connection = psycopg.connect(conn_info)
+            PostgresChatMessageHistory.create_tables(sync_connection, self.table_name)
+            sync_connection.close()
+            ChatHistoryManager._tables_initialized = True
+            logger.debug(
+                f"[HistoryManager] Tables initialized for '{self.table_name}' "
+                "(once per application)"
+            )
 
     def _get_postgres_history(self, session_id: str) -> PostgresChatMessageHistory:
         """
@@ -47,7 +69,7 @@ class ChatHistoryManager:
             session_id: Session identifier (can be any string)
 
         Returns:
-            PostgresChatMessageHistory instance for the session
+            PostgresChatMessageHistory instance for session
         """
         conn_info = settings.get_postgres_db_uri()
         sync_connection = psycopg.connect(conn_info)
@@ -59,15 +81,13 @@ class ChatHistoryManager:
         except ValueError:
             # Generate deterministic UUID from string using UUID5
             clean_session_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, session_id))
-            logger.info(
+            logger.debug(
                 f"[HistoryManager] Mapped session_id '{session_id}' to UUID '{clean_session_id}'"
             )
 
         history = PostgresChatMessageHistory(
             self.table_name, clean_session_id, sync_connection=sync_connection
         )
-        # Ensure tables exist
-        history.create_tables(sync_connection, self.table_name)
         return history
 
     def add_to_history(

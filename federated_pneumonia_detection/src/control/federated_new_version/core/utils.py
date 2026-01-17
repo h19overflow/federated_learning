@@ -7,6 +7,10 @@ from pathlib import Path
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import (
     CentralizedTrainer,
 )
+from federated_pneumonia_detection.src.control.dl_model.centralized_trainer_utils import (
+    build_model_and_callbacks,
+    build_trainer,
+)
 from federated_pneumonia_detection.src.control.federated_new_version.partioner import (
     CustomPartitioner,
 )
@@ -90,15 +94,18 @@ def _build_model_components(
             f"[Utils] Building components for federated client_id={client_id}, round={round_number}, run_id={run_id}"
         )
 
-    model, callbacks, metrics_collector = (
-        centerlized_trainer._build_model_and_callbacks(
-            train_df=train_df,
-            experiment_name="federated_pneumonia_detection",
-            run_id=run_id,  # Use passed run_id instead of context.run_id
-            is_federated=is_federated,
-            client_id=client_id,
-            round_number=round_number,
-        )
+    # Call module-level function with required parameters from trainer instance
+    model, callbacks, metrics_collector = build_model_and_callbacks(
+        train_df=train_df,
+        config=centerlized_trainer.config,
+        checkpoint_dir=centerlized_trainer.checkpoint_dir,
+        logs_dir=centerlized_trainer.logs_dir,
+        logger=centerlized_trainer.logger,
+        experiment_name="federated_pneumonia_detection",
+        run_id=run_id,
+        is_federated=is_federated,
+        client_id=client_id,
+        round_number=round_number,
     )
     return model, callbacks, metrics_collector
 
@@ -109,9 +116,13 @@ def _build_trainer_component(
     is_federated: bool,
 ):
     """Build trainer with callbacks."""
-    trainer = centerlized_trainer._build_trainer(
+    # Call module-level function with required parameters from trainer instance
+    trainer = build_trainer(
+        config=centerlized_trainer.config,
         callbacks=callbacks,
+        logs_dir=centerlized_trainer.logs_dir,
         experiment_name="federated_pneumonia_detection",
+        logger=centerlized_trainer.logger,
         is_federated=is_federated,
     )
     return trainer

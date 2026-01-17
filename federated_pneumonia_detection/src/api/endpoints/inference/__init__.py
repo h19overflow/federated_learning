@@ -2,10 +2,8 @@
 
 This module provides API endpoints for running inference on chest X-ray images.
 Uses layered architecture:
-- Control layer: InferenceEngine (core logic)
-- Agentic layer: ClinicalInterpretationAgent (LLM agent)
-- Boundary layer: InferenceService (service abstraction)
-- API layer: This module (endpoints + schemas)
+- Control layer: InferenceEngine (core logic), ClinicalInterpretationAgent (LLM agent)
+- API layer: This module (endpoints + schemas), deps.py (singleton management)
 """
 
 from .health_endpoints import router as health_router

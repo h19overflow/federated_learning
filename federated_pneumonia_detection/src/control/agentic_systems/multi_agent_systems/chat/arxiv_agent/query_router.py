@@ -86,7 +86,7 @@ def classify_query(query: str) -> str:
         Defaults to "research" on failure (safer fallback).
     """
     try:
-        logger.info(f"[QueryRouter] Classifying query: '{query[:50]}...'")
+        logger.debug(f"[QueryRouter] Classifying query: '{query[:50]}...'")
 
         agent = _get_router_agent()
         prompt = ROUTER_CLASSIFICATION_PROMPT.format(query=query)

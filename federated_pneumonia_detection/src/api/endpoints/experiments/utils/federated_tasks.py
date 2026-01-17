@@ -62,6 +62,7 @@ def _update_experiment_config(
     csv_path: str,
     image_dir: str,
     num_server_rounds: int,
+    experiment_name: str,
 ) -> None:
     config_path = _resolve_default_config_path()
     config_manager = ConfigManager(config_path=str(config_path))
@@ -69,6 +70,7 @@ def _update_experiment_config(
     config_manager.set("experiment.file-path", csv_path)
     config_manager.set("experiment.image-dir", image_dir)
     config_manager.set("experiment.num-server-rounds", num_server_rounds)
+    config_manager.set("experiment.name", experiment_name)  # For SSE routing
     config_manager.save()
 
 
@@ -164,6 +166,7 @@ def run_federated_training_task(
             csv_path=csv_path,
             image_dir=image_dir,
             num_server_rounds=num_server_rounds,
+            experiment_name=experiment_name,
         )
         _sync_flower_toml_configs()
 

@@ -135,9 +135,10 @@ def main(grid: Grid, context: Context) -> None:
     )
 
     arrays = ArrayRecord(global_model.state_dict())
-    
+
     # Initialize SSE sender to broadcast training mode
-    experiment_id = f"federated_run_{run_id}"
+    # Use experiment.name from config (set by frontend) for SSE routing
+    experiment_id = config_manager.get("experiment.name", f"federated_run_{run_id}")
     ws_sender = MetricsSSESender(experiment_id=experiment_id)
     
     # Signal to frontend that this is federated training

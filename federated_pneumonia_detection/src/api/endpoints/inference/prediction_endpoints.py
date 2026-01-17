@@ -9,8 +9,12 @@ from io import BytesIO
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Query, Depends
 from PIL import Image
+from typing import Optional
 
-from federated_pneumonia_detection.src.api.deps import get_inference_service
+from federated_pneumonia_detection.src.api.deps import (
+    get_inference_engine,
+    get_clinical_agent,
+)
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
     PredictionClass,
     InferencePrediction,
@@ -18,7 +22,10 @@ from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas im
     ClinicalInterpretation,
     InferenceResponse,
 )
-from federated_pneumonia_detection.src.boundary.inference_service import InferenceService
+from federated_pneumonia_detection.src.control.model_inferance.inference_engine import InferenceEngine
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.clinical import (
+    ClinicalInterpretationAgent,
+)
 from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
     get_wandb_tracker,
 )
@@ -42,7 +49,8 @@ async def predict(
         default=True,
         description="Whether to include GradCAM heatmap visualization",
     ),
-    service: InferenceService = Depends(get_inference_service),
+    engine: Optional[InferenceEngine] = Depends(get_inference_engine),
+    clinical_agent: Optional[ClinicalInterpretationAgent] = Depends(get_clinical_agent),
 ) -> InferenceResponse:
     """Run pneumonia detection on an uploaded chest X-ray image.
 
@@ -52,7 +60,8 @@ async def predict(
     Args:
         file: Uploaded image file.
         include_clinical_interpretation: Whether to generate clinical analysis.
-        service: Injected inference service.
+        engine: Injected inference engine.
+        clinical_agent: Injected clinical agent.
 
     Returns:
         InferenceResponse with prediction and optional interpretation.
@@ -69,8 +78,8 @@ async def predict(
             detail=f"Invalid file type: {file.content_type}. Must be PNG or JPEG.",
         )
 
-    # Check service availability
-    if not service.is_ready():
+    # Check engine availability
+    if engine is None:
         raise HTTPException(
             status_code=503,
             detail="Inference model is not available. Please try again later.",
@@ -90,8 +99,8 @@ async def predict(
         )
 
     try:
-        # Run inference via service
-        predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(image)
+        # Run inference via engine
+        predicted_class, confidence, pneumonia_prob, normal_prob = engine.predict(image)
 
         prediction = InferencePrediction(
             predicted_class=PredictionClass(predicted_class),
@@ -102,8 +111,8 @@ async def predict(
 
         # Generate clinical interpretation if requested
         clinical_interpretation = None
-        if include_clinical_interpretation:
-            agent_response = await service.get_clinical_interpretation(
+        if include_clinical_interpretation and clinical_agent is not None:
+            agent_response = await clinical_agent.interpret(
                 predicted_class=predicted_class,
                 confidence=confidence,
                 pneumonia_probability=pneumonia_prob,
@@ -133,10 +142,10 @@ async def predict(
         # Generate GradCAM heatmap if requested
         heatmap_base64 = None
         if include_heatmap:
-            heatmap_base64 = service.generate_heatmap(image)
+            heatmap_base64 = engine.generate_heatmap(image)
 
         processing_time_ms = (time.time() - start_time) * 1000
-        model_version = service.engine.model_version if service.engine else "unknown"
+        model_version = engine.model_version
 
         # Log to W&B
         tracker = get_wandb_tracker()
@@ -175,7 +184,7 @@ async def predict(
 @router.post("/heatmap")
 async def generate_heatmap(
     file: UploadFile = File(..., description="Chest X-ray image file (PNG, JPEG)"),
-    service: InferenceService = Depends(get_inference_service),
+    engine: Optional[InferenceEngine] = Depends(get_inference_engine),
 ) -> dict:
     """Generate GradCAM heatmap for an uploaded chest X-ray image.
 
@@ -184,7 +193,7 @@ async def generate_heatmap(
 
     Args:
         file: Uploaded image file.
-        service: Injected inference service.
+        engine: Injected inference engine.
 
     Returns:
         Dict with heatmap_base64 field containing the overlay image.
@@ -199,7 +208,7 @@ async def generate_heatmap(
             detail=f"Invalid file type: {file.content_type}. Must be PNG or JPEG.",
         )
 
-    if not service.is_ready():
+    if engine is None:
         raise HTTPException(
             status_code=503,
             detail="Inference model is not available.",
@@ -209,7 +218,7 @@ async def generate_heatmap(
         contents = await file.read()
         image = Image.open(BytesIO(contents))
 
-        heatmap_base64 = service.generate_heatmap(image)
+        heatmap_base64 = engine.generate_heatmap(image)
 
         if heatmap_base64 is None:
             raise HTTPException(

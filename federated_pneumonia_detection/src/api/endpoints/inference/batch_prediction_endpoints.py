@@ -7,12 +7,15 @@ with aggregated results and summary statistics.
 import logging
 import time
 from io import BytesIO
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from PIL import Image
 
-from federated_pneumonia_detection.src.api.deps import get_inference_service
+from federated_pneumonia_detection.src.api.deps import (
+    get_inference_engine,
+    get_clinical_agent,
+)
 from federated_pneumonia_detection.src.api.endpoints.inference.inference_utils import (
     _generate_fallback_interpretation,
 )
@@ -25,8 +28,9 @@ from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas im
     RiskAssessment,
     SingleImageResult,
 )
-from federated_pneumonia_detection.src.boundary.inference_service import (
-    InferenceService,
+from federated_pneumonia_detection.src.control.model_inferance.inference_engine import InferenceEngine
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.clinical import (
+    ClinicalInterpretationAgent,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
     get_wandb_tracker,
@@ -46,7 +50,8 @@ async def predict_batch(
         default=False,
         description="Whether to include AI-generated clinical interpretation (slower)",
     ),
-    service: InferenceService = Depends(get_inference_service),
+    engine: Optional[InferenceEngine] = Depends(get_inference_engine),
+    clinical_agent: Optional[ClinicalInterpretationAgent] = Depends(get_clinical_agent),
 ) -> BatchInferenceResponse:
     """Run pneumonia detection on multiple chest X-ray images.
 
@@ -56,14 +61,15 @@ async def predict_batch(
     Args:
         files: List of uploaded image files.
         include_clinical_interpretation: Whether to generate clinical analysis per image.
-        service: Injected inference service.
+        engine: Injected inference engine.
+        clinical_agent: Injected clinical agent.
 
     Returns:
         BatchInferenceResponse with individual results and summary statistics.
     """
     batch_start_time = time.time()
 
-    if not service.is_ready():
+    if engine is None:
         raise HTTPException(
             status_code=503,
             detail="Inference model is not available. Please try again later.",
@@ -99,7 +105,7 @@ async def predict_batch(
             image = Image.open(BytesIO(contents))
             logger.info(f"Batch processing: {file.filename}, size: {image.size}")
 
-            predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(
+            predicted_class, confidence, pneumonia_prob, normal_prob = engine.predict(
                 image
             )
 
@@ -112,8 +118,8 @@ async def predict_batch(
             successful_predictions.append(prediction)
 
             clinical_interpretation = None
-            if include_clinical_interpretation:
-                agent_response = await service.get_clinical_interpretation(
+            if include_clinical_interpretation and clinical_agent is not None:
+                agent_response = await clinical_agent.interpret(
                     predicted_class=predicted_class,
                     confidence=confidence,
                     pneumonia_probability=pneumonia_prob,
@@ -196,7 +202,7 @@ async def predict_batch(
     )
 
     total_batch_time_ms = (time.time() - batch_start_time) * 1000
-    model_version = service.engine.model_version if service.engine else "unknown"
+    model_version = engine.model_version
 
     # Log batch summary to W&B
     tracker = get_wandb_tracker()

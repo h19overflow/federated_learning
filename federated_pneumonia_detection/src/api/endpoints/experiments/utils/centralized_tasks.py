@@ -6,8 +6,6 @@ Provides background task execution for centralized machine learning training.
 
 from typing import Any, Dict
 
-from mcp.types import TaskExecutionMode
-
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import (
     CentralizedTrainer,
 )
@@ -35,6 +33,8 @@ def run_centralized_training_task(
         Dictionary containing training results
     """
     task_logger = get_logger("centralized_training_task")
+    task_logger.info(f"[BACKGROUND TASK] Starting centralized training: experiment={experiment_name}")
+    task_logger.info(f"[BACKGROUND TASK] source_path={source_path}, csv={csv_filename}")
     try:
         config_path = r"federated_pneumonia_detection\config\default_config.yaml"
         trainer = CentralizedTrainer(

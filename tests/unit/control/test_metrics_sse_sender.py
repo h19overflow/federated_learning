@@ -2,40 +2,48 @@
 Unit tests for SSE Metrics Sender.
 
 Tests sender initialization, metric sending, and compatibility methods.
+Uses synchronous API - no asyncio needed, compatible with Ray actors.
 """
 import pytest
-import asyncio
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import MagicMock, patch
 from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_sse_sender import (
     MetricsSSESender
 )
+from federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_manager import (
+    SSEEventManager
+)
 
 
-@pytest.mark.asyncio
-async def test_sender_initialization():
+@pytest.fixture(autouse=True)
+def reset_singleton():
+    """Reset singleton instance before each test."""
+    SSEEventManager._instance = None
+    import federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_manager as mod
+    mod._manager_instance = None
+    yield
+
+
+def test_sender_initialization():
     """Test that SSE sender initializes correctly."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_1")
 
     assert sender.experiment_id == "test_exp_sender_1"
-    assert sender._event_manager is None  # Lazy-loaded
+    assert sender._event_manager is not None  # Eagerly loaded now
 
 
-@pytest.mark.asyncio
-async def test_send_metrics_basic():
-    """Test that metrics are sent via event manager."""
+def test_send_metrics_basic():
+    """Test that metrics are sent via event manager (synchronous)."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_2")
 
     # Mock event manager
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     # Send metrics
     sender.send_metrics({"loss": 0.5}, "epoch_end")
 
-    # Wait for async task to complete
-    await asyncio.sleep(0.1)
-
-    # Verify publish_event was called
+    # Verify publish_event was called (synchronously, no sleep needed)
     mock_manager.publish_event.assert_called_once()
     call_args = mock_manager.publish_event.call_args[0]
     assert call_args[0] == "test_exp_sender_2"
@@ -44,17 +52,15 @@ async def test_send_metrics_basic():
     assert "timestamp" in call_args[1]
 
 
-@pytest.mark.asyncio
-async def test_send_epoch_end():
+def test_send_epoch_end():
     """Test epoch_end convenience method."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_3")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     sender.send_epoch_end(epoch=5, phase="train", metrics={"loss": 0.3, "accuracy": 0.85})
-
-    await asyncio.sleep(0.1)
 
     mock_manager.publish_event.assert_called_once()
     call_args = mock_manager.publish_event.call_args[0]
@@ -65,17 +71,15 @@ async def test_send_epoch_end():
     assert call_args[1]["data"]["metrics"]["accuracy"] == 0.85
 
 
-@pytest.mark.asyncio
-async def test_send_epoch_start():
+def test_send_epoch_start():
     """Test epoch_start convenience method."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_4")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     sender.send_epoch_start(epoch=1, total_epochs=10)
-
-    await asyncio.sleep(0.1)
 
     mock_manager.publish_event.assert_called_once()
     call_args = mock_manager.publish_event.call_args[0]
@@ -84,12 +88,12 @@ async def test_send_epoch_start():
     assert call_args[1]["data"]["total_epochs"] == 10
 
 
-@pytest.mark.asyncio
-async def test_send_batch_metrics():
+def test_send_batch_metrics():
     """Test batch_metrics method with all parameters."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_5")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     sender.send_batch_metrics(
@@ -103,8 +107,6 @@ async def test_send_batch_metrics():
         client_id=1,
         round_num=3
     )
-
-    await asyncio.sleep(0.1)
 
     mock_manager.publish_event.assert_called_once()
     call_args = mock_manager.publish_event.call_args[0]
@@ -122,17 +124,15 @@ async def test_send_batch_metrics():
     assert payload["round_num"] == 3
 
 
-@pytest.mark.asyncio
-async def test_send_status():
+def test_send_status():
     """Test status message sending."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_6")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     sender.send_status(status="running", message="Training in progress")
-
-    await asyncio.sleep(0.1)
 
     call_args = mock_manager.publish_event.call_args[0]
     assert call_args[1]["type"] == "status"
@@ -140,17 +140,15 @@ async def test_send_status():
     assert call_args[1]["data"]["message"] == "Training in progress"
 
 
-@pytest.mark.asyncio
-async def test_send_error():
+def test_send_error():
     """Test error message sending."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_7")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     sender.send_error(error_message="Out of memory", error_type="training_error")
-
-    await asyncio.sleep(0.1)
 
     call_args = mock_manager.publish_event.call_args[0]
     assert call_args[1]["type"] == "error"
@@ -158,12 +156,12 @@ async def test_send_error():
     assert call_args[1]["data"]["error_type"] == "training_error"
 
 
-@pytest.mark.asyncio
-async def test_send_early_stopping_triggered():
+def test_send_early_stopping_triggered():
     """Test early stopping notification."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_8")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     sender.send_early_stopping_triggered(
@@ -172,8 +170,6 @@ async def test_send_early_stopping_triggered():
         metric_name="val_recall",
         patience=7
     )
-
-    await asyncio.sleep(0.1)
 
     call_args = mock_manager.publish_event.call_args[0]
     payload = call_args[1]["data"]
@@ -185,17 +181,15 @@ async def test_send_early_stopping_triggered():
     assert payload["patience"] == 7
 
 
-@pytest.mark.asyncio
-async def test_send_training_mode():
+def test_send_training_mode():
     """Test training mode configuration signal."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_9")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     sender.send_training_mode(is_federated=True, num_rounds=5, num_clients=2)
-
-    await asyncio.sleep(0.1)
 
     call_args = mock_manager.publish_event.call_args[0]
     payload = call_args[1]["data"]
@@ -206,12 +200,12 @@ async def test_send_training_mode():
     assert payload["num_clients"] == 2
 
 
-@pytest.mark.asyncio
-async def test_send_round_end():
+def test_send_round_end():
     """Test federated round end notification."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_10")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     fit_metrics = {"loss": 0.4}
@@ -224,8 +218,6 @@ async def test_send_round_end():
         eval_metrics=eval_metrics
     )
 
-    await asyncio.sleep(0.1)
-
     call_args = mock_manager.publish_event.call_args[0]
     payload = call_args[1]["data"]
 
@@ -236,18 +228,16 @@ async def test_send_round_end():
     assert payload["eval_metrics"] == eval_metrics
 
 
-@pytest.mark.asyncio
-async def test_send_round_metrics():
+def test_send_round_metrics():
     """Test round metrics aggregation."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_11")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     metrics = {"loss": 0.35, "accuracy": 0.89}
     sender.send_round_metrics(round_num=2, total_rounds=5, metrics=metrics)
-
-    await asyncio.sleep(0.1)
 
     call_args = mock_manager.publish_event.call_args[0]
     payload = call_args[1]["data"]
@@ -258,12 +248,12 @@ async def test_send_round_metrics():
     assert payload["metrics"] == metrics
 
 
-@pytest.mark.asyncio
-async def test_send_gradient_stats():
+def test_send_gradient_stats():
     """Test gradient statistics sending."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_12")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     layer_norms = {"model.encoder": 0.5, "model.decoder": 0.3}
@@ -274,8 +264,6 @@ async def test_send_gradient_stats():
         max_norm=0.5,
         min_norm=0.3
     )
-
-    await asyncio.sleep(0.1)
 
     call_args = mock_manager.publish_event.call_args[0]
     payload = call_args[1]["data"]
@@ -288,12 +276,12 @@ async def test_send_gradient_stats():
     assert payload["min_norm"] == 0.3
 
 
-@pytest.mark.asyncio
-async def test_send_lr_update():
+def test_send_lr_update():
     """Test learning rate update notification."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_13")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     sender.send_lr_update(
@@ -302,8 +290,6 @@ async def test_send_lr_update():
         epoch=5,
         scheduler_type="StepLR"
     )
-
-    await asyncio.sleep(0.1)
 
     call_args = mock_manager.publish_event.call_args[0]
     payload = call_args[1]["data"]
@@ -315,12 +301,12 @@ async def test_send_lr_update():
     assert payload["scheduler_type"] == "StepLR"
 
 
-@pytest.mark.asyncio
-async def test_send_training_end():
+def test_send_training_end():
     """Test training end notification with run_id."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_14")
 
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
     summary_data = {
@@ -330,8 +316,6 @@ async def test_send_training_end():
     }
 
     sender.send_training_end(run_id=42, summary_data=summary_data)
-
-    await asyncio.sleep(0.1)
 
     call_args = mock_manager.publish_event.call_args[0]
     payload = call_args[1]["data"]
@@ -343,39 +327,71 @@ async def test_send_training_end():
     assert payload["final_loss"] == 0.245
 
 
-@pytest.mark.asyncio
-async def test_error_handling_in_send_metrics():
+def test_error_handling_in_send_metrics():
     """Test that errors in send_metrics are caught and logged."""
     sender = MetricsSSESender(experiment_id="test_exp_sender_15")
 
     # Mock event manager that raises exception
-    mock_manager = AsyncMock()
+    mock_manager = MagicMock()
     mock_manager.publish_event.side_effect = Exception("Test error")
     sender._event_manager = mock_manager
 
     # Should not raise exception
     sender.send_metrics({"loss": 0.5}, "test")
 
-    await asyncio.sleep(0.1)
-
     # Verify it attempted to publish
     mock_manager.publish_event.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_lazy_loading_event_manager():
-    """Test that event manager is lazy-loaded on first use."""
-    sender = MetricsSSESender(experiment_id="test_exp_sender_16")
+def test_sender_uses_global_event_manager():
+    """Test that sender uses the global singleton event manager."""
+    sender = MetricsSSESender(experiment_id="test_global_manager")
 
-    assert sender._event_manager is None
-
-    # First call should load the manager
-    await sender._get_event_manager()
-
+    # The sender should have a reference to the event manager
     assert sender._event_manager is not None
 
-    # Second call should return same instance
-    manager1 = await sender._get_event_manager()
-    manager2 = await sender._get_event_manager()
+    # Create another sender - should share same event manager
+    sender2 = MetricsSSESender(experiment_id="test_global_manager_2")
+    assert sender._event_manager is sender2._event_manager
 
-    assert manager1 is manager2
+
+def test_close_is_noop():
+    """Test that close() is a no-op for compatibility."""
+    sender = MetricsSSESender(experiment_id="test_close")
+    # Should not raise any exception
+    sender.close()
+
+
+def test_del_is_noop():
+    """Test that __del__() is a no-op for compatibility."""
+    sender = MetricsSSESender(experiment_id="test_del")
+    # Should not raise any exception
+    del sender
+
+
+def test_publish_returns_success():
+    """Test that successful publish is logged correctly."""
+    sender = MetricsSSESender(experiment_id="test_success")
+
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = True
+    sender._event_manager = mock_manager
+
+    # This should complete without warning
+    sender.send_metrics({"value": 1}, "test")
+
+    mock_manager.publish_event.assert_called_once()
+
+
+def test_publish_returns_failure():
+    """Test that failed publish is handled correctly."""
+    sender = MetricsSSESender(experiment_id="test_failure")
+
+    mock_manager = MagicMock()
+    mock_manager.publish_event.return_value = False
+    sender._event_manager = mock_manager
+
+    # This should complete without raising, just log warning
+    sender.send_metrics({"value": 1}, "test")
+
+    mock_manager.publish_event.assert_called_once()

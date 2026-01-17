@@ -2,10 +2,12 @@
 SSE Streaming Endpoints for Training Metrics.
 
 Provides real-time training metrics streaming via Server-Sent Events.
+Uses polling with asyncio.sleep() to read from thread-safe queue.Queue.
 """
 import json
 import asyncio
 import logging
+import time
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_manager import (
@@ -32,42 +34,52 @@ async def stream_training_metrics(experiment_id: str):
     """
     logger.info(f"SSE connection requested for experiment: {experiment_id}")
 
-    event_manager = await get_sse_event_manager()
-    queue = event_manager.create_queue(experiment_id)
+    event_manager = get_sse_event_manager()
+    event_manager.create_queue(experiment_id)
     event_manager.increment_stream(experiment_id)
 
     async def event_generator():
         """
         Async generator for SSE events.
 
-        Yields formatted SSE messages from the event queue.
+        Yields formatted SSE messages from the event queue using polling.
         Implements keepalive comments and graceful disconnection.
         """
         try:
             initial_event = {
                 "experiment_id": experiment_id,
-                "timestamp": asyncio.get_event_loop().time()
+                "timestamp": time.time()
             }
             yield f"event: connected\ndata: {json.dumps(initial_event)}\n\n"
             logger.info(f"SSE connection established for: {experiment_id}")
 
-            while True:
-                try:
-                    event = await asyncio.wait_for(queue.get(), timeout=30.0)
+            keepalive_interval = 30.0  # seconds
+            poll_interval = 0.1  # seconds
+            last_keepalive = time.time()
 
+            while True:
+                # Poll for events with short timeout
+                event = event_manager.get_event(experiment_id, timeout=poll_interval)
+
+                if event is not None:
                     event_type = event.get('type', 'message')
                     event_data = json.dumps(event.get('data', {}))
 
                     yield f"event: {event_type}\ndata: {event_data}\n\n"
 
                     logger.debug(
-                        f"Sent {event_type} event to {experiment_id} "
-                        f"(queue size: {queue.qsize()})"
+                        f"Sent {event_type} event to {experiment_id}"
                     )
 
-                except asyncio.TimeoutError:
+                # Check if keepalive is needed
+                current_time = time.time()
+                if current_time - last_keepalive >= keepalive_interval:
                     yield ": keepalive\n\n"
                     logger.debug(f"Sent keepalive to {experiment_id}")
+                    last_keepalive = current_time
+
+                # Yield control to event loop
+                await asyncio.sleep(0)
 
         except asyncio.CancelledError:
             logger.info(f"SSE connection cancelled for: {experiment_id}")
@@ -102,5 +114,5 @@ async def get_streaming_stats():
     Returns:
         Dictionary with queue counts, active connections, etc.
     """
-    event_manager = await get_sse_event_manager()
+    event_manager = get_sse_event_manager()
     return event_manager.get_stats()

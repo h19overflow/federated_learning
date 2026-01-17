@@ -47,9 +47,16 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
     get_wandb_tracker,
 )
+from federated_pneumonia_detection.src.utils.loggers.logging_config import (
+    configure_logging,
+)
 
 env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
+
+# Configure centralized logging (silences third-party libs)
+configure_logging()
+
 logger = logging.getLogger(__name__)
 logger.info(f"Loaded environment from: {env_path}")
 
@@ -81,7 +88,7 @@ async def lifespan(app: FastAPI):
         get_sse_event_manager,
     )
 
-    event_manager = await get_sse_event_manager()
+    event_manager = get_sse_event_manager()
     logger.info("SSE Event Manager initialized")
 
     try:

@@ -142,9 +142,9 @@ async def query_chat_stream(message: ChatMessage):
     Returns:
         StreamingResponse with SSE format containing tokens
     """
-    logger.info(f"[STREAM] Query: '{message.query[:100]}...', "
-                f"Session: {message.session_id}, Run: {message.run_id}, "
-                f"Arxiv: {message.arxiv_enabled}")
+    logger.info(f"[STREAM] Query: '{message.query[:100]}...' "
+                f"(Session: {message.session_id}, Run: {message.run_id}, "
+                f"Arxiv: {message.arxiv_enabled})")
 
     use_arxiv = message.arxiv_enabled
 
@@ -157,7 +157,7 @@ async def query_chat_stream(message: ChatMessage):
         # SECTION 1: Setup Session
         # =====================================================================
         session_id = message.session_id or str(uuid.uuid4())
-        logger.info(f"[STREAM] Session ID: {session_id}")
+        logger.debug(f"[STREAM] Session ID: {session_id}")
         
         # Helper handles the try/except internally - non-fatal if it fails
         ensure_db_session(session_id, message.query)
@@ -169,14 +169,14 @@ async def query_chat_stream(message: ChatMessage):
         # SECTION 2: Prepare Query
         # =====================================================================
         enhanced_query = prepare_enhanced_query(message.query, message.run_id)
-        logger.info(f"[STREAM] Final query: '{enhanced_query[:100]}...'")
+        logger.debug(f"[STREAM] Final query: '{enhanced_query[:100]}...'")
 
         # =====================================================================
         # SECTION 3: Initialize Engine with Router
         # =====================================================================
         try:
             engine = get_arxiv_engine()
-            logger.info(f"[STREAM] Using ArxivAugmentedEngine (arxiv_enabled={use_arxiv})")
+            logger.debug(f"[STREAM] Using ArxivAugmentedEngine (arxiv_enabled={use_arxiv})")
         except Exception as e:
             logger.error(f"[STREAM] Failed to initialize ArxivAugmentedEngine: {e}")
             yield sse_error(f"Failed to initialize engine: {e}")
