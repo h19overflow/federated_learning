@@ -68,7 +68,7 @@ BASIC queries can be answered conversationally:
 - Simple explanations without requiring sources
 - Follow-up questions about already-retrieved information
 - Examples: "Hello", "Thanks!", "Can you explain that more?", "What did you mean by recall?"
-
+If the user is asking about a specific run. MAKE SURE TO ROUTE IT TO "basic"
 Query: {query}
 
 Classification (respond with only "research" or "basic"):"""

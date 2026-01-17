@@ -196,7 +196,7 @@ class ArxivAugmentedEngine:
         Stream query response token by token.
 
         Args:
-            query: User's question
+            query: User's question (may include run context enhancement)
             session_id: Session identifier for conversation tracking
             arxiv_enabled: Whether to enable arxiv search tools
             original_query: Original query before context enhancement (for history)
@@ -209,9 +209,10 @@ class ArxivAugmentedEngine:
             f"query: '{query[:50]}...', arxiv={arxiv_enabled}"
         )
 
-        # Step 1: Classify query to determine if tools are needed
-        query_mode = classify_query(query)
-        logger.debug(f"[ArxivEngine] Query classified as: {query_mode}")
+
+        classification_query = original_query if original_query else query
+        query_mode = classify_query(classification_query)
+        logger.debug(f"[ArxivEngine] Query classified as: {query_mode} (using {'original' if original_query else 'full'} query)")
 
         # Step 2: Conditionally load tools based on mode
         if query_mode == "research":
@@ -283,7 +284,6 @@ class ArxivAugmentedEngine:
                                         tool_name = tool_call.get("name", "unknown")
                                         tool_args = tool_call.get("args", {})
                                         logger.info(f"[ArxivEngine] Agent using tool: {tool_name}")
-
                                         # Yield user-friendly status
                                         friendly_name = tool_name.replace("_", " ").title()
                                         yield create_sse_event(SSEEventType.STATUS, content=f"Using {friendly_name}...")
