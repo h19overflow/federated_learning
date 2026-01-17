@@ -2,39 +2,40 @@
 Setup functions for PyTorch Lightning trainer configuration and callbacks.
 """
 
-import os
 import logging
-from typing import Optional, List, Dict, Any, TYPE_CHECKING
+import os
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+import numpy as np
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.callbacks import (
-    ModelCheckpoint,
     EarlyStopping,
     LearningRateMonitor,
+    ModelCheckpoint,
 )
-import torch
-import numpy as np
 from sklearn.utils import class_weight
 
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.control.dl_model.utils.model.collectors import (
-    MetricsCollectorCallback,
-)
 from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_sse_sender import (
     MetricsSSESender,
-)
-from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.early_stopping import (
-    EarlyStoppingSignalCallback,
-)
-from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.checkpoint import (
-    HighestValRecallCallback,
 )
 from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.batch_metrics import (
     BatchMetricsCallback,
 )
+from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.checkpoint import (
+    HighestValRecallCallback,
+)
+from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.early_stopping import (
+    EarlyStoppingSignalCallback,
+)
 from federated_pneumonia_detection.src.control.dl_model.utils.model.callbacks.gradient_monitor import (
     GradientMonitorCallback,
+)
+from federated_pneumonia_detection.src.control.dl_model.utils.model.collectors import (
+    MetricsCollectorCallback,
 )
 
 
@@ -125,7 +126,9 @@ def prepare_trainer_and_callbacks_pl(
     if websocket_sender is None:
         experiment_id = f"exp_{experiment_name}_{run_id or 'unknown'}"
         websocket_sender = MetricsSSESender(experiment_id=experiment_id)
-        logger.info(f"[Training Callbacks] Created default SSE sender for {experiment_id}")
+        logger.info(
+            f"[Training Callbacks] Created default SSE sender for {experiment_id}"
+        )
 
     # Setup default values from config
     patience = config.get("experiment.early_stopping_patience", 7)
@@ -206,7 +209,9 @@ def prepare_trainer_and_callbacks_pl(
     )
 
     # Batch metrics callback - send batch-level metrics for real-time observability
-    batch_interval = batch_sample_interval or config.get("experiment.batch_sample_interval", 10)
+    batch_interval = batch_sample_interval or config.get(
+        "experiment.batch_sample_interval", 10
+    )
     batch_metrics_callback = BatchMetricsCallback(
         websocket_sender=websocket_sender,
         sample_interval=batch_interval,
@@ -215,7 +220,9 @@ def prepare_trainer_and_callbacks_pl(
     )
 
     # Gradient monitor callback - track gradient norms and learning rate
-    gradient_interval = gradient_sample_interval or config.get("experiment.gradient_sample_interval", 20)
+    gradient_interval = gradient_sample_interval or config.get(
+        "experiment.gradient_sample_interval", 20
+    )
     gradient_monitor_callback = GradientMonitorCallback(
         websocket_sender=websocket_sender,
         sample_interval=gradient_interval,
@@ -263,8 +270,8 @@ def prepare_trainer_and_callbacks_pl(
 
 
 def create_trainer_from_config(
-    config: Optional["ConfigManager"],
     callbacks: List[pl.Callback],
+    config: Optional["ConfigManager"],
     is_federated: bool = False,
 ) -> pl.Trainer:
     """
