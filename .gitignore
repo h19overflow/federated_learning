@@ -113,4 +113,7 @@ wandb/
 
 # Logs
 *.log
+<<<<<<< HEAD
 docs/
+=======
+>>>>>>> parent of 2c0001a (Refactor: Replace WebSocket with SSE for metric streaming)

@@ -43,10 +43,10 @@ const TrainingExecution = ({ config, datasetFile, trainSplit, onComplete, onFede
     isFederatedTraining,
     federatedRounds,
     federatedContext,
-    sse,
+    ws,
   } = useTrainingExecution(config, datasetFile, trainSplit, onComplete);
 
-  const trainingMetrics = useTrainingMetrics(sse);
+  const trainingMetrics = useTrainingMetrics(ws);
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);

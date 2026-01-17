@@ -10,8 +10,8 @@ import torch
 from pytorch_lightning.callbacks import EarlyStopping
 
 if TYPE_CHECKING:
-    from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_sse_sender import (
-        MetricsSSESender,
+    from federated_pneumonia_detection.src.utils.metrics_websocket_sender import (
+        MetricsWebSocketSender,
     )
 
 
@@ -23,12 +23,12 @@ class EarlyStoppingSignalCallback(pl.Callback):
     training stops due to early stopping conditions being met.
     """
 
-    def __init__(self, websocket_sender: Optional["MetricsSSESender"] = None):
+    def __init__(self, websocket_sender: Optional["MetricsWebSocketSender"] = None):
         """
         Initialize the early stopping signal callback.
 
         Args:
-            websocket_sender: MetricsSSESender instance for frontend communication
+            websocket_sender: MetricsWebSocketSender instance for frontend communication
         """
         super().__init__()
         self.websocket_sender = websocket_sender
