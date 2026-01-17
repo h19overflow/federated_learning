@@ -4,14 +4,17 @@ SSE Streaming Endpoints for Training Metrics.
 Provides real-time training metrics streaming via Server-Sent Events.
 Uses polling with asyncio.sleep() to read from thread-safe queue.Queue.
 """
-import json
+
 import asyncio
+import json
 import logging
 import time
+
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+
 from federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_manager import (
-    get_sse_event_manager
+    get_sse_event_manager,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,10 +49,7 @@ async def stream_training_metrics(experiment_id: str):
         Implements keepalive comments and graceful disconnection.
         """
         try:
-            initial_event = {
-                "experiment_id": experiment_id,
-                "timestamp": time.time()
-            }
+            initial_event = {"experiment_id": experiment_id, "timestamp": time.time()}
             yield f"event: connected\ndata: {json.dumps(initial_event)}\n\n"
             logger.info(f"SSE connection established for: {experiment_id}")
 
@@ -62,14 +62,12 @@ async def stream_training_metrics(experiment_id: str):
                 event = event_manager.get_event(experiment_id, timeout=poll_interval)
 
                 if event is not None:
-                    event_type = event.get('type', 'message')
-                    event_data = json.dumps(event.get('data', {}))
+                    event_type = event.get("type", "message")
+                    event_data = json.dumps(event.get("data", {}))
 
                     yield f"event: {event_type}\ndata: {event_data}\n\n"
 
-                    logger.debug(
-                        f"Sent {event_type} event to {experiment_id}"
-                    )
+                    logger.debug(f"Sent {event_type} event to {experiment_id}")
 
                 # Check if keepalive is needed
                 current_time = time.time()
@@ -84,10 +82,7 @@ async def stream_training_metrics(experiment_id: str):
         except asyncio.CancelledError:
             logger.info(f"SSE connection cancelled for: {experiment_id}")
         except Exception as e:
-            logger.error(
-                f"Error in SSE stream for {experiment_id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Error in SSE stream for {experiment_id}: {e}", exc_info=True)
             error_data = json.dumps({"error": str(e), "experiment_id": experiment_id})
             yield f"event: error\ndata: {error_data}\n\n"
         finally:
@@ -102,7 +97,7 @@ async def stream_training_metrics(experiment_id: str):
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
             "Access-Control-Allow-Origin": "*",
-        }
+        },
     )
 
 

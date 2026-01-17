@@ -75,7 +75,9 @@ def _run_websocket_server() -> None:
                             f"Broadcasting {message_type} to {len(connected_clients)} clients"
                         )
 
-                        await _broadcast_to_clients(message, websocket, connected_clients)
+                        await _broadcast_to_clients(
+                            message, websocket, connected_clients
+                        )
 
                     except json.JSONDecodeError:
                         logger.warning(
@@ -115,7 +117,9 @@ def _run_websocket_server() -> None:
 
         async def run_server() -> None:
             """Run the WebSocket server."""
-            logger.info(f"Starting WebSocket server on ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}")
+            logger.info(
+                f"Starting WebSocket server on ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}"
+            )
 
             async with websockets.serve(handler, WEBSOCKET_HOST, WEBSOCKET_PORT):
                 logger.info("[OK] WebSocket metrics server is running")
