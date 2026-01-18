@@ -3,27 +3,30 @@
 Provides endpoint for running inference on individual chest X-ray images
 with optional AI-generated clinical interpretation.
 """
+
 import logging
 import time
 from io import BytesIO
 
-from fastapi import APIRouter, File, UploadFile, HTTPException, Query, Depends
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from PIL import Image
 
 from federated_pneumonia_detection.src.api.deps import get_inference_service
-from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
-    PredictionClass,
-    InferencePrediction,
-    RiskAssessment,
-    ClinicalInterpretation,
-    InferenceResponse,
-)
-from federated_pneumonia_detection.src.boundary.inference_service import InferenceService
-from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
-    get_wandb_tracker,
-)
 from federated_pneumonia_detection.src.api.endpoints.inference.inference_utils import (
     _generate_fallback_interpretation,
+)
+from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
+    ClinicalInterpretation,
+    InferencePrediction,
+    InferenceResponse,
+    PredictionClass,
+    RiskAssessment,
+)
+from federated_pneumonia_detection.src.boundary.inference_service import (
+    InferenceService,
+)
+from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
+    get_wandb_tracker,
 )
 
 logger = logging.getLogger(__name__)
@@ -76,7 +79,9 @@ async def predict(
         # Read and validate image
         contents = await file.read()
         image = Image.open(BytesIO(contents))
-        logger.info(f"Processing image: {file.filename}, size: {image.size}, mode: {image.mode}")
+        logger.info(
+            f"Processing image: {file.filename}, size: {image.size}, mode: {image.mode}"
+        )
 
     except Exception as e:
         logger.error(f"Failed to read image: {e}")
@@ -87,7 +92,9 @@ async def predict(
 
     try:
         # Run inference via service
-        predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(image)
+        predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(
+            image
+        )
 
         prediction = InferencePrediction(
             predicted_class=PredictionClass(predicted_class),
