@@ -192,9 +192,7 @@ async def generate_heatmap(
         # Read and validate image
         contents = await file.read()
         image = Image.open(BytesIO(contents)).convert("RGB")
-        logger.info(
-            f"Generating heatmap for: {file.filename}, size: {image.size}"
-        )
+        logger.info(f"Generating heatmap for: {file.filename}, size: {image.size}")
     except Exception as e:
         logger.error(f"Failed to read image: {e}")
         raise HTTPException(
@@ -263,7 +261,7 @@ async def generate_heatmaps_batch(
     batch_start_time = time.time()
 
     # Limit batch size for heatmaps (more memory intensive than predictions)
-    max_batch_size = 50
+    max_batch_size = 500
     if len(files) > max_batch_size:
         raise HTTPException(
             status_code=400,

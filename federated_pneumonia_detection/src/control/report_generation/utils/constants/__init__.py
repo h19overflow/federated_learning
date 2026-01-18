@@ -1,0 +1,17 @@
+"""Color constants and theme configuration for PDF reports."""
+
+from federated_pneumonia_detection.src.control.report_generation.utils.constants.colors import (
+    BRAND_COLOR,
+    DANGER_COLOR,
+    LIGHT_BG,
+    SUCCESS_COLOR,
+    WARNING_COLOR,
+)
+
+__all__ = [
+    "BRAND_COLOR",
+    "DANGER_COLOR",
+    "LIGHT_BG",
+    "SUCCESS_COLOR",
+    "WARNING_COLOR",
+]

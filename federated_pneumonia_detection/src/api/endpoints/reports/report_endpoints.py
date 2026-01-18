@@ -104,28 +104,28 @@ async def generate_batch_report(request: BatchReportRequest) -> Response:
         summary_stats = prepare_summary_stats_for_report(request.summary.model_dump())
 
         # Prepare images and heatmaps if included
-        images = None
-        heatmaps = None
+        images_list = None
+        heatmaps_dict = None
         if request.include_heatmaps:
-            images = {}
-            heatmaps = {}
+            images_list = []
+            heatmaps_dict = {}
             for r in request.results:
                 if r.success and r.original_image_base64:
                     img = decode_base64_image(r.original_image_base64)
                     if img:
-                        images[r.filename] = img
+                        # images should be list of (filename, PIL.Image) tuples
+                        images_list.append((r.filename, img))
                 if r.success and r.heatmap_base64:
-                    heatmap_img = decode_base64_image(r.heatmap_base64)
-                    if heatmap_img:
-                        heatmaps[r.filename] = heatmap_img
+                    # heatmaps should be dict mapping filename to base64 string
+                    heatmaps_dict[r.filename] = r.heatmap_base64
 
         # Generate PDF
         pdf_bytes = generate_batch_summary_report(
             results=formatted_results,
             summary_stats=summary_stats,
             model_version=request.model_version,
-            images=images,
-            heatmaps=heatmaps,
+            images=images_list,
+            heatmaps=heatmaps_dict,
         )
 
         # Generate filename with timestamp
