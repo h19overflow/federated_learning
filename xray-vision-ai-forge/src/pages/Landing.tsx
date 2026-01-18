@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   ChevronDown
 } from 'lucide-react';
-import { Header, Footer } from '@/components/layout';
+import { Header, Footer, WelcomeGuide } from '@/components/layout';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -28,6 +28,7 @@ const Landing = () => {
   const navigate = useNavigate();
   const comparisonRef = useRef<HTMLElement>(null);
   const mainRef = useRef<HTMLElement>(null); // Scroll container ref
+  const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
 
   const handleGetStarted = () => {
     navigate('/experiment');
@@ -277,7 +278,11 @@ const Landing = () => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <Header />
+      {showWelcomeGuide && (
+        <WelcomeGuide onClose={() => setShowWelcomeGuide(false)} />
+      )}
+
+      <Header onShowHelp={() => setShowWelcomeGuide(true)} />
 
       <main ref={mainRef} className="flex-1 overflow-y-auto bg-hero-gradient">
         {/* Hero Section - Apple Style */}

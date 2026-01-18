@@ -28,6 +28,12 @@ from federated_pneumonia_detection.src.api.endpoints.inference.health_endpoints 
 from federated_pneumonia_detection.src.api.endpoints.inference.single_prediction_endpoint import (
     router as inference_prediction_router,
 )
+from federated_pneumonia_detection.src.api.endpoints.inference.gradcam_endpoints import (
+    router as inference_gradcam_router,
+)
+from federated_pneumonia_detection.src.api.endpoints.reports import (
+    report_router,
+)
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import (
     router as runs_endpoints_router,
 )
@@ -101,6 +107,8 @@ app.include_router(chat_router)
 app.include_router(inference_health_router)
 app.include_router(inference_prediction_router)
 app.include_router(inference_batch_router)
+app.include_router(inference_gradcam_router)
+app.include_router(report_router)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header, Footer } from '@/components/layout';
+import { Header, Footer, WelcomeGuide } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ArrowLeft, BarChart, Loader2, AlertCircle, Users, Server, ChevronRight, Calendar, Activity, TrendingUp } from 'lucide-react';
@@ -46,6 +46,7 @@ const SavedExperiments = () => {
   const [summaryStats, setSummaryStats] = useState<Record<number, ConfusionMatrixSummary | null>>({});
   const [loadingStats, setLoadingStats] = useState<Record<number, boolean>>({});
   const [activeTab, setActiveTab] = useState('experiments');
+  const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
   const navigate = useNavigate();
 
   // Fetch summary stats when card is viewed
@@ -157,7 +158,11 @@ const SavedExperiments = () => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <Header />
+      {showWelcomeGuide && (
+        <WelcomeGuide onClose={() => setShowWelcomeGuide(false)} />
+      )}
+
+      <Header onShowHelp={() => setShowWelcomeGuide(true)} />
 
       <main className="flex-1 overflow-y-auto bg-trust-gradient">
         <div className="max-w-6xl mx-auto px-6 py-12">

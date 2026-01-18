@@ -8,7 +8,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Activity, RefreshCw, Sparkles, Layers, Image as ImageIcon } from 'lucide-react';
+import { Activity, RefreshCw, Sparkles, Layers, Image as ImageIcon, Flame } from 'lucide-react';
 import { Header, Footer, WelcomeGuide } from '@/components/layout';
 import ImageDropzone from '@/components/inference/ImageDropzone';
 import PredictionResult from '@/components/inference/PredictionResult';
@@ -18,8 +18,9 @@ import BatchUploadZone from '@/components/inference/BatchUploadZone';
 import BatchSummaryStats from '@/components/inference/BatchSummaryStats';
 import BatchResultsGrid from '@/components/inference/BatchResultsGrid';
 import BatchExportButton from '@/components/inference/BatchExportButton';
-import { predictImage, batchPredictImages } from '@/services/inferenceApi';
-import { InferenceResponse, BatchInferenceResponse } from '@/types/inference';
+import HeatmapComparisonView from '@/components/inference/HeatmapComparisonView';
+import { predictImage, batchPredictImages, generateHeatmap } from '@/services/inferenceApi';
+import { InferenceResponse, BatchInferenceResponse, HeatmapResponse } from '@/types/inference';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import gsap from 'gsap';
@@ -44,6 +45,9 @@ const Inference = () => {
   const [result, setResult] = useState<InferenceResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [includeClinical, setIncludeClinical] = useState(true);
+  const [singleHeatmap, setSingleHeatmap] = useState<HeatmapResponse | null>(null);
+  const [singleHeatmapLoading, setSingleHeatmapLoading] = useState(false);
+  const [showSingleHeatmap, setShowSingleHeatmap] = useState(false);
 
   // Batch mode state
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -51,6 +55,7 @@ const Inference = () => {
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchIncludeClinical, setBatchIncludeClinical] = useState(false);
   const [imageUrls, setImageUrls] = useState<Map<string, string>>(new Map());
+  const [imageFiles, setImageFiles] = useState<Map<string, File>>(new Map());
 
   const mainRef = useRef<HTMLElement>(null);
   const { toast } = useToast();
@@ -64,6 +69,8 @@ const Inference = () => {
   const handleClear = () => {
     setSelectedImage(null);
     setResult(null);
+    setSingleHeatmap(null);
+    setShowSingleHeatmap(false);
   };
 
   const handlePredict = async () => {
@@ -107,15 +114,41 @@ const Inference = () => {
     });
   };
 
+  const handleGenerateSingleHeatmap = async () => {
+    if (!selectedImage) return;
+
+    setSingleHeatmapLoading(true);
+    try {
+      const response = await generateHeatmap(selectedImage);
+      setSingleHeatmap(response);
+      setShowSingleHeatmap(true);
+      toast({
+        title: 'Heatmap Generated',
+        description: `GradCAM visualization ready (${response.processing_time_ms.toFixed(0)}ms)`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Heatmap Generation Failed',
+        description: error.message || 'Failed to generate GradCAM heatmap',
+        variant: 'destructive',
+      });
+    } finally {
+      setSingleHeatmapLoading(false);
+    }
+  };
+
   // Batch mode handlers
   const handleImagesSelect = (files: File[]) => {
     setSelectedImages(files);
     const newUrls = new Map<string, string>();
+    const newFiles = new Map<string, File>();
     files.forEach((file) => {
       const url = URL.createObjectURL(file);
       newUrls.set(file.name, url);
+      newFiles.set(file.name, file);
     });
     setImageUrls(newUrls);
+    setImageFiles(newFiles);
   };
 
   const handleBatchClear = () => {
@@ -123,6 +156,7 @@ const Inference = () => {
     setBatchResult(null);
     imageUrls.forEach((url) => URL.revokeObjectURL(url));
     setImageUrls(new Map());
+    setImageFiles(new Map());
   };
 
   const handleBatchPredict = async () => {
@@ -438,6 +472,62 @@ const Inference = () => {
                             />
                           </div>
                         )}
+
+                        {/* GradCAM Heatmap Section */}
+                        <div className="result-card">
+                          {showSingleHeatmap && singleHeatmap && selectedImage ? (
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)]">
+                                  GradCAM Visualization
+                                </h3>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowSingleHeatmap(false)}
+                                  className="rounded-xl border-[hsl(172_30%_85%)] text-[hsl(172_43%_25%)]"
+                                >
+                                  Hide Heatmap
+                                </Button>
+                              </div>
+                              <HeatmapComparisonView
+                                originalImageUrl={URL.createObjectURL(selectedImage)}
+                                heatmapBase64={singleHeatmap.heatmap_base64}
+                                predictionClass={result.prediction.predicted_class}
+                              />
+                            </div>
+                          ) : (
+                            <div className="p-6 rounded-2xl bg-white/80 border border-[hsl(172_30%_88%)]">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)]">
+                                    GradCAM Heatmap
+                                  </h3>
+                                  <p className="text-sm text-[hsl(215_15%_45%)]">
+                                    Visualize which regions influenced the model's prediction
+                                  </p>
+                                </div>
+                                <Button
+                                  onClick={handleGenerateSingleHeatmap}
+                                  disabled={singleHeatmapLoading}
+                                  className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white rounded-xl"
+                                >
+                                  {singleHeatmapLoading ? (
+                                    <>
+                                      <Activity className="w-4 h-4 mr-2 animate-spin" />
+                                      Generating...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Flame className="w-4 h-4 mr-2" />
+                                      Generate Heatmap
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -553,10 +643,10 @@ const Inference = () => {
                           Export Results
                         </h3>
                         <p className="text-sm text-[hsl(215_15%_45%)]">
-                          Download batch analysis data in CSV or JSON format
+                          Download batch analysis data in CSV, JSON, or PDF format
                         </p>
                       </div>
-                      <BatchExportButton data={batchResult} />
+                      <BatchExportButton data={batchResult} imageFiles={imageFiles} />
                     </div>
 
                     <div className="content-card batch-results">
@@ -568,7 +658,7 @@ const Inference = () => {
                           Click on any image to view full prediction details
                         </p>
                       </div>
-                      <BatchResultsGrid results={batchResult.results} imageUrls={imageUrls} />
+                      <BatchResultsGrid results={batchResult.results} imageUrls={imageUrls} imageFiles={imageFiles} />
                     </div>
                   </div>
                 )}

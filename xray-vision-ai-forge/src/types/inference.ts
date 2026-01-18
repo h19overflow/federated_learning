@@ -77,3 +77,27 @@ export interface BatchInferenceResponse {
   model_version: string;
   total_processing_time_ms: number;
 }
+
+// GradCAM Heatmap types
+export interface HeatmapResponse {
+  success: boolean;
+  filename: string;
+  heatmap_base64: string;
+  original_image_base64: string;
+  processing_time_ms: number;
+}
+
+export interface BatchHeatmapItem {
+  filename: string;
+  success: boolean;
+  heatmap_base64?: string;
+  original_image_base64?: string;
+  error?: string;
+  processing_time_ms: number;
+}
+
+export interface BatchHeatmapResponse {
+  success: boolean;
+  results: BatchHeatmapItem[];
+  total_processing_time_ms: number;
+}
