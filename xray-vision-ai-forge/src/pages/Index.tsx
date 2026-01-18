@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import ProgressIndicator from '@/components/ProgressIndicator';
-import StepContent from '@/components/StepContent';
-import DatasetUpload from '@/components/DatasetUpload';
-import ExperimentConfig from '@/components/ExperimentConfig';
-import TrainingExecution from '@/components/TrainingExecution';
-import ResultsVisualization from '@/components/ResultsVisualization';
-import WelcomeGuide from '@/components/WelcomeGuide';
+import { Header, Footer, WelcomeGuide } from '@/components/layout';
+import {
+  ProgressIndicator,
+  StepContent,
+  DatasetUpload,
+  ExperimentConfig,
+  TrainingExecution,
+  ResultsVisualization,
+} from '@/components/training';
 import { Button } from '@/components/ui/button';
 import { SavedExperiment, ExperimentConfiguration } from '@/types/experiment';
 import { ArrowLeft } from 'lucide-react';

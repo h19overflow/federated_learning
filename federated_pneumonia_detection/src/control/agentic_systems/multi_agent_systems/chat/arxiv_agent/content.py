@@ -41,15 +41,11 @@ def normalize_content(content: Union[str, List[Any], None]) -> str:
         return ""
 
     if isinstance(content, str):
-        logger.debug(
-            f"[Content] normalize_content received string, length: {len(content)}"
-        )
+        logger.debug(f"[Content] normalize_content received string, length: {len(content)}")
         return content
 
     if isinstance(content, list):
-        logger.debug(
-            f"[Content] normalize_content received list with {len(content)} parts"
-        )
+        logger.debug(f"[Content] normalize_content received list with {len(content)} parts")
         parts = []
         for i, part in enumerate(content):
             if isinstance(part, str):
@@ -57,15 +53,11 @@ def normalize_content(content: Union[str, List[Any], None]) -> str:
                 logger.debug(f"[Content] Part {i}: string, length {len(part)}")
             elif isinstance(part, dict) and "text" in part:
                 parts.append(part["text"])
-                logger.debug(
-                    f"[Content] Part {i}: dict with text, length {len(part['text'])}"
-                )
+                logger.debug(f"[Content] Part {i}: dict with text, length {len(part['text'])}")
             else:
                 logger.warning(f"[Content] Part {i}: unexpected type {type(part)}")
         result = "".join(parts)
-        logger.debug(
-            f"[Content] Normalized list to string, final length: {len(result)}"
-        )
+        logger.debug(f"[Content] Normalized list to string, final length: {len(result)}")
         return result
 
     # Fallback for unexpected types
@@ -76,20 +68,20 @@ def normalize_content(content: Union[str, List[Any], None]) -> str:
 def chunk_content(content: str, chunk_size: int = 50) -> Generator[str, None, None]:
     """
     Split content into chunks for simulated streaming.
-
+    
     Used when we have a complete response but want to simulate
     token-by-token streaming for better UX.
-
+    
     Args:
         content: Complete content string to chunk
         chunk_size: Maximum characters per chunk (default: 50)
-
+    
     Yields:
         String chunks of at most chunk_size characters
-
+    
     Examples:
         >>> list(chunk_content("Hello World", chunk_size=5))
         ["Hello", " Worl", "d"]
     """
     for i in range(0, len(content), chunk_size):
-        yield content[i : i + chunk_size]
+        yield content[i:i + chunk_size]

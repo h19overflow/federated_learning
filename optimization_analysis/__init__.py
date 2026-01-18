@@ -13,7 +13,6 @@ from .benchmark.results_collector import ResultsCollector, BenchmarkResult
 from .benchmark.benchmark_suite import BenchmarkSuite
 from .inference_wrappers.base_inference import BaseInferenceWrapper
 from .inference_wrappers.pytorch_inference import PyTorchInferenceWrapper
-from .inference_wrappers.onnx_inference import ONNXInferenceWrapper, ONNXFP16InferenceWrapper
 from .utils.dataset_loader import DatasetLoader
 from .metrics.performance_metrics import calculate_classification_metrics, calculate_stage_statistics
 
@@ -24,8 +23,6 @@ __all__ = [
     "BenchmarkSuite",
     "BaseInferenceWrapper",
     "PyTorchInferenceWrapper",
-    "ONNXInferenceWrapper",
-    "ONNXFP16InferenceWrapper",
     "DatasetLoader",
     "calculate_classification_metrics",
     "calculate_stage_statistics",

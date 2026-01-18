@@ -45,29 +45,51 @@ def create_classifier_head(
     """
     Create the custom classification head.
 
-    Default architecture: 2048 -> 256 -> 64 -> num_classes
+    Args:
+        num_classes: Number of output classes
+        dropout_rate: Dropout rate
+        custom_head_sizes: Optional custom head architecture
+        logger: Logger instance
+
+    Returns:
+        Sequential classifier head
+
+    Raises:
+        ValueError: If custom_head_sizes is invalid
     """
-    if custom_head_sizes is not None and len(custom_head_sizes) < 2:
-        raise ValueError("custom_head_sizes must have at least 2 elements")
+    # Default head architecture: 2048 -> 256 -> 64 -> num_classes
+    if custom_head_sizes is None:
+        head_sizes = [2048, 256, 64, num_classes]
+    else:
+        if len(custom_head_sizes) < 2:
+            logger.error("custom_head_sizes must have at least 2 elements")
+            raise ValueError("custom_head_sizes must have at least 2 elements")
+        head_sizes = custom_head_sizes
 
-    head_sizes = custom_head_sizes or [2048, 256, 64, num_classes]
-
-    classifier = nn.Sequential(
-        nn.AdaptiveAvgPool2d((1, 1)),
+    # Build classifier layers
+    classifier_layers: list[nn.Module] = [
+        nn.AdaptiveAvgPool2d((1, 1)),  # Global average pooling
         nn.Flatten(),
-        # Layer 1: 2048 -> 256
-        nn.Linear(head_sizes[0], head_sizes[1]),
-        nn.ReLU(inplace=True),
-        nn.Dropout(dropout_rate),
-        # Layer 2: 256 -> 64
-        nn.Linear(head_sizes[1], head_sizes[2]),
-        nn.ReLU(inplace=True),
-        nn.Dropout(dropout_rate),
-        # Output: 64 -> num_classes
-        nn.Linear(head_sizes[2], head_sizes[3]),
-    )
+    ]
+
+    # Add fully connected layers with dropout
+    for i in range(len(head_sizes) - 1):
+        classifier_layers.extend(
+            [
+                nn.Linear(head_sizes[i], head_sizes[i + 1]),
+            ]
+        )
+
+        # Add activation and dropout except for the final layer
+        if i < len(head_sizes) - 2:
+            classifier_layers.extend(
+                [nn.ReLU(inplace=True), nn.Dropout(dropout_rate)]
+            )
+
+    classifier = nn.Sequential(*classifier_layers)
 
     logger.info(f"Classifier head created: {' -> '.join(map(str, head_sizes))}")
+
     return classifier
 
 
@@ -76,34 +98,58 @@ def configure_fine_tuning(features: nn.Sequential, fine_tune_layers_count: int, 
     Configure fine-tuning of backbone layers.
 
     Args:
-        fine_tune_layers_count: Negative value unfreezes last n layers (e.g., -3 unfreezes last 3)
+        features: Backbone features sequential
+        fine_tune_layers_count: Number of layers to fine-tune (negative unfreezes last n)
+        logger: Logger instance
     """
-    # Freeze all backbone parameters
+    # Freeze all backbone parameters by default
     for param in features.parameters():
         param.requires_grad = False
 
-    # Unfreeze last N layers if specified
+    total_frozen = sum(1 for param in features.parameters())
+
+    # Handle fine-tuning configuration
     if fine_tune_layers_count < 0:
+        # Unfreeze the last N layers
         unfreeze_last_n_layers(features, abs(fine_tune_layers_count), logger)
 
-    total_params = sum(1 for _ in features.parameters())
-    unfrozen = sum(1 for p in features.parameters() if p.requires_grad)
-    logger.info(f"Fine-tuning: {unfrozen}/{total_params} backbone parameters unfrozen")
+    # Count unfrozen parameters
+    total_unfrozen = sum(1 for param in features.parameters() if param.requires_grad)
+
+    logger.info(
+        f"Fine-tuning: {total_unfrozen}/{total_frozen + total_unfrozen} backbone parameters unfrozen"
+    )
 
 
 def unfreeze_last_n_layers(features: nn.Sequential, n_layers: int, logger: Any) -> None:
-    """Unfreeze the last n layers of the backbone for fine-tuning."""
-    # Collect layers that have trainable parameters (in reverse order = last first)
-    param_layers = [
-        module
-        for module in reversed(list(features.modules()))
-        if any(p.numel() > 0 for p in module.parameters(recurse=False))
-    ]
+    """
+    Unfreeze the last n layers of the backbone.
 
+    Args:
+        features: Backbone features sequential
+        n_layers: Number of layers to unfreeze
+        logger: Logger instance
+    """
+    # Get parameter-containing layers in reverse order
+    param_layers = []
+    for module in reversed(list(features.modules())):
+        if any(param.numel() > 0 for param in module.parameters(recurse=False)):
+            param_layers.append(module)
+
+    # Unfreeze the last n layers
     layers_to_unfreeze = min(n_layers, len(param_layers))
-
-    for layer in param_layers[:layers_to_unfreeze]:
-        for param in layer.parameters(recurse=False):
-            param.requires_grad = True
+    for i, layer in enumerate(param_layers):
+        if i < layers_to_unfreeze:
+            for param in layer.parameters(recurse=False):
+                param.requires_grad = True
 
     logger.info(f"Unfroze last {layers_to_unfreeze} parameter-containing layers")
+
+    # Unfreeze the first n layers
+    layers_to_unfreeze = min(n_layers, len(param_layers))
+    for i, layer in enumerate(param_layers):
+        if i < layers_to_unfreeze:
+            for param in layer.parameters(recurse=False):
+                param.requires_grad = True
+
+    logger.info(f"Unfroze first {layers_to_unfreeze} parameter-containing layers")

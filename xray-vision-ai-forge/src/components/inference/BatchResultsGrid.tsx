@@ -22,7 +22,6 @@ import ResultDetailModal from './ResultDetailModal';
 interface BatchResultsGridProps {
   results: SingleImageResult[];
   imageUrls: Map<string, string>; // filename -> blob URL
-  imageFiles?: Map<string, File>; // filename -> File (for on-demand heatmap)
 }
 
 type FilterType = 'all' | 'normal' | 'pneumonia' | 'failed';
@@ -31,7 +30,6 @@ type SortType = 'filename' | 'confidence' | 'time';
 export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
   results,
   imageUrls,
-  imageFiles,
 }) => {
   const [filter, setFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('filename');
@@ -102,7 +100,6 @@ export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
 
   const selectedResult = selectedIndex !== null ? sortedResults[selectedIndex] : null;
   const selectedImageUrl = selectedResult ? imageUrls.get(selectedResult.filename) ?? null : null;
-  const selectedImageFile = selectedResult ? imageFiles?.get(selectedResult.filename) ?? null : null;
 
   // Get border color based on result
   const getBorderColor = (result: SingleImageResult) => {
@@ -288,7 +285,6 @@ export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
         onClose={handleCloseModal}
         result={selectedResult}
         imageUrl={selectedImageUrl}
-        imageFile={selectedImageFile}
         onNext={handleNext}
         onPrevious={handlePrevious}
         canGoNext={selectedIndex !== null && selectedIndex < sortedResults.length - 1}

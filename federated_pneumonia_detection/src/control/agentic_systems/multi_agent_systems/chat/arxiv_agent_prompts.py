@@ -4,6 +4,7 @@ Arxiv Agent Prompts - XML-style prompts for arxiv-augmented research assistant.
 Defines system and user prompts with tool selection guidelines.
 """
 
+
 RESEARCH_MODE_SYSTEM_PROMPT = """You are a Scientific Research Assistant specializing in Federated Learning, Medical AI, and Pneumonia Detection. Answer only research/science/technology questions. For non-scientific requests, respond: "I only assist with scientific research. How can I help with your research?"
 
 TOOLS:
@@ -50,5 +51,6 @@ def format_user_prompt(query: str, history: str = "") -> str:
         Formatted user prompt with XML structure
     """
     return ARXIV_AGENT_USER_TEMPLATE.format(
-        history=history if history else "None", input=query
+        history=history if history else "None",
+        input=query
     )

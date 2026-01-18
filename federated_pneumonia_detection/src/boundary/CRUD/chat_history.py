@@ -1,9 +1,6 @@
 from typing import List, Optional
 from ..models.chat_session import ChatSession
 from ..engine import get_session
-import logging
-
-logger = logging.getLogger(__name__)
 
 def create_chat_session(title: Optional[str] = None, session_id: Optional[str] = None) -> ChatSession:
     """
@@ -15,12 +12,7 @@ def create_chat_session(title: Optional[str] = None, session_id: Optional[str] =
         db.add(new_session)
         db.commit()
         db.refresh(new_session)
-        db.expunge(new_session)
         return new_session
-    except Exception as e:
-        logger.error(f"Error creating chat session: {e}")
-        db.rollback()
-        raise
     finally:
         db.close()
 
@@ -30,10 +22,7 @@ def get_chat_session(session_id: str) -> Optional[ChatSession]:
     """
     db = get_session()
     try:
-        session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
-        if session:
-            db.expunge(session)
-        return session
+        return db.query(ChatSession).filter(ChatSession.id == session_id).first()
     finally:
         db.close()
 
@@ -43,10 +32,7 @@ def get_all_chat_sessions() -> List[ChatSession]:
     """
     db = get_session()
     try:
-        sessions = db.query(ChatSession).order_by(ChatSession.updated_at.desc()).all()
-        for session in sessions:
-            db.expunge(session)
-        return sessions
+        return db.query(ChatSession).order_by(ChatSession.updated_at.desc()).all()
     finally:
         db.close()
 
@@ -61,11 +47,7 @@ def update_chat_session_title(session_id: str, title: str) -> Optional[ChatSessi
             session.title = title
             db.commit()
             db.refresh(session)
-            db.expunge(session)
         return session
-    except Exception as e:
-        db.rollback()
-        raise
     finally:
         db.close()
 
@@ -81,8 +63,5 @@ def delete_chat_session(session_id: str) -> bool:
             db.commit()
             return True
         return False
-    except Exception as e:
-        db.rollback()
-        raise
     finally:
         db.close()

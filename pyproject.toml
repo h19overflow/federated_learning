@@ -41,10 +41,6 @@ dependencies = [
     "tomli>=2.3.0",
     "sentence-transformers>=5.1.2",
     "langchain-mcp-adapters>=0.2.1",
-    "onnxruntime>=1.23.2",
-    "reportlab>=4.4.7",
-    "google-genai>=1.56.0",
-    "playwright>=1.57.0",
 ]
 
 [tool.uv.sources]

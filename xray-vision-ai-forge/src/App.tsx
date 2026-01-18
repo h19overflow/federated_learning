@@ -10,7 +10,7 @@ import NotFound from "./pages/NotFound";
 import SavedExperiments from "./pages/SavedExperiments";
 import Inference from "./pages/Inference";
 import { ChatProvider } from "./context/ChatContext";
-import { ChatSidebar } from "./components/ChatSidebar";
+import { ChatSidebar } from "./components/chat";
 
 const queryClient = new QueryClient();
 

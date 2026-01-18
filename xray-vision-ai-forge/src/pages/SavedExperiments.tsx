@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import { Header, Footer } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ArrowLeft, BarChart, Loader2, AlertCircle, Users, Server, ChevronRight, Calendar, Activity, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/services/api';
-import AnalyticsTab from '@/components/AnalyticsTab';
+import { AnalyticsTab } from '@/components/analytics';
 
 interface FederatedInfo {
   num_rounds: number;

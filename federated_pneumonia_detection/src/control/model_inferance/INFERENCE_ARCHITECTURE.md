@@ -10,14 +10,18 @@ The inference system follows a **layered architecture** with clear separation of
 ┌─────────────────────────────────────────────────────────────────┐
 │                        API Layer                                 │
 │  inference_endpoints.py - HTTP request/response handling         │
-│  deps.py - Dependency injection, singleton management           │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      Boundary Layer                              │
+│  inference_service.py - Service abstraction, singleton mgmt     │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Control Layer                               │
 │  inference_engine.py - Core ML logic, preprocessing, inference  │
-│  clinical_agent.py - AI clinical interpretation                 │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -149,6 +153,7 @@ sequenceDiagram
     participant FW as FastAPI (Uvicorn)
     participant EP as inference_endpoints.py
     participant Deps as deps.py
+    participant SVC as InferenceService
     participant ENG as InferenceEngine
     participant Model as LitResNetEnhanced
     participant GPU as CUDA/GPU
@@ -162,14 +167,13 @@ sequenceDiagram
     EP->>EP: Validate file type (PNG/JPEG)
     EP->>EP: Read image bytes → PIL.Image
 
-    EP->>Deps: get_inference_engine()
-    Deps->>ENG: Return singleton InferenceEngine
-    EP->>Deps: get_clinical_agent()
-    Deps->>Agent: Return singleton ClinicalAgent
+    EP->>Deps: get_inference_service()
+    Deps->>SVC: Return singleton InferenceService
 
     Note over EP,GPU: Inference Phase
 
-    EP->>ENG: engine.predict(image)
+    EP->>SVC: service.predict(image)
+    SVC->>ENG: engine.predict(image)
 
     ENG->>ENG: preprocess(image)
     Note right of ENG: RGB convert<br/>Resize 224x224<br/>Normalize (ImageNet)
@@ -182,14 +186,17 @@ sequenceDiagram
 
     ENG->>ENG: sigmoid(logits)
     ENG->>ENG: Determine class + confidence
-    ENG-->>EP: (class, conf, p_pneumonia, p_normal)
+    ENG-->>SVC: (class, conf, p_pneumonia, p_normal)
+    SVC-->>EP: prediction tuple
 
     Note over EP,Agent: Clinical Interpretation (Optional)
 
     alt include_clinical_interpretation=True
-        EP->>Agent: interpret(prediction_data)
+        EP->>SVC: get_clinical_interpretation()
+        SVC->>Agent: interpret(prediction_data)
         Agent->>Agent: Call Gemini LLM
-        Agent-->>EP: ClinicalAnalysisResponse
+        Agent-->>SVC: ClinicalAnalysisResponse
+        SVC-->>EP: interpretation
     end
 
     Note over EP,WB: Logging Phase
@@ -222,7 +229,7 @@ sequenceDiagram
 The model is loaded **once** and reused for all requests:
 
 ```python
-# deps.py
+# inference_service.py
 _inference_engine: Optional[InferenceEngine] = None
 
 def get_inference_engine() -> Optional[InferenceEngine]:
@@ -240,24 +247,19 @@ def get_inference_engine() -> Optional[InferenceEngine]:
 # inference_endpoints.py
 @router.post("/predict")
 async def predict(
-    engine: Optional[InferenceEngine] = Depends(get_inference_engine),
-    clinical_agent: Optional[ClinicalInterpretationAgent] = Depends(get_clinical_agent),
+    service: InferenceService = Depends(get_inference_service),
 ):
     ...
 ```
 
-**Why?** Allows testing with mock services and centralizes dependency management. Each concern is injected separately.
+**Why?** Allows testing with mock services and centralizes dependency management.
 
 ### 3. Graceful Degradation
 
 ```python
-# inference_endpoints.py
-if engine is None:
-    raise HTTPException(status_code=503, detail="Model unavailable")
-
-if clinical_agent is None:
-    # Skip interpretation, don't crash
-    clinical_interpretation = fallback_interpretation(prediction)
+# inference_service.py
+if self.clinical_agent is None:
+    return None  # Skip interpretation, don't crash
 ```
 
 **Why?** Clinical agent (Gemini) may be unavailable. The core inference still works.
@@ -274,7 +276,7 @@ if clinical_agent is None:
 | `model.eval()` | `inference_engine.py:67` | Disables dropout/batchnorm updates |
 | `model.freeze()` | `inference_engine.py:68` | Prevents gradient computation |
 | `@torch.no_grad()` | `inference_engine.py:102` | Skips autograd tracking |
-| Singleton model | `deps.py:125` | Avoids repeated loading |
+| Singleton model | `inference_service.py:140` | Avoids repeated loading |
 
 ### Recommended Enhancements
 

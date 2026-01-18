@@ -74,7 +74,7 @@ class MCPManager:
                     "arxiv": {
                         "command": "arxiv-mcp-server",
                         "args": [],
-                        "transport": "stdio",
+                        "transport": "stdio"
                     }
                 }
 

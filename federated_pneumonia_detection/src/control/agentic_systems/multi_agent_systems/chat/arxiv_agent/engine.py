@@ -34,6 +34,9 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.tools.rag_tool import (
     create_rag_tool,
 )
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.tools.arxiv_embedding_tool import (
+    create_arxiv_embedding_tool,
+)
 
 from .content import normalize_content
 from .history import ChatHistoryManager
@@ -131,6 +134,11 @@ class ArxivAugmentedEngine:
                 arxiv_tools = mcp_manager.get_arxiv_tools()
                 tools.extend(arxiv_tools)
                 logger.info(f"Added {len(arxiv_tools)} arxiv tools")
+
+                # Add embedding tool for knowledge base expansion
+                embedding_tool = create_arxiv_embedding_tool()
+                tools.append(embedding_tool)
+                logger.info("Added arxiv embedding tool")
             else:
                 logger.warning("Arxiv requested but MCP manager not available")
 
@@ -185,6 +193,10 @@ class ArxivAugmentedEngine:
         messages.append(HumanMessage(content=query))
 
         return messages
+
+    # =========================================================================
+    # Streaming query
+    # =========================================================================
     async def query_stream(
         self,
         query: str,
@@ -196,7 +208,7 @@ class ArxivAugmentedEngine:
         Stream query response token by token.
 
         Args:
-            query: User's question (may include run context enhancement)
+            query: User's question
             session_id: Session identifier for conversation tracking
             arxiv_enabled: Whether to enable arxiv search tools
             original_query: Original query before context enhancement (for history)
@@ -209,15 +221,14 @@ class ArxivAugmentedEngine:
             f"query: '{query[:50]}...', arxiv={arxiv_enabled}"
         )
 
-
-        classification_query = original_query if original_query else query
-        query_mode = classify_query(classification_query)
-        logger.debug(f"[ArxivEngine] Query classified as: {query_mode} (using {'original' if original_query else 'full'} query)")
+        # Step 1: Classify query to determine if tools are needed
+        query_mode = classify_query(query)
+        logger.info(f"[ArxivEngine] Query classified as: {query_mode}")
 
         # Step 2: Conditionally load tools based on mode
         if query_mode == "research":
             tools = self._get_tools(arxiv_enabled)
-            logger.debug(f"[ArxivEngine] Retrieved {len(tools)} tools: {[t.name for t in tools]}")
+            logger.info(f"[ArxivEngine] Retrieved {len(tools)} tools: {[t.name for t in tools]}")
 
             if not tools:
                 logger.error("[ArxivEngine] No tools available")
@@ -227,7 +238,7 @@ class ArxivAugmentedEngine:
         try:
             # Build messages with appropriate prompt
             messages = self._build_messages(query, session_id, mode=query_mode)
-            logger.debug(f"[ArxivEngine] Built {len(messages)} messages including history")
+            logger.info(f"[ArxivEngine] Built {len(messages)} messages including history")
 
             full_response = ""
             tool_calls_made = []
@@ -235,7 +246,7 @@ class ArxivAugmentedEngine:
             # Step 3: Handle based on query mode
             if query_mode == "basic":
                 # Basic mode: Direct streaming without tools
-                logger.debug("[ArxivEngine] Basic mode - streaming direct response...")
+                logger.info("[ArxivEngine] Basic mode - streaming direct response...")
                 chunk_count = 0
                 try:
                     async for chunk in self.llm.astream(messages):
@@ -245,7 +256,7 @@ class ArxivAugmentedEngine:
                             if content:
                                 full_response += content
                                 yield create_sse_event(SSEEventType.TOKEN, content=content)
-                    logger.debug(f"[ArxivEngine] Basic mode complete. Chunks: {chunk_count}, Length: {len(full_response)}")
+                    logger.info(f"[ArxivEngine] Basic mode complete. Chunks: {chunk_count}, Length: {len(full_response)}")
 
                     if not full_response:
                         logger.error(f"[ArxivEngine] Basic mode produced no response. Chunks received: {chunk_count}")
@@ -284,6 +295,7 @@ class ArxivAugmentedEngine:
                                         tool_name = tool_call.get("name", "unknown")
                                         tool_args = tool_call.get("args", {})
                                         logger.info(f"[ArxivEngine] Agent using tool: {tool_name}")
+
                                         # Yield user-friendly status
                                         friendly_name = tool_name.replace("_", " ").title()
                                         yield create_sse_event(SSEEventType.STATUS, content=f"Using {friendly_name}...")
@@ -319,7 +331,7 @@ class ArxivAugmentedEngine:
             try:
                 history_query = original_query if original_query is not None else query
                 self.add_to_history(session_id, history_query, full_response)
-                logger.debug(f"[ArxivEngine] Saved to history. Session: {session_id}, Query length: {len(history_query)}, Response length: {len(full_response)}")
+                logger.info(f"[ArxivEngine] Saved to history. Session: {session_id}, Query length: {len(history_query)}, Response length: {len(full_response)}")
             except Exception as e:
                 logger.error(f"[ArxivEngine] Failed to save to history: {e}", exc_info=True)
                 # Non-fatal - we already have the response

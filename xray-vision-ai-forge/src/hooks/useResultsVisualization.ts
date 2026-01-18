@@ -158,20 +158,6 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
 
   // Transform confusion matrix data for pie chart
   const confusionMatrixData = useMemo((): ConfusionMatrixData[] => {
-    // For federated runs, use latest server evaluation confusion matrix
-    if (config.trainingMode === 'federated' && serverEvaluation?.evaluations?.length) {
-      const latestEval = serverEvaluation.evaluations[serverEvaluation.evaluations.length - 1];
-      if (latestEval.confusion_matrix) {
-        const cm = latestEval.confusion_matrix;
-        return [
-          { name: 'True Positives', value: cm.true_positives },
-          { name: 'True Negatives', value: cm.true_negatives },
-          { name: 'False Positives', value: cm.false_positives },
-          { name: 'False Negatives', value: cm.false_negatives },
-        ];
-      }
-    }
-
     if (!activeResults?.confusion_matrix) return [];
 
     const cm = activeResults.confusion_matrix;
@@ -181,22 +167,10 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
       { name: 'False Positives', value: cm.false_positives },
       { name: 'False Negatives', value: cm.false_negatives },
     ];
-  }, [activeResults, serverEvaluation, config.trainingMode]);
+  }, [activeResults]);
 
   // Transform confusion matrix data for grid display
   const confusionMatrix = useMemo((): ConfusionMatrix2D | null => {
-    // For federated runs, use latest server evaluation confusion matrix
-    if (config.trainingMode === 'federated' && serverEvaluation?.evaluations?.length) {
-      const latestEval = serverEvaluation.evaluations[serverEvaluation.evaluations.length - 1];
-      if (latestEval.confusion_matrix) {
-        const cm = latestEval.confusion_matrix;
-        return [
-          [cm.true_negatives, cm.false_positives],
-          [cm.false_negatives, cm.true_positives],
-        ] as ConfusionMatrix2D;
-      }
-    }
-
     if (!activeResults?.confusion_matrix) return null;
 
     const cm = activeResults.confusion_matrix;
@@ -204,27 +178,11 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
       [cm.true_negatives, cm.false_positives],
       [cm.false_negatives, cm.true_positives],
     ] as ConfusionMatrix2D;
-  }, [activeResults, serverEvaluation, config.trainingMode]);
+  }, [activeResults]);
 
   // Transform metrics for chart (used by primary metrics display)
-  // For federated: uses server evaluation best metrics when available
-  // For centralized: uses BEST validation metrics from metadata
+  // Uses BEST validation metrics from metadata for consistency with cards display
   const metricsChartData = useMemo((): MetricsChartData[] => {
-    // For federated runs with server evaluation, use that data (it has the real metrics)
-    if (config.trainingMode === 'federated' && serverEvaluation?.summary) {
-      const summary = serverEvaluation.summary;
-      console.log('[useResultsVisualization] Using serverEvaluation summary for metricsChartData:', summary);
-
-      return [
-        { name: 'Accuracy', value: summary.best_accuracy?.value || summary.latest_metrics?.accuracy || 0 },
-        { name: 'Precision', value: summary.best_precision?.value || summary.latest_metrics?.precision || 0 },
-        { name: 'Recall', value: summary.best_recall?.value || summary.latest_metrics?.recall || 0 },
-        { name: 'F1-Score', value: summary.best_f1_score?.value || summary.latest_metrics?.f1_score || 0 },
-        { name: 'AUC', value: summary.best_auroc?.value || summary.latest_metrics?.auroc || 0 },
-      ];
-    }
-
-    // Fallback to activeResults metadata (works for centralized)
     if (!activeResults?.metadata) {
       console.warn('[useResultsVisualization] No metadata in activeResults:', activeResults);
       return [];
@@ -246,22 +204,10 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
       { name: 'F1-Score', value: metadata.best_val_f1 || 0 },
       { name: 'AUC', value: metadata.best_val_auroc || 0 },
     ];
-  }, [activeResults, serverEvaluation, config.trainingMode]);
+  }, [activeResults]);
 
   // Transform metrics for bar chart
   const metricsBarData = useMemo((): MetricsBarData[] => {
-    // For federated runs with server evaluation, use latest metrics
-    if (config.trainingMode === 'federated' && serverEvaluation?.summary?.latest_metrics) {
-      const latest = serverEvaluation.summary.latest_metrics;
-      return [
-        { metric: 'Accuracy', value: latest.accuracy || 0 },
-        { metric: 'Precision', value: latest.precision || 0 },
-        { metric: 'Recall', value: latest.recall || 0 },
-        { metric: 'F1 Score', value: latest.f1_score || 0 },
-        { metric: 'AUC', value: latest.auroc || 0 },
-      ];
-    }
-
     if (!activeResults?.final_metrics) return [];
 
     const metrics = activeResults.final_metrics;
@@ -272,7 +218,7 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
       { metric: 'F1 Score', value: metrics.f1_score },
       { metric: 'AUC', value: metrics.auc },
     ];
-  }, [activeResults, serverEvaluation, config.trainingMode]);
+  }, [activeResults]);
 
   // Transform comparison data for bar chart
   const comparisonBarData = useMemo((): ComparisonBarData[] => {

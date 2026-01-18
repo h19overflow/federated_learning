@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime, timezone
+import datetime
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.models import Client
 # TODO : If clients are part of multiple rounds they are not being recordeed for the multiple rounds only the first round , in the db
@@ -12,16 +12,13 @@ class ClientCRUD:
             new_client = Client(
                 run_id=run_id,
                 client_identifier=client_identifier,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.datetime.utcnow(),
                 client_config=client_config,
             )
             session.add(new_client)
             session.commit()
             client_id = new_client.id
             return self.get_client_by_id(client_id)
-        except Exception as e:
-            session.rollback()
-            raise
         finally:
             session.close()
 
@@ -75,9 +72,6 @@ class ClientCRUD:
                 session.commit()
                 return True
             return False
-        except Exception as e:
-            session.rollback()
-            raise
         finally:
             session.close()
 
@@ -91,11 +85,5 @@ class ClientCRUD:
                 session.commit()
                 return True
             return False
-        except Exception as e:
-            session.rollback()
-            raise
         finally:
             session.close()
-
-
-client_crud = ClientCRUD()

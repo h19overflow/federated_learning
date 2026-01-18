@@ -70,17 +70,12 @@ class InferenceResponse(BaseModel):
         success: Whether the inference completed successfully.
         prediction: Core model prediction results.
         clinical_interpretation: Optional AI-generated clinical analysis.
-        heatmap_base64: Optional GradCAM heatmap overlay as base64 PNG.
         model_version: Version/checkpoint of the model used.
         processing_time_ms: Time taken for inference in milliseconds.
     """
     success: bool = True
     prediction: InferencePrediction
     clinical_interpretation: Optional[ClinicalInterpretation] = None
-    heatmap_base64: Optional[str] = Field(
-        default=None,
-        description="Base64-encoded PNG of GradCAM heatmap overlay"
-    )
     model_version: str = Field(default="pneumonia_model_01_0.988-v2")
     processing_time_ms: float = Field(ge=0.0)
 
