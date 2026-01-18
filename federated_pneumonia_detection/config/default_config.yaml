@@ -16,18 +16,19 @@ experiment:
   early_stopping_patience: 3
   edge_enhancement: false
   edge_strength: 1.0
-  epochs: 1
-  file-path: C:\Users\User\AppData\Local\Temp\experiment_data_7u7dh_j0\stage2_train_metadata.csv
+  epochs: 2
+  file-path: C:\Users\User\AppData\Local\Temp\tmpg28ropxu\extracted\Training_Sample_5pct\stage2_train_metadata.csv
   fine_tune_layers_count: 5
   freeze_backbone: true
   gradient_sample_interval: 20
-  image-dir: C:\Users\User\AppData\Local\Temp\experiment_data_7u7dh_j0\Training\Images
+  image-dir: C:\Users\User\AppData\Local\Temp\tmpg28ropxu\extracted\Training_Sample_5pct\Images
   learning_rate: 0.001
   local_epochs: 1
   lower_percentile: 5.0
   max-epochs: 2
   min_lr: 1.0e-07
   monitor_metric: val_loss
+  name: pneumonia_fed_2026-01-18T00-30-58
   num-server-rounds: 2
   num_classes: 1
   num_clients: 2

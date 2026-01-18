@@ -7,10 +7,6 @@ from pathlib import Path
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import (
     CentralizedTrainer,
 )
-from federated_pneumonia_detection.src.control.dl_model.centralized_trainer_utils import (
-    build_model_and_callbacks,
-    build_trainer,
-)
 from federated_pneumonia_detection.src.control.federated_new_version.partioner import (
     CustomPartitioner,
 )
@@ -94,18 +90,15 @@ def _build_model_components(
             f"[Utils] Building components for federated client_id={client_id}, round={round_number}, run_id={run_id}"
         )
 
-    # Call module-level function with required parameters from trainer instance
-    model, callbacks, metrics_collector = build_model_and_callbacks(
-        train_df=train_df,
-        config=centerlized_trainer.config,
-        checkpoint_dir=centerlized_trainer.checkpoint_dir,
-        logs_dir=centerlized_trainer.logs_dir,
-        logger=centerlized_trainer.logger,
-        experiment_name="federated_pneumonia_detection",
-        run_id=run_id,
-        is_federated=is_federated,
-        client_id=client_id,
-        round_number=round_number,
+    model, callbacks, metrics_collector = (
+        centerlized_trainer._build_model_and_callbacks(
+            train_df=train_df,
+            experiment_name="federated_pneumonia_detection",
+            run_id=run_id,  # Use passed run_id instead of context.run_id
+            is_federated=is_federated,
+            client_id=client_id,
+            round_number=round_number,
+        )
     )
     return model, callbacks, metrics_collector
 
@@ -116,13 +109,9 @@ def _build_trainer_component(
     is_federated: bool,
 ):
     """Build trainer with callbacks."""
-    # Call module-level function with required parameters from trainer instance
-    trainer = build_trainer(
-        config=centerlized_trainer.config,
+    trainer = centerlized_trainer._build_trainer(
         callbacks=callbacks,
-        logs_dir=centerlized_trainer.logs_dir,
         experiment_name="federated_pneumonia_detection",
-        logger=centerlized_trainer.logger,
         is_federated=is_federated,
     )
     return trainer
@@ -317,7 +306,7 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
     db = None
     try:
         db = get_session()
-        logger.info("[OK] Database session created successfully")
+        logger.info(f"[OK] Database session created successfully")
         logger.info(f"Processing {len(server_metrics)} server evaluation rounds...")
 
         for round_num_str, metric_record in server_metrics.items():
@@ -375,7 +364,7 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
         logger.info("=" * 80)
     except Exception as e:
         logger.error("=" * 80)
-        logger.error("[ERROR] CRITICAL ERROR: Failed to persist server evaluations")
+        logger.error(f"[ERROR] CRITICAL ERROR: Failed to persist server evaluations")
         logger.error(f"Error type: {type(e).__name__}")
         logger.error(f"Error message: {e}", exc_info=True)
         logger.error("=" * 80)
