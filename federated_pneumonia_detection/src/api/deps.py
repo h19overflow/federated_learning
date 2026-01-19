@@ -1,19 +1,29 @@
-from federated_pneumonia_detection.src.boundary.engine import get_session
+"""FastAPI dependency injection functions.
+
+Provides singleton instances and database sessions for endpoint use.
+"""
+
+from typing import Optional, TYPE_CHECKING
+import logging
+
 from sqlalchemy.orm import Session
+
+from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.config.config_manager import (
     get_config_manager,
     ConfigManager,
 )
 from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD
-from typing import Optional, TYPE_CHECKING
-import logging
 
 if TYPE_CHECKING:
     from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import QueryEngine
     from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import MCPManager
     from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent import ArxivAugmentedEngine
-    from federated_pneumonia_detection.src.boundary.inference_service import InferenceService, InferenceEngine, ClinicalInterpretationAgent
+    from federated_pneumonia_detection.src.control.model_inferance import (
+        InferenceService,
+        InferenceEngine,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -25,29 +35,8 @@ def get_db() -> Session:
     The session is automatically closed after the request completes via the try/finally
     block, ensuring proper connection pool management.
 
-    The session is created from the global pooled engine (see engine.py's get_session()),
-    which uses SQLAlchemy's QueuePool for efficient connection reuse across requests.
-
-    Usage Example:
-        ```python
-        from fastapi import Depends
-        from sqlalchemy.orm import Session
-
-        @router.get("/api/runs/{run_id}")
-        async def get_run(
-            run_id: int,
-            db: Session = Depends(get_db)  # Automatically closed after request
-        ):
-            return crud.get_run(db, run_id)
-        ```
-
     Yields:
         Session: SQLAlchemy database session from the connection pool
-
-    Note:
-        FastAPI calls this generator function as a dependency and will execute the
-        finally block after the route handler completes, ensuring session.close() is
-        always called even if an exception occurs during request processing.
     """
     session = get_session()
     try:
@@ -77,8 +66,7 @@ _arxiv_engine: Optional["ArxivAugmentedEngine"] = None
 
 
 def get_query_engine() -> Optional["QueryEngine"]:
-    """
-    Get or create QueryEngine singleton.
+    """Get or create QueryEngine singleton.
 
     Returns None if PostgreSQL database is unavailable (graceful degradation).
     """
@@ -119,12 +107,14 @@ def get_arxiv_engine() -> "ArxivAugmentedEngine":
         logger.info("ArxivAugmentedEngine initialized successfully")
     return _arxiv_engine
 
+
+
 def get_inference_service() -> "InferenceService":
-    """Get an InferenceService instance for X-ray inference.
+    """Get InferenceService singleton for X-ray inference.
 
     The service handles lazy loading of the model and clinical agent.
     """
-    from federated_pneumonia_detection.src.boundary.inference_service import (
+    from federated_pneumonia_detection.src.control.model_inferance import (
         get_inference_service as _get_service,
     )
     return _get_service()
@@ -135,20 +125,18 @@ def get_inference_engine() -> Optional["InferenceEngine"]:
 
     Returns None if the model cannot be loaded.
     """
-    from federated_pneumonia_detection.src.boundary.inference_service import (
+    from federated_pneumonia_detection.src.control.model_inferance import (
         get_inference_engine as _get_engine,
     )
     return _get_engine()
 
 
-def get_clinical_agent() -> Optional["ClinicalInterpretationAgent"]:
+def get_clinical_agent():
     """Get the ClinicalInterpretationAgent singleton.
 
     Returns None if the agent cannot be initialized.
     """
-    from federated_pneumonia_detection.src.boundary.inference_service import (
+    from federated_pneumonia_detection.src.control.model_inferance import (
         get_clinical_agent as _get_agent,
     )
     return _get_agent()
-
-

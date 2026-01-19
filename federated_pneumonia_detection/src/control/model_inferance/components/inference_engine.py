@@ -1,7 +1,6 @@
 """Core inference engine for pneumonia detection.
 
 Contains the core logic for loading and running the model.
-This belongs in the control layer as it's business logic.
 """
 
 import logging
@@ -15,9 +14,8 @@ from torchvision import transforms
 
 logger = logging.getLogger(__name__)
 
-# Default checkpoint path (relative to this module)
-# Using the balanced model (0.928 recall) instead of the biased model (0.988) which over-predicts pneumonia
-DEFAULT_CHECKPOINT_PATH = Path(__file__).parent / "pneumonia_model_07_0.928.ckpt"
+# Default checkpoint path (relative to model_inferance module)
+DEFAULT_CHECKPOINT_PATH = Path(__file__).parent.parent / "pneumonia_model_07_0.928.ckpt"
 
 
 class InferenceEngine:
@@ -72,10 +70,7 @@ class InferenceEngine:
         logger.info(f"Model loaded in {load_time:.2f}s on {self.device}")
 
     def _setup_transforms(self) -> None:
-        """Setup image preprocessing transforms.
-
-        Matches validation transforms from image_transforms.py:246-277.
-        """
+        """Setup image preprocessing transforms."""
         self._transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.CenterCrop((224, 224)),
@@ -87,14 +82,7 @@ class InferenceEngine:
         ])
 
     def preprocess(self, image: Image.Image) -> torch.Tensor:
-        """Preprocess a PIL image for inference.
-
-        Args:
-            image: PIL Image in any mode.
-
-        Returns:
-            Preprocessed tensor ready for model input.
-        """
+        """Preprocess a PIL image for inference."""
         if image.mode != "RGB":
             image = image.convert("RGB")
         tensor = self._transform(image)
@@ -103,9 +91,6 @@ class InferenceEngine:
     @torch.no_grad()
     def predict(self, image: Image.Image) -> Tuple[str, float, float, float]:
         """Run inference on a single image.
-
-        Args:
-            image: PIL Image to classify.
 
         Returns:
             Tuple of (predicted_class, confidence, pneumonia_prob, normal_prob).

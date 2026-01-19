@@ -11,9 +11,7 @@ from federated_pneumonia_detection.src.api.deps import get_inference_service
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
     HealthCheckResponse,
 )
-from federated_pneumonia_detection.src.boundary.inference_service import (
-    InferenceService,
-)
+from federated_pneumonia_detection.src.control.model_inferance import InferenceService
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,7 @@ async def health_check(
 
     Returns model loading status and GPU availability.
     """
-    info = service.get_health_info()
+    info = service.get_info()
     return HealthCheckResponse(
         status=info["status"],
         model_loaded=info["model_loaded"],

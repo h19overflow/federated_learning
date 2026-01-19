@@ -165,3 +165,54 @@ class HealthCheckResponse(BaseModel):
     model_loaded: bool
     gpu_available: bool
     model_version: Optional[str] = None
+
+
+# GradCAM Visualization Schemas
+
+class HeatmapResponse(BaseModel):
+    """Response containing GradCAM heatmap visualization.
+
+    Attributes:
+        success: Whether heatmap generation succeeded.
+        filename: Original filename of the image.
+        heatmap_base64: Base64-encoded PNG of heatmap overlay.
+        original_image_base64: Base64-encoded original image.
+        processing_time_ms: Time taken to generate heatmap.
+    """
+    success: bool = True
+    filename: str
+    heatmap_base64: str = Field(description="Base64-encoded PNG of heatmap overlay")
+    original_image_base64: str = Field(description="Base64-encoded original image")
+    processing_time_ms: float = Field(ge=0.0)
+
+
+class BatchHeatmapItem(BaseModel):
+    """Single heatmap result in batch response.
+
+    Attributes:
+        filename: Original filename of the image.
+        success: Whether heatmap generation succeeded for this image.
+        heatmap_base64: Base64-encoded heatmap if successful.
+        original_image_base64: Base64-encoded original image if successful.
+        error: Error message if generation failed.
+        processing_time_ms: Time taken for this image.
+    """
+    filename: str
+    success: bool = True
+    heatmap_base64: Optional[str] = None
+    original_image_base64: Optional[str] = None
+    error: Optional[str] = None
+    processing_time_ms: float = Field(ge=0.0, default=0.0)
+
+
+class BatchHeatmapResponse(BaseModel):
+    """Response containing multiple GradCAM heatmap visualizations.
+
+    Attributes:
+        success: Whether batch processing completed.
+        results: List of individual heatmap results.
+        total_processing_time_ms: Total time for entire batch.
+    """
+    success: bool = True
+    results: List[BatchHeatmapItem]
+    total_processing_time_ms: float = Field(ge=0.0)

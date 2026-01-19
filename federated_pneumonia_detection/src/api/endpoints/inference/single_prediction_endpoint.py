@@ -6,28 +6,14 @@ with optional AI-generated clinical interpretation.
 
 import logging
 import time
-from io import BytesIO
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from PIL import Image
 
 from federated_pneumonia_detection.src.api.deps import get_inference_service
-from federated_pneumonia_detection.src.api.endpoints.inference.inference_utils import (
-    _generate_fallback_interpretation,
-)
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
-    ClinicalInterpretation,
-    InferencePrediction,
     InferenceResponse,
-    PredictionClass,
-    RiskAssessment,
 )
-from federated_pneumonia_detection.src.boundary.inference_service import (
-    InferenceService,
-)
-from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
-    get_wandb_tracker,
-)
+from federated_pneumonia_detection.src.control.model_inferance import InferenceService
 
 logger = logging.getLogger(__name__)
 
@@ -47,107 +33,53 @@ async def predict(
 
     Accepts PNG or JPEG images. Returns prediction with confidence scores
     and optional clinical interpretation from the AI agent.
-
-    Args:
-        file: Uploaded image file.
-        include_clinical_interpretation: Whether to generate clinical analysis.
-        service: Injected inference service.
-
-    Returns:
-        InferenceResponse with prediction and optional interpretation.
-
-    Raises:
-        HTTPException: If model is unavailable or image processing fails.
     """
     start_time = time.time()
 
-    # Validate file type
-    if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file type: {file.content_type}. Must be PNG or JPEG.",
-        )
+    # Validate file type and service availability
+    service.validator.validate_or_raise(file)
+    service.check_ready_or_raise()
 
-    # Check service availability
-    if not service.is_ready():
-        raise HTTPException(
-            status_code=503,
-            detail="Inference model is not available. Please try again later.",
-        )
+    # Read and validate image
+    image = await service.processor.read_from_upload(file)
+    logger.info(
+        f"Processing image: {file.filename}, size: {image.size}, mode: {image.mode}"
+    )
 
     try:
-        # Read and validate image
-        contents = await file.read()
-        image = Image.open(BytesIO(contents))
-        logger.info(
-            f"Processing image: {file.filename}, size: {image.size}, mode: {image.mode}"
-        )
-
-    except Exception as e:
-        logger.error(f"Failed to read image: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Failed to process image: {str(e)}",
-        )
-
-    try:
-        # Run inference via service
+        # Run inference
         predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(
             image
         )
-
-        prediction = InferencePrediction(
-            predicted_class=PredictionClass(predicted_class),
-            confidence=confidence,
-            pneumonia_probability=pneumonia_prob,
-            normal_probability=normal_prob,
+        prediction = service.create_prediction(
+            predicted_class, confidence, pneumonia_prob, normal_prob
         )
 
         # Generate clinical interpretation if requested
         clinical_interpretation = None
         if include_clinical_interpretation:
-            agent_response = await service.get_clinical_interpretation(
+            clinical_interpretation = await service.interpreter.generate(
                 predicted_class=predicted_class,
                 confidence=confidence,
-                pneumonia_probability=pneumonia_prob,
-                normal_probability=normal_prob,
-                image_info={
-                    "filename": file.filename,
-                    "size": image.size,
-                },
+                pneumonia_prob=pneumonia_prob,
+                normal_prob=normal_prob,
+                prediction=prediction,
+                image_info={"filename": file.filename, "size": image.size},
             )
-
-            if agent_response:
-                # Convert agent response to schema
-                clinical_interpretation = ClinicalInterpretation(
-                    summary=agent_response.summary,
-                    confidence_explanation=agent_response.confidence_explanation,
-                    risk_assessment=RiskAssessment(
-                        risk_level=agent_response.risk_level,
-                        false_negative_risk=agent_response.false_negative_risk,
-                        factors=agent_response.risk_factors,
-                    ),
-                    recommendations=agent_response.recommendations,
-                )
-            else:
-                # Fallback to rule-based interpretation
-                clinical_interpretation = _generate_fallback_interpretation(prediction)
 
         processing_time_ms = (time.time() - start_time) * 1000
         model_version = service.engine.model_version if service.engine else "unknown"
 
         # Log to W&B
-        tracker = get_wandb_tracker()
-        if tracker.is_active:
-            tracker.log_single_prediction(
-                predicted_class=predicted_class,
-                confidence=confidence,
-                pneumonia_probability=pneumonia_prob,
-                normal_probability=normal_prob,
-                processing_time_ms=processing_time_ms,
-                clinical_interpretation_used=clinical_interpretation is not None,
-                model_version=model_version,
-            )
+        service.logger.log_single(
+            predicted_class=predicted_class,
+            confidence=confidence,
+            pneumonia_prob=pneumonia_prob,
+            normal_prob=normal_prob,
+            processing_time_ms=processing_time_ms,
+            clinical_used=clinical_interpretation is not None,
+            model_version=model_version,
+        )
 
         return InferenceResponse(
             success=True,
@@ -159,10 +91,7 @@ async def predict(
 
     except Exception as e:
         logger.error(f"Inference failed: {e}", exc_info=True)
-        # Log error to W&B
-        tracker = get_wandb_tracker()
-        if tracker.is_active:
-            tracker.log_error("inference", str(e))
+        service.logger.log_error("inference", str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Inference failed: {str(e)}",

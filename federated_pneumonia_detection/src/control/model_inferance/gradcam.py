@@ -7,7 +7,7 @@ chest X-ray contributed most to the model's prediction.
 import base64
 import logging
 from io import BytesIO
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import torch
