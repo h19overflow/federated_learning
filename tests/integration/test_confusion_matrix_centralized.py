@@ -277,7 +277,7 @@ class TestConfusionMatrixCentralizedFlow:
 
     def test_metrics_collector_captures_confusion_matrix_values(self):
         """Test that MetricsCollector properly captures confusion matrix metrics."""
-        from federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector import (
+        from federated_pneumonia_detection.src.control.dl_model.internals.model.metrics_collector import (
             MetricsCollectorCallback,
         )
 

@@ -12,7 +12,7 @@ from federated_pneumonia_detection.src.control.federated_new_version.partioner i
 )
 from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.utils.loggers.logger import setup_logger
+from federated_pneumonia_detection.src.internals.loggers.logger import setup_logger
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,

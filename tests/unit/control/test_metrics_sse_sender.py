@@ -6,10 +6,10 @@ Uses synchronous API - no asyncio needed, compatible with Ray actors.
 """
 import pytest
 from unittest.mock import MagicMock, patch
-from federated_pneumonia_detection.src.control.dl_model.utils.data.metrics_sse_sender import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.metrics_sse_sender import (
     MetricsSSESender
 )
-from federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_manager import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.sse_event_manager import (
     SSEEventManager
 )
 
@@ -18,7 +18,7 @@ from federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_man
 def reset_singleton():
     """Reset singleton instance before each test."""
     SSEEventManager._instance = None
-    import federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_manager as mod
+    import federated_pneumonia_detection.src.control.dl_model.internals.data.sse_event_manager as mod
     mod._manager_instance = None
     yield
 

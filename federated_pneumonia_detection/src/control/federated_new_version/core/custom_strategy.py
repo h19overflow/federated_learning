@@ -12,7 +12,7 @@ from collections.abc import Iterable
 from flwr.app import ArrayRecord, ConfigRecord, Message
 from flwr.serverapp import Grid
 from flwr.serverapp.strategy import FedAvg
-from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (
     MetricsWebSocketSender,
 )
 

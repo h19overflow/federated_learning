@@ -5,7 +5,7 @@ Handles image file loading, transformations, and label management with comprehen
 
 from typing import Tuple, Optional, Union, Callable, TYPE_CHECKING
 from pathlib import Path
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 import torch
 from torch.utils.data import Dataset
 import pandas as pd

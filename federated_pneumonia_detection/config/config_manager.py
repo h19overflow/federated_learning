@@ -15,8 +15,8 @@ Example usage:
 from typing import Any, Dict, List
 from pathlib import Path
 import copy
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
-from federated_pneumonia_detection.config.utils import (
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+from federated_pneumonia_detection.config.internals import (
     YamlConfigLoader,
     NestedAccessor,
     ConfigFlattener,

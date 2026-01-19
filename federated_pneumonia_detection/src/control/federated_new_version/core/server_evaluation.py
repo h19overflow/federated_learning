@@ -7,11 +7,11 @@ aggregated global model on a server-side test dataset after each round.
 
 import torch
 from flwr.app import ArrayRecord, MetricRecord
-from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet import (
     LitResNet,
 )
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.control.dl_model.utils.model.xray_data_module import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.xray_data_module import (
     XRayDataModule,
 )
 import pandas as pd

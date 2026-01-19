@@ -17,7 +17,7 @@ from federated_pneumonia_detection.src.boundary.engine import create_tables
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
     MCPManager,
 )
-from federated_pneumonia_detection.src.control.dl_model.utils.data.wandb_inference_tracker import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (
     get_wandb_tracker,
 )
 

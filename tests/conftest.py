@@ -11,7 +11,7 @@ import logging
 from typing import Dict, Generator
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
+from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
 
 from tests.fixtures.sample_data import (
     SampleDataFactory,

@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 from .shared.utils import _transform_run_to_results
 from ..schema.runs_schemas import MetricsResponse
 

@@ -7,14 +7,14 @@ import torch
 from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
     ConfigurableFedAvg,
 )
-from federated_pneumonia_detection.src.control.dl_model.utils.model.lit_resnet_enhanced import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
     LitResNetEnhanced,
 )
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
     read_configs_to_toml,
 )
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.control.dl_model.utils.data.websocket_metrics_sender import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (
     MetricsWebSocketSender,
 )
 from federated_pneumonia_detection.src.boundary.engine import get_session
@@ -23,7 +23,7 @@ from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation import (
     create_central_evaluate_fn,
 )
-from federated_pneumonia_detection.src.utils.loggers.logger import setup_logger
+from federated_pneumonia_detection.src.internals.loggers.logger import setup_logger
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
     _convert_metric_record_to_dict,
     _persist_server_evaluations,

@@ -14,7 +14,7 @@ import torchvision.transforms as transforms
 from unittest.mock import patch
 from tests.fixtures.sample_data import SampleDataFactory, TempDataStructure
 
-from federated_pneumonia_detection.src.utils.data_processing_functions import (
+from federated_pneumonia_detection.src.internals.data_processing_functions import (
     load_metadata,
     sample_dataframe,
     create_train_val_split,
@@ -23,7 +23,7 @@ from federated_pneumonia_detection.src.utils.data_processing_functions import (
     get_image_directory_path,
     get_data_statistics
 )
-from federated_pneumonia_detection.src.utils.image_transforms import (
+from federated_pneumonia_detection.src.internals.image_transforms import (
     XRayPreprocessor,
     TransformBuilder,
     get_transforms,
@@ -508,13 +508,13 @@ class TestDataProcessor:
 
     def test_init(self, sample_config):
         """Test DataProcessor initialization."""
-        from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
+        from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
         dp = DataProcessor(sample_config)
         assert dp.config == sample_config
 
     def test_load_and_process_data(self, temp_data_structure, sample_config):
         """Test end-to-end data processing via orchestrator."""
-        from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
+        from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
         # Use a larger dataset to avoid stratification issues
         df_large = SampleDataFactory.create_sample_metadata(num_samples=100)
         with TempDataStructure(metadata_df=df_large) as paths:
@@ -526,14 +526,14 @@ class TestDataProcessor:
 
     def test_validate_image_paths(self, temp_data_structure, sample_config):
         """Test path validation via DataProcessor."""
-        from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
+        from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
         sample_config.set('paths.base_path', temp_data_structure['base_path'])
         dp = DataProcessor(sample_config)
         assert dp.validate_image_paths() is True
 
     def test_get_image_paths(self, temp_data_structure, sample_config):
         """Test image paths retrieval."""
-        from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
+        from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
         sample_config.set('paths.base_path', temp_data_structure['base_path'])
         dp = DataProcessor(sample_config)
         main, sub = dp.get_image_paths()
@@ -541,7 +541,7 @@ class TestDataProcessor:
 
     def test_private_wrappers(self, temp_data_structure, sample_config):
         """Test private compatibility wrappers."""
-        from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
+        from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
         sample_config.set('paths.base_path', temp_data_structure['base_path'])
         sample_config.set('paths.metadata_filename', 'Train_metadata.csv')
         dp = DataProcessor(sample_config)
@@ -577,7 +577,7 @@ class TestDataProcessor:
 
     def test_prepare_filenames_failure(self, sample_config):
         """Test filename preparation failure."""
-        from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
+        from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
         dp = DataProcessor(sample_config)
         with pytest.raises(ValueError, match="Missing column"):
             dp._prepare_filenames(pd.DataFrame({'wrong': [1]}))
@@ -585,7 +585,7 @@ class TestDataProcessor:
 
 def test_logger_setup():
     """Test custom logger initialization."""
-    from federated_pneumonia_detection.src.utils.loggers.logger import get_logger, setup_logger
+    from federated_pneumonia_detection.src.internals.loggers.logger import get_logger, setup_logger
     logger = get_logger("test_logger")
     assert logger.name == "test_logger"
     assert logger.getEffectiveLevel() == logging.INFO

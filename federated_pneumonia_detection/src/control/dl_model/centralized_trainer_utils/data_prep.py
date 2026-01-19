@@ -6,10 +6,10 @@ from typing import Tuple
 import pandas as pd
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.control.dl_model.utils.model.xray_data_module import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.xray_data_module import (
     XRayDataModule,
 )
-from federated_pneumonia_detection.src.utils.data_processing import (
+from federated_pneumonia_detection.src.internals.data_processing import (
     load_metadata,
     create_train_val_split,
 )

@@ -5,7 +5,7 @@ import random
 import numpy as np
 import torch
 
-from federated_pneumonia_detection.src.control.dl_model.utils.model.xray_data_module import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.xray_data_module import (
     XRayDataModule,
 )
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (

@@ -13,7 +13,7 @@ import time
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_manager import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.sse_event_manager import (
     get_sse_event_manager,
 )
 

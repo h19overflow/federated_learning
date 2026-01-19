@@ -8,7 +8,7 @@ import logging
 from typing import Optional, Dict, Any
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from .utils import DataSourceExtractor
+from .internals import DataSourceExtractor
 from .centralized_trainer_utils import (
     create_training_run,
     complete_training_run,

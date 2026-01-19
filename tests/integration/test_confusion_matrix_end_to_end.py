@@ -99,7 +99,7 @@ class TestEndToEndCentralizedPipeline:
     def test_centralized_pipeline_metrics_collection(self, mock_db):
         """Test metrics collection throughout centralized pipeline."""
         # Simulate LitResNet validation callback
-        from federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector import (
+        from federated_pneumonia_detection.src.control.dl_model.internals.model.metrics_collector import (
             MetricsCollectorCallback,
         )
 

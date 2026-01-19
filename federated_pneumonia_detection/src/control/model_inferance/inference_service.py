@@ -16,7 +16,7 @@ from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas im
     InferencePrediction,
     SingleImageResult,
 )
-from federated_pneumonia_detection.src.control.model_inferance.components import (
+from federated_pneumonia_detection.src.control.model_inferance.internals import (
     InferenceEngine,
     ImageValidator,
     ImageProcessor,

@@ -22,7 +22,7 @@ async def get_current_settings(
     Returns:
         Dict with current configuration
     """
-    from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+    from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
     logger = get_logger(__name__)
 
     current_config = config.to_dict()
@@ -54,7 +54,7 @@ async def update_settings(
     Returns:
         Dict with success message and updated settings count
     """
-    from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+    from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
     logger = get_logger(__name__)
 
     config_data = configuration.model_dump(exclude_none=True)

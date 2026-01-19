@@ -10,7 +10,7 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 from federated_pneumonia_detection.src.api.endpoints.schema.runs_schemas import (
     AnalyticsSummaryResponse,
     ModeMetrics

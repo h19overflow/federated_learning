@@ -7,7 +7,7 @@ import os
 import pytest
 import pandas as pd
 from unittest.mock import patch
-from federated_pneumonia_detection.src.utils.data_processing import DataProcessor
+from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 

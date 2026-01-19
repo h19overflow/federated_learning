@@ -20,7 +20,7 @@ from typing import Dict, Any
 import os
 import shutil
 
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 from .utils import run_centralized_training_task, prepare_zip
 
 router = APIRouter(

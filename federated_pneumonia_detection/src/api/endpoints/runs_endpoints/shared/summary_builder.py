@@ -7,7 +7,7 @@ from federated_pneumonia_detection.src.boundary.models import Run
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 logger = get_logger(__name__)
 

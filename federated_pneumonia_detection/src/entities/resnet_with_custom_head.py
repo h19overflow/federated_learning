@@ -11,7 +11,7 @@ from torchvision.models import ResNet50_Weights
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 from .resnet_with_custom_head_utils.validation import validate_parameters
 from .resnet_with_custom_head_utils.model_builder import (
     create_backbone,

@@ -19,7 +19,7 @@ Configuration should be set prior to invoking training via the configuration end
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form
 from typing import Dict, Any
 
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 from .utils import run_federated_training_task, prepare_zip
 
 router = APIRouter(

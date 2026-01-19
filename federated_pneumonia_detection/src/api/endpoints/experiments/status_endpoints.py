@@ -16,7 +16,7 @@ from typing import Dict, Any
 from pathlib import Path
 import json
 
-from federated_pneumonia_detection.src.utils.loggers.logger import get_logger
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 from federated_pneumonia_detection.src.api.endpoints.experiments.utils import (
     find_experiment_log_file,
     calculate_progress,

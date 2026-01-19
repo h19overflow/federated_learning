@@ -8,7 +8,7 @@ import pytest
 import queue
 import time
 import threading
-from federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_manager import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.sse_event_manager import (
     get_sse_event_manager,
     SSEEventManager
 )
@@ -18,7 +18,7 @@ from federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_man
 def reset_singleton():
     """Reset singleton instance before each test."""
     SSEEventManager._instance = None
-    import federated_pneumonia_detection.src.control.dl_model.utils.data.sse_event_manager as mod
+    import federated_pneumonia_detection.src.control.dl_model.internals.data.sse_event_manager as mod
     mod._manager_instance = None
     yield
 
