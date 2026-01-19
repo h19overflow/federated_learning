@@ -22,14 +22,14 @@ from federated_pneumonia_detection.src.api.endpoints.experiments import (
 from federated_pneumonia_detection.src.api.endpoints.inference.batch_prediction_endpoints import (
     router as inference_batch_router,
 )
+from federated_pneumonia_detection.src.api.endpoints.inference.gradcam_endpoints import (
+    router as inference_gradcam_router,
+)
 from federated_pneumonia_detection.src.api.endpoints.inference.health_endpoints import (
     router as inference_health_router,
 )
 from federated_pneumonia_detection.src.api.endpoints.inference.single_prediction_endpoint import (
     router as inference_prediction_router,
-)
-from federated_pneumonia_detection.src.api.endpoints.inference.gradcam_endpoints import (
-    router as inference_gradcam_router,
 )
 from federated_pneumonia_detection.src.api.endpoints.reports import (
     report_router,
@@ -80,6 +80,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8080",
         "http://127.0.0.1:8080",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
         "http://localhost:5173",  # Vite default dev port
         "http://127.0.0.1:5173",
     ],
