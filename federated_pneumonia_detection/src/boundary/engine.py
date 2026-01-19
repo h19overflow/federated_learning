@@ -11,10 +11,17 @@ Key Features:
     - Pre-ping to detect and recover from stale connections
     - Automatic connection recycling to prevent connection exhaustion
     - Context manager support for session lifecycle management
+    - Migration-aware schema creation (uses Alembic for production)
 
 Models are defined in the models/ subdirectory.
+
+Migration Strategy:
+    - Development: Use create_tables() for quick iteration
+    - Production: Use Alembic migrations (alembic upgrade head)
+    - The USE_ALEMBIC environment variable controls behavior
 """
 import logging
+import os
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -92,27 +99,85 @@ def _get_engine():
         raise
 
 
-def create_tables():
+def create_tables(force: bool = False):
     """
     Create all database tables defined by SQLAlchemy models and verify their existence.
+
+    MIGRATION-AWARE BEHAVIOR:
+    - If USE_ALEMBIC=true (production): Warns to use 'alembic upgrade head' instead
+    - If USE_ALEMBIC=false or unset (development): Creates tables directly
+    - If force=True: Always creates tables regardless of USE_ALEMBIC setting
 
     This function uses the global engine to create tables if they don't exist.
     It performs verification checks to ensure all expected tables were created
     successfully and logs the results.
 
+    Args:
+        force: If True, always create tables even if USE_ALEMBIC=true
+
     Returns:
         sqlalchemy.engine.Engine: The global SQLAlchemy engine instance
 
     Example:
+        >>> # Development (quick iteration)
         >>> from federated_pneumonia_detection.src.boundary.engine import create_tables
         >>> engine = create_tables()
         >>> # Output: Creating database tables...
         >>> #         Table verified: runs
-        >>> #         Table verified: clients
         >>> #         [OK] All expected tables are present in the database.
+
+        >>> # Production (with migrations)
+        >>> # Set USE_ALEMBIC=true in .env
+        >>> engine = create_tables()
+        >>> # Output: [WARNING] USE_ALEMBIC=true: Use 'alembic upgrade head' instead
+        >>> #         Skipping Base.metadata.create_all()
+
+    Raises:
+        ValueError: If force=False and USE_ALEMBIC=true
     """
     engine = get_engine()
-    logger.info("Creating database tables...")
+    use_alembic = os.getenv("USE_ALEMBIC", "false").lower() == "true"
+
+    # Check if Alembic should be used instead
+    if use_alembic and not force:
+        logger.warning(
+            "[MIGRATION-AWARE] USE_ALEMBIC=true detected. "
+            "Schema changes should be managed via Alembic migrations."
+        )
+        logger.warning(
+            "To apply migrations, run: alembic upgrade head"
+        )
+        logger.warning(
+            "To force table creation anyway, call create_tables(force=True)"
+        )
+        logger.info("Skipping Base.metadata.create_all() - using Alembic for schema management")
+
+        # Verify tables exist (but don't create them)
+        inspector = inspect(engine)
+        existing_tables = inspector.get_table_names()
+        expected_tables = Base.metadata.tables.keys()
+
+        all_exist = True
+        for table in expected_tables:
+            if table in existing_tables:
+                logger.info(f"Table verified: {table}")
+            else:
+                logger.error(f"Table MISSING: {table} - run 'alembic upgrade head'")
+                all_exist = False
+
+        if not all_exist:
+            raise ValueError(
+                "Database schema is incomplete. Run 'alembic upgrade head' to apply migrations."
+            )
+
+        return engine
+
+    # Development mode or force=True: Create tables directly
+    if force:
+        logger.info("[FORCE MODE] Creating database tables via Base.metadata.create_all()...")
+    else:
+        logger.info("Creating database tables via Base.metadata.create_all()...")
+
     Base.metadata.create_all(engine)
 
     # Verification check
