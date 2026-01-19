@@ -10,7 +10,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
-from federated_pneumonia_detection.src.api.endpoints.reports.schemas import (
+from federated_pneumonia_detection.src.api.endpoints.schema.report_schemas import (
     BatchReportRequest,
     SingleReportRequest,
 )

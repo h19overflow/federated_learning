@@ -32,6 +32,14 @@ from .inference_schemas import (
     BatchInferenceResponse,
     HealthCheckResponse,
 )
+from .report_schemas import (
+    PredictionData,
+    ClinicalInterpretationData,
+    SingleReportRequest,
+    BatchResultItem,
+    BatchSummaryStats as ReportBatchSummaryStats,
+    BatchReportRequest,
+)
 
 __all__ = [
     "ChatMessage",
@@ -56,4 +64,10 @@ __all__ = [
     "BatchSummaryStats",
     "BatchInferenceResponse",
     "HealthCheckResponse",
+    "PredictionData",
+    "ClinicalInterpretationData",
+    "SingleReportRequest",
+    "BatchResultItem",
+    "ReportBatchSummaryStats",
+    "BatchReportRequest",
 ]
