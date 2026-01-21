@@ -2,7 +2,7 @@
  * Inference Page
  *
  * AI-powered chest X-ray analysis page with drag-and-drop upload,
- * real-time prediction, and clinical interpretation.
+ * real-time prediction, and GradCAM visualization.
  * Supports both single image and batch analysis modes.
  */
 
@@ -12,7 +12,6 @@ import { Activity, RefreshCw, Sparkles, Layers, Image as ImageIcon, Flame } from
 import { Header, Footer, WelcomeGuide } from '@/components/layout';
 import ImageDropzone from '@/components/inference/ImageDropzone';
 import PredictionResult from '@/components/inference/PredictionResult';
-import ClinicalInterpretation from '@/components/inference/ClinicalInterpretation';
 import InferenceStatusBadge from '@/components/inference/InferenceStatusBadge';
 import BatchUploadZone from '@/components/inference/BatchUploadZone';
 import BatchSummaryStats from '@/components/inference/BatchSummaryStats';
@@ -44,7 +43,6 @@ const Inference = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [result, setResult] = useState<InferenceResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [includeClinical, setIncludeClinical] = useState(true);
   const [singleHeatmap, setSingleHeatmap] = useState<HeatmapResponse | null>(null);
   const [singleHeatmapLoading, setSingleHeatmapLoading] = useState(false);
   const [showSingleHeatmap, setShowSingleHeatmap] = useState(false);
@@ -53,7 +51,6 @@ const Inference = () => {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [batchResult, setBatchResult] = useState<BatchInferenceResponse | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
-  const [batchIncludeClinical, setBatchIncludeClinical] = useState(false);
   const [imageUrls, setImageUrls] = useState<Map<string, string>>(new Map());
   const [imageFiles, setImageFiles] = useState<Map<string, File>>(new Map());
 
@@ -78,7 +75,7 @@ const Inference = () => {
 
     setLoading(true);
     try {
-      const response = await predictImage(selectedImage, includeClinical);
+      const response = await predictImage(selectedImage);
       setResult(response);
 
       gsap.from('.result-card', {
@@ -164,7 +161,7 @@ const Inference = () => {
 
     setBatchLoading(true);
     try {
-      const response = await batchPredictImages(selectedImages, batchIncludeClinical);
+      const response = await batchPredictImages(selectedImages);
       setBatchResult(response);
 
       gsap.from('.batch-results', {
@@ -347,23 +344,6 @@ const Inference = () => {
 
                   {selectedImage && !result && (
                     <div className="mt-6 space-y-4">
-                      <label className="flex items-center gap-3 p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] cursor-pointer hover:bg-white transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={includeClinical}
-                          onChange={(e) => setIncludeClinical(e.target.checked)}
-                          className="w-5 h-5 rounded border-[hsl(172_40%_75%)] text-[hsl(172_63%_28%)] focus:ring-[hsl(172_63%_28%)]"
-                        />
-                        <div className="flex-1">
-                          <span className="text-sm font-medium text-[hsl(172_43%_15%)]">
-                            Include Clinical Interpretation
-                          </span>
-                          <p className="text-xs text-[hsl(215_15%_50%)]">
-                            Get AI-generated clinical analysis with recommendations
-                          </p>
-                        </div>
-                      </label>
-
                       <Button
                         onClick={handlePredict}
                         disabled={loading}
@@ -439,7 +419,7 @@ const Inference = () => {
                           Upload an X-Ray to Begin
                         </h3>
                         <p className="text-[hsl(215_15%_45%)] max-w-xs">
-                          Prediction results and clinical interpretation will appear here
+                          Prediction results and visualizations will appear here
                         </p>
                       </div>
                     </div>
@@ -464,14 +444,6 @@ const Inference = () => {
                             processingTimeMs={result.processing_time_ms}
                           />
                         </div>
-
-                        {result.clinical_interpretation && (
-                          <div className="result-card">
-                            <ClinicalInterpretation
-                              interpretation={result.clinical_interpretation}
-                            />
-                          </div>
-                        )}
 
                         {/* GradCAM Heatmap Section */}
                         <div className="result-card">
@@ -557,23 +529,6 @@ const Inference = () => {
 
                   {selectedImages.length > 0 && !batchResult && (
                     <div className="mt-6 space-y-4">
-                      <label className="flex items-center gap-3 p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] cursor-pointer hover:bg-white transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={batchIncludeClinical}
-                          onChange={(e) => setBatchIncludeClinical(e.target.checked)}
-                          className="w-5 h-5 rounded border-[hsl(172_40%_75%)] text-[hsl(172_63%_28%)] focus:ring-[hsl(172_63%_28%)]"
-                        />
-                        <div className="flex-1">
-                          <span className="text-sm font-medium text-[hsl(172_43%_15%)]">
-                            Include Clinical Interpretation
-                          </span>
-                          <p className="text-xs text-[hsl(215_15%_50%)]">
-                            Get AI-generated clinical analysis (increases processing time significantly)
-                          </p>
-                        </div>
-                      </label>
-
                       <Button
                         onClick={handleBatchPredict}
                         disabled={batchLoading}

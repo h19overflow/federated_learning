@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Markdown } from "@/components/ui/markdown";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
+import { CitationRenderer, parseCitations } from "./CitationRenderer";
 import {
   MessageSquare,
   Send,
@@ -196,22 +197,44 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     }
   };
 
-  // Check arxiv availability on mount
+  // Check arxiv availability on mount and periodically retry if unavailable
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 5;
+    const retryDelay = 2000; // 2 seconds
+
     const checkArxivStatus = async () => {
       try {
         const res = await fetch(`${apiUrl}/chat/arxiv/status`);
         if (res.ok) {
           const data = await res.json();
+          console.log("[ChatSidebar] Arxiv status:", data);
           setArxivAvailable(data.available);
+          return data.available; // Return status for retry logic
         } else {
+          console.warn("[ChatSidebar] Arxiv status check failed:", res.status);
           setArxivAvailable(false);
+          return false;
         }
-      } catch {
+      } catch (error) {
+        console.warn("[ChatSidebar] Arxiv status check error:", error);
         setArxivAvailable(false);
+        return false;
       }
     };
-    checkArxivStatus();
+
+    const checkWithRetry = async () => {
+      const available = await checkArxivStatus();
+      // Retry if not available and we haven't exceeded max retries
+      // This handles the case where frontend loads before backend MCP is ready
+      if (!available && retryCount < maxRetries) {
+        retryCount++;
+        console.log(`[ChatSidebar] Arxiv not available, retry ${retryCount}/${maxRetries} in ${retryDelay}ms`);
+        setTimeout(checkWithRetry, retryDelay);
+      }
+    };
+
+    checkWithRetry();
   }, [apiUrl]);
 
   // Scroll to bottom when new messages arrive
@@ -862,10 +885,18 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                           )}
                         >
                           {message.role === "assistant" ? (
-                            <Markdown
-                              content={message.content}
-                              className="text-[hsl(172_43%_15%)]"
-                            />
+                            (() => {
+                              const { cleanedContent, citations } = parseCitations(message.content);
+                              return (
+                                <>
+                                  <Markdown
+                                    content={cleanedContent}
+                                    className="text-[hsl(172_43%_15%)]"
+                                  />
+                                  <CitationRenderer citations={citations} />
+                                </>
+                              );
+                            })()
                           ) : (
                             <p className="text-sm shadow-none">
                               {message.content}

@@ -10,10 +10,11 @@ Usage:
 """
 
 import logging
-from pydantic import BaseModel, Field, field_validator
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import create_agent
+
 from dotenv import load_dotenv
+from langchain.agents import create_agent
+from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import BaseModel, Field, field_validator
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -33,13 +34,13 @@ class ChatTitle(BaseModel):
     def validate_title(cls, v: str) -> str:
         """Validate and normalize title format."""
         # Remove quotes and extra punctuation
-        v = v.replace('"', '').replace("'", '').strip()
-        v = ''.join(char for char in v if char.isalnum() or char.isspace())
+        v = v.replace('"', "").replace("'", "").strip()
+        v = "".join(char for char in v if char.isalnum() or char.isspace())
 
         # Enforce max 4 words
         words = v.split()
         if len(words) > 4:
-            v = ' '.join(words[:4])
+            v = " ".join(words[:4])
 
         # Apply title case
         v = v.title()
@@ -56,9 +57,9 @@ def _get_title_agent():
     global _title_agent
     if _title_agent is None:
         base_model = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp",
+            model="gemini-3-flash-preview",
             temperature=0.3,  # Low temp for consistent titles
-            max_tokens=20,    # Titles are short
+            max_tokens=20,  # Titles are short
         )
         _title_agent = create_agent(
             model=base_model,
@@ -114,6 +115,6 @@ Title:"""
         logger.warning(f"[TitleGen] Failed to generate title: {e}")
         # Fallback: first 3 words of query, capitalized
         words = query.split()[:3]
-        fallback = ' '.join(word.capitalize() for word in words)
+        fallback = " ".join(word.capitalize() for word in words)
         logger.info(f"[TitleGen] Using fallback title: '{fallback}'")
         return fallback

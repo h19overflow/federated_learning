@@ -1,8 +1,8 @@
 """
 Query Router - Classifies queries as basic conversation or tool-augmented research.
 
-Lightweight classification agent using Gemini 2.0 Flash to determine whether
-a query requires tools (RAG, arxiv, MCP) or can be answered conversationally.
+Lightweight classification using Gemini 2.0 Flash with structured output to determine
+whether a query requires tools (RAG, arxiv, MCP) or can be answered conversationally.
 
 Usage:
     mode = classify_query("What papers discuss federated learning?")
@@ -16,7 +16,6 @@ import logging
 from typing import Literal
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import create_agent
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -32,25 +31,22 @@ class QueryClassification(BaseModel):
     )
 
 
-# Singleton agent instance for performance
-_router_agent = None
+# Singleton LLM instance for performance
+_router_llm = None
 
 
-def _get_router_agent():
-    """Get or create the router classification agent with structured output."""
-    global _router_agent
-    if _router_agent is None:
+def _get_router_llm():
+    """Get or create the router classification LLM with structured output."""
+    global _router_llm
+    if _router_llm is None:
         base_model = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash-exp",
             temperature=0.0,  # Deterministic classification
-            max_tokens=10,    # Single word response
+            max_tokens=50,    # Small response
         )
-        _router_agent = create_agent(
-            model=base_model,
-            tools=[],  # No tools needed for classification
-            response_format=QueryClassification,
-        )
-    return _router_agent
+        # Use with_structured_output for simple classification (no agent needed)
+        _router_llm = base_model.with_structured_output(QueryClassification)
+    return _router_llm
 
 
 ROUTER_CLASSIFICATION_PROMPT = """Classify this query as either "research" or "basic".
@@ -70,7 +66,7 @@ BASIC queries can be answered conversationally:
 
 Query: {query}
 
-Classification (respond with only "research" or "basic"):"""
+Classification:"""
 
 
 def classify_query(query: str) -> str:
@@ -87,15 +83,11 @@ def classify_query(query: str) -> str:
     try:
         logger.info(f"[QueryRouter] Classifying query: '{query[:50]}...'")
 
-        agent = _get_router_agent()
+        llm = _get_router_llm()
         prompt = ROUTER_CLASSIFICATION_PROMPT.format(query=query)
 
-        logger.debug("[QueryRouter] Invoking classification agent with structured output...")
-        result = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
-
-        # Extract structured response from agent result
-        response: QueryClassification = result.get("structured_response")
-        logger.debug(f"[QueryRouter] Structured response: mode={response.mode}")
+        logger.debug("[QueryRouter] Invoking LLM with structured output...")
+        response: QueryClassification = llm.invoke(prompt)
 
         logger.info(f"[QueryRouter] Classification: {response.mode}")
         return response.mode

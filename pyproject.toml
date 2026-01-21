@@ -42,6 +42,7 @@ dependencies = [
     "tomli>=2.3.0",
     "sentence-transformers>=5.1.2",
     "langchain-mcp-adapters>=0.2.1",
+    "reportlab>=4.4.9",
 ]
 
 [build-system]

@@ -12,13 +12,13 @@ if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
-from .resnet_with_custom_head_utils.validation import validate_parameters
-from .resnet_with_custom_head_utils.model_builder import (
+from .res_internals.validation import validate_parameters
+from .res_internals.model_builder import (
     create_backbone,
     create_classifier_head,
     configure_fine_tuning,
 )
-from .resnet_with_custom_head_utils.model_ops import (
+from .res_internals.model_ops import (
     get_model_info as get_info,
     freeze_backbone as freeze_bb,
     unfreeze_backbone as unfreeze_bb,
@@ -194,5 +194,5 @@ class ResNetWithCustomHead(nn.Module):
         Note:
             This is a progressive unfreezing method used by callbacks.
         """
-        from .resnet_with_custom_head_utils.model_builder import unfreeze_last_n_layers
+        from .res_internals.model_builder import unfreeze_last_n_layers
         unfreeze_last_n_layers(self.features, n_layers, self.logger)

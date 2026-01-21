@@ -159,9 +159,6 @@ async def query_chat_stream(message: ChatMessage):
         session_id = message.session_id or str(uuid.uuid4())
         logger.info(f"[STREAM] Session ID: {session_id}")
         
-        # Helper handles the try/except internally - non-fatal if it fails
-        ensure_db_session(session_id, message.query)
-        
         # Tell the frontend what session we're using
         yield sse_pack({'type': 'session', 'session_id': session_id})
 

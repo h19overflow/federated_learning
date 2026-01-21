@@ -162,12 +162,8 @@ class ArxivAugmentedEngine:
         )
         return agent
 
-    # =========================================================================
-    # Message building
-    # =========================================================================
-    
     def _build_messages(
-        self, query: str, session_id: str, mode: str = "research"
+        self, query: str, session_id: str, include_system: bool = True, mode: str = "research"
     ) -> List[SystemMessage | HumanMessage | AIMessage]:
         """
         Build message list for the agent.
@@ -175,16 +171,20 @@ class ArxivAugmentedEngine:
         Args:
             query: Current user query
             session_id: Session identifier for history
+            include_system: Whether to include system prompt (False when using create_agent)
             mode: Query mode - "research" for tool-augmented, "basic" for conversational
 
         Returns:
             List of messages for the agent
         """
-        # Select system prompt based on mode
-        system_prompt = (
-            RESEARCH_MODE_SYSTEM_PROMPT if mode == "research" else BASIC_MODE_SYSTEM_PROMPT
-        )
-        messages = [SystemMessage(content=system_prompt)]
+        messages = []
+        
+        # Only add system message if requested (for direct LLM calls, not create_agent)
+        if include_system:
+            system_prompt = (
+                RESEARCH_MODE_SYSTEM_PROMPT if mode == "research" else BASIC_MODE_SYSTEM_PROMPT
+            )
+            messages.append(SystemMessage(content=system_prompt))
 
         # Add history from persistent store
         messages.extend(self._history_manager.get_messages(session_id))
@@ -194,9 +194,6 @@ class ArxivAugmentedEngine:
 
         return messages
 
-    # =========================================================================
-    # Streaming query
-    # =========================================================================
     async def query_stream(
         self,
         query: str,
@@ -236,17 +233,15 @@ class ArxivAugmentedEngine:
                 return
 
         try:
-            # Build messages with appropriate prompt
-            messages = self._build_messages(query, session_id, mode=query_mode)
-            logger.info(f"[ArxivEngine] Built {len(messages)} messages including history")
-
             full_response = ""
             tool_calls_made = []
 
             # Step 3: Handle based on query mode
             if query_mode == "basic":
-                # Basic mode: Direct streaming without tools
-                logger.info("[ArxivEngine] Basic mode - streaming direct response...")
+                # Basic mode: Direct streaming without tools - include system message
+                messages = self._build_messages(query, session_id, include_system=True, mode=query_mode)
+                logger.info(f"[ArxivEngine] Basic mode - built {len(messages)} messages")
+                
                 chunk_count = 0
                 try:
                     async for chunk in self.llm.astream(messages):
@@ -271,52 +266,68 @@ class ArxivAugmentedEngine:
                 # Research mode: Tool-augmented generation with agent
                 yield create_sse_event(SSEEventType.STATUS, content="Analyzing your query...")
 
-                # Create agent with tools
+                # Create agent with tools - system_prompt is passed to create_agent
                 logger.info("[ArxivEngine] Creating agent with tools for research mode...")
                 agent = self._create_agent(tools, RESEARCH_MODE_SYSTEM_PROMPT)
 
-                # Build input dict for agent
+                # Build messages WITHOUT system prompt (it's in create_agent)
+                messages = self._build_messages(query, session_id, include_system=False, mode=query_mode)
                 agent_input = {"messages": messages}
                 logger.info(f"[ArxivEngine] Invoking agent with {len(messages)} messages...")
 
-                # Stream agent response
+                # Stream agent response using messages mode for token streaming
+                # Based on LangChain docs: https://docs.langchain.com/oss/python/langchain/streaming/overview
                 try:
                     chunk_count = 0
-                    async for event in agent.astream(agent_input):
+                    tools_reported = set()  # Track which tools we've already reported
+                    
+                    async for token, metadata in agent.astream(
+                        agent_input,
+                        stream_mode="messages",
+                    ):
                         chunk_count += 1
+                        node_name = metadata.get("langgraph_node", "")
+                        token_type = type(token).__name__
+                        
+                        # Debug: Log token details
+                        has_text = hasattr(token, "text") and token.text
+                        has_content = hasattr(token, "content") and token.content
+                        has_tool_chunks = hasattr(token, "tool_call_chunks") and token.tool_call_chunks
+                        logger.debug(f"[ArxivEngine] Chunk #{chunk_count}: node={node_name}, type={token_type}, has_text={has_text}, has_content={has_content}, has_tool_chunks={has_tool_chunks}")
+                        
+                        # Handle tool call chunks (report tool usage)
+                        if has_tool_chunks:
+                            for tool_chunk in token.tool_call_chunks:
+                                tool_name = tool_chunk.get("name")
+                                if tool_name and tool_name not in tools_reported:
+                                    tools_reported.add(tool_name)
+                                    logger.info(f"[ArxivEngine] Agent using tool: {tool_name}")
+                                    
+                                    friendly_name = tool_name.replace("_", " ").title()
+                                    yield create_sse_event(SSEEventType.STATUS, content=f"Using {friendly_name}...")
+                                    yield create_sse_event(SSEEventType.TOOL_CALL, tool=tool_name, args={})
+                                    
+                                    tool_calls_made.append({
+                                        "name": tool_name,
+                                        "args": tool_chunk.get("args", {}),
+                                    })
+                        
+                        # Handle text content - skip tool node outputs
+                        if node_name != "tools":
+                            # Try .text first (newer API), then .content
+                            text_content = None
+                            if has_text:
+                                text_content = token.text
+                            elif has_content:
+                                text_content = normalize_content(token.content)
+                            
+                            if text_content:
+                                logger.debug(f"[ArxivEngine] Yielding text: {text_content[:50]}...")
+                                full_response += text_content
+                                yield create_sse_event(SSEEventType.TOKEN, content=text_content)
 
-                        # Handle agent event types
-                        if "messages" in event:
-                            # Final or intermediate messages from agent
-                            for msg in event["messages"]:
-                                # Tool call events
-                                if hasattr(msg, "tool_calls") and msg.tool_calls:
-                                    for tool_call in msg.tool_calls:
-                                        tool_name = tool_call.get("name", "unknown")
-                                        tool_args = tool_call.get("args", {})
-                                        logger.info(f"[ArxivEngine] Agent using tool: {tool_name}")
+                    logger.info(f"[ArxivEngine] Agent stream complete. Chunks: {chunk_count}, Response length: {len(full_response)}")
 
-                                        # Yield user-friendly status
-                                        friendly_name = tool_name.replace("_", " ").title()
-                                        yield create_sse_event(SSEEventType.STATUS, content=f"Using {friendly_name}...")
-                                        yield create_sse_event(SSEEventType.TOOL_CALL, tool=tool_name, args=tool_args)
-
-                                        tool_calls_made.append({
-                                            "name": tool_name,
-                                            "args": tool_args,
-                                        })
-
-                                # Content streaming from agent
-                                if hasattr(msg, "content") and msg.content:
-                                    if isinstance(msg, AIMessage):
-                                        content = normalize_content(msg.content)
-                                        if content:
-                                            full_response += content
-                                            yield create_sse_event(SSEEventType.TOKEN, content=content)
-
-                    logger.info(f"[ArxivEngine] Agent stream complete. Events: {chunk_count}, Response length: {len(full_response)}")
-
-                    # If no response collected from events, try extracting from final state
                     if not full_response:
                         logger.warning("[ArxivEngine] No response in agent stream. This may indicate agent didn't generate text.")
                         yield create_sse_event(SSEEventType.ERROR, message="Agent completed but produced no response. Please try rephrasing.")

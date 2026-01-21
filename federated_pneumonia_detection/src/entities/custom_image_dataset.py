@@ -11,13 +11,13 @@ from torch.utils.data import Dataset
 import pandas as pd
 import numpy as np
 
-from .custom_image_dataset_utils.validation import (
+from .cust_image_internals.validation import (
     validate_inputs,
     validate_image_files,
     validate_all_images,
 )
-from .custom_image_dataset_utils.image_ops import load_image
-from .custom_image_dataset_utils.stats import (
+from .cust_image_internals.image_ops import load_image
+from .cust_image_internals.stats import (
     get_class_distribution,
     get_sample_info,
     get_memory_usage_estimate,

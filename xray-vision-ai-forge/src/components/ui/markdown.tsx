@@ -106,16 +106,26 @@ const components: Components = {
     </td>
   ),
   // Links
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-[hsl(172_63%_30%)] hover:text-[hsl(172_63%_22%)] underline underline-offset-2"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) => {
+    if (href?.startsWith('citation:')) {
+      const id = href.split(':')[1];
+      return (
+        <sup className="text-[10px] font-bold text-[hsl(172_63%_30%)] ml-0.5 px-0.5 cursor-help select-none">
+          [{id}]
+        </sup>
+      );
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[hsl(172_63%_30%)] hover:text-[hsl(172_63%_22%)] underline underline-offset-2"
+      >
+        {children}
+      </a>
+    );
+  },
   // Horizontal rule
   hr: () => <hr className="border-t border-[hsl(210_15%_90%)] my-3" />,
 };
