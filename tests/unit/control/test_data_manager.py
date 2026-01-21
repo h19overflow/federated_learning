@@ -3,18 +3,19 @@ Unit tests for federated learning data manager.
 Tests data loading, splitting, and DataLoader creation.
 """
 
-import pytest
-import pandas as pd
-import torch
 from pathlib import Path
+
+import pandas as pd
+import pytest
+import torch
 from torch.utils.data import DataLoader
 
-from federated_pneumonia_detection.src.control.federated_learning.data_manager import (
-    split_partition,
-    load_data,
-)
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.models.system_constants import SystemConstants
+from federated_pneumonia_detection.src.control.federated_learning.data_manager import (
+    load_data,
+    split_partition,
+)
 
 
 class TestSplitPartition:
@@ -192,12 +193,15 @@ class TestLoadData:
         # Create sample images
         import numpy as np
         from PIL import Image
+
         for i in range(20):
-            img = Image.fromarray(np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8))
+            img = Image.fromarray(
+                np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8),
+            )
             img.save(image_dir / f"image_{i}.jpg")
 
         constants = SystemConstants()
-        
+
         # Create sample DataFrame with correct column names
         data = {
             constants.FILENAME_COLUMN: [f"image_{i}.jpg" for i in range(20)],
@@ -268,9 +272,7 @@ class TestLoadData:
             config=mock_setup["config"],
         )
 
-        total_samples = (
-            len(train_loader.dataset) + len(val_loader.dataset)
-        )
+        total_samples = len(train_loader.dataset) + len(val_loader.dataset)
         assert total_samples == len(mock_setup["df"])
 
     def test_load_data_train_shuffle_true(self, mock_setup):
@@ -301,8 +303,10 @@ class TestLoadData:
     def test_load_data_empty_partition_raises_error(self, mock_setup):
         """Test that empty partition raises ValueError."""
         empty_df = pd.DataFrame(
-            {mock_setup["constants"].FILENAME_COLUMN: [],
-             mock_setup["constants"].TARGET_COLUMN: []}
+            {
+                mock_setup["constants"].FILENAME_COLUMN: [],
+                mock_setup["constants"].TARGET_COLUMN: [],
+            },
         )
 
         with pytest.raises(ValueError, match="partition_df cannot be empty"):
@@ -329,7 +333,7 @@ class TestLoadData:
         """Test that missing filename column raises ValueError."""
         constants = SystemConstants()
         bad_df = mock_setup["df"].rename(
-            columns={constants.FILENAME_COLUMN: "bad_name"}
+            columns={constants.FILENAME_COLUMN: "bad_name"},
         )
 
         with pytest.raises(ValueError, match="Missing required columns"):
@@ -343,9 +347,7 @@ class TestLoadData:
     def test_load_data_missing_target_column_raises_error(self, mock_setup):
         """Test that missing target column raises ValueError."""
         constants = SystemConstants()
-        bad_df = mock_setup["df"].rename(
-            columns={constants.TARGET_COLUMN: "bad_name"}
-        )
+        bad_df = mock_setup["df"].rename(columns={constants.TARGET_COLUMN: "bad_name"})
 
         with pytest.raises(ValueError, match="Missing required columns"):
             load_data(

@@ -5,6 +5,7 @@ Samples and sends batch metrics at configurable intervals.
 
 import logging
 from typing import Optional
+
 import pytorch_lightning as pl
 
 
@@ -117,5 +118,5 @@ class BatchMetricsCallback(pl.Callback):
 
             self.logger.debug(
                 f"[BatchMetrics] Sent batch {batch_idx} metrics: "
-                f"loss={loss_value:.4f}, step={trainer.global_step}"
+                f"loss={loss_value:.4f}, step={trainer.global_step}",
             )

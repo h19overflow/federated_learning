@@ -65,11 +65,13 @@ async def get_federated_rounds(run_id: int) -> FederatedRoundsResponse:
 
         # Fetch server evaluations from the dedicated server_evaluation table
         server_evaluations = server_evaluation_crud.get_by_run(
-            db, run_id, order_by_round=True
+            db,
+            run_id,
+            order_by_round=True,
         )
 
         logger.info(
-            f"[FederatedRounds] Run {run_id} - Found {len(server_evaluations)} server evaluations"
+            f"[FederatedRounds] Run {run_id} - Found {len(server_evaluations)} server evaluations",
         )
 
         # Get number of clients (count unique client IDs)
@@ -97,11 +99,11 @@ async def get_federated_rounds(run_id: int) -> FederatedRoundsResponse:
                 metrics_dict["auroc"] = eval_record.auroc
 
             rounds_list.append(
-                {"round": eval_record.round_number, "metrics": metrics_dict}
+                {"round": eval_record.round_number, "metrics": metrics_dict},
             )
 
         logger.info(
-            f"[FederatedRounds] Run {run_id} - Returning {len(rounds_list)} rounds with server evaluation metrics"
+            f"[FederatedRounds] Run {run_id} - Returning {len(rounds_list)} rounds with server evaluation metrics",
         )
 
         return {
@@ -115,10 +117,12 @@ async def get_federated_rounds(run_id: int) -> FederatedRoundsResponse:
         raise
     except Exception as e:
         logger.error(
-            f"Error fetching federated rounds for run {run_id}: {e}", exc_info=True
+            f"Error fetching federated rounds for run {run_id}: {e}",
+            exc_info=True,
         )
         raise HTTPException(
-            status_code=500, detail=f"Failed to fetch federated rounds: {str(e)}"
+            status_code=500,
+            detail=f"Failed to fetch federated rounds: {str(e)}",
         )
     finally:
         db.close()

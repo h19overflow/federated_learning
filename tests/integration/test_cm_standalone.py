@@ -3,9 +3,11 @@ Standalone test file for confusion matrix functions.
 Can run without conftest.py dependencies.
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import Mock
+
+import pytest
+
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import (
     _calculate_summary_statistics,
     _transform_run_to_results,
@@ -128,14 +130,34 @@ def test_multiple_epochs():
     for epoch in range(3):
         metrics_data.extend(
             [
-                Mock(step=epoch, metric_name="train_loss", metric_value=0.5 - epoch * 0.1),
-                Mock(step=epoch, metric_name="val_loss", metric_value=0.4 - epoch * 0.05),
-                Mock(step=epoch, metric_name="val_accuracy", metric_value=0.80 + epoch * 0.03),
-                Mock(step=epoch, metric_name="val_cm_tp", metric_value=450 + epoch * 10),
-                Mock(step=epoch, metric_name="val_cm_tn", metric_value=430 + epoch * 10),
+                Mock(
+                    step=epoch,
+                    metric_name="train_loss",
+                    metric_value=0.5 - epoch * 0.1,
+                ),
+                Mock(
+                    step=epoch,
+                    metric_name="val_loss",
+                    metric_value=0.4 - epoch * 0.05,
+                ),
+                Mock(
+                    step=epoch,
+                    metric_name="val_accuracy",
+                    metric_value=0.80 + epoch * 0.03,
+                ),
+                Mock(
+                    step=epoch,
+                    metric_name="val_cm_tp",
+                    metric_value=450 + epoch * 10,
+                ),
+                Mock(
+                    step=epoch,
+                    metric_name="val_cm_tn",
+                    metric_value=430 + epoch * 10,
+                ),
                 Mock(step=epoch, metric_name="val_cm_fp", metric_value=40 - epoch * 5),
                 Mock(step=epoch, metric_name="val_cm_fn", metric_value=30 - epoch * 3),
-            ]
+            ],
         )
     mock_run.metrics = metrics_data
 

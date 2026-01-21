@@ -3,9 +3,9 @@
 import logging
 
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
-    PredictionClass,
-    InferencePrediction,
     ClinicalInterpretation,
+    InferencePrediction,
+    PredictionClass,
     RiskAssessment,
 )
 
@@ -59,7 +59,8 @@ class ClinicalInterpreter:
         return self._generate_fallback(prediction)
 
     def _generate_fallback(
-        self, prediction: InferencePrediction
+        self,
+        prediction: InferencePrediction,
     ) -> ClinicalInterpretation:
         """Generate rule-based clinical interpretation."""
         # Determine risk level
@@ -97,7 +98,7 @@ class ClinicalInterpreter:
                 [
                     "Immediate radiologist review recommended",
                     "Consider clinical correlation with symptoms",
-                ]
+                ],
             )
         elif risk_level == "MODERATE":
             recommendations.append("Radiologist review within 24 hours recommended")
@@ -106,7 +107,7 @@ class ClinicalInterpreter:
 
         if fn_risk in ["MODERATE", "HIGH"]:
             recommendations.append(
-                "Consider repeat imaging if clinical suspicion persists"
+                "Consider repeat imaging if clinical suspicion persists",
             )
 
         # Build summary

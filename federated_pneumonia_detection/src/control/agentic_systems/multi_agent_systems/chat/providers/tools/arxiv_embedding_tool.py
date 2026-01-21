@@ -15,11 +15,11 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-from langchain_core.tools import tool
 from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.tools import tool
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_postgres import PGVector
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import BaseModel, Field
 
 from federated_pneumonia_detection.src.boundary.engine import settings
@@ -31,7 +31,7 @@ class EmbedArxivPaperInput(BaseModel):
     """Input schema for arxiv embedding tool."""
 
     paper_id: str = Field(
-        description="The arxiv paper ID to embed (e.g., '1706.03762' for 'Attention Is All You Need')"
+        description="The arxiv paper ID to embed (e.g., '1706.03762' for 'Attention Is All You Need')",
     )
 
 
@@ -71,13 +71,14 @@ async def _download_paper_via_mcp(paper_id: str) -> Dict[str, Any]:
     # Ensure MCP Manager is initialized before checking availability
     if not manager.is_available:
         logger.info(
-            "[EmbedTool] MCP Manager not initialized, attempting initialization..."
+            "[EmbedTool] MCP Manager not initialized, attempting initialization...",
         )
         try:
             await manager.initialize()
         except Exception as e:
             logger.error(
-                f"[EmbedTool] Failed to initialize MCP Manager: {e}", exc_info=True
+                f"[EmbedTool] Failed to initialize MCP Manager: {e}",
+                exc_info=True,
             )
             return {
                 "status": "error",
@@ -207,7 +208,7 @@ async def embed_arxiv_paper_async(paper_id: str) -> Dict[str, Any]:
     logger.info(f"[EmbedTool] File path from download: {file_path}")
     if not file_path:
         logger.error(
-            f"[EmbedTool] No 'resource_uri' or 'path' key in download_result. Keys present: {download_result.keys()}"
+            f"[EmbedTool] No 'resource_uri' or 'path' key in download_result. Keys present: {download_result.keys()}",
         )
         return {
             "success": False,
@@ -233,24 +234,25 @@ async def embed_arxiv_paper_async(paper_id: str) -> Dict[str, Any]:
     try:
         vectorstore = _get_vectorstore()
         logger.info(
-            f"[EmbedTool] Inserting {len(documents)} chunks into vectorstore..."
+            f"[EmbedTool] Inserting {len(documents)} chunks into vectorstore...",
         )
 
         # Add documents to the vector store
         ids = vectorstore.add_documents(documents)
 
         logger.info(
-            f"[EmbedTool] Successfully embedded {len(documents)} chunks for {paper_id}"
+            f"[EmbedTool] Successfully embedded {len(documents)} chunks for {paper_id}",
         )
         logger.info(
             f"[EmbedTool] Document IDs: {ids[:3]}..."
             if len(ids) > 3
-            else f"[EmbedTool] Document IDs: {ids}"
+            else f"[EmbedTool] Document IDs: {ids}",
         )
 
     except Exception as e:
         logger.error(
-            f"[EmbedTool] Failed to insert into vectorstore: {e}", exc_info=True
+            f"[EmbedTool] Failed to insert into vectorstore: {e}",
+            exc_info=True,
         )
         return {"success": False, "error": f"Vector store insertion failed: {str(e)}"}
 

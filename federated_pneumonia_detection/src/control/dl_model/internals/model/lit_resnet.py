@@ -4,11 +4,12 @@ Provides comprehensive training, validation, and metrics tracking with configura
 """
 
 import logging
-from typing import Optional, Dict, Any, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import pytorch_lightning as pl
 import torchmetrics
 from torchvision.models import ResNet50_Weights
 
@@ -65,7 +66,7 @@ class LitResNet(pl.LightningModule):
 
         # Save hyperparameters (excluding non-serializable objects)
         self.save_hyperparameters(
-            ignore=["config", "base_model_weights", "class_weights_tensor"]
+            ignore=["config", "base_model_weights", "class_weights_tensor"],
         )
 
         # Validate configuration
@@ -78,7 +79,8 @@ class LitResNet(pl.LightningModule):
             num_classes=num_classes,
             dropout_rate=self.config.get("experiment.dropout_rate", 0.5),
             fine_tune_layers_count=self.config.get(
-                "experiment.fine_tune_layers_count", 0
+                "experiment.fine_tune_layers_count",
+                0,
             ),
         )
 
@@ -92,7 +94,7 @@ class LitResNet(pl.LightningModule):
         self._setup_loss_function()
 
         self.logger_obj.info(
-            f"LitResNet initialized with {self.model.get_model_info()['total_parameters']} parameters"
+            f"LitResNet initialized with {self.model.get_model_info()['total_parameters']} parameters",
         )
 
     def _validate_config(self) -> None:
@@ -107,7 +109,7 @@ class LitResNet(pl.LightningModule):
 
         if not self.config.has_key("experiment.early_stopping_patience"):
             self.logger_obj.warning(
-                "early_stopping_patience not found in config, using default"
+                "early_stopping_patience not found in config, using default",
             )
 
     def _setup_metrics(self) -> None:
@@ -117,30 +119,36 @@ class LitResNet(pl.LightningModule):
 
         # Training metrics
         self.train_accuracy = torchmetrics.Accuracy(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
         self.train_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
         self.train_loss = torchmetrics.MeanSquaredError()
         # Validation metrics
         self.val_accuracy = torchmetrics.Accuracy(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
         self.val_precision = torchmetrics.Precision(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
         self.val_recall = torchmetrics.Recall(task=task_type, num_classes=num_classes)
         self.val_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
         self.val_auroc = torchmetrics.AUROC(task=task_type, num_classes=num_classes)
         self.val_confusion = torchmetrics.ConfusionMatrix(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
 
         # Test metrics (same as validation)
         self.test_accuracy = torchmetrics.Accuracy(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
         self.test_precision = torchmetrics.Precision(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
         self.test_recall = torchmetrics.Recall(task=task_type, num_classes=num_classes)
         self.test_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
@@ -182,7 +190,9 @@ class LitResNet(pl.LightningModule):
         return super().load_state_dict(state_dict, strict=False)
 
     def _calculate_loss(
-        self, logits: torch.Tensor, targets: torch.Tensor
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
     ) -> torch.Tensor:
         """Calculate loss based on task type."""
         if self.num_classes == 1:
@@ -211,7 +221,9 @@ class LitResNet(pl.LightningModule):
             return targets.long()
 
     def training_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self,
+        batch: Tuple[torch.Tensor, torch.Tensor],
+        batch_idx: int,
     ) -> torch.Tensor:
         """Perform training step."""
         x, y = batch
@@ -244,12 +256,18 @@ class LitResNet(pl.LightningModule):
             sync_dist=True,
         )
         self.log(
-            "train_f1", self.train_f1, on_step=False, on_epoch=True, sync_dist=True
+            "train_f1",
+            self.train_f1,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
         return loss
 
     def validation_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self,
+        batch: Tuple[torch.Tensor, torch.Tensor],
+        batch_idx: int,
     ) -> torch.Tensor:
         """Perform validation step."""
         x, y = batch
@@ -293,17 +311,27 @@ class LitResNet(pl.LightningModule):
             sync_dist=True,
         )
         self.log(
-            "val_recall", self.val_recall, on_step=False, on_epoch=True, sync_dist=True
+            "val_recall",
+            self.val_recall,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
         self.log("val_f1", self.val_f1, on_step=False, on_epoch=True, sync_dist=True)
         self.log(
-            "val_auroc", self.val_auroc, on_step=False, on_epoch=True, sync_dist=True
+            "val_auroc",
+            self.val_auroc,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
 
         return loss
 
     def test_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self,
+        batch: Tuple[torch.Tensor, torch.Tensor],
+        batch_idx: int,
     ) -> torch.Tensor:
         """Perform test step."""
         x, y = batch
@@ -324,7 +352,11 @@ class LitResNet(pl.LightningModule):
         # Log metrics
         self.log("test_loss", loss, on_step=False, on_epoch=True, sync_dist=True)
         self.log(
-            "test_acc", self.test_accuracy, on_step=False, on_epoch=True, sync_dist=True
+            "test_acc",
+            self.test_accuracy,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
         self.log(
             "test_precision",
@@ -342,13 +374,19 @@ class LitResNet(pl.LightningModule):
         )
         self.log("test_f1", self.test_f1, on_step=False, on_epoch=True, sync_dist=True)
         self.log(
-            "test_auroc", self.test_auroc, on_step=False, on_epoch=True, sync_dist=True
+            "test_auroc",
+            self.test_auroc,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
 
         return loss
 
     def predict_step(
-        self, batch: Tuple[torch.Tensor, ...], batch_idx: int
+        self,
+        batch: Tuple[torch.Tensor, ...],
+        batch_idx: int,
     ) -> torch.Tensor:
         """Perform prediction step."""
         x = batch[0] if isinstance(batch, (list, tuple)) else batch
@@ -425,7 +463,7 @@ class LitResNet(pl.LightningModule):
                 "monitor_metric": self.monitor_metric,
                 "class_weighted_loss": self.class_weights_tensor is not None,
                 "device": str(self.device),
-            }
+            },
         )
 
         return model_info
@@ -451,7 +489,9 @@ class LitResNet(pl.LightningModule):
             self.logger_obj.info("Fine-tuning mode disabled")
 
     def get_feature_maps(
-        self, x: torch.Tensor, layer_name: Optional[str] = None
+        self,
+        x: torch.Tensor,
+        layer_name: Optional[str] = None,
     ) -> torch.Tensor:
         """Extract feature maps from model."""
         return self.model.get_feature_maps(x, layer_name)

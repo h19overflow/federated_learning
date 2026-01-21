@@ -46,7 +46,7 @@ def configure_logging() -> None:
     logger = logging.getLogger(__name__)
     logger.info(
         f"Logging configured: level={log_level_str}, "
-        f"third-party libs silenced (langchain_google_genai, google.genai, uvicorn.access)"
+        f"third-party libs silenced (langchain_google_genai, google.genai, uvicorn.access)",
     )
 
 

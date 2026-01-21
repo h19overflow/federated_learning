@@ -25,14 +25,19 @@ logger = get_logger(__name__)
 @router.get("/list", response_model=RunsListResponse)
 async def list_all_runs(
     limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of runs to return"
+        100,
+        ge=1,
+        le=1000,
+        description="Maximum number of runs to return",
     ),
     offset: int = Query(0, ge=0, description="Number of runs to skip"),
     status: Optional[str] = Query(
-        None, description="Filter by status (e.g., 'completed', 'running')"
+        None,
+        description="Filter by status (e.g., 'completed', 'running')",
     ),
     training_mode: Optional[str] = Query(
-        None, description="Filter by training mode (e.g., 'centralized', 'federated')"
+        None,
+        description="Filter by training mode (e.g., 'centralized', 'federated')",
     ),
     sort_by: str = Query("start_time", description="Field to sort by"),
     sort_order: str = Query("desc", description="Sort order: 'asc' or 'desc'"),
@@ -77,7 +82,8 @@ async def list_all_runs(
         run_summaries = [RunSummaryBuilder.build(run, db) for run in runs]
 
         return RunsListResponse(
-            runs=[RunSummary(**summary) for summary in run_summaries], total=total_count
+            runs=[RunSummary(**summary) for summary in run_summaries],
+            total=total_count,
         )
 
     except Exception as e:

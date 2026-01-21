@@ -8,17 +8,18 @@ Tests the full flow:
 4. API endpoint returns results with summary statistics
 """
 
-import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime
+from unittest.mock import Mock, patch
+
+import pytest
 import torch
 
-from federated_pneumonia_detection.src.boundary.engine import Run
-from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import (
     _calculate_summary_statistics,
     _transform_run_to_results,
 )
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.engine import Run
 
 
 @pytest.mark.integration
@@ -60,7 +61,7 @@ class TestConfusionMatrixCentralizedFlow:
         tp, tn, fp, fn = 450, 430, 40, 30
         expected_sensitivity = tp / (tp + fn)  # 0.9375
         expected_specificity = tn / (tn + fp)  # 0.9148
-        expected_precision = tp / (tp + fp)    # 0.9184
+        expected_precision = tp / (tp + fp)  # 0.9184
         expected_accuracy = (tp + tn) / (tp + tn + fp + fn)  # 0.88
 
         assert stats["sensitivity"] == pytest.approx(expected_sensitivity, abs=0.001)
@@ -113,7 +114,9 @@ class TestConfusionMatrixCentralizedFlow:
             _calculate_summary_statistics(cm)
 
     def test_transform_run_to_results_with_confusion_matrix(
-        self, mock_db, confusion_matrix_values
+        self,
+        mock_db,
+        confusion_matrix_values,
     ):
         """Test transforming run with confusion matrix to results format."""
         # Create mock run object
@@ -246,14 +249,42 @@ class TestConfusionMatrixCentralizedFlow:
         for epoch in range(3):
             metrics_data.extend(
                 [
-                    Mock(step=epoch, metric_name="train_loss", metric_value=0.5 - epoch * 0.1),
-                    Mock(step=epoch, metric_name="val_loss", metric_value=0.4 - epoch * 0.05),
-                    Mock(step=epoch, metric_name="val_accuracy", metric_value=0.80 + epoch * 0.03),
-                    Mock(step=epoch, metric_name="val_cm_tp", metric_value=450 + epoch * 10),
-                    Mock(step=epoch, metric_name="val_cm_tn", metric_value=430 + epoch * 10),
-                    Mock(step=epoch, metric_name="val_cm_fp", metric_value=40 - epoch * 5),
-                    Mock(step=epoch, metric_name="val_cm_fn", metric_value=30 - epoch * 3),
-                ]
+                    Mock(
+                        step=epoch,
+                        metric_name="train_loss",
+                        metric_value=0.5 - epoch * 0.1,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_loss",
+                        metric_value=0.4 - epoch * 0.05,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_accuracy",
+                        metric_value=0.80 + epoch * 0.03,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_cm_tp",
+                        metric_value=450 + epoch * 10,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_cm_tn",
+                        metric_value=430 + epoch * 10,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_cm_fp",
+                        metric_value=40 - epoch * 5,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_cm_fn",
+                        metric_value=30 - epoch * 3,
+                    ),
+                ],
             )
         mock_run.metrics = metrics_data
 
@@ -282,7 +313,7 @@ class TestConfusionMatrixCentralizedFlow:
         )
 
         with patch(
-            "federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector.get_session"
+            "federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector.get_session",
         ):
             collector = MetricsCollectorCallback(
                 save_dir="/tmp/test",
@@ -321,14 +352,20 @@ class TestConfusionMatrixCentralizedFlow:
 
     def test_run_crud_persist_metrics_includes_confusion_matrix(self, mock_db):
         """Test that run_crud.persist_metrics saves confusion matrix metrics."""
-        with patch("federated_pneumonia_detection.src.boundary.CRUD.run.RunMetric") as _MockRunMetric:
+        with patch(
+            "federated_pneumonia_detection.src.boundary.CRUD.run.RunMetric",
+        ) as _MockRunMetric:
             # Setup mock run creation
             mock_run = Mock()
             mock_run.id = 1
 
             with patch.object(run_crud, "create", return_value=mock_run):
                 # Create run
-                created_run = run_crud.create(mock_db, training_mode="centralized", status="in_progress")
+                created_run = run_crud.create(
+                    mock_db,
+                    training_mode="centralized",
+                    status="in_progress",
+                )
 
                 # Mock epoch metrics with confusion matrix
                 epoch_metrics = [
@@ -341,7 +378,7 @@ class TestConfusionMatrixCentralizedFlow:
                         "val_cm_tn": 430,
                         "val_cm_fp": 40,
                         "val_cm_fn": 30,
-                    }
+                    },
                 ]
 
                 # Persist metrics

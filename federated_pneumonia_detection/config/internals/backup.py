@@ -4,10 +4,12 @@ Provides utilities for creating and managing configuration backups
 with timestamped filenames and restoration capabilities.
 """
 
-import yaml
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict
+
+import yaml
+
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 
@@ -19,7 +21,10 @@ class ConfigBackup:
         self.logger = get_logger(__name__)
 
     def create(
-        self, config: Dict[str, Any], config_path: str, backup_path: str = None
+        self,
+        config: Dict[str, Any],
+        config_path: str,
+        backup_path: str = None,
     ) -> str:
         """
         Create a backup of the current configuration.

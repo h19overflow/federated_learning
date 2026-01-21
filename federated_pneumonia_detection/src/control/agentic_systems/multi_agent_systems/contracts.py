@@ -11,7 +11,7 @@ class AgentEventType(str, Enum):
     """Supported event types for agent streaming."""
 
     SESSION = "session"
-    TOKEN = "token"
+    TOKEN = "token"  # nosec B105 - SSE event type, not a password
     STATUS = "status"
     TOOL_CALL = "tool_call"
     ERROR = "error"

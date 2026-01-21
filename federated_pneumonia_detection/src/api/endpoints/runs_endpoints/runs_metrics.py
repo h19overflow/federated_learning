@@ -49,7 +49,8 @@ async def get_run_metrics(run_id: int) -> MetricsResponse:
     except Exception as e:
         logger.error(f"Error fetching run {run_id}: {e}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to fetch run results: {str(e)}"
+            status_code=500,
+            detail=f"Failed to fetch run results: {str(e)}",
         )
     finally:
         db.close()

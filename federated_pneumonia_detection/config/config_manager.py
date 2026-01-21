@@ -12,16 +12,17 @@ Example usage:
     config_manager.save()
 """
 
-from typing import Any, Dict, List
-from pathlib import Path
 import copy
-from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+from pathlib import Path
+from typing import Any, Dict, List
+
 from federated_pneumonia_detection.config.internals import (
-    YamlConfigLoader,
-    NestedAccessor,
-    ConfigFlattener,
     ConfigBackup,
+    ConfigFlattener,
+    NestedAccessor,
+    YamlConfigLoader,
 )
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 
 class ConfigManager:
@@ -104,7 +105,9 @@ class ConfigManager:
     def backup(self, backup_path: str = None) -> str:
         """Create a backup of the current configuration."""
         return self.backup_manager.create(
-            self.config, str(self.config_path), backup_path
+            self.config,
+            str(self.config_path),
+            backup_path,
         )
 
     def flatten_config(self, config_dict: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,9 +1,9 @@
 """Shared services for backfill and ranking operations."""
 
-import json
 import ast
+import json
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
@@ -32,7 +32,7 @@ class BackfillService:
                 }
 
             logger.info(
-                f"[Backfill] Found {len(server_evals)} server evaluation rounds"
+                f"[Backfill] Found {len(server_evals)} server evaluation rounds",
             )
 
             rounds_processed = 0
@@ -54,13 +54,13 @@ class BackfillService:
                     num_samples=metrics_dict.get("num_samples"),
                 )
                 logger.info(
-                    f"[Backfill] [OK] Persisted server evaluation for round {round_num}"
+                    f"[Backfill] [OK] Persisted server evaluation for round {round_num}",
                 )
                 rounds_processed += 1
 
             db.commit()
             logger.info(
-                f"[Backfill] [OK] SUCCESS: Backfilled {rounds_processed} server evaluations"
+                f"[Backfill] [OK] SUCCESS: Backfilled {rounds_processed} server evaluations",
             )
 
             return {

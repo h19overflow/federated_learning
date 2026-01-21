@@ -32,7 +32,7 @@ async def get_current_settings(
     logger.info(
         f"Retrieved current config: epochs={current_config.get('experiment', {}).get('epochs')}, "
         f"batch_size={current_config.get('experiment', {}).get('batch_size')}, "
-        f"learning_rate={current_config.get('experiment', {}).get('learning_rate')}"
+        f"learning_rate={current_config.get('experiment', {}).get('learning_rate')}",
     )
 
     return {
@@ -67,7 +67,7 @@ async def update_settings(
     flattened = config.flatten_config(config_data)
 
     logger.info(
-        f"Updating {len(flattened)} configuration fields: {list(flattened.keys())}"
+        f"Updating {len(flattened)} configuration fields: {list(flattened.keys())}",
     )
 
     # Log key values being updated
@@ -75,11 +75,11 @@ async def update_settings(
         logger.info(f"Setting experiment.epochs = {flattened['experiment.epochs']}")
     if "experiment.batch_size" in flattened:
         logger.info(
-            f"Setting experiment.batch_size = {flattened['experiment.batch_size']}"
+            f"Setting experiment.batch_size = {flattened['experiment.batch_size']}",
         )
     if "experiment.learning_rate" in flattened:
         logger.info(
-            f"Setting experiment.learning_rate = {flattened['experiment.learning_rate']}"
+            f"Setting experiment.learning_rate = {flattened['experiment.learning_rate']}",
         )
 
     updated_count = 0

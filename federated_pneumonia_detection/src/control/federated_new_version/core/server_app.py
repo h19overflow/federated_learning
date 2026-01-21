@@ -1,33 +1,32 @@
-from flwr.app import ArrayRecord, Context
-from flwr.serverapp import ServerApp, Grid
-from datetime import datetime
 import os
+from datetime import datetime
 from pathlib import Path
+
 import torch
-from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
-    ConfigurableFedAvg,
+from flwr.app import ArrayRecord, Context
+from flwr.serverapp import Grid, ServerApp
+
+from federated_pneumonia_detection.config.config_manager import ConfigManager
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (
+    MetricsWebSocketSender,
 )
 from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
     LitResNetEnhanced,
 )
-from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
-    read_configs_to_toml,
+from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
+    ConfigurableFedAvg,
 )
-from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (
-    MetricsWebSocketSender,
-)
-from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-
 from federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation import (
     create_central_evaluate_fn,
 )
-from federated_pneumonia_detection.src.internals.loggers.logger import setup_logger
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
     _convert_metric_record_to_dict,
     _persist_server_evaluations,
+    read_configs_to_toml,
 )
+from federated_pneumonia_detection.src.internals.loggers.logger import setup_logger
 
 # Setup logger for server app
 logger = setup_logger(__name__)
@@ -54,7 +53,7 @@ def lifespan(app: ServerApp):
     if flwr_configs:
         logger.info(f"[OK] Configuration verified: {flwr_configs}")
         logger.info(
-            "NOTE: Config should have been synced to pyproject.toml before Flower started"
+            "NOTE: Config should have been synced to pyproject.toml before Flower started",
         )
     else:
         logger.warning("[WARN] No federated configs found in default_config.yaml")
@@ -177,10 +176,12 @@ def main(grid: Grid, context: Context) -> None:
 
     # Signal to frontend that this is federated training
     logger.info(
-        f"Broadcasting training mode: {num_clients} clients, {num_rounds} rounds"
+        f"Broadcasting training mode: {num_clients} clients, {num_rounds} rounds",
     )
     ws_sender.send_training_mode(
-        is_federated=True, num_rounds=num_rounds, num_clients=num_clients
+        is_federated=True,
+        num_rounds=num_rounds,
+        num_clients=num_clients,
     )
 
     # Create centralized evaluation function for server-side evaluation
@@ -214,7 +215,7 @@ def main(grid: Grid, context: Context) -> None:
     # Set total rounds for progress tracking in strategy
     strategy.set_total_rounds(num_rounds)
     logger.info(
-        "Strategy configured: FedAvg with weighted aggregation by num_examples + server evaluation"
+        "Strategy configured: FedAvg with weighted aggregation by num_examples + server evaluation",
     )
 
     # Start strategy, run FedAvg for `num_rounds`
@@ -278,17 +279,17 @@ def main(grid: Grid, context: Context) -> None:
 
     if result.train_metrics_clientapp:
         all_results["train_metrics_clientapp"] = _convert_metric_record_to_dict(
-            result.train_metrics_clientapp
+            result.train_metrics_clientapp,
         )
 
     if result.evaluate_metrics_clientapp:
         all_results["evaluate_metrics_clientapp"] = _convert_metric_record_to_dict(
-            result.evaluate_metrics_clientapp
+            result.evaluate_metrics_clientapp,
         )
 
     if result.evaluate_metrics_serverapp:
         all_results["evaluate_metrics_serverapp"] = _convert_metric_record_to_dict(
-            result.evaluate_metrics_serverapp
+            result.evaluate_metrics_serverapp,
         )
 
     # Save all results to JSON
@@ -309,12 +310,12 @@ def main(grid: Grid, context: Context) -> None:
         logger.error(
             f"[WARN] Skipping server evaluation persistence: "
             f"evaluate_metrics_serverapp={bool(result.evaluate_metrics_serverapp)}, "
-            f"run_id={run_id}"
+            f"run_id={run_id}",
         )
 
     # Send training_end event to frontend now that ALL rounds are complete
     logger.info(
-        "All federated rounds complete. Sending training_end event to frontend..."
+        "All federated rounds complete. Sending training_end event to frontend...",
     )
     ws_sender.send_metrics(
         {

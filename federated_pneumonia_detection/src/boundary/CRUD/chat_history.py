@@ -1,10 +1,12 @@
 from typing import List, Optional
-from ..models.chat_session import ChatSession
+
 from ..engine import get_session
+from ..models.chat_session import ChatSession
 
 
 def create_chat_session(
-    title: Optional[str] = None, session_id: Optional[str] = None
+    title: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> ChatSession:
     """
     Create a new chat session.
@@ -20,7 +22,7 @@ def create_chat_session(
         db.commit()
         db.refresh(new_session)
         db.expunge(
-            new_session
+            new_session,
         )  # Detach instance so attributes remain accessible after session closes
         return new_session
     finally:
@@ -36,7 +38,7 @@ def get_chat_session(session_id: str) -> Optional[ChatSession]:
         session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
         if session:
             db.expunge(
-                session
+                session,
             )  # Detach instance so attributes remain accessible after session closes
         return session
     finally:
@@ -52,7 +54,7 @@ def get_all_chat_sessions() -> List[ChatSession]:
         sessions = db.query(ChatSession).order_by(ChatSession.updated_at.desc()).all()
         for session in sessions:
             db.expunge(
-                session
+                session,
             )  # Detach each instance so attributes remain accessible after session closes
         return sessions
     finally:
@@ -71,7 +73,7 @@ def update_chat_session_title(session_id: str, title: str) -> Optional[ChatSessi
             db.commit()
             db.refresh(session)
             db.expunge(
-                session
+                session,
             )  # Detach instance so attributes remain accessible after session closes
         return session
     finally:

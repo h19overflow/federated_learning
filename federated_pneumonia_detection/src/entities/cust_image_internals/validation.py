@@ -1,10 +1,12 @@
 """Validation utilities for CustomImageDataset."""
 
-from typing import Tuple
 from pathlib import Path
-import pandas as pd
+from typing import Tuple
+
 import numpy as np
+import pandas as pd
 from PIL import Image
+
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 logger = get_logger(__name__)
@@ -93,14 +95,15 @@ def validate_image_files(filenames: np.ndarray, image_dir: Path) -> np.ndarray:
 
     if invalid_count > 0:
         logger.info(
-            f"Found {invalid_count} invalid image files out of {len(filenames)}"
+            f"Found {invalid_count} invalid image files out of {len(filenames)}",
         )
 
     return np.array(valid_indices)
 
 
 def validate_all_images(
-    filenames: np.ndarray, image_dir: Path
+    filenames: np.ndarray,
+    image_dir: Path,
 ) -> Tuple[int, int, list]:
     """
     Validate all images in the dataset.

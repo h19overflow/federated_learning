@@ -1,5 +1,5 @@
-from pydantic_settings import BaseSettings
 from pydantic import Field
+from pydantic_settings import BaseSettings
 
 DEFAULT_BASE_URL = "http://localhost:8000"
 DEFAULT_API_VERSION = "v1"

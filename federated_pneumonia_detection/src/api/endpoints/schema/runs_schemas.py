@@ -24,15 +24,23 @@ class ModeMetrics(BaseModel):
 
     count: int = Field(ge=0, description="Number of runs")
     avg_accuracy: Optional[float] = Field(
-        None, ge=0, le=1, description="Average accuracy"
+        None,
+        ge=0,
+        le=1,
+        description="Average accuracy",
     )
     avg_precision: Optional[float] = Field(
-        None, ge=0, le=1, description="Average precision"
+        None,
+        ge=0,
+        le=1,
+        description="Average precision",
     )
     avg_recall: Optional[float] = Field(None, ge=0, le=1, description="Average recall")
     avg_f1: Optional[float] = Field(None, ge=0, le=1, description="Average F1-score")
     avg_duration_minutes: Optional[float] = Field(
-        None, ge=0, description="Average duration in minutes"
+        None,
+        ge=0,
+        description="Average duration in minutes",
     )
 
 
@@ -134,7 +142,8 @@ class RunSummary(BaseModel):
     metrics_count: int = Field(ge=0, description="Number of metrics")
     run_description: Optional[str] = Field(None, description="Run description")
     federated_info: Optional[FederatedInfo] = Field(
-        None, description="Federated-specific info"
+        None,
+        description="Federated-specific info",
     )
 
 
@@ -183,12 +192,13 @@ class MetricsResponse(BaseModel):
     status: str = Field(description="Run status")
     final_metrics: Dict[str, float] = Field(description="Final epoch metrics")
     training_history: List[Dict[str, Any]] = Field(
-        description="Per-epoch training history"
+        description="Per-epoch training history",
     )
     total_epochs: int = Field(ge=0, description="Total epochs")
     metadata: Dict[str, Any] = Field(description="Additional metadata")
     confusion_matrix: Optional[Dict[str, Any]] = Field(
-        None, description="Confusion matrix"
+        None,
+        description="Confusion matrix",
     )
 
 
@@ -223,6 +233,7 @@ class ServerEvaluationResponse(BaseModel):
     is_federated: bool = Field(description="Federated training flag")
     has_server_evaluation: bool = Field(description="Has evaluation data")
     evaluations: List[Dict[str, Any]] = Field(
-        default=[], description="Server evaluations"
+        default=[],
+        description="Server evaluations",
     )
     summary: Dict[str, Any] = Field(default={}, description="Summary statistics")

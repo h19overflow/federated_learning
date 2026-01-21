@@ -4,14 +4,15 @@ Provides reusable utilities for testing across all test modules.
 """
 
 import tempfile
-import pandas as pd
-import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from unittest.mock import Mock
 
-from federated_pneumonia_detection.models.system_constants import SystemConstants
+import numpy as np
+import pandas as pd
+
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
 
 
 class TestHelpers:
@@ -22,7 +23,7 @@ class TestHelpers:
         df: pd.DataFrame,
         required_columns: List[str],
         min_rows: int = 1,
-        check_nulls: bool = True
+        check_nulls: bool = True,
     ) -> None:
         """
         Assert that DataFrame meets basic validity requirements.
@@ -49,7 +50,7 @@ class TestHelpers:
         train_df: pd.DataFrame,
         val_df: pd.DataFrame,
         expected_split: float = 0.2,
-        tolerance: float = 0.1
+        tolerance: float = 0.1,
     ) -> None:
         """
         Assert that train/validation split is reasonable.
@@ -65,8 +66,9 @@ class TestHelpers:
 
         assert len(train_df) > 0, "Training set should not be empty"
         assert len(val_df) > 0, "Validation set should not be empty"
-        assert abs(actual_split - expected_split) <= tolerance, \
+        assert abs(actual_split - expected_split) <= tolerance, (
             f"Split ratio {actual_split:.3f} deviates too much from expected {expected_split:.3f}"
+        )
 
     @staticmethod
     def create_mock_logger() -> Mock:
@@ -82,7 +84,7 @@ class TestHelpers:
     def create_temp_image_files(
         directory: Union[str, Path],
         patient_ids: List[str],
-        extension: str = '.png'
+        extension: str = ".png",
     ) -> List[Path]:
         """
         Create temporary empty image files for testing.
@@ -110,7 +112,7 @@ class TestHelpers:
     def create_test_metadata_csv(
         file_path: Union[str, Path],
         num_samples: int = 20,
-        class_balance: float = 0.5
+        class_balance: float = 0.5,
     ) -> pd.DataFrame:
         """
         Create and save test metadata CSV file.
@@ -130,18 +132,23 @@ class TestHelpers:
         targets = [1] * num_positive + [0] * (num_samples - num_positive)
         np.random.shuffle(targets)
 
-        df = pd.DataFrame({
-            'patientId': patient_ids,
-            'Target': targets,
-            'age': np.random.randint(20, 90, num_samples),
-            'gender': np.random.choice(['M', 'F'], num_samples)
-        })
+        df = pd.DataFrame(
+            {
+                "patientId": patient_ids,
+                "Target": targets,
+                "age": np.random.randint(20, 90, num_samples),
+                "gender": np.random.choice(["M", "F"], num_samples),
+            },
+        )
 
         df.to_csv(file_path, index=False)
         return df
 
     @staticmethod
-    def verify_file_structure(base_path: Union[str, Path], expected_structure: Dict) -> None:
+    def verify_file_structure(
+        base_path: Union[str, Path],
+        expected_structure: Dict,
+    ) -> None:
         """
         Verify that file system structure matches expected structure.
 
@@ -154,9 +161,9 @@ class TestHelpers:
         for item_name, item_type in expected_structure.items():
             item_path = base_path / item_name
 
-            if item_type == 'file':
+            if item_type == "file":
                 assert item_path.is_file(), f"Expected file not found: {item_path}"
-            elif item_type == 'dir':
+            elif item_type == "dir":
                 assert item_path.is_dir(), f"Expected directory not found: {item_path}"
             elif isinstance(item_type, dict):
                 assert item_path.is_dir(), f"Expected directory not found: {item_path}"
@@ -164,7 +171,9 @@ class TestHelpers:
                 TestHelpers.verify_file_structure(item_path, item_type)
 
     @staticmethod
-    def create_minimal_test_environment(base_dir: Optional[Union[str, Path]] = None) -> Dict[str, Path]:
+    def create_minimal_test_environment(
+        base_dir: Optional[Union[str, Path]] = None,
+    ) -> Dict[str, Path]:
         """
         Create minimal test environment with required files and directories.
 
@@ -184,29 +193,38 @@ class TestHelpers:
         images_dir.mkdir(parents=True, exist_ok=True)
 
         # Create minimal metadata
-        metadata_df = pd.DataFrame({
-            'patientId': ['patient_001', 'patient_002', 'patient_003', 'patient_004'],
-            'Target': [0, 1, 0, 1]
-        })
+        metadata_df = pd.DataFrame(
+            {
+                "patientId": [
+                    "patient_001",
+                    "patient_002",
+                    "patient_003",
+                    "patient_004",
+                ],
+                "Target": [0, 1, 0, 1],
+            },
+        )
 
         metadata_path = base_dir / "Train_metadata.csv"
         metadata_df.to_csv(metadata_path, index=False)
 
         # Create empty image files
-        for patient_id in metadata_df['patientId']:
+        for patient_id in metadata_df["patientId"]:
             image_file = images_dir / f"{patient_id}.png"
             image_file.touch()
 
         return {
-            'base_path': base_dir,
-            'metadata_path': metadata_path,
-            'images_dir': images_dir,
-            'metadata_df': metadata_df
+            "base_path": base_dir,
+            "metadata_path": metadata_path,
+            "images_dir": images_dir,
+            "metadata_df": metadata_df,
         }
 
     @staticmethod
-    def compare_configs(config1: Union[SystemConstants, ExperimentConfig],
-                       config2: Union[SystemConstants, ExperimentConfig]) -> bool:
+    def compare_configs(
+        config1: Union[SystemConstants, ExperimentConfig],
+        config2: Union[SystemConstants, ExperimentConfig],
+    ) -> bool:
         """
         Compare two configuration objects for equality.
 
@@ -217,10 +235,13 @@ class TestHelpers:
         Returns:
             True if configurations are equal
         """
-        if not isinstance(config1, type(config2)) or not isinstance(config2, type(config1)):
+        if not isinstance(config1, type(config2)) or not isinstance(
+            config2,
+            type(config1),
+        ):
             return False
 
-        if hasattr(config1, 'to_dict'):
+        if hasattr(config1, "to_dict"):
             return config1.to_dict() == config2.to_dict()
         else:
             # For dataclasses like SystemConstants
@@ -230,44 +251,42 @@ class TestHelpers:
     def mock_successful_training_run() -> Dict:
         """Create mock data simulating successful training run."""
         return {
-            'train_metrics': {
-                'accuracy': 0.85,
-                'loss': 0.45,
-                'precision': 0.83,
-                'recall': 0.87,
-                'f1': 0.85
+            "train_metrics": {
+                "accuracy": 0.85,
+                "loss": 0.45,
+                "precision": 0.83,
+                "recall": 0.87,
+                "f1": 0.85,
             },
-            'val_metrics': {
-                'accuracy': 0.82,
-                'loss': 0.52,
-                'precision': 0.80,
-                'recall': 0.84,
-                'f1': 0.82
+            "val_metrics": {
+                "accuracy": 0.82,
+                "loss": 0.52,
+                "precision": 0.80,
+                "recall": 0.84,
+                "f1": 0.82,
             },
-            'epochs_completed': 10,
-            'best_epoch': 8,
-            'training_time': 120.5
+            "epochs_completed": 10,
+            "best_epoch": 8,
+            "training_time": 120.5,
         }
 
     @staticmethod
     def mock_federated_learning_run(num_clients: int = 3, num_rounds: int = 5) -> Dict:
         """Create mock data simulating federated learning run."""
         return {
-            'num_clients': num_clients,
-            'num_rounds': num_rounds,
-            'rounds_completed': num_rounds,
-            'client_metrics': {
-                f'client_{i}': {
-                    'samples': np.random.randint(50, 200),
-                    'accuracy': 0.75 + np.random.random() * 0.15,
-                    'loss': 0.3 + np.random.random() * 0.4
-                } for i in range(num_clients)
+            "num_clients": num_clients,
+            "num_rounds": num_rounds,
+            "rounds_completed": num_rounds,
+            "client_metrics": {
+                f"client_{i}": {
+                    "samples": np.random.randint(50, 200),
+                    "accuracy": 0.75 + np.random.random() * 0.15,
+                    "loss": 0.3 + np.random.random() * 0.4,
+                }
+                for i in range(num_clients)
             },
-            'global_metrics': {
-                'accuracy': 0.83,
-                'loss': 0.48
-            },
-            'aggregation_time': 15.2
+            "global_metrics": {"accuracy": 0.83, "loss": 0.48},
+            "aggregation_time": 15.2,
         }
 
 
@@ -278,10 +297,20 @@ class MockComponents:
     def create_mock_data_processor() -> Mock:
         """Create mock DataProcessor."""
         mock_processor = Mock()
-        mock_processor.load_and_process_data = Mock(return_value=(
-            pd.DataFrame({'patientId': ['001', '002'], 'Target': [0, 1], 'filename': ['001.png', '002.png']}),
-            pd.DataFrame({'patientId': ['003'], 'Target': [1], 'filename': ['003.png']})
-        ))
+        mock_processor.load_and_process_data = Mock(
+            return_value=(
+                pd.DataFrame(
+                    {
+                        "patientId": ["001", "002"],
+                        "Target": [0, 1],
+                        "filename": ["001.png", "002.png"],
+                    },
+                ),
+                pd.DataFrame(
+                    {"patientId": ["003"], "Target": [1], "filename": ["003.png"]},
+                ),
+            ),
+        )
         mock_processor.validate_image_paths = Mock(return_value=True)
         return mock_processor
 
@@ -289,7 +318,7 @@ class MockComponents:
     def create_mock_config_loader() -> Mock:
         """Create mock ConfigLoader."""
         mock_loader = Mock()
-        mock_loader.load_config = Mock(return_value={'system': {'batch_size': 32}})
+        mock_loader.load_config = Mock(return_value={"system": {"batch_size": 32}})
         mock_loader.create_system_constants = Mock(return_value=SystemConstants())
         mock_loader.create_experiment_config = Mock(return_value=ExperimentConfig())
         return mock_loader
@@ -323,6 +352,7 @@ def requires_gpu(func):
 def slow_test(func):
     """Decorator to mark tests as slow."""
     import pytest
+
     return pytest.mark.slow(func)
 
 
@@ -331,6 +361,6 @@ def phase_test(phase_number: int):
     import pytest
 
     def decorator(func):
-        return pytest.mark.__getattr__(f'phase{phase_number}')(func)
+        return pytest.mark.__getattr__(f"phase{phase_number}")(func)
 
     return decorator

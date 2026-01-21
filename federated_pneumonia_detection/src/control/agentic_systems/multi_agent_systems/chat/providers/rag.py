@@ -1,18 +1,20 @@
-from langchain_community.retrievers import BM25Retriever
-from langchain_postgres import PGVector
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_classic.retrievers import EnsembleRetriever
-from federated_pneumonia_detection.config.settings import Settings
+import logging
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
+
 from dotenv import load_dotenv
+from langchain_classic.chains import create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.retrievers import EnsembleRetriever
+from langchain_community.retrievers import BM25Retriever
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_postgres import PGVector
+
+from federated_pneumonia_detection.config.settings import Settings
 from federated_pneumonia_detection.src.boundary.CRUD.fetch_documents import (
     fetch_all_documents,
 )
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_classic.chains import create_retrieval_chain
-from langchain_classic.chains.combine_documents import create_stuff_documents_chain
-from langchain_huggingface import HuggingFaceEmbeddings
-from typing import List, Dict, Tuple, AsyncGenerator, Any, Optional
-import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,7 +36,8 @@ class QueryEngine:
         logger.info(f"[QueryEngine] Initializing with max_history={max_history}")
         self.max_history = max_history
         self.history_manager = ChatHistoryManager(
-            table_name="message_store", max_history=max_history
+            table_name="message_store",
+            max_history=max_history,
         )
 
         try:
@@ -47,23 +50,25 @@ class QueryEngine:
             logger.info("[QueryEngine] Vector store connected successfully")
         except Exception as e:
             logger.error(
-                f"[QueryEngine] Error initializing the vectorstore: {e}", exc_info=True
+                f"[QueryEngine] Error initializing the vectorstore: {e}",
+                exc_info=True,
             )
             raise e
         try:
             logger.info(
-                "[QueryEngine] Initializing ChatGoogleGenerativeAI (gemini-3-flash-preview)..."
+                "[QueryEngine] Initializing ChatGoogleGenerativeAI (gemini-3-flash-preview)...",
             )
             self.llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview")
             logger.info("[QueryEngine] LLM initialized successfully")
         except Exception as e:
             logger.error(
-                f"[QueryEngine] Error initializing the llm: {e}", exc_info=True
+                f"[QueryEngine] Error initializing the llm: {e}",
+                exc_info=True,
             )
             raise e
         try:
             self.vector_store_retriever = self.vector_store.as_retriever(
-                search_kwargs={"k": 10}
+                search_kwargs={"k": 10},
             )
         except Exception as e:
             logger.error(
@@ -77,7 +82,8 @@ class QueryEngine:
             logger.info(f"[QueryEngine] Fetched {len(self.documents)} documents")
         except Exception as e:
             logger.error(
-                f"[QueryEngine] Error fetching the documents: {e}", exc_info=True
+                f"[QueryEngine] Error fetching the documents: {e}",
+                exc_info=True,
             )
             raise e
         try:
@@ -193,7 +199,7 @@ class QueryEngine:
                 [
                     ("system", system_prompt),
                     ("human", "{input}"),
-                ]
+                ],
             )
         except Exception as e:
             logger.error(f"Error getting the system prompt: {e}")
@@ -218,7 +224,8 @@ class QueryEngine:
             raise e
         try:
             chain = create_retrieval_chain(
-                self.ensemble_retriever, create_stuff_documents_chain(self.llm, prompt)
+                self.ensemble_retriever,
+                create_stuff_documents_chain(self.llm, prompt),
             )
         except Exception as e:
             logger.error(f"Error getting the chain: {e}")
@@ -226,7 +233,10 @@ class QueryEngine:
         return chain
 
     def query_with_history(
-        self, query: str, session_id: str, original_query: Optional[str] = None
+        self,
+        query: str,
+        session_id: str,
+        original_query: Optional[str] = None,
     ):
         """
         Query with conversation history context.
@@ -255,7 +265,10 @@ class QueryEngine:
             raise e
 
     async def query_with_history_stream(
-        self, query: str, session_id: str, original_query: Optional[str] = None
+        self,
+        query: str,
+        session_id: str,
+        original_query: Optional[str] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Stream query results token by token with conversation history context.
@@ -272,7 +285,7 @@ class QueryEngine:
         """
         try:
             logger.info(
-                f"[QueryEngine] Starting stream for session {session_id}, query: '{query[:50]}...'"
+                f"[QueryEngine] Starting stream for session {session_id}, query: '{query[:50]}...'",
             )
 
             # Retrieve documents synchronously (BM25 + PGVector ensemble)
@@ -287,7 +300,7 @@ class QueryEngine:
             history_context = self.format_history_for_context(session_id)
             if history_context:
                 logger.info(
-                    f"[QueryEngine] Found conversation history for session {session_id}"
+                    f"[QueryEngine] Found conversation history for session {session_id}",
                 )
             else:
                 logger.info(f"[QueryEngine] No history found for session {session_id}")
@@ -299,7 +312,9 @@ class QueryEngine:
             logger.info("[QueryEngine] Formatting messages for LLM")
             if history_context:
                 messages = prompt.format_messages(
-                    context=context, history=history_context, input=query
+                    context=context,
+                    history=history_context,
+                    input=query,
                 )
             else:
                 messages = prompt.format_messages(context=context, input=query)
@@ -325,7 +340,7 @@ class QueryEngine:
                         yield {"type": "token", "content": content}
 
             logger.info(
-                f"[QueryEngine] Streaming completed. Generated {chunk_count} chunks. Response length: {len(full_response)}"
+                f"[QueryEngine] Streaming completed. Generated {chunk_count} chunks. Response length: {len(full_response)}",
             )
 
             history_query = original_query if original_query is not None else query
@@ -334,7 +349,8 @@ class QueryEngine:
 
         except Exception as e:
             logger.error(
-                f"[QueryEngine] Error streaming query with history: {e}", exc_info=True
+                f"[QueryEngine] Error streaming query with history: {e}",
+                exc_info=True,
             )
             yield {"type": "error", "message": str(e)}
 
@@ -345,7 +361,7 @@ if __name__ == "__main__":
     result = chain.invoke({"input": "What is the point of federated learning?"})
     print(result["answer"])
     result2 = chain.invoke(
-        {"input": "What are the main components of federated learning?"}
+        {"input": "What are the main components of federated learning?"},
     )
     print(result2["answer"])
     for result in result["context"]:

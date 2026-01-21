@@ -3,19 +3,19 @@ Unit tests for federated learning client (FlowerClient).
 Tests parameter management, training, and evaluation functionality.
 """
 
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
-import numpy as np
 
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.src.control.federated_learning.client import (
     FlowerClient,
+    evaluate,
     get_weights,
     set_weights,
     train,
-    evaluate,
 )
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 
 
 class SimpleTestNet(nn.Module):
@@ -33,13 +33,14 @@ class SimpleTestNet(nn.Module):
 
 class MockDataLoader:
     """Mock DataLoader class for testing."""
+
     def __init__(self, data):
         self.data = data
         self.dataset = list(range(sum(len(batch[0]) for batch in data)))
-    
+
     def __iter__(self):
         return iter(self.data)
-    
+
     def __len__(self):
         return len(self.dataset)
 
@@ -120,7 +121,7 @@ class TestSetWeights:
         # Get the correct shapes from the network
         original_weights = get_weights(net)
         shapes = [w.shape for w in original_weights]
-        
+
         random_weights = [np.random.randn(*shape) for shape in shapes]
 
         # Should not raise
@@ -149,11 +150,11 @@ class TestFlowerClientInit:
     def mock_dependencies(self):
         """Create mock dependencies for FlowerClient."""
         net = SimpleTestNet()
-        
+
         # Create simple data for dataloaders
         images = torch.randn(4, 10)
         labels = torch.randint(0, 2, (4,))
-        
+
         trainloader = MockDataLoader([(images, labels)])
         valloader = MockDataLoader([(images, labels)])
         config = ExperimentConfig()
@@ -469,7 +470,7 @@ class TestEvaluateFunction:
             device=device,
             num_classes=2,
         )
-        
+
         # Verify results are valid
         assert isinstance(loss, float)
         assert isinstance(accuracy, float)
@@ -491,10 +492,10 @@ class TestFlowerClientFit:
         config = ExperimentConfig(local_epochs=1)
 
         client = FlowerClient(net, trainloader, valloader, config, device)
-        
+
         # Get initial parameters
         initial_params = get_weights(net)
-        
+
         # Verify client has expected attributes
         assert client.net is not None
         assert client.config is not None

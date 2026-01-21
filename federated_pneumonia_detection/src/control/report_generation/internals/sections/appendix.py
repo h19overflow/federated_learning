@@ -78,14 +78,17 @@ def _add_appendix_header(story: list, index: int, filename: str) -> None:
                 spaceBefore=0,
                 spaceAfter=8,
             ),
-        )
+        ),
     )
     story.append(HRFlowable(width="100%", thickness=1, color=BRAND_COLOR))
     story.append(Spacer(1, 12))
 
 
 def _add_result_summary_box(
-    story: list, pred_class: str, confidence: float, result_color
+    story: list,
+    pred_class: str,
+    confidence: float,
+    result_color,
 ) -> None:
     """Add classification result summary box."""
     result_box_data = [
@@ -98,13 +101,13 @@ def _add_result_summary_box(
                     textColor=result_color,
                     alignment=TA_CENTER,
                 ),
-            )
+            ),
         ],
         [
             Paragraph(
                 f"Confidence: {confidence:.1f}%",
                 ParagraphStyle("ResultConf", fontSize=11, alignment=TA_CENTER),
-            )
+            ),
         ],
     ]
     result_box = Table(result_box_data, colWidths=[6 * inch])
@@ -116,32 +119,41 @@ def _add_result_summary_box(
                 ("TOPPADDING", (0, 0), (-1, -1), 10),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ]
-        )
+            ],
+        ),
     )
     story.append(result_box)
     story.append(Spacer(1, 12))
 
 
 def _add_probability_breakdown(
-    story: list, pneumonia_prob: float, normal_prob: float
+    story: list,
+    pneumonia_prob: float,
+    normal_prob: float,
 ) -> None:
     """Add probability breakdown table."""
     prob_data = [
         [
             Paragraph(
-                "<b>Class</b>", ParagraphStyle("PH", fontSize=9, textColor=colors.white)
+                "<b>Class</b>",
+                ParagraphStyle("PH", fontSize=9, textColor=colors.white),
             ),
             Paragraph(
                 "<b>Probability</b>",
                 ParagraphStyle(
-                    "PH", fontSize=9, textColor=colors.white, alignment=TA_CENTER
+                    "PH",
+                    fontSize=9,
+                    textColor=colors.white,
+                    alignment=TA_CENTER,
                 ),
             ),
             Paragraph(
                 "<b>Indicator</b>",
                 ParagraphStyle(
-                    "PH", fontSize=9, textColor=colors.white, alignment=TA_CENTER
+                    "PH",
+                    fontSize=9,
+                    textColor=colors.white,
+                    alignment=TA_CENTER,
                 ),
             ),
         ],
@@ -154,7 +166,10 @@ def _add_probability_breakdown(
             Paragraph(
                 "●" * min(int(pneumonia_prob / 10), 10),
                 ParagraphStyle(
-                    "PD", fontSize=9, textColor=WARNING_COLOR, alignment=TA_CENTER
+                    "PD",
+                    fontSize=9,
+                    textColor=WARNING_COLOR,
+                    alignment=TA_CENTER,
                 ),
             ),
         ],
@@ -167,7 +182,10 @@ def _add_probability_breakdown(
             Paragraph(
                 "●" * min(int(normal_prob / 10), 10),
                 ParagraphStyle(
-                    "PD", fontSize=9, textColor=SUCCESS_COLOR, alignment=TA_CENTER
+                    "PD",
+                    fontSize=9,
+                    textColor=SUCCESS_COLOR,
+                    alignment=TA_CENTER,
                 ),
             ),
         ],
@@ -181,8 +199,8 @@ def _add_probability_breakdown(
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
                 ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-            ]
-        )
+            ],
+        ),
     )
     story.append(prob_table)
     story.append(Spacer(1, 16))
@@ -229,8 +247,8 @@ def _add_images_section(
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                     ("BOX", (0, 0), (0, 0), 1, colors.lightgrey),
                     ("BOX", (2, 0), (2, 0), 1, colors.lightgrey),
-                ]
-            )
+                ],
+            ),
         )
         story.append(img_table)
 
@@ -256,7 +274,7 @@ def _add_images_section(
                             textColor=colors.gray,
                         ),
                     ),
-                ]
+                ],
             ],
             colWidths=[2.8 * inch, 0.2 * inch, 2.8 * inch],
         )
@@ -267,9 +285,12 @@ def _add_images_section(
             Paragraph(
                 captions[0],
                 ParagraphStyle(
-                    "Cap", fontSize=9, alignment=TA_CENTER, textColor=colors.gray
+                    "Cap",
+                    fontSize=9,
+                    alignment=TA_CENTER,
+                    textColor=colors.gray,
                 ),
-            )
+            ),
         )
 
     story.append(Spacer(1, 12))
@@ -286,7 +307,10 @@ def _add_images_section(
                 "regions that strongly influenced the model's prediction. These areas "
                 f"may show patterns associated with {pattern_desc}.",
                 ParagraphStyle(
-                    "HeatmapNote", fontSize=8, textColor=colors.gray, leading=11
+                    "HeatmapNote",
+                    fontSize=8,
+                    textColor=colors.gray,
+                    leading=11,
                 ),
-            )
+            ),
         )

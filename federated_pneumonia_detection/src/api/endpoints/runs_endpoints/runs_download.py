@@ -43,7 +43,10 @@ async def download_metrics_csv(run_id: int):
             raise HTTPException(status_code=404, detail="No training history available")
 
         return DownloadService.prepare_download(
-            data=results, run_id=run_id, prefix="metrics", exporter=CSVExporter()
+            data=results,
+            run_id=run_id,
+            prefix="metrics",
+            exporter=CSVExporter(),
         )
 
     except HTTPException:

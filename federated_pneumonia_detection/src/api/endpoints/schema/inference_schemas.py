@@ -64,7 +64,7 @@ class ClinicalInterpretation(BaseModel):
     recommendations: List[str] = Field(default_factory=list)
     disclaimer: str = Field(
         default="This is an AI-assisted interpretation and should not replace "
-        "professional medical diagnosis. Always consult a qualified radiologist."
+        "professional medical diagnosis. Always consult a qualified radiologist.",
     )
 
 

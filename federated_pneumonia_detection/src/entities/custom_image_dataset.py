@@ -3,24 +3,26 @@ Custom PyTorch Dataset for X-ray image loading and processing.
 Handles image file loading, transformations, and label management with comprehensive error handling.
 """
 
-from typing import Tuple, Optional, Union, Callable, TYPE_CHECKING
 from pathlib import Path
-from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
+
+import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import Dataset
-import pandas as pd
-import numpy as np
 
-from .cust_image_internals.validation import (
-    validate_inputs,
-    validate_image_files,
-    validate_all_images,
-)
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+
 from .cust_image_internals.image_ops import load_image
 from .cust_image_internals.stats import (
     get_class_distribution,
-    get_sample_info,
     get_memory_usage_estimate,
+    get_sample_info,
+)
+from .cust_image_internals.validation import (
+    validate_all_images,
+    validate_image_files,
+    validate_inputs,
 )
 
 if TYPE_CHECKING:
@@ -78,7 +80,8 @@ class CustomImageDataset(Dataset):
 
         # Get column names from config if not provided
         self.filename_column = filename_column or config.get(
-            "columns.filename", "filename"
+            "columns.filename",
+            "filename",
         )
         self.target_column = target_column or config.get("columns.target", "Target")
 
@@ -104,13 +107,14 @@ class CustomImageDataset(Dataset):
             # Validate images if requested
             if validate_images:
                 self.valid_indices = validate_image_files(
-                    self.filenames, self.image_dir
+                    self.filenames,
+                    self.image_dir,
                 )
             else:
                 self.valid_indices = np.arange(len(self.filenames))
 
         self.logger.info(
-            f"Dataset initialized with {len(self.valid_indices)} valid samples"
+            f"Dataset initialized with {len(self.valid_indices)} valid samples",
         )
 
     def __len__(self) -> int:
@@ -133,10 +137,10 @@ class CustomImageDataset(Dataset):
         """
         if idx >= len(self.valid_indices) or idx < 0:
             self.logger.error(
-                f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}"
+                f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}",
             )
             raise IndexError(
-                f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}"
+                f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}",
             )
 
         # Get the actual index from valid indices
@@ -166,7 +170,11 @@ class CustomImageDataset(Dataset):
     def get_sample_info(self, idx: int) -> dict:
         """Get detailed information about a sample."""
         return get_sample_info(
-            idx, self.valid_indices, self.filenames, self.labels, self.image_dir
+            idx,
+            self.valid_indices,
+            self.filenames,
+            self.labels,
+            self.image_dir,
         )
 
     def validate_all_images(self) -> Tuple[int, int, list]:

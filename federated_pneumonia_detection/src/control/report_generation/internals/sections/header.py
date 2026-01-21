@@ -37,10 +37,13 @@ def create_header(story: list, styles, title: str, subtitle: str = None) -> None
             Paragraph(
                 datetime.now().strftime("%Y-%m-%d"),
                 ParagraphStyle(
-                    "Date", fontSize=10, textColor=colors.gray, alignment=TA_CENTER
+                    "Date",
+                    fontSize=10,
+                    textColor=colors.gray,
+                    alignment=TA_CENTER,
                 ),
             ),
-        ]
+        ],
     ]
 
     header_table = Table(header_data, colWidths=[1.5 * inch, 4 * inch, 1.2 * inch])
@@ -51,8 +54,8 @@ def create_header(story: list, styles, title: str, subtitle: str = None) -> None
                 ("ALIGN", (0, 0), (0, 0), "LEFT"),
                 ("ALIGN", (1, 0), (1, 0), "CENTER"),
                 ("ALIGN", (2, 0), (2, 0), "RIGHT"),
-            ]
-        )
+            ],
+        ),
     )
     story.append(header_table)
 
@@ -61,9 +64,12 @@ def create_header(story: list, styles, title: str, subtitle: str = None) -> None
             Paragraph(
                 subtitle,
                 ParagraphStyle(
-                    "Subtitle", fontSize=10, textColor=colors.gray, alignment=TA_CENTER
+                    "Subtitle",
+                    fontSize=10,
+                    textColor=colors.gray,
+                    alignment=TA_CENTER,
                 ),
-            )
+            ),
         )
 
     story.append(Spacer(1, 4))

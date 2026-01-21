@@ -4,7 +4,7 @@ Contains utility functions for model configuration, metrics setup, and summariza
 """
 
 import logging
-from typing import Dict, Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import torch
 import torch.nn as nn
@@ -39,7 +39,10 @@ def validate_config(config: "ConfigManager", logger: logging.Logger) -> None:
 
 
 def setup_metrics(
-    num_classes: int, train: bool = True, validation: bool = True, test: bool = True
+    num_classes: int,
+    train: bool = True,
+    validation: bool = True,
+    test: bool = True,
 ) -> Dict[str, torchmetrics.Metric]:
     """
     Initialize torchmetrics for tracking performance.
@@ -59,47 +62,60 @@ def setup_metrics(
 
     if train:
         metrics["train_accuracy"] = torchmetrics.Accuracy(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
         metrics["train_f1"] = torchmetrics.F1Score(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
 
     if validation:
         metrics["val_accuracy"] = torchmetrics.Accuracy(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
         metrics["val_precision"] = torchmetrics.Precision(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
         metrics["val_recall"] = torchmetrics.Recall(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
         metrics["val_f1"] = torchmetrics.F1Score(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
         metrics["val_auroc"] = torchmetrics.AUROC(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
         metrics["val_confusion"] = torchmetrics.ConfusionMatrix(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
 
     if test:
         metrics["test_accuracy"] = torchmetrics.Accuracy(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
         metrics["test_precision"] = torchmetrics.Precision(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
         metrics["test_recall"] = torchmetrics.Recall(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
         metrics["test_f1"] = torchmetrics.F1Score(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
         metrics["test_auroc"] = torchmetrics.AUROC(
-            task=task_type, num_classes=num_classes_metric
+            task=task_type,
+            num_classes=num_classes_metric,
         )
 
     return metrics
@@ -142,7 +158,7 @@ def setup_loss_function(
         )
         if logger:
             logger.info(
-                f"Using FocalLossWithLabelSmoothing (label_smoothing={label_smoothing})"
+                f"Using FocalLossWithLabelSmoothing (label_smoothing={label_smoothing})",
             )
     else:
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
@@ -153,7 +169,9 @@ def setup_loss_function(
 
 
 def calculate_loss(
-    loss_fn: nn.Module, logits: torch.Tensor, targets: torch.Tensor
+    loss_fn: nn.Module,
+    logits: torch.Tensor,
+    targets: torch.Tensor,
 ) -> torch.Tensor:
     """
     Calculate loss based on task type.
@@ -242,6 +260,6 @@ def get_model_summary(
             "focal_gamma": focal_gamma if use_focal_loss else None,
             "unfrozen_layers": unfrozen_layers,
             "device": str(device),
-        }
+        },
     )
     return model_info

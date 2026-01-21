@@ -3,7 +3,8 @@ ResNet50 V2 with custom classification head for pneumonia detection.
 Provides configurable backbone freezing and fine-tuning capabilities.
 """
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+
 import torch
 import torch.nn as nn
 from torchvision.models import ResNet50_Weights
@@ -12,19 +13,28 @@ if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
-from .res_internals.validation import validate_parameters
+
 from .res_internals.model_builder import (
+    configure_fine_tuning,
     create_backbone,
     create_classifier_head,
-    configure_fine_tuning,
+)
+from .res_internals.model_ops import (
+    freeze_backbone as freeze_bb,
+)
+from .res_internals.model_ops import (
+    get_feature_maps as extract_features,
 )
 from .res_internals.model_ops import (
     get_model_info as get_info,
-    freeze_backbone as freeze_bb,
-    unfreeze_backbone as unfreeze_bb,
-    set_dropout_rate as set_dropout,
-    get_feature_maps as extract_features,
 )
+from .res_internals.model_ops import (
+    set_dropout_rate as set_dropout,
+)
+from .res_internals.model_ops import (
+    unfreeze_backbone as unfreeze_bb,
+)
+from .res_internals.validation import validate_parameters
 
 
 class ResNetWithCustomHead(nn.Module):
@@ -98,12 +108,16 @@ class ResNetWithCustomHead(nn.Module):
 
         # Initialize backbone
         self.features, self.backbone_layers = create_backbone(
-            self.base_model_weights, self.logger
+            self.base_model_weights,
+            self.logger,
         )
 
         # Initialize classifier head
         self.classifier = create_classifier_head(
-            self.num_classes, self.dropout_rate, custom_head_sizes, self.logger
+            self.num_classes,
+            self.dropout_rate,
+            custom_head_sizes,
+            self.logger,
         )
 
         # Apply fine-tuning configuration
@@ -112,7 +126,7 @@ class ResNetWithCustomHead(nn.Module):
         self.logger.info(
             f"ResNetWithCustomHead initialized: "
             f"classes={self.num_classes}, dropout={self.dropout_rate}, "
-            f"fine_tune_layers={self.fine_tune_layers_count}"
+            f"fine_tune_layers={self.fine_tune_layers_count}",
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -176,7 +190,9 @@ class ResNetWithCustomHead(nn.Module):
         self.dropout_rate = set_dropout(self.classifier, new_rate, self.logger)
 
     def get_feature_maps(
-        self, x: torch.Tensor, layer_name: Optional[str] = None
+        self,
+        x: torch.Tensor,
+        layer_name: Optional[str] = None,
     ) -> torch.Tensor:
         """
         Extract feature maps from a specific layer.

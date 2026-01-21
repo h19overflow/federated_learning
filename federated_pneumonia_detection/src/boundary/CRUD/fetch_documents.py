@@ -1,7 +1,9 @@
-from sqlalchemy import MetaData, Table
-from langchain_core.documents import Document
-from federated_pneumonia_detection.src.boundary.engine import get_engine, get_session
 import logging
+
+from langchain_core.documents import Document
+from sqlalchemy import MetaData, Table
+
+from federated_pneumonia_detection.src.boundary.engine import get_engine, get_session
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -13,7 +15,9 @@ def fetch_all_documents():
         session = get_session()
         metadata = MetaData()
         embedding_table = Table(
-            "langchain_pg_embedding", metadata, autoload_with=engine
+            "langchain_pg_embedding",
+            metadata,
+            autoload_with=engine,
         )
         results = session.query(embedding_table).all()
         documents = []

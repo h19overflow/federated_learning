@@ -11,7 +11,9 @@ class ImageProcessor:
     """Handles image I/O operations."""
 
     async def read_from_upload(
-        self, file: UploadFile, convert_rgb: bool = False
+        self,
+        file: UploadFile,
+        convert_rgb: bool = False,
     ) -> Image.Image:
         """Read image from uploaded file."""
         try:

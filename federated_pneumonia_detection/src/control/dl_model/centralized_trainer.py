@@ -3,22 +3,23 @@ Centralized training orchestrator for pneumonia detection system.
 Orchestrates complete training workflow from zip file or directory to trained model with comprehensive logging.
 """
 
-import os
 import logging
-from typing import Optional, Dict, Any
+import os
+from typing import Any, Dict, Optional
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from .internals import DataSourceExtractor
+
 from .centralized_trainer_utils import (
-    create_training_run,
-    complete_training_run,
-    fail_training_run,
     build_model_and_callbacks,
     build_trainer,
-    prepare_dataset,
-    create_data_module,
     collect_training_results,
+    complete_training_run,
+    create_data_module,
+    create_training_run,
+    fail_training_run,
+    prepare_dataset,
 )
+from .internals import DataSourceExtractor
 
 
 class CentralizedTrainer:
@@ -75,13 +76,21 @@ class CentralizedTrainer:
 
         try:
             image_dir, csv_path = self.data_source_extractor.extract_and_validate(
-                source_path, csv_filename
+                source_path,
+                csv_filename,
             )
             train_df, val_df = prepare_dataset(
-                csv_path, image_dir, self.config, self.logger
+                csv_path,
+                image_dir,
+                self.config,
+                self.logger,
             )
             data_module = create_data_module(
-                train_df, val_df, image_dir, self.config, self.logger
+                train_df,
+                val_df,
+                image_dir,
+                self.config,
+                self.logger,
             )
             model, callbacks, metrics_collector = build_model_and_callbacks(
                 train_df,
@@ -93,7 +102,11 @@ class CentralizedTrainer:
                 run_id,
             )
             trainer = build_trainer(
-                self.config, callbacks, self.logs_dir, experiment_name, self.logger
+                self.config,
+                callbacks,
+                self.logs_dir,
+                experiment_name,
+                self.logger,
             )
             trainer.fit(model, data_module)
 
@@ -137,7 +150,7 @@ class CentralizedTrainer:
         if not logger.handlers:
             handler = logging.StreamHandler()
             formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             )
             handler.setFormatter(formatter)
             logger.addHandler(handler)
@@ -151,7 +164,7 @@ class CentralizedTrainer:
             self.logger.info(
                 f"Config loaded - Epochs: {config.get('experiment.epochs')}, "
                 f"Batch: {config.get('experiment.batch_size')}, "
-                f"LR: {config.get('experiment.learning_rate')}"
+                f"LR: {config.get('experiment.learning_rate')}",
             )
             return config
         except Exception as e:

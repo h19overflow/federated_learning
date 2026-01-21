@@ -1,5 +1,7 @@
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.orm import Session
+
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 from federated_pneumonia_detection.src.boundary.models import RunMetric
 
@@ -16,7 +18,10 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
         return db.query(self.model).filter(self.model.run_id == run_id).all()
 
     def get_by_metric_name(
-        self, db: Session, run_id: int, metric_name: str
+        self,
+        db: Session,
+        run_id: int,
+        metric_name: str,
     ) -> List[RunMetric]:
         """Get specific metric for a run."""
         return (
@@ -27,19 +32,26 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
         )
 
     def get_by_dataset_type(
-        self, db: Session, run_id: int, dataset_type: str
+        self,
+        db: Session,
+        run_id: int,
+        dataset_type: str,
     ) -> List[RunMetric]:
         """Get metrics for a specific dataset type."""
         return (
             db.query(self.model)
             .filter(
-                self.model.run_id == run_id, self.model.dataset_type == dataset_type
+                self.model.run_id == run_id,
+                self.model.dataset_type == dataset_type,
             )
             .all()
         )
 
     def get_latest_by_metric(
-        self, db: Session, run_id: int, metric_name: str
+        self,
+        db: Session,
+        run_id: int,
+        metric_name: str,
     ) -> Optional[RunMetric]:
         """Get the latest value for a specific metric."""
         return (
@@ -58,11 +70,16 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
         )
 
     def get_best_metric(
-        self, db: Session, run_id: int, metric_name: str, maximize: bool = True
+        self,
+        db: Session,
+        run_id: int,
+        metric_name: str,
+        maximize: bool = True,
     ) -> Optional[RunMetric]:
         """Get the best value for a metric (max or min)."""
         query = db.query(self.model).filter(
-            self.model.run_id == run_id, self.model.metric_name == metric_name
+            self.model.run_id == run_id,
+            self.model.metric_name == metric_name,
         )
 
         if maximize:
@@ -71,7 +88,10 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
             return query.order_by(self.model.metric_value.asc()).first()
 
     def get_metric_stats(
-        self, db: Session, run_id: int, metric_name: str
+        self,
+        db: Session,
+        run_id: int,
+        metric_name: str,
     ) -> Dict[str, Any]:
         """Get statistics for a specific metric."""
         metrics = self.get_by_metric_name(db, run_id, metric_name)
@@ -89,7 +109,11 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
         }
 
     def get_metrics_by_name_and_dataset(
-        self, db: Session, run_id: int, metric_name: str, dataset_type: str
+        self,
+        db: Session,
+        run_id: int,
+        metric_name: str,
+        dataset_type: str,
     ) -> List[RunMetric]:
         """Get metrics filtered by name and dataset type."""
         return (

@@ -1,5 +1,6 @@
-from typing import List, Optional
 import datetime
+from typing import List, Optional
+
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.models import Client
 
@@ -7,7 +8,10 @@ from federated_pneumonia_detection.src.boundary.models import Client
 # TODO : If clients are part of multiple rounds they are not being recordeed for the multiple rounds only the first round , in the db
 class ClientCRUD:
     def create_client(
-        self, run_id: int, client_identifier: str, client_config: Optional[dict] = None
+        self,
+        run_id: int,
+        client_identifier: str,
+        client_config: Optional[dict] = None,
     ):
         """Create a new client"""
         session = get_session()
@@ -39,7 +43,9 @@ class ClientCRUD:
             session.close()
 
     def get_client_by_identifier(
-        self, run_id: int, client_identifier: str
+        self,
+        run_id: int,
+        client_identifier: str,
     ) -> Optional[Client]:
         """Get a specific client by run_id and client_identifier"""
         session = get_session()

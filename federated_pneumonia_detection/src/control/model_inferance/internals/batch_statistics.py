@@ -3,9 +3,9 @@
 from typing import List
 
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
+    BatchSummaryStats,
     PredictionClass,
     SingleImageResult,
-    BatchSummaryStats,
 )
 
 
@@ -13,7 +13,9 @@ class BatchStatistics:
     """Calculates batch prediction statistics."""
 
     def calculate(
-        self, results: List[SingleImageResult], total_images: int
+        self,
+        results: List[SingleImageResult],
+        total_images: int,
     ) -> BatchSummaryStats:
         """Calculate summary statistics for batch predictions."""
         successful = [r.prediction for r in results if r.success and r.prediction]

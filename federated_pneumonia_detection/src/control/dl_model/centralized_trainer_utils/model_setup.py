@@ -54,7 +54,7 @@ def build_model_and_callbacks(
     logger.info("Setting up model and callbacks (Enhanced v3 - Balanced)...")
     if is_federated and client_id is not None:
         logger.info(
-            f"[CentralizedTrainer] Federated mode enabled for client_id={client_id}, round={round_number}"
+            f"[CentralizedTrainer] Federated mode enabled for client_id={client_id}, round={round_number}",
         )
 
     batch_interval = config.get("experiment.batch_sample_interval", 10)
@@ -131,7 +131,9 @@ def build_trainer(
     logger.info("Setting up trainer...")
     try:
         tb_logger = TensorBoardLogger(
-            save_dir=logs_dir, name=experiment_name, version=None
+            save_dir=logs_dir,
+            name=experiment_name,
+            version=None,
         )
     except Exception as e:
         logger.error(f"Failed to create TensorBoard logger: {e}")
@@ -139,7 +141,9 @@ def build_trainer(
 
     try:
         trainer = create_trainer_from_config(
-            config=config, callbacks=callbacks, is_federated=is_federated
+            config=config,
+            callbacks=callbacks,
+            is_federated=is_federated,
         )
     except Exception as e:
         logger.error(f"Failed to create trainer: {e}")

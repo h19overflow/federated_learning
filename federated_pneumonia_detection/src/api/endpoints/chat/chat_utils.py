@@ -80,7 +80,11 @@ def prepare_enhanced_query(query: str, run_id: Optional[int]) -> str:
 
 
 def build_run_context(
-    db, run_id: int, run_crud, run_metric_crud, server_evaluation_crud
+    db,
+    run_id: int,
+    run_crud,
+    run_metric_crud,
+    server_evaluation_crud,
 ) -> Optional[str]:
     """
     Build comprehensive context string for a training run.
@@ -125,7 +129,11 @@ def build_run_context(
         # Add federated-specific information if applicable
         if run_data.training_mode == "federated":
             context_info += _build_federated_details(
-                run_data, all_metrics, server_evaluation_crud, db, run_id
+                run_data,
+                all_metrics,
+                server_evaluation_crud,
+                db,
+                run_id,
             )
 
         # Add instructions for AI
@@ -182,7 +190,7 @@ def _build_metrics_summary(all_metrics) -> str:
                 "value": metric.metric_value,
                 "client_id": metric.client_id,
                 "round_id": metric.round_id,
-            }
+            },
         )
 
     # Report on each metric type
@@ -199,7 +207,11 @@ def _build_metrics_summary(all_metrics) -> str:
 
 
 def _build_federated_details(
-    run_data, all_metrics, server_evaluation_crud, db, run_id: int
+    run_data,
+    all_metrics,
+    server_evaluation_crud,
+    db,
+    run_id: int,
 ) -> str:
     """Build federated learning specific details section."""
     details = "\n" + "=" * 60 + "\n"
@@ -288,14 +300,18 @@ def enhance_query_with_run_context(query: str, run_id: int) -> str:
     db = get_session()
     try:
         context_info = build_run_context(
-            db, run_id, run_crud, run_metric_crud, server_evaluation_crud
+            db,
+            run_id,
+            run_crud,
+            run_metric_crud,
+            server_evaluation_crud,
         )
 
         if context_info:
             return query + context_info
         else:
             logger.warning(
-                f"No context built for run_id={run_id}, using original query"
+                f"No context built for run_id={run_id}, using original query",
             )
             return query
 

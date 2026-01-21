@@ -1,7 +1,9 @@
-from typing import Optional, List, Dict, Any
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.orm import Session
+
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.models import Run
@@ -47,7 +49,10 @@ class RunCRUD(BaseCRUD[Run]):
         return self.update(db, id, status=status)
 
     def complete_run(
-        self, db: Session, run_id: int, status: str = "completed"
+        self,
+        db: Session,
+        run_id: int,
+        status: str = "completed",
     ) -> Optional[Run]:
         """Mark run as completed or failed with end_time timestamp.
 
@@ -69,7 +74,7 @@ class RunCRUD(BaseCRUD[Run]):
         # Log current state before update
         self.logger.info(
             f"Run {run_id} current state: status={run.status}, "
-            f"start_time={run.start_time}, end_time={run.end_time}"
+            f"start_time={run.start_time}, end_time={run.end_time}",
         )
 
         # Update end_time and status
@@ -80,13 +85,16 @@ class RunCRUD(BaseCRUD[Run]):
             self.logger.info(
                 f"Run {run_id} updated: status={updated_run.status}, "
                 f"end_time={updated_run.end_time}, "
-                f"duration={(updated_run.end_time - updated_run.start_time).total_seconds() / 60:.2f} minutes"
+                f"duration={(updated_run.end_time - updated_run.start_time).total_seconds() / 60:.2f} minutes",
             )
 
         return updated_run
 
     def get_by_status_and_mode(
-        self, db: Session, status: str, training_mode: Optional[str] = None
+        self,
+        db: Session,
+        status: str,
+        training_mode: Optional[str] = None,
     ) -> List[Run]:
         """
         Get runs filtered by status and optionally by training_mode.
@@ -113,7 +121,9 @@ class RunCRUD(BaseCRUD[Run]):
         return db.query(self.model).filter(self.model.wandb_id == wandb_id).first()
 
     def get_completed_runs(
-        self, db: Session, experiment_id: Optional[int] = None
+        self,
+        db: Session,
+        experiment_id: Optional[int] = None,
     ) -> List[Run]:
         """Get all completed runs, optionally filtered by experiment."""
         query = db.query(self.model).filter(self.model.status == "completed")
@@ -122,7 +132,9 @@ class RunCRUD(BaseCRUD[Run]):
         return query.order_by(self.model.end_time.desc()).all()
 
     def get_failed_runs(
-        self, db: Session, experiment_id: Optional[int] = None
+        self,
+        db: Session,
+        experiment_id: Optional[int] = None,
     ) -> List[Run]:
         """Get all failed runs, optionally filtered by experiment."""
         query = db.query(self.model).filter(self.model.status == "failed")
@@ -163,11 +175,13 @@ class RunCRUD(BaseCRUD[Run]):
                     )
 
                     round_id = round_crud.get_or_create_round(
-                        db, client_id, round_number
+                        db,
+                        client_id,
+                        round_number,
                     )
                     self.logger.info(
                         f"[persist_metrics] Federated context: "
-                        f"client_id={client_id}, round_id={round_id}"
+                        f"client_id={client_id}, round_id={round_id}",
                     )
 
             for epoch_data in epoch_metrics:
@@ -222,7 +236,7 @@ class RunCRUD(BaseCRUD[Run]):
                         f", client_id={client_id}, round_id={round_id}"
                         if client_id
                         else ""
-                    )
+                    ),
                 )
 
         except Exception as e:

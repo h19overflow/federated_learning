@@ -14,7 +14,7 @@ The API endpoints have been scanned and tested for structural alignment with bus
 ## Critical Issues Found
 
 ### 1. **ModuleNotFoundError: federated_learning.federated_trainer** (Blocker)
-**Severity**: CRITICAL  
+**Severity**: CRITICAL
 **Status**: Blocking all comparison endpoint tests
 
 The import path in `comparison_endpoints.py` is incorrect:
@@ -30,7 +30,7 @@ from federated_pneumonia_detection.src.control.federated_learning.federated_trai
 
 **Root Cause**: The module structure doesn't match the import path. Need to verify actual location of FederatedTrainer class.
 
-**Action Required**: 
+**Action Required**:
 1. Locate the correct import path for FederatedTrainer
 2. Update imports in `comparison_endpoints.py` and `experiment_orchestrator.py`
 3. Ensure module structure aligns with imports
@@ -38,12 +38,12 @@ from federated_pneumonia_detection.src.control.federated_learning.federated_trai
 ---
 
 ### 2. **Missing batch_size in ExperimentConfig Schema** (High)
-**Severity**: HIGH  
+**Severity**: HIGH
 **Status**: Configuration incomplete
 
 The ExperimentConfig schema in `schemas.py` is missing the `batch_size` field even though it's used in the system.
 
-**Evidence**: 
+**Evidence**:
 - `TestConfigurationEndpoint::test_experiment_config_schema_includes_standard_params` FAILED
 
 **Impact**: Users cannot configure batch_size through the API configuration endpoint, though it's available in the system.
@@ -57,7 +57,7 @@ batch_size: Optional[int] = Field(None, description="Batch size for training")
 ---
 
 ### 3. **Endpoints Not Registered with FastAPI Router** (High)
-**Severity**: HIGH  
+**Severity**: HIGH
 **Status**: Endpoints not discoverable
 
 The experiment endpoints exist but their routes are not being returned by FastAPI router inspection.
@@ -95,7 +95,7 @@ app.include_router(comparison_endpoints.router)
 ---
 
 ### 4. **Typo in Folder Name** (Medium)
-**Severity**: MEDIUM  
+**Severity**: MEDIUM
 **Status**: Naming convention issue
 
 The folder is named `configruation_settings` (typo) instead of `configuration_settings`.
@@ -119,7 +119,7 @@ The folder is named `configruation_settings` (typo) instead of `configuration_se
 ---
 
 ### 5. **Missing Implementation: logging_endpoints.py** (Medium)
-**Severity**: MEDIUM  
+**Severity**: MEDIUM
 **Status**: Not implemented
 
 The file `results/logging_endpoints.py` exists but is empty with no router implementation.
@@ -136,13 +136,13 @@ Either:
    - Live training logs
    - Historical logs by run ID
    - Log filtering/pagination
-   
+
 2. **Or remove** if not needed, and update documentation
 
 ---
 
 ### 6. **Missing Implementation: results_endpoints.py** (Medium)
-**Severity**: MEDIUM  
+**Severity**: MEDIUM
 **Status**: Not implemented
 
 The file `results/results_endpoints.py` exists but is empty with no router implementation.
@@ -160,7 +160,7 @@ Either:
    - List all results
    - Get metrics/artifacts
    - Export results
-   
+
 2. **Or remove** if not needed, and update documentation
 
 ---

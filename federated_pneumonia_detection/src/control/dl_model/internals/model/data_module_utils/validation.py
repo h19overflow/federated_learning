@@ -1,7 +1,9 @@
 """Input validation utilities for XRayDataModule."""
 
 from pathlib import Path
+
 import pandas as pd
+
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 logger = get_logger(__name__)

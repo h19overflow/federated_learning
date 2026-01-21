@@ -5,6 +5,7 @@ Provides callbacks for progressive layer unfreezing during training.
 """
 
 import logging
+
 import pytorch_lightning as pl
 
 
@@ -34,7 +35,9 @@ class ProgressiveUnfreezeCallback(pl.Callback):
         self.logger = logging.getLogger(__name__)
 
     def on_train_epoch_start(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
     ) -> None:
         """Check if we should unfreeze layers at this epoch."""
         current_epoch = trainer.current_epoch
@@ -43,5 +46,5 @@ class ProgressiveUnfreezeCallback(pl.Callback):
             if hasattr(pl_module, "progressive_unfreeze"):
                 pl_module.progressive_unfreeze(self.layers_per_unfreeze)
                 self.logger.info(
-                    f"Epoch {current_epoch}: Unfroze {self.layers_per_unfreeze} more layers"
+                    f"Epoch {current_epoch}: Unfroze {self.layers_per_unfreeze} more layers",
                 )

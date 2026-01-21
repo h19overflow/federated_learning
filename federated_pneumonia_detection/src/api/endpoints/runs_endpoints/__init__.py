@@ -7,13 +7,14 @@ fetching metrics, and downloading results in various formats.
 """
 
 from fastapi import APIRouter
+
 from . import (
-    runs_list,
-    runs_metrics,
+    runs_analytics,
     runs_download,
     runs_federated_rounds,
+    runs_list,
+    runs_metrics,
     runs_server_evaluation,
-    runs_analytics,
 )
 
 # Create main router for runs endpoints

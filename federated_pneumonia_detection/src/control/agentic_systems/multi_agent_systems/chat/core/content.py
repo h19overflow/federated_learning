@@ -42,13 +42,13 @@ def normalize_content(content: Union[str, List[Any], None]) -> str:
 
     if isinstance(content, str):
         logger.debug(
-            f"[Content] normalize_content received string, length: {len(content)}"
+            f"[Content] normalize_content received string, length: {len(content)}",
         )
         return content
 
     if isinstance(content, list):
         logger.debug(
-            f"[Content] normalize_content received list with {len(content)} parts"
+            f"[Content] normalize_content received list with {len(content)} parts",
         )
         parts = []
         for i, part in enumerate(content):
@@ -58,13 +58,13 @@ def normalize_content(content: Union[str, List[Any], None]) -> str:
             elif isinstance(part, dict) and "text" in part:
                 parts.append(part["text"])
                 logger.debug(
-                    f"[Content] Part {i}: dict with text, length {len(part['text'])}"
+                    f"[Content] Part {i}: dict with text, length {len(part['text'])}",
                 )
             else:
                 logger.warning(f"[Content] Part {i}: unexpected type {type(part)}")
         result = "".join(parts)
         logger.debug(
-            f"[Content] Normalized list to string, final length: {len(result)}"
+            f"[Content] Normalized list to string, final length: {len(result)}",
         )
         return result
 

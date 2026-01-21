@@ -50,5 +50,6 @@ def format_user_prompt(query: str, history: str = "") -> str:
         Formatted user prompt with XML structure
     """
     return ARXIV_AGENT_USER_TEMPLATE.format(
-        history=history if history else "None", input=query
+        history=history if history else "None",
+        input=query,
     )

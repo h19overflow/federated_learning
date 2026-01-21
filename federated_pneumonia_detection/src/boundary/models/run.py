@@ -2,10 +2,10 @@
 Run model - represents a training session (centralized or federated).
 """
 
-from sqlalchemy import Column, Integer, String, TIMESTAMP
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy import TIMESTAMP, Column, Integer, String
+from sqlalchemy.orm import relationship
 
-Base = declarative_base()
+from .base import Base
 
 
 class Run(Base):

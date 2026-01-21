@@ -1,0 +1,115 @@
+# Pre-commit configuration for FYP2 monorepo
+# Hybrid Federated/Centralized Pneumonia Detection System
+
+# Minimum version required
+minimum_pre_commit_version: "3.0.0"
+
+# Default language version
+default_language_version:
+  python: python3.12
+
+# List of hooks to run on git commit
+repos:
+  # ============================================
+  # Ruff - Ultra-fast Python linter and formatter
+  # ============================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.2  # Latest stable Ruff version
+    hooks:
+      # Ruff linter - runs on staged files only
+      - id: ruff
+        name: Ruff (linting)
+        args: [--fix]  # Auto-fix issues when possible
+        types_or: [python, pyi, jupyter]
+
+      # Ruff formatter - runs on staged files only
+      - id: ruff-format
+        name: Ruff (formatting)
+        types_or: [python, pyi, jupyter]
+
+  # ============================================
+  # General file cleanup hooks
+  # ============================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0  # Latest stable version
+    hooks:
+      # Remove trailing whitespace from all files
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+
+      # Ensure files end with a newline
+      - id: end-of-file-fixer
+        name: Fix end of files
+
+      # Remove unnecessary whitespace at start of file
+      - id: fix-byte-order-marker
+        name: Fix byte order marker
+
+      # Prevent commits to main/master branch
+      - id: no-commit-to-branch
+        name: Block commits to main/master
+        args: ["--branch", "main", "--branch", "master"]
+
+      # Check for large files (>5MB)
+      - id: check-added-large-files
+        name: Check for large files
+        args: ["--maxkb=5120"]
+
+      # Check for merge conflict markers
+      - id: check-merge-conflict
+        name: Check merge conflicts
+
+      # Check YAML syntax
+      - id: check-yaml
+        name: Check YAML syntax
+
+      # Check JSON syntax
+      - id: check-json
+        name: Check JSON syntax
+
+      # Check TOML syntax
+      - id: check-toml
+        name: Check TOML syntax
+
+      # Check Python syntax
+      - id: check-ast
+        name: Check Python AST
+
+      # Check for debugger imports
+      - id: debug-statements
+        name: Check debug statements
+
+  # ============================================
+  # Security checks
+  # ============================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        name: Bandit (security linter)
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]
+        # Skip certain common false positives
+        exclude: ^tests/
+
+  # ============================================
+  # Python-specific quality checks
+  # ============================================
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v3.1.0
+    hooks:
+      - id: add-trailing-comma
+        name: Add trailing commas
+        args: ["--py36-plus"]
+
+  # ============================================
+  # Documentation checks
+  # ============================================
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.7.0
+    hooks:
+      - id: interrogate
+        name: Check docstring coverage
+        args: ["-vv", "--config", "pyproject.toml"]
+        # Skip certain directories
+        exclude: ^(tests/|scripts/|analysis/)

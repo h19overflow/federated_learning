@@ -3,9 +3,9 @@ Unit tests for data partitioning module.
 Tests stratified partitioning of datasets across federated clients.
 """
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 
 from federated_pneumonia_detection.src.control.federated_learning.partitioner import (
     partition_data_stratified,
@@ -166,8 +166,10 @@ class TestPartitionDataStratified:
 
         # Compare the partitions
         for df1, df2 in zip(result1, result2):
-            pd.testing.assert_frame_equal(df1.reset_index(drop=True), 
-                                         df2.reset_index(drop=True))
+            pd.testing.assert_frame_equal(
+                df1.reset_index(drop=True),
+                df2.reset_index(drop=True),
+            )
 
     def test_partition_different_with_different_seed(self, sample_dataframe):
         """Test that different seeds produce different partitions."""
@@ -237,8 +239,7 @@ class TestPartitionDataStratified:
 
     def test_partition_missing_target_column(self, sample_dataframe):
         """Test that missing target column raises ValueError."""
-        with pytest.raises(ValueError, 
-                          match="target_column.*not found in DataFrame"):
+        with pytest.raises(ValueError, match="target_column.*not found in DataFrame"):
             partition_data_stratified(
                 df=sample_dataframe,
                 num_clients=3,

@@ -22,7 +22,8 @@ async def get_chat_history(session_id: str) -> ChatHistoryResponse:
     """Retrieve conversation history for a session."""
     if get_query_engine() is None:
         raise HTTPException(
-            status_code=500, detail="QueryEngine not initialized properly"
+            status_code=500,
+            detail="QueryEngine not initialized properly",
         )
 
     try:
@@ -35,7 +36,8 @@ async def get_chat_history(session_id: str) -> ChatHistoryResponse:
     except Exception as exc:
         logger.error("Error retrieving history: %s", exc)
         raise HTTPException(
-            status_code=500, detail=f"Error retrieving history: {str(exc)}"
+            status_code=500,
+            detail=f"Error retrieving history: {str(exc)}",
         )
 
 
@@ -44,7 +46,8 @@ async def clear_chat_history(session_id: str) -> Dict[str, str]:
     """Clear conversation history for a session."""
     if get_query_engine() is None:
         raise HTTPException(
-            status_code=500, detail="QueryEngine not initialized properly"
+            status_code=500,
+            detail="QueryEngine not initialized properly",
         )
 
     try:
@@ -54,5 +57,6 @@ async def clear_chat_history(session_id: str) -> Dict[str, str]:
     except Exception as exc:
         logger.error("Error clearing history: %s", exc)
         raise HTTPException(
-            status_code=500, detail=f"Error clearing history: {str(exc)}"
+            status_code=500,
+            detail=f"Error clearing history: {str(exc)}",
         )

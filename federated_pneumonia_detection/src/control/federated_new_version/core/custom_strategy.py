@@ -7,11 +7,13 @@ Follows Flower conventions for:
 - Configuration passing to clients
 """
 
-from typing import Optional, Dict, Any
 from collections.abc import Iterable
+from typing import Any, Dict, Optional
+
 from flwr.app import ArrayRecord, ConfigRecord, Message
 from flwr.serverapp import Grid
 from flwr.serverapp.strategy import FedAvg
+
 from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (
     MetricsWebSocketSender,
 )
@@ -53,7 +55,11 @@ class ConfigurableFedAvg(FedAvg):
         self.total_rounds = 0
 
     def configure_train(
-        self, server_round: int, arrays: ArrayRecord, config: ConfigRecord, grid: Grid
+        self,
+        server_round: int,
+        arrays: ArrayRecord,
+        config: ConfigRecord,
+        grid: Grid,
     ) -> Iterable[Message]:
         """Configure the next round of federated training with custom configs.
 
@@ -78,7 +84,11 @@ class ConfigurableFedAvg(FedAvg):
         return super().configure_train(server_round, arrays, config, grid)
 
     def configure_evaluate(
-        self, server_round: int, arrays: ArrayRecord, config: ConfigRecord, grid: Grid
+        self,
+        server_round: int,
+        arrays: ArrayRecord,
+        config: ConfigRecord,
+        grid: Grid,
     ) -> Iterable[Message]:
         """Configure the next round of federated evaluation with custom configs.
 
@@ -129,7 +139,8 @@ class ConfigurableFedAvg(FedAvg):
             if "metrics" in reply.content:
                 metrics = dict(reply.content["metrics"])
                 num_examples = metrics.get(
-                    "num-examples", "NOT_FOUND"
+                    "num-examples",
+                    "NOT_FOUND",
                 )  # Note: hyphen not underscore!
                 print(f"[Strategy] Client {i}: num-examples={num_examples}")
 
@@ -147,7 +158,9 @@ class ConfigurableFedAvg(FedAvg):
 
             # Broadcast round metrics to frontend
             self.ws_sender.send_round_metrics(
-                round_num=server_round, total_rounds=total_rounds, metrics=round_metrics
+                round_num=server_round,
+                total_rounds=total_rounds,
+                metrics=round_metrics,
             )
         else:
             print(f"[Strategy] Warning: No aggregated metrics for round {server_round}")
@@ -155,7 +168,8 @@ class ConfigurableFedAvg(FedAvg):
         return aggregated_metrics
 
     def _extract_round_metrics(
-        self, aggregated_metrics: Dict[str, Any]
+        self,
+        aggregated_metrics: Dict[str, Any],
     ) -> Dict[str, float]:
         """
         Extract standard metrics from aggregated metrics dictionary.

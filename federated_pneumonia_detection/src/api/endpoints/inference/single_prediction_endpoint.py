@@ -43,16 +43,19 @@ async def predict(
     # Read and validate image
     image = await service.processor.read_from_upload(file)
     logger.info(
-        f"Processing image: {file.filename}, size: {image.size}, mode: {image.mode}"
+        f"Processing image: {file.filename}, size: {image.size}, mode: {image.mode}",
     )
 
     try:
         # Run inference
         predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(
-            image
+            image,
         )
         prediction = service.create_prediction(
-            predicted_class, confidence, pneumonia_prob, normal_prob
+            predicted_class,
+            confidence,
+            pneumonia_prob,
+            normal_prob,
         )
 
         # Generate clinical interpretation if requested

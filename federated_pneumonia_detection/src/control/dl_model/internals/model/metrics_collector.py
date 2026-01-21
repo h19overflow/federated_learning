@@ -1,12 +1,14 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-import torch
+from typing import Any, Dict, List, Optional
+
 import pytorch_lightning as pl
+import torch
 from sqlalchemy.orm import Session
-from federated_pneumonia_detection.src.boundary.engine import get_session
+
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.control.dl_model.internals.data.metrics_file_persister import (
     MetricsFilePersister,
 )
@@ -66,7 +68,7 @@ class MetricsCollectorCallback(pl.Callback):
 
         if self.federated_mode and self.client_id is not None:
             self.logger.info(
-                f"[MetricsCollector] Initialized in FEDERATED mode for client_id={self.client_id}, round={self.current_round}"
+                f"[MetricsCollector] Initialized in FEDERATED mode for client_id={self.client_id}, round={self.current_round}",
             )
         else:
             self.logger.info("[MetricsCollector] Initialized in CENTRALIZED mode")
@@ -113,7 +115,7 @@ class MetricsCollectorCallback(pl.Callback):
                 if self.federated_mode and self.client_id is not None:
                     self.db_client_id = self._ensure_client_exists(db, self.run_id)
                     self.logger.info(
-                        f"[on_train_start] Federated client created: db_client_id={self.db_client_id}"
+                        f"[on_train_start] Federated client created: db_client_id={self.db_client_id}",
                     )
 
                 db.commit()  # COMMIT the transaction so other sessions can see it
@@ -154,11 +156,11 @@ class MetricsCollectorCallback(pl.Callback):
                 "trainable_parameters": sum(
                     p.numel() for p in pl_module.parameters() if p.requires_grad
                 ),
-            }
+            },
         )
 
         self.logger.info(
-            f"Metrics collection started for experiment: {self.experiment_name}"
+            f"Metrics collection started for experiment: {self.experiment_name}",
         )
 
     def on_train_epoch_end(self, trainer, pl_module):
@@ -205,7 +207,9 @@ class MetricsCollectorCallback(pl.Callback):
         # Send metrics to frontend via WebSocket
         if self.ws_sender:
             self.ws_sender.send_epoch_end(
-                epoch=trainer.current_epoch, phase="val", metrics=val_metrics
+                epoch=trainer.current_epoch,
+                phase="val",
+                metrics=val_metrics,
             )
 
     def on_fit_end(self, trainer, pl_module):
@@ -231,7 +235,7 @@ class MetricsCollectorCallback(pl.Callback):
         # Save metrics in multiple formats
         self._save_metrics()
         self.logger.info(
-            f"Metrics saved to {self.save_dir} - Total epochs: {len(self.epoch_metrics)}"
+            f"Metrics saved to {self.save_dir} - Total epochs: {len(self.epoch_metrics)}",
         )
 
         # Send training completion to frontend with run_id and summary
@@ -246,18 +250,18 @@ class MetricsCollectorCallback(pl.Callback):
                     "best_val_recall": self.metadata.get("best_val_recall"),
                     "total_epochs": len(self.epoch_metrics),
                     "training_duration": self.metadata.get(
-                        "training_duration_formatted"
+                        "training_duration_formatted",
                     ),
                 },
                 "training_end",
             )
             self.logger.info(
-                f"Training complete notification sent (run_id={self.run_id})"
+                f"Training complete notification sent (run_id={self.run_id})",
             )
         elif self.federated_mode:
             self.logger.info(
                 f"[Federated Mode] Client training complete for round {self.current_round}. "
-                "Server will send final training_end event when all rounds complete."
+                "Server will send final training_end event when all rounds complete.",
             )
 
     def _extract_metrics(self, trainer, pl_module, stage: str) -> Dict[str, Any]:
@@ -349,7 +353,7 @@ class MetricsCollectorCallback(pl.Callback):
             else:
                 self.logger.warning(
                     f"run_id={self.run_id} not found in database. "
-                    "This may indicate a session/commit issue. Creating new run."
+                    "This may indicate a session/commit issue. Creating new run.",
                 )
 
         run_data = {
@@ -366,7 +370,7 @@ class MetricsCollectorCallback(pl.Callback):
 
         self.logger.info(
             f"Created new run with id={self.run_id} for "
-            f"experiment_id={self.experiment_id}"
+            f"experiment_id={self.experiment_id}",
         )
 
         return self.run_id
@@ -391,14 +395,15 @@ class MetricsCollectorCallback(pl.Callback):
         existing_client = (
             db.query(Client)
             .filter(
-                Client.run_id == run_id, Client.client_identifier == client_identifier
+                Client.run_id == run_id,
+                Client.client_identifier == client_identifier,
             )
             .first()
         )
 
         if existing_client:
             self.logger.debug(
-                f"Using existing client_id={existing_client.id} for {client_identifier}"
+                f"Using existing client_id={existing_client.id} for {client_identifier}",
             )
             return existing_client.id
 
@@ -415,7 +420,7 @@ class MetricsCollectorCallback(pl.Callback):
 
             self.logger.info(
                 f"[_ensure_client_exists] Created new client entity: "
-                f"id={new_client.id}, identifier={client_identifier}, run_id={run_id}"
+                f"id={new_client.id}, identifier={client_identifier}, run_id={run_id}",
             )
             return new_client.id
         except Exception as e:
@@ -451,12 +456,15 @@ class MetricsCollectorCallback(pl.Callback):
                 }
                 self.logger.info(
                     f"[persist_to_database] Persisting federated metrics: "
-                    f"run_id={run_id}, client_id={self.db_client_id}, round={self.current_round}"
+                    f"run_id={run_id}, client_id={self.db_client_id}, round={self.current_round}",
                 )
 
             # Delegate metric persistence to CRUD layer with federated context
             run_crud.persist_metrics(
-                db, run_id, self.epoch_metrics, federated_context=federated_context
+                db,
+                run_id,
+                self.epoch_metrics,
+                federated_context=federated_context,
             )
 
             # Update run completion time if training finished normally
@@ -469,7 +477,7 @@ class MetricsCollectorCallback(pl.Callback):
                         # end_time is set by centralized_trainer.complete_run() - not here to avoid race condition
                     )
                     self.logger.info(
-                        f"Updated run {run_id} with end_time={self.training_end_time.isoformat()}"
+                        f"Updated run {run_id} with end_time={self.training_end_time.isoformat()}",
                     )
                 except Exception as e:
                     self.logger.warning(f"Failed to update run end_time: {e}")

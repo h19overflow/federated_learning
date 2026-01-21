@@ -2,9 +2,10 @@
 Round model - tracks federated learning communication rounds per client.
 """
 
-from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, JSON
+from sqlalchemy import JSON, TIMESTAMP, Column, ForeignKey, Integer
 from sqlalchemy.orm import relationship
-from .run import Base
+
+from .base import Base
 
 
 class Round(Base):

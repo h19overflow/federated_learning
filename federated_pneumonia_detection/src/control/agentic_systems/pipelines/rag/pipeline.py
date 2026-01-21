@@ -1,9 +1,10 @@
 import os
+
 from langchain_community.document_loaders import PyPDFium2Loader
+from langchain_core.documents import Document
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_postgres import PGVector
-from langchain_core.documents import Document
 
 from federated_pneumonia_detection.config.settings import Settings
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
@@ -67,5 +68,6 @@ if __name__ == "__main__":
         get_logger(__name__).info(f"Processing file: {file}")
         if file.endswith(".pdf"):
             pipeline(
-                Settings().get_postgres_db_uri(), os.path.join(directory_path, file)
+                Settings().get_postgres_db_uri(),
+                os.path.join(directory_path, file),
             )

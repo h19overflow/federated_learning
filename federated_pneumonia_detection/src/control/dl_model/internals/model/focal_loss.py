@@ -3,10 +3,11 @@ Focal Loss implementation for handling class imbalance in medical imaging.
 Focuses learning on hard examples by down-weighting well-classified examples.
 """
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional
 
 
 class FocalLoss(nn.Module):
@@ -156,7 +157,9 @@ class FocalLossWithLabelSmoothing(nn.Module):
 
         # Compute binary cross-entropy with smoothed labels
         bce_loss = F.binary_cross_entropy_with_logits(
-            inputs, targets_smoothed, reduction="none"
+            inputs,
+            targets_smoothed,
+            reduction="none",
         )
 
         # Use original (non-smoothed) targets for focal weighting

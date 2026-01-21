@@ -5,13 +5,13 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
-from federated_pneumonia_detection.src.boundary.models.chat_session import ChatSession
 from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
     create_chat_session,
     delete_chat_session,
     get_all_chat_sessions,
     get_chat_session,
 )
+from federated_pneumonia_detection.src.boundary.models.chat_session import ChatSession
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history import (
     ChatHistoryManager,
 )
@@ -33,7 +33,9 @@ class SessionManager:
         return get_all_chat_sessions()
 
     def create_session(
-        self, title: Optional[str] = None, initial_query: Optional[str] = None
+        self,
+        title: Optional[str] = None,
+        initial_query: Optional[str] = None,
     ) -> ChatSession:
         """Create a new chat session with optional title generation."""
         if not title and initial_query:

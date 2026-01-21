@@ -24,7 +24,8 @@ router = APIRouter(prefix="/api/inference", tags=["inference"])
 @router.post("/predict-batch", response_model=BatchInferenceResponse)
 async def predict_batch(
     files: List[UploadFile] = File(
-        ..., description="Multiple chest X-ray images (PNG, JPEG)"
+        ...,
+        description="Multiple chest X-ray images (PNG, JPEG)",
     ),
     include_clinical_interpretation: bool = Query(
         default=False,

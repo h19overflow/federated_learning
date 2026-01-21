@@ -1,11 +1,11 @@
 """Database operations for training run management."""
 
 import logging
-from typing import Optional
 from datetime import datetime
+from typing import Optional
 
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.engine import get_session
 
 
 def create_training_run(

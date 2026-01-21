@@ -23,10 +23,11 @@ Migration Strategy:
 
 import logging
 import os
+
 from sqlalchemy import create_engine, inspect
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
-from sqlalchemy.exc import SQLAlchemyError
 
 from federated_pneumonia_detection.config.settings import Settings
 
@@ -90,7 +91,7 @@ def _get_engine():
 
         logger.info(
             f"Database connection pool initialized: pool_size={5}, "
-            f"max_overflow={10}, pool_recycle={3600}s"
+            f"max_overflow={10}, pool_recycle={3600}s",
         )
 
         return _engine
@@ -143,12 +144,12 @@ def create_tables(force: bool = False):
     if use_alembic and not force:
         logger.warning(
             "[MIGRATION-AWARE] USE_ALEMBIC=true detected. "
-            "Schema changes should be managed via Alembic migrations."
+            "Schema changes should be managed via Alembic migrations.",
         )
         logger.warning("To apply migrations, run: alembic upgrade head")
         logger.warning("To force table creation anyway, call create_tables(force=True)")
         logger.info(
-            "Skipping Base.metadata.create_all() - using Alembic for schema management"
+            "Skipping Base.metadata.create_all() - using Alembic for schema management",
         )
 
         # Verify tables exist (but don't create them)
@@ -166,7 +167,7 @@ def create_tables(force: bool = False):
 
         if not all_exist:
             raise ValueError(
-                "Database schema is incomplete. Run 'alembic upgrade head' to apply migrations."
+                "Database schema is incomplete. Run 'alembic upgrade head' to apply migrations.",
             )
 
         return engine
@@ -174,7 +175,7 @@ def create_tables(force: bool = False):
     # Development mode or force=True: Create tables directly
     if force:
         logger.info(
-            "[FORCE MODE] Creating database tables via Base.metadata.create_all()..."
+            "[FORCE MODE] Creating database tables via Base.metadata.create_all()...",
         )
     else:
         logger.info("Creating database tables via Base.metadata.create_all()...")
@@ -200,7 +201,7 @@ def create_tables(force: bool = False):
         logger.info("[OK] All expected tables are present in the database.")
     else:
         logger.warning(
-            "[!] Some expected tables were not found after creation attempt."
+            "[!] Some expected tables were not found after creation attempt.",
         )
 
     return engine

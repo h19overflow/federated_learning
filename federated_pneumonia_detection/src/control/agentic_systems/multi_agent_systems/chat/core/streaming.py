@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 class SSEEventType(str, Enum):
     """Event types for SSE streaming responses."""
 
-    TOKEN = "token"  # Text content chunk
+    TOKEN = "token"  # nosec B105 - SSE event type, not a password
     STATUS = "status"  # Status update message
     TOOL_CALL = "tool_call"  # Tool execution notification
     ERROR = "error"  # Error message
@@ -91,19 +91,19 @@ async def execute_tool_async(
     logger = logging.getLogger(__name__)
 
     logger.debug(
-        f"[ToolExec] Searching for tool '{tool_name}' among {len(tools)} available tools"
+        f"[ToolExec] Searching for tool '{tool_name}' among {len(tools)} available tools",
     )
 
     for tool in tools:
         if tool.name == tool_name:
             try:
                 logger.debug(
-                    f"[ToolExec] Found tool '{tool_name}'. Invoking with args: {tool_args}"
+                    f"[ToolExec] Found tool '{tool_name}'. Invoking with args: {tool_args}",
                 )
                 result = await tool.ainvoke(tool_args)
                 result_preview = str(result)[:200] if result else "None"
                 logger.info(
-                    f"[ToolExec] Tool {tool_name} executed successfully. Result length: {len(str(result))}, Preview: {result_preview}"
+                    f"[ToolExec] Tool {tool_name} executed successfully. Result length: {len(str(result))}, Preview: {result_preview}",
                 )
                 return result, None
             except Exception as e:
@@ -116,6 +116,6 @@ async def execute_tool_async(
 
     available_tools = [t.name for t in tools]
     logger.error(
-        f"[ToolExec] Tool '{tool_name}' not found. Available tools: {available_tools}"
+        f"[ToolExec] Tool '{tool_name}' not found. Available tools: {available_tools}",
     )
     return None, f"Tool '{tool_name}' not found"

@@ -8,8 +8,11 @@ This module validates that API endpoints:
 4. Handle errors appropriately
 5. Use correct HTTP methods for their actions
 """
+
 from pathlib import Path
+
 import pytest
+
 
 class TestEndpointStructure:
     """Test basic structure and routing of endpoints."""
@@ -28,8 +31,8 @@ class TestEndpointStructure:
         """Experiment endpoints should exist for all three training types."""
         from federated_pneumonia_detection.src.api.endpoints.experiments import (
             centralized_endpoints,
-            federated_endpoints,
             comparison_endpoints,
+            federated_endpoints,
         )
 
         assert hasattr(centralized_endpoints, "router")
@@ -45,8 +48,8 @@ class TestEndpointStructure:
         """Endpoint tags should be consistent and meaningful."""
         from federated_pneumonia_detection.src.api.endpoints.experiments import (
             centralized_endpoints,
-            federated_endpoints,
             comparison_endpoints,
+            federated_endpoints,
         )
 
         assert "experiments" in centralized_endpoints.router.tags
@@ -139,12 +142,12 @@ class TestFederatedEndpoint:
 
     def test_federated_endpoint_accepts_zip_upload(self):
         """Federated endpoint should accept ZIP file uploads."""
+        # Check function signature
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments import (
             federated_endpoints,
         )
-
-        # Check function signature
-        import inspect
 
         sig = inspect.signature(federated_endpoints.start_federated_training)
         params = list(sig.parameters.keys())
@@ -155,16 +158,17 @@ class TestFederatedEndpoint:
 
     def test_federated_endpoint_calls_federated_trainer(self):
         """Background task should instantiate FederatedTrainer."""
-        from federated_pneumonia_detection.src.api.endpoints.experiments.utils import (
-            run_federated_training_task,
-            execute_federated_training,
-        )
         import inspect
+
+        from federated_pneumonia_detection.src.api.endpoints.experiments.utils import (
+            execute_federated_training,
+            run_federated_training_task,
+        )
 
         # Check main task function uses FederatedTrainer
         source = inspect.getsource(run_federated_training_task)
         assert "FederatedTrainer" in source
-        
+
         # Check helper function calls train method
         helper_source = inspect.getsource(execute_federated_training)
         assert ".train(" in helper_source
@@ -192,10 +196,11 @@ class TestCentralizedEndpoint:
 
     def test_centralized_endpoint_calls_centralized_trainer(self):
         """Background task should instantiate CentralizedTrainer."""
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments.utils import (
             run_centralized_training_task,
         )
-        import inspect
 
         source = inspect.getsource(run_centralized_training_task)
 
@@ -205,10 +210,11 @@ class TestCentralizedEndpoint:
 
     def test_centralized_endpoint_accepts_checkpoint_and_logs_dirs(self):
         """Centralized endpoint should accept checkpoint and logs directories."""
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments import (
             centralized_endpoints,
         )
-        import inspect
 
         sig = inspect.signature(centralized_endpoints.start_centralized_training)
         params = list(sig.parameters.keys())
@@ -239,10 +245,11 @@ class TestComparisonEndpoint:
 
     def test_comparison_endpoint_calls_orchestrator(self):
         """Background task should instantiate ExperimentOrchestrator."""
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments import (
             comparison_endpoints,
         )
-        import inspect
 
         source = inspect.getsource(comparison_endpoints._run_comparison_task)
 
@@ -251,10 +258,11 @@ class TestComparisonEndpoint:
 
     def test_comparison_endpoint_accepts_partition_strategy(self):
         """Comparison endpoint should accept partition strategy parameter."""
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments import (
             comparison_endpoints,
         )
-        import inspect
 
         sig = inspect.signature(comparison_endpoints.start_comparison_experiment)
         params = list(sig.parameters.keys())
@@ -289,12 +297,14 @@ class TestDependencyInjection:
     def test_crud_imports_are_available(self):
         """All required CRUD classes should be importable."""
         from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
+        from federated_pneumonia_detection.src.boundary.CRUD.run_artifact import (
+            RunArtifactCRUD,
+        )
         from federated_pneumonia_detection.src.boundary.CRUD.run_configuration import (
             RunConfigurationCRUD,
         )
-        from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD
-        from federated_pneumonia_detection.src.boundary.CRUD.run_artifact import (
-            RunArtifactCRUD,
+        from federated_pneumonia_detection.src.boundary.CRUD.run_metric import (
+            RunMetricCRUD,
         )
 
         assert RunCRUD is not None
@@ -332,10 +342,11 @@ class TestErrorHandling:
 
     def test_centralized_endpoint_handles_missing_file(self):
         """Centralized endpoint should handle missing metadata file."""
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments.utils import (
             run_centralized_training_task,
         )
-        import inspect
 
         source = inspect.getsource(run_centralized_training_task)
 
@@ -373,13 +384,17 @@ class TestBusinessLogicAlignment:
 
     def test_system_constants_available(self):
         """SystemConstants should be available for configuration."""
-        from federated_pneumonia_detection.models.system_constants import SystemConstants
+        from federated_pneumonia_detection.models.system_constants import (
+            SystemConstants,
+        )
 
         assert SystemConstants is not None
 
     def test_experiment_config_available(self):
         """ExperimentConfig should be available for configuration."""
-        from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+        from federated_pneumonia_detection.models.experiment_config import (
+            ExperimentConfig,
+        )
 
         assert ExperimentConfig is not None
 
@@ -391,7 +406,7 @@ class TestNamingConventions:
         """ISSUE FOUND: configuration_settings folder has typo, should be configuration_settings."""
         # This is a known issue - folder is named 'configuration_settings' (typo) instead of 'configuration_settings'
         folder_path = Path(
-            "federated_pneumonia_detection/src/api/endpoints/configuration_settings"
+            "federated_pneumonia_detection/src/api/endpoints/configuration_settings",
         )
         # This test documents the issue
         assert folder_path.name == "configuration_settings"
@@ -400,12 +415,16 @@ class TestNamingConventions:
     def test_logging_endpoints_implementation_complete(self):
         """FIXED: logging_endpoints.py is now implemented."""
         try:
-            from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import router
+            from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import (
+                router,
+            )
 
             # Check if the module has router
             # Verify that endpoints are implemented
-            assert router is not None, "runs_endpoints should have router implementation"
-            assert hasattr(router, 'routes'), "router should have routes"
+            assert router is not None, (
+                "runs_endpoints should have router implementation"
+            )
+            assert hasattr(router, "routes"), "router should have routes"
         except (ModuleNotFoundError, ImportError):
             # Skip this test if module doesn't exist yet
             pytest.skip("runs_endpoints module not implemented yet")
@@ -413,12 +432,16 @@ class TestNamingConventions:
     def test_results_endpoints_implementation_complete(self):
         """FIXED: results_endpoints.py is now implemented."""
         try:
-            from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import router
+            from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import (
+                router,
+            )
 
             # Check if the module has router
             # Verify that endpoints are implemented
-            assert router is not None, "runs_endpoints should have router implementation"
-            assert hasattr(router, 'routes'), "router should have routes"
+            assert router is not None, (
+                "runs_endpoints should have router implementation"
+            )
+            assert hasattr(router, "routes"), "router should have routes"
         except (ModuleNotFoundError, ImportError):
             # Skip this test if module doesn't exist yet
             pytest.skip("runs_endpoints module not implemented yet")
@@ -429,10 +452,11 @@ class TestZipFileHandling:
 
     def test_centralized_endpoint_extracts_zip_correctly(self):
         """Centralized endpoint should extract ZIP files correctly."""
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments.utils import (
             prepare_zip,
         )
-        import inspect
 
         source = inspect.getsource(prepare_zip)
 
@@ -442,10 +466,11 @@ class TestZipFileHandling:
 
     def test_federated_endpoint_extracts_zip_correctly(self):
         """Federated endpoint should extract ZIP files correctly."""
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments.utils import (
             prepare_zip,
         )
-        import inspect
 
         source = inspect.getsource(prepare_zip)
 
@@ -455,10 +480,11 @@ class TestZipFileHandling:
 
     def test_comparison_endpoint_extracts_zip_correctly(self):
         """Comparison endpoint should extract ZIP files correctly."""
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments import (
             comparison_endpoints,
         )
-        import inspect
 
         source = inspect.getsource(comparison_endpoints.start_comparison_experiment)
 
@@ -472,20 +498,25 @@ class TestBackgroundTaskHandling:
 
     def test_endpoints_use_background_tasks(self):
         """Endpoints should use BackgroundTasks for async operations."""
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments import (
+            centralized_endpoints,
+            comparison_endpoints,
+            federated_endpoints,
+        )
+
+        for endpoint_module in [
             centralized_endpoints,
             federated_endpoints,
             comparison_endpoints,
-        )
-        import inspect
-
-        for endpoint_module in [centralized_endpoints, federated_endpoints, comparison_endpoints]:
+        ]:
             # Find the main async function
             for name, obj in inspect.getmembers(endpoint_module):
-                if inspect.iscoroutinefunction(obj) and name.startswith('start_'):
+                if inspect.iscoroutinefunction(obj) and name.startswith("start_"):
                     sig = inspect.signature(obj)
                     # Should have BackgroundTasks parameter
-                    assert 'background_tasks' in sig.parameters
+                    assert "background_tasks" in sig.parameters
 
 
 class TestResponseStructures:
@@ -493,11 +524,12 @@ class TestResponseStructures:
 
     def test_training_endpoints_return_dict(self):
         """Training endpoints should return Dict with status and message."""
+        import inspect
+
         from federated_pneumonia_detection.src.api.endpoints.experiments import (
             centralized_endpoints,
             federated_endpoints,
         )
-        import inspect
 
         # Check return type annotations
         sig = inspect.signature(centralized_endpoints.start_centralized_training)

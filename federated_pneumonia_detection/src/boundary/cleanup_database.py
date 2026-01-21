@@ -6,17 +6,18 @@ Use with caution - this will delete data permanently!
 """
 
 import sys
+from logging import getLogger
 from typing import Optional
+
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.src.boundary.engine import (
-    get_session,
-    get_engine,
-    create_tables,
     Base,
+    create_tables,
+    get_engine,
+    get_session,
 )
-from logging import getLogger
 
 logger = getLogger(__name__)
 
@@ -86,7 +87,8 @@ def delete_all_records(db: Optional[Session] = None) -> None:
         # Show record counts (should all be 0)
         print("\n--- Record Counts After Cleanup ---")
         for table in ["runs", "clients", "rounds", "run_metrics", "server_evaluations"]:
-            result = db.execute(text(f"SELECT COUNT(*) FROM {table}"))
+            # Table names are from hardcoded whitelist, not user input
+            result = db.execute(text(f"SELECT COUNT(*) FROM {table}"))  # nosec B608
             count = result.scalar()
             print(f"{table}: {count}")
 
@@ -106,7 +108,7 @@ def reset_database() -> None:
     This completely resets the database schema and all data.
     """
     if not confirm_action(
-        "This will DROP ALL TABLES and RECREATE them. All data will be permanently lost."
+        "This will DROP ALL TABLES and RECREATE them. All data will be permanently lost.",
     ):
         logger.info("Operation cancelled by user")
         return
@@ -139,7 +141,8 @@ def show_record_counts() -> None:
         tables = ["runs", "clients", "rounds", "run_metrics", "server_evaluations"]
 
         for table in tables:
-            result = db.execute(text(f"SELECT COUNT(*) FROM {table}"))
+            # Table names are from hardcoded whitelist, not user input
+            result = db.execute(text(f"SELECT COUNT(*) FROM {table}"))  # nosec B608
             count = result.scalar()
             print(f"{table}: {count:,}")
 
@@ -159,12 +162,12 @@ def delete_runs_by_mode(training_mode: str) -> None:
     """
     if training_mode not in ["centralized", "federated"]:
         logger.error(
-            f"Invalid training_mode: {training_mode}. Must be 'centralized' or 'federated'"
+            f"Invalid training_mode: {training_mode}. Must be 'centralized' or 'federated'",
         )
         return
 
     if not confirm_action(
-        f"This will DELETE ALL {training_mode.upper()} RUNS and their related records."
+        f"This will DELETE ALL {training_mode.upper()} RUNS and their related records.",
     ):
         logger.info("Operation cancelled by user")
         return
@@ -188,33 +191,45 @@ def delete_runs_by_mode(training_mode: str) -> None:
         logger.info(f"Found {len(run_ids)} {training_mode} runs to delete")
 
         # Delete related records first (foreign key constraints)
-        run_ids_str = ",".join(map(str, run_ids))
+        # Use parameterized query with tuple binding for IN clause (defense-in-depth)
+        run_ids_tuple = tuple(run_ids) if len(run_ids) > 1 else (run_ids[0],)
 
         logger.info("Deleting run_metrics...")
-        db.execute(text(f"DELETE FROM run_metrics WHERE run_id IN ({run_ids_str})"))
+        db.execute(
+            text("DELETE FROM run_metrics WHERE run_id IN :run_ids"),
+            {"run_ids": run_ids_tuple},
+        )
 
         logger.info("Deleting server_evaluations...")
         db.execute(
-            text(f"DELETE FROM server_evaluations WHERE run_id IN ({run_ids_str})")
+            text("DELETE FROM server_evaluations WHERE run_id IN :run_ids"),
+            {"run_ids": run_ids_tuple},
         )
 
         if training_mode == "federated":
             # Delete federated-specific records
             logger.info("Deleting rounds...")
             db.execute(
-                text(f"""
+                text("""
                 DELETE FROM rounds
                 WHERE client_id IN (
-                    SELECT id FROM clients WHERE run_id IN ({run_ids_str})
+                    SELECT id FROM clients WHERE run_id IN :run_ids
                 )
-            """)
+            """),
+                {"run_ids": run_ids_tuple},
             )
 
             logger.info("Deleting clients...")
-            db.execute(text(f"DELETE FROM clients WHERE run_id IN ({run_ids_str})"))
+            db.execute(
+                text("DELETE FROM clients WHERE run_id IN :run_ids"),
+                {"run_ids": run_ids_tuple},
+            )
 
         logger.info(f"Deleting {training_mode} runs...")
-        db.execute(text(f"DELETE FROM runs WHERE id IN ({run_ids_str})"))
+        db.execute(
+            text("DELETE FROM runs WHERE id IN :run_ids"),
+            {"run_ids": run_ids_tuple},
+        )
 
         db.commit()
         logger.info(f"✓ Deleted {len(run_ids)} {training_mode} runs successfully")

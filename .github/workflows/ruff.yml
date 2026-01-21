@@ -1,0 +1,81 @@
+name: Ruff Linter & Formatter Check
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+# Cancel in-progress runs for the same branch to save resources
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruff-check:
+    name: Ruff (Lint + Format)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history for proper blame support if needed
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          # Cache pip dependencies for faster installs
+          cache-dependency-path: 'pyproject.toml'
+
+      - name: Install Ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Cache Ruff virtual environment
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ruff
+          key: ${{ runner.os }}-ruff-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-ruff-
+
+      - name: Run Ruff Linting
+        id: ruff-lint
+        run: |
+          echo "Running Ruff linting on Python code..."
+          ruff check . --output-format=github
+        continue-on-error: false
+
+      - name: Run Ruff Formatting Check
+        id: ruff-format
+        run: |
+          echo "Checking Python code formatting with Ruff..."
+          ruff format --check .
+        continue-on-error: false
+
+      - name: Print Ruff Help on Failure
+        if: failure()
+        run: |
+          echo ""
+          echo "❌ Ruff checks failed!"
+          echo ""
+          echo "To fix linting issues locally, run:"
+          echo "  ruff check . --fix"
+          echo ""
+          echo "To fix formatting issues locally, run:"
+          echo "  ruff format ."
+          echo ""
+          echo "For more information on Ruff rules, visit:"
+          echo "  https://docs.astral.sh/ruff/rules/"

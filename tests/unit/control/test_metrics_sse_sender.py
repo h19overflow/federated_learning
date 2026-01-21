@@ -4,13 +4,16 @@ Unit tests for SSE Metrics Sender.
 Tests sender initialization, metric sending, and compatibility methods.
 Uses synchronous API - no asyncio needed, compatible with Ray actors.
 """
+
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
+
 from federated_pneumonia_detection.src.control.dl_model.internals.data.metrics_sse_sender import (
-    MetricsSSESender
+    MetricsSSESender,
 )
 from federated_pneumonia_detection.src.control.dl_model.internals.data.sse_event_manager import (
-    SSEEventManager
+    SSEEventManager,
 )
 
 
@@ -19,6 +22,7 @@ def reset_singleton():
     """Reset singleton instance before each test."""
     SSEEventManager._instance = None
     import federated_pneumonia_detection.src.control.dl_model.internals.data.sse_event_manager as mod
+
     mod._manager_instance = None
     yield
 
@@ -60,7 +64,11 @@ def test_send_epoch_end():
     mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
-    sender.send_epoch_end(epoch=5, phase="train", metrics={"loss": 0.3, "accuracy": 0.85})
+    sender.send_epoch_end(
+        epoch=5,
+        phase="train",
+        metrics={"loss": 0.3, "accuracy": 0.85},
+    )
 
     mock_manager.publish_event.assert_called_once()
     call_args = mock_manager.publish_event.call_args[0]
@@ -105,7 +113,7 @@ def test_send_batch_metrics():
         f1=0.783,
         epoch=2,
         client_id=1,
-        round_num=3
+        round_num=3,
     )
 
     mock_manager.publish_event.assert_called_once()
@@ -168,7 +176,7 @@ def test_send_early_stopping_triggered():
         epoch=8,
         best_metric_value=0.933,
         metric_name="val_recall",
-        patience=7
+        patience=7,
     )
 
     call_args = mock_manager.publish_event.call_args[0]
@@ -215,7 +223,7 @@ def test_send_round_end():
         round_num=3,
         total_rounds=5,
         fit_metrics=fit_metrics,
-        eval_metrics=eval_metrics
+        eval_metrics=eval_metrics,
     )
 
     call_args = mock_manager.publish_event.call_args[0]
@@ -262,7 +270,7 @@ def test_send_gradient_stats():
         total_norm=0.8,
         layer_norms=layer_norms,
         max_norm=0.5,
-        min_norm=0.3
+        min_norm=0.3,
     )
 
     call_args = mock_manager.publish_event.call_args[0]
@@ -284,12 +292,7 @@ def test_send_lr_update():
     mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
-    sender.send_lr_update(
-        current_lr=0.001,
-        step=500,
-        epoch=5,
-        scheduler_type="StepLR"
-    )
+    sender.send_lr_update(current_lr=0.001, step=500, epoch=5, scheduler_type="StepLR")
 
     call_args = mock_manager.publish_event.call_args[0]
     payload = call_args[1]["data"]
@@ -309,11 +312,7 @@ def test_send_training_end():
     mock_manager.publish_event.return_value = True
     sender._event_manager = mock_manager
 
-    summary_data = {
-        "total_epochs": 10,
-        "best_recall": 0.933,
-        "final_loss": 0.245
-    }
+    summary_data = {"total_epochs": 10, "best_recall": 0.933, "final_loss": 0.245}
 
     sender.send_training_end(run_id=42, summary_data=summary_data)
 

@@ -21,6 +21,3 @@ flwr>=1.5.0
 # Additional utilities
 pillow>=10.0.0
 pyyaml>=6.0
-
-
-

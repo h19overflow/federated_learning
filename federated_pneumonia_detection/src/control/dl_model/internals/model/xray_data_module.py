@@ -4,26 +4,26 @@ Orchestrates dataset creation, data loading, and batch management with comprehen
 """
 
 import logging
-from typing import Optional, Union, Dict, Any, TYPE_CHECKING
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 import pandas as pd
 import pytorch_lightning as pl
-from torch.utils.data import DataLoader
 import torch
+from torch.utils.data import DataLoader
 
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.internals.image_transforms import (
-    TransformBuilder,
-)
 from federated_pneumonia_detection.src.control.dl_model.internals.model.data_module_utils import (
-    validate_inputs,
+    build_dataloader_kwargs,
     create_dataset,
     create_training_transforms,
     create_validation_transforms,
-    build_dataloader_kwargs,
+    validate_inputs,
+)
+from federated_pneumonia_detection.src.internals.image_transforms import (
+    TransformBuilder,
 )
 
 
@@ -120,7 +120,7 @@ class XRayDataModule(pl.LightningDataModule):
         )
 
         self.logger.info(
-            f"DataModule initialized - Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df) if test_df is not None else 0}"
+            f"DataModule initialized - Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df) if test_df is not None else 0}",
         )
 
     def setup(self, stage: Optional[str] = None) -> None:
@@ -209,7 +209,7 @@ class XRayDataModule(pl.LightningDataModule):
     def val_dataloader(self) -> DataLoader:
         if self.val_dataset is None:
             raise RuntimeError(
-                "Validation dataset not initialized. Call setup() first."
+                "Validation dataset not initialized. Call setup() first.",
             )
 
         loader_kwargs = build_dataloader_kwargs(

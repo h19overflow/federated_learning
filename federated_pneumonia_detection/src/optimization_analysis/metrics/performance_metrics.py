@@ -2,20 +2,23 @@
 Performance metrics calculation for benchmark results.
 """
 
-import numpy as np
 from typing import Dict, List
+
+import numpy as np
 from sklearn.metrics import (
     accuracy_score,
+    confusion_matrix,
+    f1_score,
     precision_score,
     recall_score,
-    f1_score,
     roc_auc_score,
-    confusion_matrix,
 )
 
 
 def calculate_classification_metrics(
-    true_labels: List[int], pred_labels: List[int], pred_probs: List[float] = None
+    true_labels: List[int],
+    pred_labels: List[int],
+    pred_probs: List[float] = None,
 ) -> Dict[str, float]:
     """
     Calculate classification metrics.
@@ -33,7 +36,9 @@ def calculate_classification_metrics(
     try:
         metrics["accuracy"] = accuracy_score(true_labels, pred_labels)
         metrics["precision"] = precision_score(
-            true_labels, pred_labels, zero_division=0
+            true_labels,
+            pred_labels,
+            zero_division=0,
         )
         metrics["recall"] = recall_score(true_labels, pred_labels, zero_division=0)
         metrics["f1"] = f1_score(true_labels, pred_labels, zero_division=0)
@@ -48,7 +53,9 @@ def calculate_classification_metrics(
             metrics["true_positives"] = int(tp)
             metrics["specificity"] = tn / (tn + fp) if (tn + fp) > 0 else 0
             metrics["sensitivity"] = recall_score(
-                true_labels, pred_labels, zero_division=0
+                true_labels,
+                pred_labels,
+                zero_division=0,
             )
 
         # AUC-ROC if probabilities provided

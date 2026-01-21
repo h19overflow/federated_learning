@@ -75,7 +75,7 @@ class MCPManager:
                         "command": "arxiv-mcp-server",
                         "args": [],
                         "transport": "stdio",
-                    }
+                    },
                 }
 
                 self._client = MultiServerMCPClient(server_config)

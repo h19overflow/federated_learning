@@ -16,14 +16,13 @@ Revises:
 Create Date: 2026-01-19 09:30:00.000000+00:00
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
-revision: str = '7036676c922c'
+revision: str = "7036676c922c"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -49,9 +48,9 @@ def downgrade() -> None:
     WARNING: This will delete all data in these tables!
     """
     # Drop all tables in reverse dependency order
-    op.drop_table('server_evaluations')
-    op.drop_table('rounds')
-    op.drop_table('run_metrics')
-    op.drop_table('clients')
-    op.drop_table('chat_sessions')
-    op.drop_table('runs')
+    op.drop_table("server_evaluations")
+    op.drop_table("rounds")
+    op.drop_table("run_metrics")
+    op.drop_table("clients")
+    op.drop_table("chat_sessions")
+    op.drop_table("runs")

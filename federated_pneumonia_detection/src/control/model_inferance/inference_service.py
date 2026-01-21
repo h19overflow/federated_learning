@@ -12,16 +12,16 @@ from fastapi import HTTPException, UploadFile
 from PIL import Image
 
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
-    PredictionClass,
     InferencePrediction,
+    PredictionClass,
     SingleImageResult,
 )
 from federated_pneumonia_detection.src.control.model_inferance.internals import (
-    InferenceEngine,
-    ImageValidator,
-    ImageProcessor,
-    ClinicalInterpreter,
     BatchStatistics,
+    ClinicalInterpreter,
+    ImageProcessor,
+    ImageValidator,
+    InferenceEngine,
     ObservabilityLogger,
 )
 
@@ -122,10 +122,13 @@ class InferenceService:
 
             # Predict
             predicted_class, confidence, pneumonia_prob, normal_prob = self.predict(
-                image
+                image,
             )
             prediction = self.create_prediction(
-                predicted_class, confidence, pneumonia_prob, normal_prob
+                predicted_class,
+                confidence,
+                pneumonia_prob,
+                normal_prob,
             )
 
             # Clinical interpretation

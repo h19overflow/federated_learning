@@ -1,6 +1,7 @@
 """Model operation utilities for ResNetWithCustomHead."""
 
-from typing import Optional, Any
+from typing import Any, Optional
+
 import torch
 import torch.nn as nn
 from torchvision.models import ResNet50_Weights
@@ -113,7 +114,10 @@ def set_dropout_rate(classifier: nn.Sequential, new_rate: float, logger: Any) ->
 
 
 def get_feature_maps(
-    features: nn.Sequential, x: torch.Tensor, layer_name: Optional[str], logger: Any
+    features: nn.Sequential,
+    x: torch.Tensor,
+    layer_name: Optional[str],
+    logger: Any,
 ) -> torch.Tensor:
     """
     Extract feature maps from a specific layer.

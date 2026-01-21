@@ -4,7 +4,10 @@ from typing import Any
 
 
 def validate_parameters(
-    num_classes: int, dropout_rate: float, fine_tune_layers_count: Any, logger: Any
+    num_classes: int,
+    dropout_rate: float,
+    fine_tune_layers_count: Any,
+    logger: Any,
 ) -> None:
     """
     Validate initialization parameters.

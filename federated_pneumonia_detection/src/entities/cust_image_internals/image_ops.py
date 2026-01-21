@@ -1,7 +1,9 @@
 """Image loading operations for CustomImageDataset."""
 
 from pathlib import Path
+
 from PIL import Image
+
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 logger = get_logger(__name__)

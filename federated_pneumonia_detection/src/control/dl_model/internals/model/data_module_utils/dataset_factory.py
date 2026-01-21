@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import pandas as pd
 
@@ -61,7 +61,7 @@ def create_dataset(
             f"{dataset_type.capitalize()} dataset created: "
             f"{len(dataset)} samples, "
             f"classes: {class_dist}, "
-            f"estimated memory: {memory_info['estimated_total_memory_mb']:.1f} MB"
+            f"estimated memory: {memory_info['estimated_total_memory_mb']:.1f} MB",
         )
     else:
         logger.warning(f"{dataset_type.capitalize()} dataset is empty")
@@ -86,7 +86,9 @@ def create_training_transforms(
     return transform_builder.build_training_transforms(
         enable_augmentation=True,
         augmentation_strength=getattr(
-            transform_builder.config, "augmentation_strength", 1.0
+            transform_builder.config,
+            "augmentation_strength",
+            1.0,
         ),
         custom_preprocessing=custom_preprocessing_config
         if custom_preprocessing_config
@@ -111,5 +113,5 @@ def create_validation_transforms(
     return transform_builder.build_validation_transforms(
         custom_preprocessing=custom_preprocessing_config
         if custom_preprocessing_config
-        else None
+        else None,
     )

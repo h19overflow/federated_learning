@@ -3,23 +3,22 @@ Shared fixtures and configuration for pytest.
 Provides common test setup and utilities across all test modules.
 """
 
-import pytest
-import pandas as pd
-import tempfile
-import os
 import logging
+import os
+import tempfile
 from typing import Dict, Generator
+
+import pandas as pd
+import pytest
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
 from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
-
 from tests.fixtures.sample_data import (
+    MockDatasets,
     SampleDataFactory,
     TempDataStructure,
-    MockDatasets,
-    create_test_config_dict
+    create_test_config_dict,
 )
-
 
 # Configure test logging
 logging.basicConfig(level=logging.WARNING)  # Reduce noise during tests
@@ -96,12 +95,12 @@ def temp_data_structure() -> Generator[Dict[str, str], None, None]:
 def temp_data_structure_custom(request) -> Generator[Dict[str, str], None, None]:
     """Create temporary data structure with custom parameters."""
     # Get parameters from test request
-    metadata_df = getattr(request, 'param', {}).get('metadata_df')
-    create_images = getattr(request, 'param', {}).get('create_images', True)
+    metadata_df = getattr(request, "param", {}).get("metadata_df")
+    create_images = getattr(request, "param", {}).get("create_images", True)
 
     with TempDataStructure(
         metadata_df=metadata_df,
-        create_images=create_images
+        create_images=create_images,
     ) as paths:
         yield paths
 
@@ -144,7 +143,7 @@ paths:
   metadata_filename: "test_metadata.csv"
 """
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(config_content)
         temp_file = f.name
 
@@ -188,7 +187,11 @@ def mock_logger():
 
 
 # Helper functions for tests
-def assert_dataframe_structure(df: pd.DataFrame, required_columns: list, min_rows: int = 1):
+def assert_dataframe_structure(
+    df: pd.DataFrame,
+    required_columns: list,
+    min_rows: int = 1,
+):
     """Assert that DataFrame has required structure."""
     assert isinstance(df, pd.DataFrame)
     assert len(df) >= min_rows
@@ -197,8 +200,12 @@ def assert_dataframe_structure(df: pd.DataFrame, required_columns: list, min_row
     assert not df.empty
 
 
-def assert_valid_split(train_df: pd.DataFrame, val_df: pd.DataFrame,
-                      expected_split_ratio: float = 0.2, tolerance: float = 0.1):
+def assert_valid_split(
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    expected_split_ratio: float = 0.2,
+    tolerance: float = 0.1,
+):
     """Assert that train/validation split is reasonable."""
     total_samples = len(train_df) + len(val_df)
     actual_val_ratio = len(val_df) / total_samples
@@ -209,11 +216,13 @@ def assert_valid_split(train_df: pd.DataFrame, val_df: pd.DataFrame,
 
 
 # Parametrized fixtures for testing multiple scenarios
-@pytest.fixture(params=[
-    {'sample_fraction': 0.1, 'validation_split': 0.2},
-    {'sample_fraction': 0.5, 'validation_split': 0.3},
-    {'sample_fraction': 1.0, 'validation_split': 0.25}
-])
+@pytest.fixture(
+    params=[
+        {"sample_fraction": 0.1, "validation_split": 0.2},
+        {"sample_fraction": 0.5, "validation_split": 0.3},
+        {"sample_fraction": 1.0, "validation_split": 0.25},
+    ],
+)
 def data_processing_params(request):
     """Parametrized data processing parameters."""
     return request.param
@@ -225,11 +234,7 @@ def test_seeds(request):
     return request.param
 
 
-@pytest.fixture(params=[
-    (224, 224),
-    (256, 256),
-    (512, 512)
-])
+@pytest.fixture(params=[(224, 224), (256, 256), (512, 512)])
 def image_sizes(request):
     """Different image sizes for testing."""
     return request.param
