@@ -4,13 +4,16 @@ Unit tests for SSE Event Manager.
 Tests queue creation, event publishing, stream tracking, and cleanup.
 Uses synchronous API (no asyncio) - compatible with Ray actors.
 """
-import pytest
+
 import queue
-import time
 import threading
+import time
+
+import pytest
+
 from federated_pneumonia_detection.src.control.dl_model.internals.data.sse_event_manager import (
+    SSEEventManager,
     get_sse_event_manager,
-    SSEEventManager
 )
 
 
@@ -19,6 +22,7 @@ def reset_singleton():
     """Reset singleton instance before each test."""
     SSEEventManager._instance = None
     import federated_pneumonia_detection.src.control.dl_model.internals.data.sse_event_manager as mod
+
     mod._manager_instance = None
     yield
 
@@ -60,7 +64,7 @@ def test_publish_event():
     event = {
         "type": "test_event",
         "timestamp": "2026-01-17T10:00:00",
-        "data": {"value": 42}
+        "data": {"value": 42},
     }
 
     success = manager.publish_event("test_exp_3", event)
@@ -221,7 +225,7 @@ def test_multiple_events_in_sequence():
     events = [
         {"type": "epoch_start", "data": {"epoch": 1}},
         {"type": "batch_metrics", "data": {"loss": 0.5}},
-        {"type": "epoch_end", "data": {"epoch": 1, "metrics": {}}}
+        {"type": "epoch_end", "data": {"epoch": 1, "metrics": {}}},
     ]
 
     for event in events:
@@ -255,8 +259,7 @@ def test_thread_safety():
         results.append(successes)
 
     threads = [
-        threading.Thread(target=publish_events, args=(i,))
-        for i in range(num_threads)
+        threading.Thread(target=publish_events, args=(i,)) for i in range(num_threads)
     ]
 
     for t in threads:

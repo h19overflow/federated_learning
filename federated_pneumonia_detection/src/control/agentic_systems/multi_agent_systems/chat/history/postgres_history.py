@@ -12,7 +12,6 @@ from langchain_postgres import PostgresChatMessageHistory
 
 from federated_pneumonia_detection.src.boundary.engine import settings
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -25,7 +24,9 @@ class ChatHistoryManager:
     """
 
     def __init__(
-        self, table_name: str = "message_store", max_history: int = 10
+        self,
+        table_name: str = "message_store",
+        max_history: int = 10,
     ) -> None:
         """
         Initialize the history manager.
@@ -58,18 +59,23 @@ class ChatHistoryManager:
             # Generate deterministic UUID from string using UUID5
             clean_session_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, session_id))
             logger.info(
-                f"[HistoryManager] Mapped session_id '{session_id}' to UUID '{clean_session_id}'"
+                f"[HistoryManager] Mapped session_id '{session_id}' to UUID '{clean_session_id}'",
             )
 
         history = PostgresChatMessageHistory(
-            self.table_name, clean_session_id, sync_connection=sync_connection
+            self.table_name,
+            clean_session_id,
+            sync_connection=sync_connection,
         )
         # Ensure tables exist
         history.create_tables(sync_connection, self.table_name)
         return history
 
     def add_to_history(
-        self, session_id: str, user_message: str, ai_response: str
+        self,
+        session_id: str,
+        user_message: str,
+        ai_response: str,
     ) -> None:
         """
         Add a conversation turn to session history.
@@ -81,7 +87,7 @@ class ChatHistoryManager:
         """
         history = self._get_postgres_history(session_id)
         history.add_messages(
-            [HumanMessage(content=user_message), AIMessage(content=ai_response)]
+            [HumanMessage(content=user_message), AIMessage(content=ai_response)],
         )
 
     def get_history(self, session_id: str) -> List[Tuple[str, str]]:
@@ -101,7 +107,8 @@ class ChatHistoryManager:
         formatted_history = []
         for i in range(0, len(messages) - 1, 2):
             if isinstance(messages[i], HumanMessage) and isinstance(
-                messages[i + 1], AIMessage
+                messages[i + 1],
+                AIMessage,
             ):
                 formatted_history.append((messages[i].content, messages[i + 1].content))
         return formatted_history

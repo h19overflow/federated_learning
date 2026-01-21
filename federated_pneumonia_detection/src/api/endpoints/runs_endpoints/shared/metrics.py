@@ -5,15 +5,16 @@ Provides strategy-based metric extractors for both centralized and federated
 training runs. Follows SOLID principles with DIP and Strategy pattern.
 """
 
-from typing import List, Dict, Optional, Any
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.boundary.models import Run
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
+from federated_pneumonia_detection.src.boundary.models import Run
 
 
 class MetricExtractor(ABC):
@@ -21,7 +22,10 @@ class MetricExtractor(ABC):
 
     @abstractmethod
     def get_best_metric(
-        self, db: Session, run_id: int, metric_name: str
+        self,
+        db: Session,
+        run_id: int,
+        metric_name: str,
     ) -> Optional[float]:
         """Extract best metric value for a run."""
         pass
@@ -31,7 +35,10 @@ class FederatedMetricExtractor(MetricExtractor):
     """Extract metrics from federated runs via server evaluations."""
 
     def get_best_metric(
-        self, db: Session, run_id: int, metric_name: str
+        self,
+        db: Session,
+        run_id: int,
+        metric_name: str,
     ) -> Optional[float]:
         """Get best metric from server evaluations, excluding round 0."""
         summary = server_evaluation_crud.get_summary_stats(db, run_id)
@@ -56,7 +63,10 @@ class CentralizedMetricExtractor(MetricExtractor):
     }
 
     def get_best_metric(
-        self, db: Session, run_id: int, metric_name: str
+        self,
+        db: Session,
+        run_id: int,
+        metric_name: str,
     ) -> Optional[float]:
         """Get best metric from run_metrics table."""
         # Use mapping to get actual database field name
@@ -77,7 +87,9 @@ class MetricsAggregator:
 
     @staticmethod
     def get_best_metric(
-        items: List[Any], field: str, default: Optional[float] = None
+        items: List[Any],
+        field: str,
+        default: Optional[float] = None,
     ) -> Optional[float]:
         """Get maximum value from collection."""
         values = [
@@ -87,7 +99,9 @@ class MetricsAggregator:
 
     @staticmethod
     def get_worst_metric(
-        items: List[Any], field: str, default: Optional[float] = None
+        items: List[Any],
+        field: str,
+        default: Optional[float] = None,
     ) -> Optional[float]:
         """Get minimum value from collection."""
         values = [

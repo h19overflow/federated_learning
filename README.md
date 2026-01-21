@@ -757,6 +757,215 @@ except FileNotFoundError as e:
     raise
 ```
 
+### Ruff: Fast Python Linter & Formatter
+
+This project uses **Ruff** as the primary Python linter and formatter. Ruff is a blazing-fast Python linter and formatter written in Rust, designed to replace Flake8, Black, isort, and other tools with a single binary.
+
+#### Why Ruff?
+
+- **Performance**: 10-100x faster than traditional tools (written in Rust)
+- **Unified**: Combines linting and formatting in one tool
+- **Compatibility**: Drop-in replacement for Flake8, Black, isort, and more
+- **Extensible**: Over 700 built-in rules covering PEP8, typing, security, and more
+- **Configured**: Pre-configured for this project at repository root
+
+#### Installation
+
+Install Ruff using `uv` (recommended):
+
+```bash
+uv pip install ruff
+```
+
+Or add to your project requirements:
+
+```bash
+# In pyproject.toml or requirements.txt
+ruff==0.8.4
+```
+
+#### Pre-commit Integration
+
+Ruff is configured as a pre-commit hook to automatically lint and format code before commits:
+
+```bash
+# Install pre-commit hooks (one-time setup)
+pre-commit install
+
+# Now hooks will run automatically before each commit
+git add .
+git commit -m "Your commit message"  # Hooks run here
+```
+
+**What the pre-commit hook does:**
+- Checks all staged files for linting issues
+- Auto-formats code according to project style guide
+- Blocks commit if critical issues are found
+- Supports both Python files and documentation
+
+#### Manual Usage
+
+Run Ruff manually on the entire codebase or specific files:
+
+```bash
+# Check for linting issues (read-only)
+ruff check .
+
+# Check specific files or directories
+ruff check federated_pneumonia_detection/src/api/
+ruff check tests/unit/test_config.py
+
+# Auto-fix all fixable issues
+ruff check . --fix
+
+# Format code (read-only preview)
+ruff format --check .
+
+# Auto-format code
+ruff format .
+
+# Format specific files
+ruff format federated_pneumonia_detection/src/entities/model/*.py
+
+# Check and format in one command
+ruff check . --fix && ruff format .
+```
+
+#### Configuration
+
+Ruff is configured at the repository root in `pyproject.toml`:
+
+```toml
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["federated_pneumonia_detection"]
+```
+
+#### VS Code Integration
+
+For the best development experience, install the official Ruff VS Code extension:
+
+1. Open VS Code Extensions (Ctrl+Shift+X)
+2. Search for **"Ruff"**
+3. Install the extension by **Charlie Marsh**
+4. VS Code will automatically detect the `ruff.toml` configuration
+
+**Recommended VS Code settings** (in `.vscode/settings.json`):
+
+```json
+{
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  }
+}
+```
+
+This setup provides:
+- Real-time linting as you type
+- Auto-formatting on save
+- Quick fixes for common issues
+- Import sorting
+- Type checking integration
+
+#### CI/CD Integration
+
+Ruff is integrated into the project's CI/CD pipeline to ensure code quality:
+
+- **Pre-commit hooks**: Run locally on every commit
+- **GitHub Actions**: Run automatically on all pull requests
+- **Blocking**: PRs with Ruff violations are blocked from merging
+
+**CI/CD workflow:**
+
+1. Developer creates a pull request
+2. CI pipeline runs: `ruff check .` and `ruff format --check .`
+3. If violations found: Pipeline fails, PR cannot merge
+4. Developer runs `ruff check . --fix && ruff format .`
+5. Developer commits fixes and pushes
+6. CI passes, PR can be merged
+
+#### Troubleshooting
+
+**Issue: Pre-commit hooks are not running**
+
+```bash
+# Verify hooks are installed
+pre-commit list
+
+# Re-install hooks
+pre-commit install --hook-type pre-commit
+
+# Manually run hooks on all files
+pre-commit run --all-files
+```
+
+**Issue: Ruff format conflicts with Black**
+
+Ruff is designed to be compatible with Black. If you encounter conflicts:
+
+```bash
+# Verify Ruff is configured as Black-compatible
+ruff format --check --diff .
+```
+
+**Issue: False positives on specific files**
+
+You can temporarily ignore specific rules per-file:
+
+```python
+# my_module.py
+# ruff: noqa: E501  # Ignore line length for this file
+```
+
+**Issue: Performance issues on large projects**
+
+Ruff is already very fast, but you can optimize:
+
+```bash
+# Only check changed files (use with pre-commit)
+ruff check $(git diff --name-only --diff-filter=d | grep '\.py$')
+
+# Exclude specific directories
+ruff check . --exclude migrations/
+```
+
+**Issue: VS Code not detecting Ruff**
+
+```bash
+# Verify Ruff is installed in your virtual environment
+which ruff
+
+# Ensure VS Code is using the correct Python interpreter
+# View → Command Palette → "Python: Select Interpreter"
+```
+
+#### Best Practices
+
+1. **Always run pre-commit hooks**: Don't skip them with `--no-verify`
+2. **Fix issues before pushing**: CI will catch them anyway
+3. **Use the VS Code extension**: Get immediate feedback while coding
+4. **Review auto-fixes**: Ruff can fix many issues automatically, but review changes
+5. **Keep dependencies updated**: Ruff is actively developed with frequent updates
+
+#### Resources
+
+- [Ruff Documentation](https://docs.astral.sh/ruff/)
+- [Ruff GitHub Repository](https://github.com/astral-sh/ruff)
+- [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff)
+- [Pre-commit Documentation](https://pre-commit.com/)
+
 ## Performance Metrics
 
 The system tracks comprehensive metrics for medical AI:

@@ -53,7 +53,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
             if isinstance(callback, EarlyStopping):
                 self.early_stop_callback = callback
                 self.logger.info(
-                    f"[EarlyStoppingSignal] Found EarlyStopping callback with patience={callback.patience}"
+                    f"[EarlyStoppingSignal] Found EarlyStopping callback with patience={callback.patience}",
                 )
                 break
 
@@ -84,7 +84,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
         if is_early_stopped:
             self.logger.info(
                 f"[EarlyStoppingSignal] Detected early stopping: "
-                f"current_epoch={trainer.current_epoch}, max_epochs={trainer.max_epochs}"
+                f"current_epoch={trainer.current_epoch}, max_epochs={trainer.max_epochs}",
             )
             self._signal_early_stopping(trainer)
             self.has_signaled = True
@@ -108,7 +108,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
 
             self.logger.info(
                 f"[EarlyStoppingSignal] 🛑 Sending early_stopping signal - "
-                f"Epoch: {current_epoch}, {metric_name}={best_value:.4f}, Patience: {self.early_stop_callback.patience}"
+                f"Epoch: {current_epoch}, {metric_name}={best_value:.4f}, Patience: {self.early_stop_callback.patience}",
             )
 
             # Send early stopping notification
@@ -120,7 +120,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
             )
 
             self.logger.info(
-                f"[Early Stopping Signal] [OK] Successfully signaled at epoch {current_epoch}"
+                f"[Early Stopping Signal] [OK] Successfully signaled at epoch {current_epoch}",
             )
 
         except Exception as e:

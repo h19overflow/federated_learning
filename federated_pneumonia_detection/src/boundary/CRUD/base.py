@@ -1,7 +1,9 @@
-from typing import Generic, TypeVar, Type, List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 from contextlib import contextmanager
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from federated_pneumonia_detection.src.boundary.engine import Base, get_session
 
 ModelType = TypeVar("ModelType", bound=Base)
@@ -91,7 +93,9 @@ class BaseCRUD(Generic[ModelType]):
         return db.query(self.model).filter(self.model.id == id).first() is not None
 
     def bulk_create(
-        self, db: Session, objects: List[Dict[str, Any]]
+        self,
+        db: Session,
+        objects: List[Dict[str, Any]],
     ) -> List[ModelType]:
         """Bulk create records for efficiency."""
         db_objs = [self.model(**obj) for obj in objects]

@@ -8,8 +8,8 @@ Provides shared helpers for:
 - Duration calculations with timezone awareness
 """
 
-from typing import Dict, Any, List, Optional
 from collections import defaultdict
+from typing import Any, Dict, List, Optional
 
 
 def _calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
@@ -109,19 +109,22 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
                 "train_loss": epoch_data.get("train_loss", 0.0),
                 "val_loss": epoch_data.get("val_loss", 0.0),
                 "train_acc": epoch_data.get(
-                    "train_accuracy", epoch_data.get("train_acc", 0.0)
+                    "train_accuracy",
+                    epoch_data.get("train_acc", 0.0),
                 ),
                 "val_acc": epoch_data.get(
-                    "val_accuracy", epoch_data.get("val_acc", 0.0)
+                    "val_accuracy",
+                    epoch_data.get("val_acc", 0.0),
                 ),
                 "train_f1": epoch_data.get("train_f1", 0.0),
                 "val_precision": epoch_data.get("val_precision", 0.0),
                 "val_recall": epoch_data.get("val_recall", 0.0),
                 "val_f1": epoch_data.get("val_f1", 0.0),
                 "val_auroc": epoch_data.get(
-                    "val_auroc", epoch_data.get("val_auc", 0.0)
+                    "val_auroc",
+                    epoch_data.get("val_auc", 0.0),
                 ),
-            }
+            },
         )
 
     # Extract final metrics from the LAST epoch (highest epoch number)
@@ -181,22 +184,28 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
             "total_epochs": len(training_history),
             "best_epoch": _find_best_epoch(training_history),
             "best_val_accuracy": max(
-                [h.get("val_acc", 0) for h in training_history], default=0.0
+                [h.get("val_acc", 0) for h in training_history],
+                default=0.0,
             ),
             "best_val_precision": max(
-                [h.get("val_precision", 0) for h in training_history], default=0.0
+                [h.get("val_precision", 0) for h in training_history],
+                default=0.0,
             ),
             "best_val_recall": max(
-                [h.get("val_recall", 0) for h in training_history], default=0.0
+                [h.get("val_recall", 0) for h in training_history],
+                default=0.0,
             ),
             "best_val_loss": min(
-                [h.get("val_loss", float("inf")) for h in training_history], default=0.0
+                [h.get("val_loss", float("inf")) for h in training_history],
+                default=0.0,
             ),
             "best_val_f1": max(
-                [h.get("val_f1", 0) for h in training_history], default=0.0
+                [h.get("val_f1", 0) for h in training_history],
+                default=0.0,
             ),
             "best_val_auroc": max(
-                [h.get("val_auroc", 0) for h in training_history], default=0.0
+                [h.get("val_auroc", 0) for h in training_history],
+                default=0.0,
             ),
             # Include all final metrics in metadata for display
             "final_accuracy": accuracy,

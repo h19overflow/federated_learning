@@ -5,6 +5,7 @@ easier manipulation of configuration structures.
 """
 
 from typing import Any, Dict
+
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 

@@ -4,6 +4,7 @@ Tests configuration validation, parameter handling, and serialization.
 """
 
 import pytest
+
 from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 
@@ -40,7 +41,7 @@ class TestExperimentConfig:
 
         # System parameters
         assert config.seed == 42
-        assert config.device == 'auto'
+        assert config.device == "auto"
         assert config.num_workers == 4
 
     def test_parameter_validation_positive_learning_rate(self):
@@ -79,13 +80,22 @@ class TestExperimentConfig:
 
     def test_parameter_validation_validation_split_range(self):
         """Test that validation split is in valid range."""
-        with pytest.raises(ValueError, match="Validation split must be between 0 and 1"):
+        with pytest.raises(
+            ValueError,
+            match="Validation split must be between 0 and 1",
+        ):
             ExperimentConfig(validation_split=0)
 
-        with pytest.raises(ValueError, match="Validation split must be between 0 and 1"):
+        with pytest.raises(
+            ValueError,
+            match="Validation split must be between 0 and 1",
+        ):
             ExperimentConfig(validation_split=1.0)
 
-        with pytest.raises(ValueError, match="Validation split must be between 0 and 1"):
+        with pytest.raises(
+            ValueError,
+            match="Validation split must be between 0 and 1",
+        ):
             ExperimentConfig(validation_split=1.5)
 
         # Valid values should work
@@ -108,7 +118,10 @@ class TestExperimentConfig:
         with pytest.raises(ValueError, match="Number of clients must be positive"):
             ExperimentConfig(num_clients=0)
 
-        with pytest.raises(ValueError, match="Clients per round cannot exceed total number of clients"):
+        with pytest.raises(
+            ValueError,
+            match="Clients per round cannot exceed total number of clients",
+        ):
             ExperimentConfig(num_clients=3, clients_per_round=5)
 
     def test_from_system_constants(self):
@@ -116,7 +129,7 @@ class TestExperimentConfig:
         constants = SystemConstants.create_custom(
             batch_size=64,
             sample_fraction=0.25,
-            seed=999
+            seed=999,
         )
 
         config = ExperimentConfig.from_system_constants(constants)
@@ -136,7 +149,7 @@ class TestExperimentConfig:
             constants,
             learning_rate=0.01,
             epochs=20,
-            freeze_backbone=False
+            freeze_backbone=False,
         )
 
         # Values from constants (SystemConstants defaults)
@@ -151,28 +164,24 @@ class TestExperimentConfig:
 
     def test_to_dict(self):
         """Test conversion to dictionary."""
-        config = ExperimentConfig(
-            learning_rate=0.01,
-            epochs=20,
-            batch_size=64
-        )
+        config = ExperimentConfig(learning_rate=0.01, epochs=20, batch_size=64)
 
         config_dict = config.to_dict()
 
         assert isinstance(config_dict, dict)
-        assert config_dict['learning_rate'] == 0.01
-        assert config_dict['epochs'] == 20
-        assert config_dict['batch_size'] == 64
-        assert 'metadata' in config_dict
+        assert config_dict["learning_rate"] == 0.01
+        assert config_dict["epochs"] == 20
+        assert config_dict["batch_size"] == 64
+        assert "metadata" in config_dict
 
     def test_from_dict(self):
         """Test creation from dictionary."""
         config_dict = {
-            'learning_rate': 0.005,
-            'epochs': 15,
-            'batch_size': 256,
-            'freeze_backbone': False,
-            'seed': 999
+            "learning_rate": 0.005,
+            "epochs": 15,
+            "batch_size": 256,
+            "freeze_backbone": False,
+            "seed": 999,
         }
 
         config = ExperimentConfig.from_dict(config_dict)
@@ -189,7 +198,7 @@ class TestExperimentConfig:
         assert config.metadata == {}
 
         # Test with custom metadata
-        custom_metadata = {'experiment_name': 'test_run', 'version': '1.0'}
+        custom_metadata = {"experiment_name": "test_run", "version": "1.0"}
         config_with_metadata = ExperimentConfig(metadata=custom_metadata)
         assert config_with_metadata.metadata == custom_metadata
 
@@ -199,7 +208,7 @@ class TestExperimentConfig:
             learning_rate=0.002,
             epochs=25,
             batch_size=32,
-            metadata={'test': True}
+            metadata={"test": True},
         )
 
         config_dict = original_config.to_dict()

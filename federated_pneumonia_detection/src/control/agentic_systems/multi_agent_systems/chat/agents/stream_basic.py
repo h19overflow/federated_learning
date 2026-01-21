@@ -7,15 +7,15 @@ from typing import AsyncGenerator, List
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_state import (
+    StreamState,
+)
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.content import (
     normalize_content,
 )
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.streaming import (
     SSEEventType,
     create_sse_event,
-)
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_state import (
-    StreamState,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,10 +38,13 @@ async def stream_basic(
                     yield create_sse_event(SSEEventType.TOKEN, content=content)
     except Exception as exc:
         logger.error(
-            "[ArxivEngine] Basic mode streaming failed: %s", exc, exc_info=True
+            "[ArxivEngine] Basic mode streaming failed: %s",
+            exc,
+            exc_info=True,
         )
         yield create_sse_event(
-            SSEEventType.ERROR, message=f"Streaming failed: {str(exc)}"
+            SSEEventType.ERROR,
+            message=f"Streaming failed: {str(exc)}",
         )
         return
 
@@ -51,5 +54,6 @@ async def stream_basic(
             chunk_count,
         )
         yield create_sse_event(
-            SSEEventType.ERROR, message="No response generated. Please try again."
+            SSEEventType.ERROR,
+            message="No response generated. Please try again.",
         )

@@ -23,9 +23,12 @@ def _create_metric_box(label: str, value: str, color) -> Table:
                 Paragraph(
                     f"<b>{value}</b>",
                     ParagraphStyle(
-                        "MetricValue", fontSize=18, textColor=color, alignment=TA_CENTER
+                        "MetricValue",
+                        fontSize=18,
+                        textColor=color,
+                        alignment=TA_CENTER,
                     ),
-                )
+                ),
             ],
             [
                 Paragraph(
@@ -36,7 +39,7 @@ def _create_metric_box(label: str, value: str, color) -> Table:
                         textColor=colors.gray,
                         alignment=TA_CENTER,
                     ),
-                )
+                ),
             ],
         ],
         colWidths=[1.4 * inch],
@@ -70,7 +73,9 @@ def create_executive_summary(story: list, styles, summary_stats: dict) -> None:
         _create_metric_box("Normal", f"{normal_count}", SUCCESS_COLOR),
         _create_metric_box("Avg Confidence", f"{avg_confidence:.0f}%", BRAND_COLOR),
         _create_metric_box(
-            "High Risk", str(high_risk), DANGER_COLOR if high_risk > 0 else colors.gray
+            "High Risk",
+            str(high_risk),
+            DANGER_COLOR if high_risk > 0 else colors.gray,
         ),
     ]
 
@@ -94,8 +99,8 @@ def create_executive_summary(story: list, styles, summary_stats: dict) -> None:
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ]
-        )
+            ],
+        ),
     )
     story.append(metrics_table)
     story.append(Spacer(1, 16))
@@ -113,8 +118,9 @@ def create_executive_summary(story: list, styles, summary_stats: dict) -> None:
     )
     story.append(
         Paragraph(
-            dist_text, ParagraphStyle("DistText", fontSize=9, alignment=TA_CENTER)
-        )
+            dist_text,
+            ParagraphStyle("DistText", fontSize=9, alignment=TA_CENTER),
+        ),
     )
     story.append(Spacer(1, 4))
 
@@ -129,7 +135,7 @@ def create_executive_summary(story: list, styles, summary_stats: dict) -> None:
                     "█" * int(normal_pct / 2),
                     ParagraphStyle("NBar", fontSize=12, textColor=SUCCESS_COLOR),
                 ),
-            ]
+            ],
         ]
         bar_table = Table(bar_data, colWidths=[pneumonia_bar_width, normal_bar_width])
         story.append(bar_table)

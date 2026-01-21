@@ -82,7 +82,8 @@ async def generate_single_report(request: SingleReportRequest) -> Response:
     except Exception as e:
         logger.error(f"Failed to generate single report: {e}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate report: {str(e)}"
+            status_code=500,
+            detail=f"Failed to generate report: {str(e)}",
         )
 
 
@@ -99,7 +100,7 @@ async def generate_batch_report(request: BatchReportRequest) -> Response:
     try:
         # Prepare data for report generation
         formatted_results = prepare_batch_results_for_report(
-            [r.model_dump() for r in request.results]
+            [r.model_dump() for r in request.results],
         )
         summary_stats = prepare_summary_stats_for_report(request.summary.model_dump())
 
@@ -141,7 +142,8 @@ async def generate_batch_report(request: BatchReportRequest) -> Response:
     except Exception as e:
         logger.error(f"Failed to generate batch report: {e}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate report: {str(e)}"
+            status_code=500,
+            detail=f"Failed to generate report: {str(e)}",
         )
 
 

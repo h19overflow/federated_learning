@@ -4,10 +4,12 @@ Handles loading and saving YAML configuration files with proper error
 handling and data integrity checks.
 """
 
-import yaml
 import os
 from pathlib import Path
 from typing import Any, Dict
+
+import yaml
+
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 

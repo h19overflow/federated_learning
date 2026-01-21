@@ -30,34 +30,50 @@ def create_results_table(story: list, styles, results: list) -> None:
         Paragraph(
             "<b>#</b>",
             ParagraphStyle(
-                "TH", fontSize=8, textColor=colors.white, alignment=TA_CENTER
+                "TH",
+                fontSize=8,
+                textColor=colors.white,
+                alignment=TA_CENTER,
             ),
         ),
         Paragraph(
-            "<b>Filename</b>", ParagraphStyle("TH", fontSize=8, textColor=colors.white)
+            "<b>Filename</b>",
+            ParagraphStyle("TH", fontSize=8, textColor=colors.white),
         ),
         Paragraph(
             "<b>Classification</b>",
             ParagraphStyle(
-                "TH", fontSize=8, textColor=colors.white, alignment=TA_CENTER
+                "TH",
+                fontSize=8,
+                textColor=colors.white,
+                alignment=TA_CENTER,
             ),
         ),
         Paragraph(
             "<b>Confidence</b>",
             ParagraphStyle(
-                "TH", fontSize=8, textColor=colors.white, alignment=TA_CENTER
+                "TH",
+                fontSize=8,
+                textColor=colors.white,
+                alignment=TA_CENTER,
             ),
         ),
         Paragraph(
             "<b>Pneumonia %</b>",
             ParagraphStyle(
-                "TH", fontSize=8, textColor=colors.white, alignment=TA_CENTER
+                "TH",
+                fontSize=8,
+                textColor=colors.white,
+                alignment=TA_CENTER,
             ),
         ),
         Paragraph(
             "<b>Normal %</b>",
             ParagraphStyle(
-                "TH", fontSize=8, textColor=colors.white, alignment=TA_CENTER
+                "TH",
+                fontSize=8,
+                textColor=colors.white,
+                alignment=TA_CENTER,
             ),
         ),
     ]
@@ -88,8 +104,8 @@ def create_results_table(story: list, styles, results: list) -> None:
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ]
-        )
+            ],
+        ),
     )
     story.append(results_table)
 
@@ -100,7 +116,7 @@ def create_results_table(story: list, styles, results: list) -> None:
                 f"<i>Note: Showing first 100 of {len(results)} results. "
                 "Export to CSV for complete data.</i>",
                 styles["Disclaimer"],
-            )
+            ),
         )
 
     story.append(Spacer(1, 16))
@@ -119,7 +135,10 @@ def _build_result_row(index: int, result: dict) -> list:
         class_para = Paragraph(
             f"<b>{pred_class}</b>",
             ParagraphStyle(
-                "Class", fontSize=8, textColor=class_color, alignment=TA_CENTER
+                "Class",
+                fontSize=8,
+                textColor=class_color,
+                alignment=TA_CENTER,
             ),
         )
     else:
@@ -129,7 +148,10 @@ def _build_result_row(index: int, result: dict) -> list:
         class_para = Paragraph(
             "<b>ERROR</b>",
             ParagraphStyle(
-                "Class", fontSize=8, textColor=DANGER_COLOR, alignment=TA_CENTER
+                "Class",
+                fontSize=8,
+                textColor=DANGER_COLOR,
+                alignment=TA_CENTER,
             ),
         )
 
@@ -142,13 +164,15 @@ def _build_result_row(index: int, result: dict) -> list:
         Paragraph(filename, ParagraphStyle("TD", fontSize=8)),
         class_para,
         Paragraph(
-            f"{conf:.1f}%", ParagraphStyle("TD", fontSize=8, alignment=TA_CENTER)
+            f"{conf:.1f}%",
+            ParagraphStyle("TD", fontSize=8, alignment=TA_CENTER),
         ),
         Paragraph(
             f"{pneumonia_prob:.1f}%",
             ParagraphStyle("TD", fontSize=8, alignment=TA_CENTER),
         ),
         Paragraph(
-            f"{normal_prob:.1f}%", ParagraphStyle("TD", fontSize=8, alignment=TA_CENTER)
+            f"{normal_prob:.1f}%",
+            ParagraphStyle("TD", fontSize=8, alignment=TA_CENTER),
         ),
     ]

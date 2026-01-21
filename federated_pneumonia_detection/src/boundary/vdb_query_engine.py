@@ -1,7 +1,9 @@
 import logging
-from langchain_postgres import PGVector
-from federated_pneumonia_detection.config.settings import Settings
+
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_postgres import PGVector
+
+from federated_pneumonia_detection.config.settings import Settings
 
 
 class QueryEngine:
@@ -22,7 +24,7 @@ class QueryEngine:
             )
         except Exception as e:
             logging.getLogger(__name__).error(
-                f"Error initializing the vectorstore: {e}"
+                f"Error initializing the vectorstore: {e}",
             )
             raise e
 

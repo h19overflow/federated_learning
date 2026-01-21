@@ -3,29 +3,29 @@
 Provides singleton instances and database sessions for endpoint use.
 """
 
-from typing import Optional, TYPE_CHECKING
 import logging
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.config.config_manager import (
-    get_config_manager,
     ConfigManager,
+    get_config_manager,
 )
 from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD
+from federated_pneumonia_detection.src.boundary.engine import get_session
 
 if TYPE_CHECKING:
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
-        QueryEngine,
-    )
     from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
         MCPManager,
     )
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
+        QueryEngine,
+    )
     from federated_pneumonia_detection.src.control.model_inferance import (
-        InferenceService,
         InferenceEngine,
+        InferenceService,
     )
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ def get_query_engine() -> Optional["QueryEngine"]:
             logger.info("QueryEngine initialized successfully")
         except Exception as e:
             logger.warning(
-                f"QueryEngine initialization failed (database unavailable): {e}"
+                f"QueryEngine initialization failed (database unavailable): {e}",
             )
             return None
     return _query_engine

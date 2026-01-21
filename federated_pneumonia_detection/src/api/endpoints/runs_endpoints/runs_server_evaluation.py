@@ -86,7 +86,7 @@ async def get_server_evaluation(run_id: int) -> ServerEvaluationResponse:
 
         if not evaluations:
             logger.info(
-                f"[ServerEvaluation] Run {run_id} - No server evaluations found"
+                f"[ServerEvaluation] Run {run_id} - No server evaluations found",
             )
             return {
                 "run_id": run_id,
@@ -120,7 +120,7 @@ async def get_server_evaluation(run_id: int) -> ServerEvaluationResponse:
                     eval_record.true_negatives is not None,
                     eval_record.false_positives is not None,
                     eval_record.false_negatives is not None,
-                ]
+                ],
             ):
                 eval_dict["confusion_matrix"] = {
                     "true_positives": eval_record.true_positives,
@@ -139,7 +139,7 @@ async def get_server_evaluation(run_id: int) -> ServerEvaluationResponse:
         summary = server_evaluation_crud.get_summary_stats(db, run_id)
 
         logger.info(
-            f"[ServerEvaluation] Run {run_id} - Returning {len(evaluations_list)} evaluations"
+            f"[ServerEvaluation] Run {run_id} - Returning {len(evaluations_list)} evaluations",
         )
 
         return {
@@ -154,7 +154,8 @@ async def get_server_evaluation(run_id: int) -> ServerEvaluationResponse:
         raise
     except Exception as e:
         logger.error(
-            f"Error fetching server evaluation for run {run_id}: {e}", exc_info=True
+            f"Error fetching server evaluation for run {run_id}: {e}",
+            exc_info=True,
         )
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:

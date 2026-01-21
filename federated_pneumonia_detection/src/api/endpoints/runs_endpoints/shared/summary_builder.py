@@ -1,11 +1,11 @@
 """Shared run summary construction logic for centralized and federated modes."""
 
-from typing import Dict, Any
+from typing import Any, Dict
 
-from federated_pneumonia_detection.src.boundary.models import Run
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
+from federated_pneumonia_detection.src.boundary.models import Run
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 logger = get_logger(__name__)
@@ -66,7 +66,7 @@ class FederatedRunSummarizer:
 
         logger.info(
             f"[FedSummarizer] Run {run.id}: {len(server_evals)} evals "
-            f"({len(training_rounds)} training), {num_clients} clients"
+            f"({len(training_rounds)} training), {num_clients} clients",
         )
 
         info = {
@@ -77,10 +77,12 @@ class FederatedRunSummarizer:
 
         if training_rounds:
             info["best_accuracy"] = max(
-                (e.accuracy for e in training_rounds if e.accuracy), default=None
+                (e.accuracy for e in training_rounds if e.accuracy),
+                default=None,
             )
             info["best_recall"] = max(
-                (e.recall for e in training_rounds if e.recall), default=None
+                (e.recall for e in training_rounds if e.recall),
+                default=None,
             )
             latest = training_rounds[-1]
             info["latest_round"] = latest.round_number
@@ -88,7 +90,7 @@ class FederatedRunSummarizer:
 
             logger.info(
                 f"[FedSummarizer] Run {run.id}: best_acc={info['best_accuracy']}, "
-                f"latest_acc={latest.accuracy}, latest_rnd={latest.round_number}"
+                f"latest_acc={latest.accuracy}, latest_rnd={latest.round_number}",
             )
         else:
             logger.warning(f"[FedSummarizer] Run {run.id}: No training evaluations!")

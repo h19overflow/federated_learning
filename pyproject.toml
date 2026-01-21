@@ -43,6 +43,7 @@ dependencies = [
     "sentence-transformers>=5.1.2",
     "langchain-mcp-adapters>=0.2.1",
     "reportlab>=4.4.9",
+    "pre-commit>=4.5.1",
 ]
 
 [build-system]
@@ -63,3 +64,42 @@ torchaudio = { index = "pytorch-cu128" }
 name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"
 explicit = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "wandb",
+    "data",
+    "docker",
+    "results",
+    "analysis",
+    "xray-vision-ai-forge",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["federated_pneumonia_detection"]

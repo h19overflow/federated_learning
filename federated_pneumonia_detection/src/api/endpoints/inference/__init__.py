@@ -7,10 +7,10 @@ Uses layered architecture:
 - API layer: This module (endpoints + schemas)
 """
 
-from .health_endpoints import router as health_router
-from .single_prediction_endpoint import router as prediction_router
 from .batch_prediction_endpoints import router as batch_prediction_router
 from .gradcam_endpoints import router as gradcam_router
+from .health_endpoints import router as health_router
+from .single_prediction_endpoint import router as prediction_router
 
 __all__ = [
     "health_router",

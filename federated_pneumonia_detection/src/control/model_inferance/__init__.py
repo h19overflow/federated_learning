@@ -20,22 +20,21 @@ Structure:
 """
 
 # Re-export from components
-from .internals import (
-    InferenceEngine,
-    DEFAULT_CHECKPOINT_PATH,
-    ImageValidator,
-    ImageProcessor,
-    ClinicalInterpreter,
-    BatchStatistics,
-    ObservabilityLogger,
-)
-
 # Main service and singleton getters
 from .inference_service import (
     InferenceService,
-    get_inference_service,
-    get_inference_engine,
     get_clinical_agent,
+    get_inference_engine,
+    get_inference_service,
+)
+from .internals import (
+    DEFAULT_CHECKPOINT_PATH,
+    BatchStatistics,
+    ClinicalInterpreter,
+    ImageProcessor,
+    ImageValidator,
+    InferenceEngine,
+    ObservabilityLogger,
 )
 
 __all__ = [

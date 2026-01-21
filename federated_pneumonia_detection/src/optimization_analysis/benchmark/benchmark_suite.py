@@ -5,20 +5,20 @@ Orchestrates benchmark runs across multiple inference approaches.
 
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from PIL import Image
-import numpy as np
+from typing import Any, Dict, List, Optional
 
-from optimization_analysis.benchmark.stage_timer import StageTimer
+import numpy as np
 from optimization_analysis.benchmark.results_collector import (
-    ResultsCollector,
     BenchmarkResult,
+    ResultsCollector,
 )
+from optimization_analysis.benchmark.stage_timer import StageTimer
 from optimization_analysis.inference_wrappers.base_inference import BaseInferenceWrapper
 from optimization_analysis.inference_wrappers.pytorch_inference import (
     PyTorchInferenceWrapper,
 )
 from optimization_analysis.utils.dataset_loader import DatasetLoader
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ class BenchmarkSuite:
                 len(stage_stats["preprocessing"].get("data", [])),
                 len(stage_stats["feature_extraction"].get("data", [])),
                 len(stage_stats["classification"].get("data", [])),
-            )
+            ),
         ):
             preprocess_time = (
                 stage_stats["preprocessing"]["data"][i]
@@ -166,7 +166,8 @@ class BenchmarkSuite:
 
             pred_labels = [1 if pred == "PNEUMONIA" else 0 for pred, _ in predictions]
             accuracy_metrics = calculate_classification_metrics(
-                true_labels=labels, pred_labels=pred_labels
+                true_labels=labels,
+                pred_labels=pred_labels,
             )
 
         # Create result object
@@ -218,7 +219,7 @@ class BenchmarkSuite:
             logger.info(f"  Total time: {stats['total_time_avg']:.2f}ms")
             if stats["accuracy"]:
                 logger.info(
-                    f"  Accuracy: {stats['accuracy'].get('accuracy', 'N/A'):.4f}"
+                    f"  Accuracy: {stats['accuracy'].get('accuracy', 'N/A'):.4f}",
                 )
 
         return comparison

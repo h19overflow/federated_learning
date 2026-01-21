@@ -32,10 +32,12 @@ class SingleReportRequest(BaseModel):
     processing_time_ms: float = 0.0
     clinical_interpretation: Optional[ClinicalInterpretationData] = None
     heatmap_base64: Optional[str] = Field(
-        None, description="GradCAM heatmap as base64 string"
+        None,
+        description="GradCAM heatmap as base64 string",
     )
     original_image_base64: Optional[str] = Field(
-        None, description="Original X-ray image as base64 string"
+        None,
+        description="Original X-ray image as base64 string",
     )
 
 
@@ -47,10 +49,12 @@ class BatchResultItem(BaseModel):
     prediction: Optional[PredictionData] = None
     error: Optional[str] = None
     heatmap_base64: Optional[str] = Field(
-        None, description="GradCAM heatmap overlay as base64 string"
+        None,
+        description="GradCAM heatmap overlay as base64 string",
     )
     original_image_base64: Optional[str] = Field(
-        None, description="Original X-ray image as base64 string"
+        None,
+        description="Original X-ray image as base64 string",
     )
 
 
@@ -73,5 +77,6 @@ class BatchReportRequest(BaseModel):
     summary: BatchSummaryStats
     model_version: str = "unknown"
     include_heatmaps: bool = Field(
-        default=False, description="Whether to include heatmaps in report appendix"
+        default=False,
+        description="Whether to include heatmaps in report appendix",
     )

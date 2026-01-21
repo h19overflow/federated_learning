@@ -62,7 +62,7 @@ def _run_websocket_server() -> None:
             """
             connected_clients.add(websocket)
             logger.info(
-                f"WebSocket client connected. Total clients: {len(connected_clients)}"
+                f"WebSocket client connected. Total clients: {len(connected_clients)}",
             )
 
             try:
@@ -72,26 +72,28 @@ def _run_websocket_server() -> None:
                         message_type = data.get("type", "unknown")
 
                         logger.debug(
-                            f"Broadcasting {message_type} to {len(connected_clients)} clients"
+                            f"Broadcasting {message_type} to {len(connected_clients)} clients",
                         )
 
                         await _broadcast_to_clients(
-                            message, websocket, connected_clients
+                            message,
+                            websocket,
+                            connected_clients,
                         )
 
                     except json.JSONDecodeError:
                         logger.warning(
-                            "Received malformed JSON from client, skipping message"
+                            "Received malformed JSON from client, skipping message",
                         )
                         continue
                     except KeyError as e:
                         logger.warning(
-                            f"WebSocket message missing required field '{e}', skipping"
+                            f"WebSocket message missing required field '{e}', skipping",
                         )
                         continue
                     except Exception as e:
                         logger.warning(
-                            f"Unexpected error processing WebSocket message: {e}, continuing"
+                            f"Unexpected error processing WebSocket message: {e}, continuing",
                         )
                         continue
 
@@ -102,7 +104,7 @@ def _run_websocket_server() -> None:
             finally:
                 connected_clients.discard(websocket)
                 logger.debug(
-                    f"WebSocket client removed. Total clients: {len(connected_clients)}"
+                    f"WebSocket client removed. Total clients: {len(connected_clients)}",
                 )
 
         async def _broadcast_to_clients(
@@ -118,7 +120,7 @@ def _run_websocket_server() -> None:
         async def run_server() -> None:
             """Run the WebSocket server."""
             logger.info(
-                f"Starting WebSocket server on ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}"
+                f"Starting WebSocket server on ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}",
             )
 
             async with websockets.serve(handler, WEBSOCKET_HOST, WEBSOCKET_PORT):
@@ -130,15 +132,15 @@ def _run_websocket_server() -> None:
     except ImportError:
         logger.warning(
             "WebSocket server failed to start: Missing required library. "
-            "Install with: pip install websockets (metrics streaming will be unavailable)"
+            "Install with: pip install websockets (metrics streaming will be unavailable)",
         )
     except OSError as e:
         logger.warning(
             f"WebSocket server could not bind to port: {e}. "
-            f"(metrics streaming unavailable, but app continues)"
+            f"(metrics streaming unavailable, but app continues)",
         )
     except Exception as e:
         logger.warning(
             f"WebSocket server startup had unexpected error: {e} "
-            f"(metrics streaming will be unavailable)"
+            f"(metrics streaming will be unavailable)",
         )

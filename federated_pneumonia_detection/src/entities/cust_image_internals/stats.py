@@ -1,8 +1,10 @@
 """Dataset statistics and information utilities."""
 
 from pathlib import Path
+
 import numpy as np
 from PIL import Image
+
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 logger = get_logger(__name__)
@@ -77,7 +79,7 @@ def get_sample_info(
                         "image_size": img.size,
                         "image_mode": img.mode,
                         "image_format": img.format,
-                    }
+                    },
                 )
         except Exception as e:
             info["image_error"] = str(e)

@@ -12,12 +12,13 @@ Exports:
 - DownloadService: Orchestrates export and file preparation
 """
 
-import json
 import csv
-from io import StringIO
+import json
 from abc import ABC, abstractmethod
-from typing import Any, Dict
 from datetime import datetime
+from io import StringIO
+from typing import Any, Dict
+
 from fastapi.responses import StreamingResponse
 
 
@@ -99,7 +100,7 @@ class TextReportExporter(DataExporter):
         lines += ["EXPERIMENT INFORMATION", "-" * 80]
         lines.append(f"Experiment: {metadata.get('experiment_name', 'N/A')}")
         lines.append(
-            f"Status: {data.get('status', 'N/A')} | Epochs: {metadata.get('total_epochs', 'N/A')}"
+            f"Status: {data.get('status', 'N/A')} | Epochs: {metadata.get('total_epochs', 'N/A')}",
         )
         final = data.get("final_metrics", {})
         lines += ["", "FINAL METRICS", "-" * 80]
@@ -117,7 +118,7 @@ class TextReportExporter(DataExporter):
             for e in history[:5]:
                 lines.append(
                     f"E{e.get('epoch', 1):<2} | TL:{e.get('train_loss', 0):.3f} "
-                    f"VL:{e.get('val_loss', 0):.3f} VA:{e.get('val_acc', 0) * 100:.1f}%"
+                    f"VL:{e.get('val_loss', 0):.3f} VA:{e.get('val_acc', 0) * 100:.1f}%",
                 )
         lines += [
             "",
@@ -139,7 +140,10 @@ class DownloadService:
 
     @staticmethod
     def prepare_download(
-        data: Dict[str, Any], run_id: int, prefix: str, exporter: DataExporter
+        data: Dict[str, Any],
+        run_id: int,
+        prefix: str,
+        exporter: DataExporter,
     ) -> StreamingResponse:
         """Prepare downloadable file with specified exporter."""
         content = exporter.export(data)

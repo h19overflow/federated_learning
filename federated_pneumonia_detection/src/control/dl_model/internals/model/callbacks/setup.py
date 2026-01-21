@@ -2,44 +2,46 @@
 Setup functions for PyTorch Lightning trainer configuration and callbacks.
 """
 
-import os
 import logging
-from typing import Optional, List, Dict, Any, TYPE_CHECKING
+import os
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+import numpy as np
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.callbacks import (
-    ModelCheckpoint,
     EarlyStopping,
     LearningRateMonitor,
+    ModelCheckpoint,
 )
-import torch
-import numpy as np
 from sklearn.utils import class_weight
 
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.control.dl_model.internals.model.collectors import (
-    MetricsCollectorCallback,
-)
 from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (
     MetricsWebSocketSender,
-)
-from federated_pneumonia_detection.src.control.dl_model.internals.model.callbacks.early_stopping import (
-    EarlyStoppingSignalCallback,
-)
-from federated_pneumonia_detection.src.control.dl_model.internals.model.callbacks.checkpoint import (
-    HighestValRecallCallback,
 )
 from federated_pneumonia_detection.src.control.dl_model.internals.model.callbacks.batch_metrics import (
     BatchMetricsCallback,
 )
+from federated_pneumonia_detection.src.control.dl_model.internals.model.callbacks.checkpoint import (
+    HighestValRecallCallback,
+)
+from federated_pneumonia_detection.src.control.dl_model.internals.model.callbacks.early_stopping import (
+    EarlyStoppingSignalCallback,
+)
 from federated_pneumonia_detection.src.control.dl_model.internals.model.callbacks.gradient_monitor import (
     GradientMonitorCallback,
+)
+from federated_pneumonia_detection.src.control.dl_model.internals.model.collectors import (
+    MetricsCollectorCallback,
 )
 
 
 def compute_class_weights_for_pl(
-    train_df, class_column: str = "Target"
+    train_df,
+    class_column: str = "Target",
 ) -> Optional[torch.Tensor]:
     """
     Compute balanced class weights for PyTorch Lightning training.
@@ -57,12 +59,14 @@ def compute_class_weights_for_pl(
 
         if len(unique_labels) == 2:
             weights = class_weight.compute_class_weight(
-                "balanced", classes=unique_labels, y=labels
+                "balanced",
+                classes=unique_labels,
+                y=labels,
             )
             return torch.tensor(weights, dtype=torch.float)
         else:
             logging.getLogger(__name__).warning(
-                f"Expected 2 classes, found {len(unique_labels)}"
+                f"Expected 2 classes, found {len(unique_labels)}",
             )
             return None
 
@@ -137,11 +141,11 @@ def prepare_trainer_and_callbacks_pl(
     training_mode = "federated" if is_federated else "centralized"
 
     logger.info(
-        f"[Trainer Setup] max_epochs={max_epochs}, early_stopping_patience={patience}, min_delta={min_delta}"
+        f"[Trainer Setup] max_epochs={max_epochs}, early_stopping_patience={patience}, min_delta={min_delta}",
     )
     if is_federated and client_id is not None:
         logger.info(
-            f"[Trainer Setup] Federated mode with client_id={client_id}, round={round_number}"
+            f"[Trainer Setup] Federated mode with client_id={client_id}, round={round_number}",
         )
 
     # Compute class weights
@@ -170,7 +174,7 @@ def prepare_trainer_and_callbacks_pl(
     )
 
     logger.info(
-        f"[EarlyStopping] Monitoring 'val_recall' with patience={patience}, min_delta={min_delta}"
+        f"[EarlyStopping] Monitoring 'val_recall' with patience={patience}, min_delta={min_delta}",
     )
 
     # Learning rate monitor
@@ -198,12 +202,13 @@ def prepare_trainer_and_callbacks_pl(
 
     # Early stopping signal callback - notify frontend when early stopping occurs
     early_stopping_signal = EarlyStoppingSignalCallback(
-        websocket_sender=websocket_sender
+        websocket_sender=websocket_sender,
     )
 
     # Batch metrics callback - send batch-level metrics for real-time observability
     batch_interval = batch_sample_interval or config.get(
-        "experiment.batch_sample_interval", 10
+        "experiment.batch_sample_interval",
+        10,
     )
     batch_metrics_callback = BatchMetricsCallback(
         websocket_sender=websocket_sender,
@@ -214,7 +219,8 @@ def prepare_trainer_and_callbacks_pl(
 
     # Gradient monitor callback - track gradient norms and learning rate
     gradient_interval = gradient_sample_interval or config.get(
-        "experiment.gradient_sample_interval", 20
+        "experiment.gradient_sample_interval",
+        20,
     )
     gradient_monitor_callback = GradientMonitorCallback(
         websocket_sender=websocket_sender,

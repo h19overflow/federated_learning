@@ -1,12 +1,16 @@
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.boundary.models import Round, Client
+from federated_pneumonia_detection.src.boundary.models import Client, Round
 
 
 class RoundCRUD:
     def create_round(
-        self, client_id: int, round_number: int, round_metadata: Optional[dict] = None
+        self,
+        client_id: int,
+        round_number: int,
+        round_metadata: Optional[dict] = None,
     ):
         """Create a new round for a specific client"""
         if self.get_round_by_client_and_number(client_id, round_number):
@@ -35,14 +39,17 @@ class RoundCRUD:
             return round_instance
 
     def get_round_by_client_and_number(
-        self, client_id: int, round_number: int
+        self,
+        client_id: int,
+        round_number: int,
     ) -> Optional[Round]:
         """Get a specific round for a client by round number"""
         with get_session() as session:
             round_instance = (
                 session.query(Round)
                 .filter(
-                    Round.client_id == client_id, Round.round_number == round_number
+                    Round.client_id == client_id,
+                    Round.round_number == round_number,
                 )
                 .first()
             )

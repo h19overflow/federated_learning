@@ -14,9 +14,10 @@ Usage:
 
 import logging
 from typing import Literal
-from pydantic import BaseModel, Field
-from langchain_google_genai import ChatGoogleGenerativeAI
+
 from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import BaseModel, Field
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class QueryClassification(BaseModel):
     """Structured classification response with constrained mode field."""
 
     mode: Literal["research", "basic"] = Field(
-        description="Query mode: 'research' requires tools (search, retrieval), 'basic' is conversational"
+        description="Query mode: 'research' requires tools (search, retrieval), 'basic' is conversational",
     )
 
 

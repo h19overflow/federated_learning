@@ -1,6 +1,8 @@
-from sqlalchemy import Column, String, DateTime
-from sqlalchemy.sql import func
 import uuid
+
+from sqlalchemy import Column, DateTime, String
+from sqlalchemy.sql import func
+
 from . import Base
 
 
@@ -16,7 +18,9 @@ class ChatSession(Base):
     title = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
-        DateTime(timezone=True), onupdate=func.now(), server_default=func.now()
+        DateTime(timezone=True),
+        onupdate=func.now(),
+        server_default=func.now(),
     )
 
     def __repr__(self):

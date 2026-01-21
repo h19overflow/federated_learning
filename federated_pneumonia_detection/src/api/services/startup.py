@@ -93,22 +93,22 @@ async def _initialize_mcp_manager() -> MCPManager:
     try:
         await mcp_manager.initialize()
         logger.info(
-            "MCP manager initialized successfully (arxiv integration available)"
+            "MCP manager initialized successfully (arxiv integration available)",
         )
     except ConnectionError as e:
         logger.warning(
             f"MCP initialization failed - network issue: {e} "
-            "(arxiv search will be unavailable)"
+            "(arxiv search will be unavailable)",
         )
     except ImportError as e:
         logger.warning(
             f"MCP initialization failed - missing dependency: {e} "
-            "(arxiv search disabled)"
+            "(arxiv search disabled)",
         )
     except Exception as e:
         logger.warning(
             f"MCP initialization failed (unexpected error): {e} "
-            "(arxiv search will be unavailable, but app continues)"
+            "(arxiv search will be unavailable, but app continues)",
         )
 
     return mcp_manager
@@ -124,27 +124,27 @@ def _initialize_wandb_tracker() -> None:
             job_type="inference",
         ):
             logger.info(
-                "W&B inference tracker initialized (experiment tracking enabled)"
+                "W&B inference tracker initialized (experiment tracking enabled)",
             )
         else:
             logger.warning(
                 "W&B tracker rejected configuration (check credentials). "
-                "Experiment tracking will be unavailable."
+                "Experiment tracking will be unavailable.",
             )
     except ConnectionError as e:
         logger.warning(
             f"W&B connection failed: {e} "
-            "(experiment tracking disabled, but training continues)"
+            "(experiment tracking disabled, but training continues)",
         )
     except ImportError as e:
         logger.warning(
             f"W&B not installed: {e} (install with: pip install wandb) "
-            "(experiment tracking disabled)"
+            "(experiment tracking disabled)",
         )
     except Exception as e:
         logger.warning(
             f"W&B initialization failed (unexpected): {e} "
-            "(experiment tracking will be unavailable)"
+            "(experiment tracking will be unavailable)",
         )
 
 
@@ -167,7 +167,7 @@ async def _shutdown_mcp_manager(mcp_manager: MCPManager) -> None:
     except Exception as e:
         logger.warning(
             f"MCP manager shutdown had issues: {e} "
-            "(this is non-fatal, app still shutting down)"
+            "(this is non-fatal, app still shutting down)",
         )
 
 
@@ -180,5 +180,5 @@ def _shutdown_wandb_tracker() -> None:
     except Exception as e:
         logger.warning(
             f"W&B tracker shutdown had issues: {e} "
-            "(this is non-fatal, app still shutting down)"
+            "(this is non-fatal, app still shutting down)",
         )

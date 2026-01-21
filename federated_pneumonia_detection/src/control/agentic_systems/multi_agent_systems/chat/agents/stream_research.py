@@ -5,15 +5,15 @@ from __future__ import annotations
 import logging
 from typing import AsyncGenerator, Dict, List
 
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_state import (
+    StreamState,
+)
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.content import (
     normalize_content,
 )
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.streaming import (
     SSEEventType,
     create_sse_event,
-)
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_state import (
-    StreamState,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ async def stream_research(
                             {
                                 "name": tool_name,
                                 "args": tool_chunk.get("args", {}),
-                            }
+                            },
                         )
 
             if node_name == "tools":
@@ -80,7 +80,8 @@ async def stream_research(
     except Exception as exc:
         logger.error("[ArxivEngine] Agent streaming failed: %s", exc, exc_info=True)
         yield create_sse_event(
-            SSEEventType.ERROR, message=f"Agent execution failed: {str(exc)}"
+            SSEEventType.ERROR,
+            message=f"Agent execution failed: {str(exc)}",
         )
         return
 

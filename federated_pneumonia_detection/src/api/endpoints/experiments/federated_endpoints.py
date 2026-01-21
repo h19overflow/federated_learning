@@ -87,7 +87,7 @@ async def start_federated_training(
         )
 
         logger.info(
-            f"Federated training queued: {experiment_name} (rounds={num_server_rounds})"
+            f"Federated training queued: {experiment_name} (rounds={num_server_rounds})",
         )
 
         return {

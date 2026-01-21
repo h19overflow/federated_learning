@@ -12,11 +12,12 @@ These functions are designed to work with both the new ConfigManager
 and legacy configuration objects for backward compatibility.
 """
 
-import os
 import logging
+import os
 import warnings
-from typing import Tuple, Optional, Union, TYPE_CHECKING
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional, Tuple, Union
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
@@ -172,7 +173,7 @@ def sample_dataframe(
         else:
             # Simple random sampling for single class
             df_sample = df.sample(frac=sample_fraction, random_state=seed).reset_index(
-                drop=True
+                drop=True,
             )
             logger.info(f"Random sampling: {len(df_sample)} samples")
 
@@ -220,11 +221,14 @@ def create_train_val_split(
         stratify = df[target_column] if len(unique_targets) > 1 else None
 
         train_df, val_df = train_test_split(
-            df, test_size=validation_split, random_state=seed, stratify=stratify
+            df,
+            test_size=validation_split,
+            random_state=seed,
+            stratify=stratify,
         )
 
         logger.info(
-            f"Created train/val split - Train: {len(train_df)}, Val: {len(val_df)}"
+            f"Created train/val split - Train: {len(train_df)}, Val: {len(val_df)}",
         )
         return train_df, val_df
 
@@ -272,7 +276,8 @@ def load_and_split_data(
             if config:
                 base_path = config.get("paths.base_path", ".")
                 metadata_filename = config.get(
-                    "paths.metadata_filename", "Train_metadata.csv"
+                    "paths.metadata_filename",
+                    "Train_metadata.csv",
                 )
             else:
                 # SystemConstants path
@@ -311,7 +316,7 @@ def load_and_split_data(
         )
 
         logger.info(
-            f"Data processing completed: {len(train_df)} train, {len(val_df)} validation samples"
+            f"Data processing completed: {len(train_df)} train, {len(val_df)} validation samples",
         )
         return train_df, val_df
 
@@ -346,7 +351,8 @@ def validate_image_paths(
     else:  # Old SystemConstants
         constants = config_or_constants
         main_images_path = os.path.join(
-            constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER
+            constants.BASE_PATH,
+            constants.MAIN_IMAGES_FOLDER,
         )
         image_dir_path = os.path.join(main_images_path, constants.IMAGES_SUBFOLDER)
 
@@ -403,7 +409,8 @@ def get_image_directory_path(
     else:  # Old SystemConstants
         constants = config_or_constants
         main_images_path = os.path.join(
-            constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER
+            constants.BASE_PATH,
+            constants.MAIN_IMAGES_FOLDER,
         )
         return os.path.join(main_images_path, constants.IMAGES_SUBFOLDER)
 

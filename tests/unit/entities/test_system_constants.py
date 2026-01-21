@@ -4,6 +4,7 @@ Tests configuration values, validation, and custom creation methods.
 """
 
 import pytest
+
 from federated_pneumonia_detection.models.system_constants import SystemConstants
 
 
@@ -15,18 +16,18 @@ class TestSystemConstants:
         constants = SystemConstants()
 
         assert constants.IMG_SIZE == (224, 224)
-        assert constants.IMAGE_EXTENSION == '.png'
+        assert constants.IMAGE_EXTENSION == ".png"
         assert constants.BATCH_SIZE == 128
         assert constants.SAMPLE_FRACTION == 0.05
         assert constants.VALIDATION_SPLIT == 0.20
         assert constants.SEED == 42
-        assert constants.BASE_PATH == '.'
-        assert constants.MAIN_IMAGES_FOLDER == 'Images'
-        assert constants.IMAGES_SUBFOLDER == 'Images'
-        assert constants.METADATA_FILENAME == 'Train_metadata.csv'
-        assert constants.PATIENT_ID_COLUMN == 'patientId'
-        assert constants.TARGET_COLUMN == 'Target'
-        assert constants.FILENAME_COLUMN == 'filename'
+        assert constants.BASE_PATH == "."
+        assert constants.MAIN_IMAGES_FOLDER == "Images"
+        assert constants.IMAGES_SUBFOLDER == "Images"
+        assert constants.METADATA_FILENAME == "Train_metadata.csv"
+        assert constants.PATIENT_ID_COLUMN == "patientId"
+        assert constants.TARGET_COLUMN == "Target"
+        assert constants.FILENAME_COLUMN == "filename"
 
     def test_frozen_dataclass(self):
         """Test that SystemConstants is immutable."""
@@ -40,7 +41,7 @@ class TestSystemConstants:
         custom_constants = SystemConstants.create_custom(
             img_size=(256, 256),
             batch_size=64,
-            seed=123
+            seed=123,
         )
 
         assert custom_constants.IMG_SIZE == (256, 256)
@@ -48,7 +49,7 @@ class TestSystemConstants:
         assert custom_constants.SEED == 123
         # Other values should use create_custom defaults (not dataclass defaults)
         assert custom_constants.SAMPLE_FRACTION == 0.10
-        assert custom_constants.IMAGE_EXTENSION == '.png'
+        assert custom_constants.IMAGE_EXTENSION == ".png"
 
     def test_create_custom_all_parameters(self):
         """Test creating custom constants with all parameters."""
@@ -58,11 +59,11 @@ class TestSystemConstants:
             sample_fraction=0.50,
             validation_split=0.30,
             seed=999,
-            base_path='/custom/path',
-            main_images_folder='CustomImages',
-            images_subfolder='XRays',
-            metadata_filename='custom_metadata.csv',
-            image_extension='.jpg'
+            base_path="/custom/path",
+            main_images_folder="CustomImages",
+            images_subfolder="XRays",
+            metadata_filename="custom_metadata.csv",
+            image_extension=".jpg",
         )
 
         assert custom_constants.IMG_SIZE == (512, 512)
@@ -70,11 +71,11 @@ class TestSystemConstants:
         assert custom_constants.SAMPLE_FRACTION == 0.50
         assert custom_constants.VALIDATION_SPLIT == 0.30
         assert custom_constants.SEED == 999
-        assert custom_constants.BASE_PATH == '/custom/path'
-        assert custom_constants.MAIN_IMAGES_FOLDER == 'CustomImages'
-        assert custom_constants.IMAGES_SUBFOLDER == 'XRays'
-        assert custom_constants.METADATA_FILENAME == 'custom_metadata.csv'
-        assert custom_constants.IMAGE_EXTENSION == '.jpg'
+        assert custom_constants.BASE_PATH == "/custom/path"
+        assert custom_constants.MAIN_IMAGES_FOLDER == "CustomImages"
+        assert custom_constants.IMAGES_SUBFOLDER == "XRays"
+        assert custom_constants.METADATA_FILENAME == "custom_metadata.csv"
+        assert custom_constants.IMAGE_EXTENSION == ".jpg"
 
     def test_img_size_type(self):
         """Test that IMG_SIZE is properly typed as tuple."""
@@ -88,9 +89,14 @@ class TestSystemConstants:
         constants = SystemConstants()
 
         string_attrs = [
-            'IMAGE_EXTENSION', 'BASE_PATH', 'MAIN_IMAGES_FOLDER',
-            'IMAGES_SUBFOLDER', 'METADATA_FILENAME', 'PATIENT_ID_COLUMN',
-            'TARGET_COLUMN', 'FILENAME_COLUMN'
+            "IMAGE_EXTENSION",
+            "BASE_PATH",
+            "MAIN_IMAGES_FOLDER",
+            "IMAGES_SUBFOLDER",
+            "METADATA_FILENAME",
+            "PATIENT_ID_COLUMN",
+            "TARGET_COLUMN",
+            "FILENAME_COLUMN",
         ]
 
         for attr in string_attrs:

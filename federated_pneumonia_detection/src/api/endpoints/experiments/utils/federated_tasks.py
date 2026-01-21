@@ -5,11 +5,11 @@ Provides background task execution for federated machine learning training
 using Flower (flwr) framework via rf.ps1 script.
 """
 
-import subprocess
-import os
 import logging
-from typing import Any, Dict
+import os
+import subprocess  # nosec B404 - subprocess used for controlled script execution
 from pathlib import Path
+from typing import Any, Dict
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
 
@@ -116,7 +116,7 @@ def run_federated_training_task(
         # CRITICAL FIX: Ensure subprocess inherits all environment variables
         # This includes database credentials from .env file
         task_logger.info(
-            "Setting up subprocess environment with database credentials..."
+            "Setting up subprocess environment with database credentials...",
         )
         env = (
             os.environ.copy()
@@ -147,7 +147,7 @@ def run_federated_training_task(
         task_logger.info(f"Executing: {' '.join(ps_cmd)}")
         task_logger.info(f"Working Directory: {project_root}")
 
-        process = subprocess.Popen(
+        process = subprocess.Popen(  # nosec B603 - command args are hardcoded, not user input
             ps_cmd,
             cwd=str(project_root),
             stdout=subprocess.PIPE,
@@ -170,7 +170,7 @@ def run_federated_training_task(
 
         task_logger.info("=" * 80)
         task_logger.info(
-            f"Federated training process completed with return code: {return_code}"
+            f"Federated training process completed with return code: {return_code}",
         )
         task_logger.info("=" * 80)
 
@@ -193,7 +193,8 @@ def run_federated_training_task(
         }
     except Exception as e:
         task_logger.error(
-            f"Unexpected error during federated training: {str(e)}", exc_info=True
+            f"Unexpected error during federated training: {str(e)}",
+            exc_info=True,
         )
         return {
             "message": f"Federated training failed: {str(e)}",

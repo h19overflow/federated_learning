@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 def base64_to_image(
-    base64_string: str, max_width: float = 4 * inch
+    base64_string: str,
+    max_width: float = 4 * inch,
 ) -> Optional[RLImage]:
     """Convert base64 string to ReportLab Image.
 
@@ -44,7 +45,8 @@ def base64_to_image(
 
 
 def pil_to_reportlab_image(
-    pil_image: Image.Image, max_width: float = 4 * inch
+    pil_image: Image.Image,
+    max_width: float = 4 * inch,
 ) -> Optional[RLImage]:
     """Convert PIL Image to ReportLab Image.
 

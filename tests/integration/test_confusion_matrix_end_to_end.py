@@ -5,17 +5,20 @@ Tests the complete flow from training through database persistence to API respon
 Covers both centralized and federated learning modes.
 """
 
-import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime
+from unittest.mock import Mock, patch
 
-from federated_pneumonia_detection.src.boundary.engine import Run
-from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import server_evaluation_crud
+import pytest
+
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import (
     _calculate_summary_statistics,
     _transform_run_to_results,
 )
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
+    server_evaluation_crud,
+)
+from federated_pneumonia_detection.src.boundary.engine import Run
 
 
 @pytest.mark.integration
@@ -45,14 +48,19 @@ class TestEndToEndCentralizedPipeline:
         ]
 
         # Step 2: Create run in database
-        with patch("federated_pneumonia_detection.src.boundary.CRUD.run.get_session", return_value=mock_db):
+        with patch(
+            "federated_pneumonia_detection.src.boundary.CRUD.run.get_session",
+            return_value=mock_db,
+        ):
             mock_run = Mock(spec=Run)
             mock_run.id = 1
             mock_run.status = "in_progress"
 
             with patch.object(run_crud, "create", return_value=mock_run):
                 created_run = run_crud.create(
-                    mock_db, training_mode="centralized", status="in_progress"
+                    mock_db,
+                    training_mode="centralized",
+                    status="in_progress",
                 )
                 assert created_run.id == 1
 
@@ -104,7 +112,7 @@ class TestEndToEndCentralizedPipeline:
         )
 
         with patch(
-            "federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector.get_session"
+            "federated_pneumonia_detection.src.control.dl_model.utils.model.metrics_collector.get_session",
         ):
             # Initialize MetricsCollector
             collector = MetricsCollectorCallback(
@@ -153,14 +161,42 @@ class TestEndToEndCentralizedPipeline:
         for epoch in range(5):
             metrics_data.extend(
                 [
-                    Mock(step=epoch, metric_name="train_loss", metric_value=0.5 - epoch * 0.05),
-                    Mock(step=epoch, metric_name="val_loss", metric_value=0.4 - epoch * 0.04),
-                    Mock(step=epoch, metric_name="val_accuracy", metric_value=0.80 + epoch * 0.03),
-                    Mock(step=epoch, metric_name="val_cm_tp", metric_value=400 + epoch * 15),
-                    Mock(step=epoch, metric_name="val_cm_tn", metric_value=380 + epoch * 15),
-                    Mock(step=epoch, metric_name="val_cm_fp", metric_value=50 - epoch * 8),
-                    Mock(step=epoch, metric_name="val_cm_fn", metric_value=70 - epoch * 10),
-                ]
+                    Mock(
+                        step=epoch,
+                        metric_name="train_loss",
+                        metric_value=0.5 - epoch * 0.05,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_loss",
+                        metric_value=0.4 - epoch * 0.04,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_accuracy",
+                        metric_value=0.80 + epoch * 0.03,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_cm_tp",
+                        metric_value=400 + epoch * 15,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_cm_tn",
+                        metric_value=380 + epoch * 15,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_cm_fp",
+                        metric_value=50 - epoch * 8,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_cm_fn",
+                        metric_value=70 - epoch * 10,
+                    ),
+                ],
             )
         mock_run.metrics = metrics_data
 
@@ -230,7 +266,9 @@ class TestEndToEndFederatedPipeline:
 
         with patch.object(run_crud, "create", return_value=mock_run):
             created_run = run_crud.create(
-                mock_db, training_mode="federated", status="in_progress"
+                mock_db,
+                training_mode="federated",
+                status="in_progress",
             )
             assert created_run.id == 1
 
@@ -245,7 +283,10 @@ class TestEndToEndFederatedPipeline:
                 mock_create.return_value = mock_eval
                 created_evals.append(mock_eval)
                 server_evaluation_crud.create_evaluation(
-                    mock_db, created_run.id, metrics["round_number"], metrics
+                    mock_db,
+                    created_run.id,
+                    metrics["round_number"],
+                    metrics,
                 )
 
         # Step 4: Verify per-round persistence
@@ -255,7 +296,11 @@ class TestEndToEndFederatedPipeline:
         assert created_evals[2].true_positives == 450
 
         # Step 5: Fetch server evaluations for API response
-        with patch.object(server_evaluation_crud, "get_by_run", return_value=created_evals):
+        with patch.object(
+            server_evaluation_crud,
+            "get_by_run",
+            return_value=created_evals,
+        ):
             evals = server_evaluation_crud.get_by_run(mock_db, created_run.id)
             assert len(evals) == 3
 
@@ -367,11 +412,16 @@ class TestEndToEndFederatedPipeline:
 
             # Create evaluation
             crud.create_evaluation(
-                mock_db, run_id=1, round_number=1, metrics=flat_format_metrics
+                mock_db,
+                run_id=1,
+                round_number=1,
+                metrics=flat_format_metrics,
             )
 
             # Verify extraction
-            call_kwargs = mock_create.call_args.kwargs if mock_create.call_args.kwargs else {}
+            call_kwargs = (
+                mock_create.call_args.kwargs if mock_create.call_args.kwargs else {}
+            )
 
             assert call_kwargs.get("true_positives") == 450
             assert call_kwargs.get("true_negatives") == 430
@@ -403,7 +453,7 @@ class TestCrossModePipeline:
                     "true_negatives": 430,
                     "false_positives": 40,
                     "false_negatives": 30,
-                }
+                },
             ),
         }
 
@@ -419,7 +469,7 @@ class TestCrossModePipeline:
                     "true_negatives": 430,
                     "false_positives": 40,
                     "false_negatives": 30,
-                }
+                },
             ),
         }
 
@@ -472,7 +522,10 @@ class TestCrossModePipeline:
             mock_create.return_value = Mock()
             try:
                 server_evaluation_crud.create_evaluation(
-                    mock_db, run_id=1, round_number=1, metrics=metrics_no_cm
+                    mock_db,
+                    run_id=1,
+                    round_number=1,
+                    metrics=metrics_no_cm,
                 )
                 # Should not raise error
                 assert True

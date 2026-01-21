@@ -53,7 +53,7 @@ def generate_analytics_summary(
 
     if not runs:
         logger.warning(
-            f"No runs found with filters: status={status}, mode={training_mode}, days={days}"
+            f"No runs found with filters: status={status}, mode={training_mode}, days={days}",
         )
         return create_empty_response()
 
@@ -82,13 +82,14 @@ def generate_analytics_summary(
     logger.info(
         f"Analytics summary generated: {total_runs} runs "
         f"({len(centralized_runs)} centralized, {len(federated_runs)} federated). "
-        f"Filtering ratio: {filtered_run_ratio:.4f} ({total_runs}/{len(all_status_runs)} status-matching runs)"
+        f"Filtering ratio: {filtered_run_ratio:.4f} ({total_runs}/{len(all_status_runs)} status-matching runs)",
     )
 
     return AnalyticsSummaryResponse(
         total_runs=total_runs,
         success_rate=round(
-            filtered_run_ratio, 4
+            filtered_run_ratio,
+            4,
         ),  # Proportion: filtered_count / all_status_count
         centralized=ModeMetrics(**centralized_stats),
         federated=ModeMetrics(**federated_stats),
@@ -118,7 +119,8 @@ def extract_run_detail(db: Session, run) -> Optional[dict]:
         duration_minutes = None
         if run.start_time and run.end_time:
             duration_minutes = round(
-                (run.end_time - run.start_time).total_seconds() / 60, 2
+                (run.end_time - run.start_time).total_seconds() / 60,
+                2,
             )
 
         return {
@@ -126,10 +128,12 @@ def extract_run_detail(db: Session, run) -> Optional[dict]:
             "training_mode": run.training_mode,
             "best_accuracy": round(accuracy, 4) if accuracy else None,
             "best_precision": round(
-                extractor.get_best_metric(db, run.id, "precision") or 0, 4
+                extractor.get_best_metric(db, run.id, "precision") or 0,
+                4,
             ),
             "best_recall": round(
-                extractor.get_best_metric(db, run.id, "recall") or 0, 4
+                extractor.get_best_metric(db, run.id, "recall") or 0,
+                4,
             ),
             "best_f1": round(extractor.get_best_metric(db, run.id, "f1_score") or 0, 4),
             "duration_minutes": duration_minutes,

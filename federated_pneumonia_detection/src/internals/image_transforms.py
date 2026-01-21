@@ -4,10 +4,11 @@ Provides configurable transform pipelines and custom preprocessing functions.
 """
 
 import logging
-from typing import Optional, Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional
+
 import numpy as np
-from PIL import Image
 import torchvision.transforms as transforms
+from PIL import Image
 
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
@@ -55,7 +56,8 @@ class XRayPreprocessor:
 
         # Calculate percentiles
         p_lower, p_upper = np.percentile(
-            img_array, (lower_percentile, upper_percentile)
+            img_array,
+            (lower_percentile, upper_percentile),
         )
 
         # Apply contrast stretching
@@ -67,7 +69,8 @@ class XRayPreprocessor:
 
     @staticmethod
     def adaptive_histogram_equalization(
-        image: Image.Image, clip_limit: float = 2.0
+        image: Image.Image,
+        clip_limit: float = 2.0,
     ) -> Image.Image:
         """
         Apply adaptive histogram equalization (CLAHE) for better contrast.
@@ -99,7 +102,7 @@ class XRayPreprocessor:
 
         # Apply unsharp mask filter
         enhanced = image.filter(
-            ImageFilter.UnsharpMask(radius=2, percent=int(strength * 150), threshold=3)
+            ImageFilter.UnsharpMask(radius=2, percent=int(strength * 150), threshold=3),
         )
 
         return enhanced
@@ -137,19 +140,21 @@ class XRayPreprocessor:
 
                 if adaptive_hist:
                     result = self.adaptive_histogram_equalization(
-                        result, clip_limit=kwargs.get("clip_limit", 2.0)
+                        result,
+                        clip_limit=kwargs.get("clip_limit", 2.0),
                     )
 
                 if edge_enhance:
                     result = self.edge_enhancement(
-                        result, strength=kwargs.get("edge_strength", 1.0)
+                        result,
+                        strength=kwargs.get("edge_strength", 1.0),
                     )
 
                 return result
 
             except Exception as e:
                 self.logger.warning(
-                    f"Preprocessing failed, returning original image: {e}"
+                    f"Preprocessing failed, returning original image: {e}",
                 )
                 return image
 
@@ -200,7 +205,8 @@ class TransformBuilder:
         """
         if augmentation_strength is None:
             augmentation_strength = self.config.get(
-                "experiment.augmentation_strength", 1.0
+                "experiment.augmentation_strength",
+                1.0,
             )
 
         img_size = tuple(self.config.get("system.img_size", [224, 224]))
@@ -214,11 +220,14 @@ class TransformBuilder:
             transform_list.extend(
                 [
                     transforms.RandomResizedCrop(
-                        img_size, scale=(min_scale, 1.0), ratio=(0.8, 1.2)
+                        img_size,
+                        scale=(min_scale, 1.0),
+                        ratio=(0.8, 1.2),
                     ),
                     transforms.RandomHorizontalFlip(p=0.5 * augmentation_strength),
                     transforms.RandomRotation(
-                        degrees=15 * augmentation_strength, fill=0
+                        degrees=15 * augmentation_strength,
+                        fill=0,
                     ),
                     transforms.ColorJitter(
                         brightness=0.1 * augmentation_strength,
@@ -226,17 +235,17 @@ class TransformBuilder:
                         saturation=0.1 * augmentation_strength,
                         hue=0.05 * augmentation_strength,
                     ),
-                ]
+                ],
             )
         else:
             transform_list.extend(
-                [transforms.Resize(img_size), transforms.CenterCrop(img_size)]
+                [transforms.Resize(img_size), transforms.CenterCrop(img_size)],
             )
 
         # Custom preprocessing if specified
         if custom_preprocessing:
             preprocess_fn = self.preprocessor.create_custom_preprocessing_pipeline(
-                **custom_preprocessing
+                **custom_preprocessing,
             )
             transform_list.append(transforms.Lambda(preprocess_fn))
 
@@ -247,7 +256,8 @@ class TransformBuilder:
         return transforms.Compose(transform_list)
 
     def build_validation_transforms(
-        self, custom_preprocessing: Optional[dict] = None
+        self,
+        custom_preprocessing: Optional[dict] = None,
     ) -> transforms.Compose:
         """
         Build transform pipeline for validation/test data.
@@ -263,13 +273,13 @@ class TransformBuilder:
 
         # Simple resize and crop for validation
         transform_list.extend(
-            [transforms.Resize(img_size), transforms.CenterCrop(img_size)]
+            [transforms.Resize(img_size), transforms.CenterCrop(img_size)],
         )
 
         # Custom preprocessing if specified
         if custom_preprocessing:
             preprocess_fn = self.preprocessor.create_custom_preprocessing_pipeline(
-                **custom_preprocessing
+                **custom_preprocessing,
             )
             transform_list.append(transforms.Lambda(preprocess_fn))
 
@@ -280,7 +290,8 @@ class TransformBuilder:
         return transforms.Compose(transform_list)
 
     def build_test_time_augmentation_transforms(
-        self, num_augmentations: int = 5
+        self,
+        num_augmentations: int = 5,
     ) -> list:
         """
         Build multiple transform pipelines for test-time augmentation.
@@ -310,7 +321,7 @@ class TransformBuilder:
                     transforms.RandomRotation(degrees=(rotation_angle, rotation_angle)),
                     transforms.RandomHorizontalFlip(p=flip_prob),
                     transforms.ToTensor(),
-                ]
+                ],
             )
 
             transform_list.extend(self._get_normalization_transforms())
@@ -333,8 +344,9 @@ class TransformBuilder:
             # ImageNet normalization values
             return [
                 transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                )
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
+                ),
             ]
         else:
             # Simple normalization to [-1, 1]
@@ -365,13 +377,13 @@ class TransformBuilder:
         # Resize strategy
         if resize_strategy == "resize_crop":
             transform_list.extend(
-                [transforms.Resize(img_size), transforms.CenterCrop(img_size)]
+                [transforms.Resize(img_size), transforms.CenterCrop(img_size)],
             )
         elif resize_strategy == "random_crop":
             transform_list.append(transforms.RandomResizedCrop(img_size))
         elif resize_strategy == "pad_resize":
             transform_list.append(
-                transforms.Resize(img_size, transforms.InterpolationMode.BILINEAR)
+                transforms.Resize(img_size, transforms.InterpolationMode.BILINEAR),
             )
 
         # Augmentations
@@ -389,7 +401,7 @@ class TransformBuilder:
         # Custom preprocessing
         if preprocessing:
             preprocess_fn = self.preprocessor.create_custom_preprocessing_pipeline(
-                **preprocessing
+                **preprocessing,
             )
             transform_list.append(transforms.Lambda(preprocess_fn))
 
@@ -400,8 +412,9 @@ class TransformBuilder:
         if normalization == "imagenet":
             transform_list.append(
                 transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                )
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
+                ),
             )
         return transforms.Compose(transform_list)
 
@@ -450,12 +463,14 @@ def get_transforms(
         )
     else:
         return builder.build_validation_transforms(
-            custom_preprocessing=preprocessing_config
+            custom_preprocessing=preprocessing_config,
         )
 
 
 def create_preprocessing_function(
-    config: Optional["ConfigManager"], contrast_stretch: bool = True, **kwargs
+    config: Optional["ConfigManager"],
+    contrast_stretch: bool = True,
+    **kwargs,
 ) -> Callable[[Image.Image], Image.Image]:
     """
     Create standalone preprocessing function for X-ray images.
@@ -470,5 +485,6 @@ def create_preprocessing_function(
     """
     preprocessor = XRayPreprocessor()
     return preprocessor.create_custom_preprocessing_pipeline(
-        contrast_stretch=contrast_stretch, **kwargs
+        contrast_stretch=contrast_stretch,
+        **kwargs,
     )

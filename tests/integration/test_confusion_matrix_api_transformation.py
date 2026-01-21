@@ -5,14 +5,15 @@ Tests the transformation layer that converts database objects to API responses,
 including summary statistics calculation and response formatting.
 """
 
-import pytest
-from unittest.mock import Mock
 from datetime import datetime
+from unittest.mock import Mock
+
+import pytest
 
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import (
     _calculate_summary_statistics,
-    _transform_run_to_results,
     _find_best_epoch,
+    _transform_run_to_results,
 )
 
 
@@ -46,19 +47,35 @@ class TestAPITransformationWithConfusionMatrix:
 
             metrics_data.extend(
                 [
-                    Mock(step=epoch, metric_name="train_loss", metric_value=0.5 - epoch * 0.1),
-                    Mock(step=epoch, metric_name="train_accuracy", metric_value=0.75 + epoch * 0.04),
+                    Mock(
+                        step=epoch,
+                        metric_name="train_loss",
+                        metric_value=0.5 - epoch * 0.1,
+                    ),
+                    Mock(
+                        step=epoch,
+                        metric_name="train_accuracy",
+                        metric_value=0.75 + epoch * 0.04,
+                    ),
                     Mock(step=epoch, metric_name="val_loss", metric_value=val_loss),
                     Mock(step=epoch, metric_name="val_accuracy", metric_value=val_acc),
                     Mock(step=epoch, metric_name="val_recall", metric_value=val_recall),
-                    Mock(step=epoch, metric_name="val_precision", metric_value=val_precision),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_precision",
+                        metric_value=val_precision,
+                    ),
                     Mock(step=epoch, metric_name="val_f1", metric_value=val_f1),
-                    Mock(step=epoch, metric_name="val_auroc", metric_value=0.90 + epoch * 0.03),
+                    Mock(
+                        step=epoch,
+                        metric_name="val_auroc",
+                        metric_value=0.90 + epoch * 0.03,
+                    ),
                     Mock(step=epoch, metric_name="val_cm_tp", metric_value=tp),
                     Mock(step=epoch, metric_name="val_cm_tn", metric_value=tn),
                     Mock(step=epoch, metric_name="val_cm_fp", metric_value=fp),
                     Mock(step=epoch, metric_name="val_cm_fn", metric_value=fn),
-                ]
+                ],
             )
 
         mock_run.metrics = metrics_data
@@ -300,7 +317,7 @@ class TestAPIResponseConsistency:
                     "val_loss": 0.4,
                     "train_acc": 0.85,
                     "val_acc": 0.88,
-                }
+                },
             ],
             "metadata": {
                 "experiment_name": "run_1",
@@ -386,10 +403,21 @@ class TestAPIResponseConsistency:
         cm = api_response["confusion_matrix"]
 
         # CM counts should be non-negative integers
-        for key in ["true_positives", "true_negatives", "false_positives", "false_negatives"]:
+        for key in [
+            "true_positives",
+            "true_negatives",
+            "false_positives",
+            "false_negatives",
+        ]:
             assert cm[key] >= 0
             assert isinstance(cm[key], int)
 
         # Statistics should be between 0 and 1
-        for key in ["sensitivity", "specificity", "precision_cm", "accuracy_cm", "f1_cm"]:
+        for key in [
+            "sensitivity",
+            "specificity",
+            "precision_cm",
+            "accuracy_cm",
+            "f1_cm",
+        ]:
             assert 0 <= cm[key] <= 1, f"{key} should be between 0 and 1, got {cm[key]}"

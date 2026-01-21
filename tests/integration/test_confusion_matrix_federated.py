@@ -8,14 +8,15 @@ Tests the full flow:
 4. API endpoint returns results with summary statistics
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
-from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
-    ServerEvaluationCRUD,
-)
+import pytest
+
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import (
     _calculate_summary_statistics,
+)
+from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
+    ServerEvaluationCRUD,
 )
 
 
@@ -66,7 +67,9 @@ class TestConfusionMatrixFederatedFlow:
         }
 
     def test_server_evaluation_crud_create_with_flat_format(
-        self, mock_db, server_cm_flat_format
+        self,
+        mock_db,
+        server_cm_flat_format,
     ):
         """Test ServerEvaluationCRUD.create_evaluation with flat CM format."""
         crud = ServerEvaluationCRUD()
@@ -102,7 +105,9 @@ class TestConfusionMatrixFederatedFlow:
             assert kwargs.get("num_samples") == 950
 
     def test_server_evaluation_crud_create_with_nested_format(
-        self, mock_db, server_cm_nested_format
+        self,
+        mock_db,
+        server_cm_nested_format,
     ):
         """Test ServerEvaluationCRUD.create_evaluation with nested CM format."""
         crud = ServerEvaluationCRUD()
@@ -371,7 +376,7 @@ class TestServerEvaluationAPIIntegration:
                     },
                     "num_samples": 950,
                     "evaluation_time": "2025-11-04T12:34:56",
-                }
+                },
             ],
             "summary": {
                 "total_rounds": 5,
@@ -494,5 +499,6 @@ class TestFederatedMetricsAggregation:
         # Verify data integrity
         assert len(round_accuracies) == 3
         assert round(round_accuracies[1], 2) == pytest.approx(
-            (400 + 380) / (400 + 380 + 50 + 70), abs=0.01
+            (400 + 380) / (400 + 380 + 50 + 70),
+            abs=0.01,
         )

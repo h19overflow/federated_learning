@@ -24,7 +24,7 @@ def get_styles():
             textColor=BRAND_COLOR,
             spaceAfter=12,
             alignment=TA_CENTER,
-        )
+        ),
     )
 
     styles.add(
@@ -38,7 +38,7 @@ def get_styles():
             borderWidth=1,
             borderColor=BRAND_COLOR,
             borderPadding=4,
-        )
+        ),
     )
 
     styles.add(
@@ -49,7 +49,7 @@ def get_styles():
             textColor=colors.HexColor("#1A4D45"),
             spaceBefore=10,
             spaceAfter=4,
-        )
+        ),
     )
 
     styles.add(
@@ -59,7 +59,7 @@ def get_styles():
             fontSize=10,
             leading=14,
             alignment=TA_JUSTIFY,
-        )
+        ),
     )
 
     styles.add(
@@ -71,7 +71,7 @@ def get_styles():
             leading=10,
             alignment=TA_JUSTIFY,
             spaceBefore=12,
-        )
+        ),
     )
 
     styles.add(
@@ -81,7 +81,7 @@ def get_styles():
             fontSize=12,
             textColor=DANGER_COLOR,
             fontName="Helvetica-Bold",
-        )
+        ),
     )
 
     styles.add(
@@ -91,7 +91,7 @@ def get_styles():
             fontSize=12,
             textColor=WARNING_COLOR,
             fontName="Helvetica-Bold",
-        )
+        ),
     )
 
     styles.add(
@@ -101,7 +101,7 @@ def get_styles():
             fontSize=12,
             textColor=SUCCESS_COLOR,
             fontName="Helvetica-Bold",
-        )
+        ),
     )
 
     return styles

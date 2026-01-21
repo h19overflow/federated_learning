@@ -1,13 +1,15 @@
 """Model building utilities for ResNetWithCustomHead."""
 
-from typing import Optional, Any
+from typing import Any, Optional
+
 import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import ResNet50_Weights
 
 
 def create_backbone(
-    base_model_weights: ResNet50_Weights, logger: Any
+    base_model_weights: ResNet50_Weights,
+    logger: Any,
 ) -> tuple[nn.Sequential, list]:
     """
     Create and configure the ResNet50 backbone.
@@ -82,7 +84,7 @@ def create_classifier_head(
         classifier_layers.extend(
             [
                 nn.Linear(head_sizes[i], head_sizes[i + 1]),
-            ]
+            ],
         )
 
         # Add activation and dropout except for the final layer
@@ -97,7 +99,9 @@ def create_classifier_head(
 
 
 def configure_fine_tuning(
-    features: nn.Sequential, fine_tune_layers_count: int, logger: Any
+    features: nn.Sequential,
+    fine_tune_layers_count: int,
+    logger: Any,
 ) -> None:
     """
     Configure fine-tuning of backbone layers.
@@ -122,7 +126,7 @@ def configure_fine_tuning(
     total_unfrozen = sum(1 for param in features.parameters() if param.requires_grad)
 
     logger.info(
-        f"Fine-tuning: {total_unfrozen}/{total_frozen + total_unfrozen} backbone parameters unfrozen"
+        f"Fine-tuning: {total_unfrozen}/{total_frozen + total_unfrozen} backbone parameters unfrozen",
     )
 
 

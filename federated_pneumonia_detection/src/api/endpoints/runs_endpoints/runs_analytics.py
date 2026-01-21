@@ -43,7 +43,9 @@ async def get_analytics_summary(
     try:
         # Fetch runs with database-level filtering
         runs = run_crud.get_by_status_and_mode(
-            db, status=status, training_mode=training_mode
+            db,
+            status=status,
+            training_mode=training_mode,
         )
 
         # Delegate business logic to utility function

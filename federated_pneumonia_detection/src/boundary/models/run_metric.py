@@ -2,8 +2,9 @@
 RunMetric model - stores training metrics per epoch/round.
 """
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from .run import Base
 
 

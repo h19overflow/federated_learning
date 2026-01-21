@@ -1,10 +1,12 @@
-from typing import List, Optional, Dict, Any
-from datetime import datetime
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from federated_pneumonia_detection.src.boundary.models import ServerEvaluation
-from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
+from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
+from federated_pneumonia_detection.src.boundary.models import ServerEvaluation
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +63,7 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
                         "true_negatives": cm.get("true_negatives") or cm.get("tn"),
                         "false_positives": cm.get("false_positives") or cm.get("fp"),
                         "false_negatives": cm.get("false_negatives") or cm.get("fn"),
-                    }
+                    },
                 )
             elif "server_cm_tp" in metrics:
                 # Flat format: {"server_cm_tp": ..., "server_cm_tn": ..., ...}
@@ -71,7 +73,7 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
                         "true_negatives": metrics.get("server_cm_tn"),
                         "false_positives": metrics.get("server_cm_fp"),
                         "false_negatives": metrics.get("server_cm_fn"),
-                    }
+                    },
                 )
 
             # Store any additional metrics
@@ -102,19 +104,22 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
 
             evaluation = self.create(db, **eval_data)
             logger.info(
-                f"Created server evaluation for run_id={run_id}, round={round_number}"
+                f"Created server evaluation for run_id={run_id}, round={round_number}",
             )
             return evaluation
 
         except Exception as e:
             logger.error(
                 f"Failed to create server evaluation for run_id={run_id}, "
-                f"round={round_number}: {e}"
+                f"round={round_number}: {e}",
             )
             raise
 
     def get_by_run(
-        self, db: Session, run_id: int, order_by_round: bool = True
+        self,
+        db: Session,
+        run_id: int,
+        order_by_round: bool = True,
     ) -> List[ServerEvaluation]:
         """
         Get all server evaluations for a specific run.
@@ -137,7 +142,10 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
         return query.all()
 
     def get_by_round(
-        self, db: Session, run_id: int, round_number: int
+        self,
+        db: Session,
+        run_id: int,
+        round_number: int,
     ) -> Optional[ServerEvaluation]:
         """
         Get server evaluation for a specific run and round.
@@ -178,7 +186,10 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
         )
 
     def get_best_by_metric(
-        self, db: Session, run_id: int, metric_name: str = "accuracy"
+        self,
+        db: Session,
+        run_id: int,
+        metric_name: str = "accuracy",
     ) -> Optional[ServerEvaluation]:
         """
         Get the server evaluation with the best value for a specific metric.

@@ -95,19 +95,19 @@ def _add_key_findings(story: list, styles, summary_stats: dict) -> None:
     if pneumonia_count > 0:
         findings.append(
             f"• <b>{pneumonia_count}</b> case(s) classified as "
-            "<b>PNEUMONIA</b> requiring clinical review"
+            "<b>PNEUMONIA</b> requiring clinical review",
         )
     if high_risk > 0:
         findings.append(
-            f"• <b>{high_risk}</b> high-risk case(s) flagged for urgent attention"
+            f"• <b>{high_risk}</b> high-risk case(s) flagged for urgent attention",
         )
     findings.append(
-        f"• Average model confidence across all predictions: <b>{avg_confidence:.1f}%</b>"
+        f"• Average model confidence across all predictions: <b>{avg_confidence:.1f}%</b>",
     )
     if successful < total:
         findings.append(
             f"• <b>{total - successful}</b> image(s) failed processing "
-            "and require manual review"
+            "and require manual review",
         )
 
     for finding in findings:
@@ -128,7 +128,7 @@ def _add_methodology(story: list, styles, model_version: str) -> None:
             "Mapping) to generate interpretable heatmaps highlighting regions influencing "
             "each prediction.",
             styles["ReportBody"],
-        )
+        ),
     )
     story.append(Spacer(1, 16))
 
@@ -146,7 +146,7 @@ def _add_disclaimer(story: list, styles) -> None:
                 textColor=DANGER_COLOR,
                 fontName="Helvetica-Bold",
             ),
-        )
+        ),
     )
     story.append(
         Paragraph(
@@ -157,7 +157,7 @@ def _add_disclaimer(story: list, styles) -> None:
             "false positives and false negatives. Clinical judgment should always take precedence. "
             "This system is designed to assist, not replace, medical professionals.",
             styles["Disclaimer"],
-        )
+        ),
     )
 
 
@@ -176,16 +176,22 @@ def _add_footer(story: list, model_version: str) -> None:
             Paragraph(
                 f"Model: {model_version}",
                 ParagraphStyle(
-                    "FootC", fontSize=7, textColor=colors.gray, alignment=TA_CENTER
+                    "FootC",
+                    fontSize=7,
+                    textColor=colors.gray,
+                    alignment=TA_CENTER,
                 ),
             ),
             Paragraph(
                 f"Report ID: {datetime.now().strftime('%Y%m%d%H%M%S')}",
                 ParagraphStyle(
-                    "FootR", fontSize=7, textColor=colors.gray, alignment=TA_CENTER
+                    "FootR",
+                    fontSize=7,
+                    textColor=colors.gray,
+                    alignment=TA_CENTER,
                 ),
             ),
-        ]
+        ],
     ]
     footer_table = Table(footer_data, colWidths=[2 * inch, 2.5 * inch, 2 * inch])
     story.append(footer_table)
@@ -229,5 +235,5 @@ def _add_appendix(
                 f"Note: Appendix limited to first 20 images. "
                 f"Total images in batch: {len(results)}",
                 styles["Disclaimer"],
-            )
+            ),
         )

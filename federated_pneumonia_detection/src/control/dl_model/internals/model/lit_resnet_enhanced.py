@@ -4,24 +4,24 @@ Includes Focal Loss, Cosine Annealing with Warmup, and progressive unfreezing.
 """
 
 import logging
-from typing import Optional, Dict, Any, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import pytorch_lightning as pl
 import torchmetrics
 from torchvision.models import ResNet50_Weights
 
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.entities.resnet_with_custom_head import (
-    ResNetWithCustomHead,
-)
 from federated_pneumonia_detection.src.control.dl_model.internals.model.focal_loss import (
     FocalLoss,
     FocalLossWithLabelSmoothing,
+)
+from federated_pneumonia_detection.src.entities.resnet_with_custom_head import (
+    ResNetWithCustomHead,
 )
 
 
@@ -91,7 +91,7 @@ class LitResNetEnhanced(pl.LightningModule):
 
         # Save hyperparameters
         self.save_hyperparameters(
-            ignore=["config", "base_model_weights", "class_weights_tensor"]
+            ignore=["config", "base_model_weights", "class_weights_tensor"],
         )
 
         # Validate configuration
@@ -104,7 +104,8 @@ class LitResNetEnhanced(pl.LightningModule):
             num_classes=num_classes,
             dropout_rate=self.config.get("experiment.dropout_rate", 0.5),
             fine_tune_layers_count=self.config.get(
-                "experiment.fine_tune_layers_count", 0
+                "experiment.fine_tune_layers_count",
+                0,
             ),
         )
 
@@ -117,7 +118,7 @@ class LitResNetEnhanced(pl.LightningModule):
                 self.logger_obj.info("Model compiled successfully")
             except Exception as e:
                 self.logger_obj.warning(
-                    f"torch.compile failed, falling back to eager mode: {e}"
+                    f"torch.compile failed, falling back to eager mode: {e}",
                 )
 
         # Store class weights
@@ -133,11 +134,11 @@ class LitResNetEnhanced(pl.LightningModule):
         self.unfrozen_layers = 0
 
         self.logger_obj.info(
-            f"LitResNetEnhanced initialized with {self.model.get_model_info()['total_parameters']} parameters"
+            f"LitResNetEnhanced initialized with {self.model.get_model_info()['total_parameters']} parameters",
         )
         self.logger_obj.info(
             f"Loss: {'Focal' if use_focal_loss else 'BCE'}, "
-            f"Scheduler: {'CosineWarmup' if use_cosine_scheduler else 'ReduceLROnPlateau'}"
+            f"Scheduler: {'CosineWarmup' if use_cosine_scheduler else 'ReduceLROnPlateau'}",
         )
 
     def _validate_config(self) -> None:
@@ -157,30 +158,36 @@ class LitResNetEnhanced(pl.LightningModule):
 
         # Training metrics
         self.train_accuracy = torchmetrics.Accuracy(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
         self.train_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
 
         # Validation metrics
         self.val_accuracy = torchmetrics.Accuracy(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
         self.val_precision = torchmetrics.Precision(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
         self.val_recall = torchmetrics.Recall(task=task_type, num_classes=num_classes)
         self.val_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
         self.val_auroc = torchmetrics.AUROC(task=task_type, num_classes=num_classes)
         self.val_confusion = torchmetrics.ConfusionMatrix(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
 
         # Test metrics
         self.test_accuracy = torchmetrics.Accuracy(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
         self.test_precision = torchmetrics.Precision(
-            task=task_type, num_classes=num_classes
+            task=task_type,
+            num_classes=num_classes,
         )
         self.test_recall = torchmetrics.Recall(task=task_type, num_classes=num_classes)
         self.test_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
@@ -204,7 +211,7 @@ class LitResNetEnhanced(pl.LightningModule):
                     pos_weight=pos_weight,
                 )
                 self.logger_obj.info(
-                    f"Using FocalLoss with label smoothing ({self.label_smoothing})"
+                    f"Using FocalLoss with label smoothing ({self.label_smoothing})",
                 )
             else:
                 self.loss_fn = FocalLoss(
@@ -222,7 +229,9 @@ class LitResNetEnhanced(pl.LightningModule):
         return self.model(x)
 
     def _calculate_loss(
-        self, logits: torch.Tensor, targets: torch.Tensor
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
     ) -> torch.Tensor:
         """Calculate loss based on task type."""
         targets = (
@@ -239,7 +248,9 @@ class LitResNetEnhanced(pl.LightningModule):
         return targets.int().unsqueeze(1) if targets.dim() == 1 else targets.int()
 
     def training_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self,
+        batch: Tuple[torch.Tensor, torch.Tensor],
+        batch_idx: int,
     ) -> torch.Tensor:
         """Perform training step."""
         x, y = batch
@@ -269,13 +280,19 @@ class LitResNetEnhanced(pl.LightningModule):
             sync_dist=True,
         )
         self.log(
-            "train_f1", self.train_f1, on_step=False, on_epoch=True, sync_dist=True
+            "train_f1",
+            self.train_f1,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
 
         return loss
 
     def validation_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self,
+        batch: Tuple[torch.Tensor, torch.Tensor],
+        batch_idx: int,
     ) -> torch.Tensor:
         """Perform validation step."""
         x, y = batch
@@ -316,17 +333,27 @@ class LitResNetEnhanced(pl.LightningModule):
             sync_dist=True,
         )
         self.log(
-            "val_recall", self.val_recall, on_step=False, on_epoch=True, sync_dist=True
+            "val_recall",
+            self.val_recall,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
         self.log("val_f1", self.val_f1, on_step=False, on_epoch=True, sync_dist=True)
         self.log(
-            "val_auroc", self.val_auroc, on_step=False, on_epoch=True, sync_dist=True
+            "val_auroc",
+            self.val_auroc,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
 
         return loss
 
     def test_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self,
+        batch: Tuple[torch.Tensor, torch.Tensor],
+        batch_idx: int,
     ) -> torch.Tensor:
         """Perform test step."""
         x, y = batch
@@ -344,7 +371,11 @@ class LitResNetEnhanced(pl.LightningModule):
 
         self.log("test_loss", loss, on_step=False, on_epoch=True, sync_dist=True)
         self.log(
-            "test_acc", self.test_accuracy, on_step=False, on_epoch=True, sync_dist=True
+            "test_acc",
+            self.test_accuracy,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
         self.log(
             "test_precision",
@@ -362,7 +393,11 @@ class LitResNetEnhanced(pl.LightningModule):
         )
         self.log("test_f1", self.test_f1, on_step=False, on_epoch=True, sync_dist=True)
         self.log(
-            "test_auroc", self.test_auroc, on_step=False, on_epoch=True, sync_dist=True
+            "test_auroc",
+            self.test_auroc,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
 
         return loss
@@ -440,7 +475,7 @@ class LitResNetEnhanced(pl.LightningModule):
         self.unfrozen_layers += layers_to_unfreeze
         self.model._unfreeze_last_n_layers(self.unfrozen_layers)
         self.logger_obj.info(
-            f"Progressive unfreeze: {self.unfrozen_layers} layers unfrozen"
+            f"Progressive unfreeze: {self.unfrozen_layers} layers unfrozen",
         )
 
     def freeze_backbone(self) -> None:
@@ -472,6 +507,6 @@ class LitResNetEnhanced(pl.LightningModule):
                 "focal_gamma": self.focal_gamma if self.use_focal_loss else None,
                 "unfrozen_layers": self.unfrozen_layers,
                 "device": str(self.device),
-            }
+            },
         )
         return model_info

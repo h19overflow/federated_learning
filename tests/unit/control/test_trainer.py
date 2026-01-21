@@ -3,17 +3,18 @@ Unit tests for federated learning trainer module.
 Tests orchestration of federated learning pipeline.
 """
 
-import pytest
-import torch
-import pandas as pd
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pandas as pd
+import pytest
+import torch
+
+from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
+from federated_pneumonia_detection.models.system_constants import SystemConstants
 from federated_pneumonia_detection.src.control.federated_learning.trainer import (
     FederatedTrainer,
 )
-from federated_pneumonia_detection.models.experiment_config import ExperimentConfig
-from federated_pneumonia_detection.models.system_constants import SystemConstants
 
 
 class TestFederatedTrainerInit:
@@ -187,7 +188,7 @@ class TestFederatedTrainerClientFn:
 
         # This should create a client, but we need to mock it as it's complex
         with patch(
-            "federated_pneumonia_detection.src.control.federated_learning.trainer.FlowerClient"
+            "federated_pneumonia_detection.src.control.federated_learning.trainer.FlowerClient",
         ) as mock_client_class:
             mock_client_instance = Mock()
             mock_client_instance.to_client = Mock(return_value=Mock())
@@ -278,10 +279,12 @@ class TestFederatedTrainerTrain:
         )
 
         constants = SystemConstants()
-        empty_df = pd.DataFrame({
-            constants.FILENAME_COLUMN: [],
-            constants.TARGET_COLUMN: [],
-        })
+        empty_df = pd.DataFrame(
+            {
+                constants.FILENAME_COLUMN: [],
+                constants.TARGET_COLUMN: [],
+            },
+        )
 
         # Train should handle empty data without crashing (logs error but doesn't raise)
         result = trainer.train(
@@ -312,10 +315,12 @@ class TestFederatedTrainerTrain:
         )
 
         constants = SystemConstants()
-        invalid_df = pd.DataFrame({
-            constants.FILENAME_COLUMN: ["nonexistent.jpg"],
-            constants.TARGET_COLUMN: [0],
-        })
+        invalid_df = pd.DataFrame(
+            {
+                constants.FILENAME_COLUMN: ["nonexistent.jpg"],
+                constants.TARGET_COLUMN: [0],
+            },
+        )
 
         # Should handle errors gracefully (logs error but doesn't raise)
         result = trainer.train(

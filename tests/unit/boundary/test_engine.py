@@ -4,18 +4,23 @@ Tests SQLAlchemy models, relationships, and database operations.
 """
 
 from unittest.mock import MagicMock, patch
+
+from sqlalchemy.types import (
+    Float as FloatType,
+)
+from sqlalchemy.types import (
+    Integer as IntegerType,
+)
 from sqlalchemy.types import (
     String as StringType,
-    Integer as IntegerType,
-    Float as FloatType,
 )
 
 from federated_pneumonia_detection.src.boundary.engine import (
     Base,
     Run,
+    RunArtifact,
     RunConfiguration,
     RunMetric,
-    RunArtifact,
     create_tables,
     get_session,
 )
@@ -128,16 +133,20 @@ class TestRunConfigurationModel:
     def test_run_configuration_numeric_columns(self):
         """Test that numeric columns have correct types."""
         assert isinstance(
-            RunConfiguration.__table__.columns["learning_rate"].type, FloatType
+            RunConfiguration.__table__.columns["learning_rate"].type,
+            FloatType,
         )
         assert isinstance(
-            RunConfiguration.__table__.columns["epochs"].type, IntegerType
+            RunConfiguration.__table__.columns["epochs"].type,
+            IntegerType,
         )
         assert isinstance(
-            RunConfiguration.__table__.columns["weight_decay"].type, FloatType
+            RunConfiguration.__table__.columns["weight_decay"].type,
+            FloatType,
         )
         assert isinstance(
-            RunConfiguration.__table__.columns["batch_size"].type, IntegerType
+            RunConfiguration.__table__.columns["batch_size"].type,
+            IntegerType,
         )
 
     def test_run_configuration_partition_strategy_string(self):
@@ -322,7 +331,9 @@ class TestCreateTablesFunction:
     @patch("federated_pneumonia_detection.src.boundary.engine.create_engine")
     @patch("federated_pneumonia_detection.src.boundary.engine.settings")
     def test_create_tables_calls_metadata_create_all(
-        self, mock_settings, mock_create_engine
+        self,
+        mock_settings,
+        mock_create_engine,
     ):
         """Test that create_tables calls metadata.create_all."""
         mock_settings.get_postgres_db_uri.return_value = (
@@ -368,7 +379,10 @@ class TestGetSessionFunction:
     @patch("federated_pneumonia_detection.src.boundary.engine.create_engine")
     @patch("federated_pneumonia_detection.src.boundary.engine.settings")
     def test_get_session_creates_engine(
-        self, mock_settings, mock_create_engine, mock_sessionmaker
+        self,
+        mock_settings,
+        mock_create_engine,
+        mock_sessionmaker,
     ):
         """Test that get_session creates an engine."""
         mock_settings.get_postgres_db_uri.return_value = "postgresql://localhost/db"
@@ -387,7 +401,10 @@ class TestGetSessionFunction:
     @patch("federated_pneumonia_detection.src.boundary.engine.create_engine")
     @patch("federated_pneumonia_detection.src.boundary.engine.settings")
     def test_get_session_creates_session_factory(
-        self, mock_settings, mock_create_engine, mock_sessionmaker
+        self,
+        mock_settings,
+        mock_create_engine,
+        mock_sessionmaker,
     ):
         """Test that get_session creates a session factory."""
         mock_settings.get_postgres_db_uri.return_value = "postgresql://localhost/db"
@@ -406,7 +423,10 @@ class TestGetSessionFunction:
     @patch("federated_pneumonia_detection.src.boundary.engine.create_engine")
     @patch("federated_pneumonia_detection.src.boundary.engine.settings")
     def test_get_session_returns_session(
-        self, mock_settings, mock_create_engine, mock_sessionmaker
+        self,
+        mock_settings,
+        mock_create_engine,
+        mock_sessionmaker,
     ):
         """Test that get_session returns a session."""
         mock_settings.get_postgres_db_uri.return_value = "postgresql://localhost/db"
@@ -425,7 +445,10 @@ class TestGetSessionFunction:
     @patch("federated_pneumonia_detection.src.boundary.engine.create_engine")
     @patch("federated_pneumonia_detection.src.boundary.engine.settings")
     def test_get_session_uses_postgres_uri(
-        self, mock_settings, mock_create_engine, mock_sessionmaker
+        self,
+        mock_settings,
+        mock_create_engine,
+        mock_sessionmaker,
     ):
         """Test that get_session uses PostgreSQL URI from settings."""
         expected_uri = "postgresql://test_user:test_pass@localhost/test_db"
@@ -445,7 +468,10 @@ class TestGetSessionFunction:
     @patch("federated_pneumonia_detection.src.boundary.engine.create_engine")
     @patch("federated_pneumonia_detection.src.boundary.engine.settings")
     def test_get_session_multiple_calls_create_new_sessions(
-        self, mock_settings, mock_create_engine, mock_sessionmaker
+        self,
+        mock_settings,
+        mock_create_engine,
+        mock_sessionmaker,
     ):
         """Test that multiple calls to get_session create new engine/session pairs."""
         mock_settings.get_postgres_db_uri.return_value = "postgresql://localhost/db"
@@ -474,6 +500,7 @@ class TestSettingsIntegration:
 
         # Re-import to trigger Settings instantiation
         import importlib
+
         import federated_pneumonia_detection.src.boundary.engine as engine_module
 
         importlib.reload(engine_module)

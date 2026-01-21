@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
+from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_stream import (
@@ -19,7 +20,6 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.tools.rag_tool import (
     create_rag_tool,
 )
-from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -70,7 +70,10 @@ class ArxivAugmentedEngine:
     # =========================================================================
 
     def add_to_history(
-        self, session_id: str, user_message: str, ai_response: str
+        self,
+        session_id: str,
+        user_message: str,
+        ai_response: str,
     ) -> None:
         """Add a conversation turn to session history."""
         self._history_manager.add_to_history(session_id, user_message, ai_response)
@@ -133,7 +136,10 @@ class ArxivAugmentedEngine:
         tool_calls = []
 
         async for chunk in self.query_stream(
-            query, session_id, arxiv_enabled, original_query
+            query,
+            session_id,
+            arxiv_enabled,
+            original_query,
         ):
             if chunk["type"] == "token":
                 full_response += chunk["content"]

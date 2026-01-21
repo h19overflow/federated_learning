@@ -20,7 +20,8 @@ async def retrieve_documents(message: ChatMessage) -> Dict[str, Any]:
     query_engine = get_query_engine()
     if query_engine is None:
         raise HTTPException(
-            status_code=500, detail="QueryEngine not initialized properly"
+            status_code=500,
+            detail="QueryEngine not initialized properly",
         )
 
     try:
@@ -32,13 +33,14 @@ async def retrieve_documents(message: ChatMessage) -> Dict[str, Any]:
                     "content": doc.page_content,
                     "source": doc.metadata.get("source", "Unknown"),
                     "page": doc.metadata.get("page", "Unknown"),
-                }
+                },
             )
         return {"documents": documents}
     except Exception as exc:
         logger.error("Error retrieving documents: %s", exc)
         raise HTTPException(
-            status_code=500, detail=f"Error retrieving documents: {str(exc)}"
+            status_code=500,
+            detail=f"Error retrieving documents: {str(exc)}",
         )
 
 
@@ -65,8 +67,8 @@ async def list_knowledge_base_documents() -> Dict[str, Any]:
                 )
                 GROUP BY cmetadata->>'source', cmetadata->>'paper_id'
                 ORDER BY source
-            """
-                )
+            """,
+                ),
             )
 
             documents = []
@@ -89,7 +91,7 @@ async def list_knowledge_base_documents() -> Dict[str, Any]:
                         "display_name": display_name,
                         "type": doc_type,
                         "chunk_count": chunk_count,
-                    }
+                    },
                 )
 
         return {"documents": documents, "total_count": len(documents)}
@@ -97,5 +99,6 @@ async def list_knowledge_base_documents() -> Dict[str, Any]:
     except Exception as exc:
         logger.error("Error listing knowledge base: %s", exc, exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error listing knowledge base: {str(exc)}"
+            status_code=500,
+            detail=f"Error listing knowledge base: {str(exc)}",
         )

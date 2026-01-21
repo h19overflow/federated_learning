@@ -5,6 +5,7 @@ Provides insights into optimizer behavior and gradient flow.
 
 import logging
 from typing import Dict, Optional
+
 import pytorch_lightning as pl
 
 
@@ -90,7 +91,7 @@ class GradientMonitorCallback(pl.Callback):
 
         self.logger.debug(
             f"[GradientMonitor] Step {trainer.global_step}: "
-            f"total_norm={total_norm:.4f}, lr={current_lr}"
+            f"total_norm={total_norm:.4f}, lr={current_lr}",
         )
 
     def _compute_layer_norms(self, pl_module: pl.LightningModule) -> Dict[str, float]:

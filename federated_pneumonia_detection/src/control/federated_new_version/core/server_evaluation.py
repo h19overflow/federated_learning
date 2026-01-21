@@ -5,23 +5,27 @@ This module provides a centralized evaluation function that evaluates the
 aggregated global model on a server-side test dataset after each round.
 """
 
+from logging import getLogger
+
+import pandas as pd
 import torch
 from flwr.app import ArrayRecord, MetricRecord
+
+from federated_pneumonia_detection.config.config_manager import ConfigManager
 from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet import (
     LitResNet,
 )
-from federated_pneumonia_detection.config.config_manager import ConfigManager
 from federated_pneumonia_detection.src.control.dl_model.internals.model.xray_data_module import (
     XRayDataModule,
 )
-import pandas as pd
-from logging import getLogger
 
 logger = getLogger(__name__)
 
 
 def create_central_evaluate_fn(
-    config_manager: ConfigManager, csv_path: str, image_dir: str
+    config_manager: ConfigManager,
+    csv_path: str,
+    image_dir: str,
 ):
     """
     Factory function to create a centralized evaluation function.
@@ -50,7 +54,7 @@ def create_central_evaluate_fn(
             MetricRecord containing evaluation metrics (loss, accuracy, etc.)
         """
         logger.info(
-            f"[Server Evaluation] Starting centralized evaluation for round {server_round}"
+            f"[Server Evaluation] Starting centralized evaluation for round {server_round}",
         )
 
         # Load model and initialize with aggregated weights
@@ -76,7 +80,7 @@ def create_central_evaluate_fn(
                 test_df["filename"] = test_df["patientId"].astype(str) + ".png"
             else:
                 raise ValueError(
-                    "DataFrame must contain either 'filename' or 'patientId' column"
+                    "DataFrame must contain either 'filename' or 'patientId' column",
                 )
 
         logger.info(f"[Server Evaluation] Using {len(test_df)} samples for evaluation")
@@ -136,7 +140,7 @@ def create_central_evaluate_fn(
         accuracy = total_correct / total_samples
 
         # Calculate additional metrics using torchmetrics
-        from torchmetrics import Precision, Recall, F1Score, AUROC, ConfusionMatrix
+        from torchmetrics import AUROC, ConfusionMatrix, F1Score, Precision, Recall
 
         preds_tensor = torch.tensor(all_preds)
         targets_tensor = torch.tensor(all_targets)
@@ -164,7 +168,7 @@ def create_central_evaluate_fn(
             f"Loss: {avg_loss:.4f}, Acc: {accuracy:.4f}, "
             f"Prec: {precision:.4f}, Rec: {recall:.4f}, "
             f"F1: {f1:.4f}, AUROC: {auroc:.4f}, "
-            f"CM(TP/TN/FP/FN): {tp}/{tn}/{fp}/{fn}"
+            f"CM(TP/TN/FP/FN): {tp}/{tn}/{fp}/{fn}",
         )
 
         # Return metrics as MetricRecord
@@ -180,7 +184,7 @@ def create_central_evaluate_fn(
                 "server_cm_tn": float(tn),
                 "server_cm_fp": float(fp),
                 "server_cm_fn": float(fn),
-            }
+            },
         )
 
     return central_evaluate

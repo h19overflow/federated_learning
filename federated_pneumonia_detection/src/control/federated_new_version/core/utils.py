@@ -1,23 +1,22 @@
+from pathlib import Path
+from typing import Any, Dict
+
+import pandas as pd
 from flwr.app import Context
 from sklearn.model_selection import train_test_split
-from typing import Any
-import pandas as pd
-from pathlib import Path
 
+from federated_pneumonia_detection.config.config_manager import ConfigManager
+from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
+    server_evaluation_crud,
+)
+from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import (
     CentralizedTrainer,
 )
 from federated_pneumonia_detection.src.control.federated_new_version.partioner import (
     CustomPartitioner,
 )
-from federated_pneumonia_detection.config.config_manager import ConfigManager
-
 from federated_pneumonia_detection.src.internals.loggers.logger import setup_logger
-from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
-    server_evaluation_crud,
-)
-from typing import Dict
 
 logger = setup_logger(__name__)
 
@@ -45,7 +44,7 @@ def filter_list_of_dicts(data: list[dict[str, Any]], fields: list[str]):
 def _load_trainer_and_config():
     """Initialize and return trainer with config."""
     centerlized_trainer = CentralizedTrainer(
-        config_path=r"federated_pneumonia_detection\config\default_config.yaml"
+        config_path=r"federated_pneumonia_detection\config\default_config.yaml",
     )
     return centerlized_trainer, centerlized_trainer.config
 
@@ -58,7 +57,10 @@ def _get_partition_data(configs: dict):
 
 
 def _prepare_partition_and_split(
-    partioner: CustomPartitioner, partition_id: int, partion_df, seed: int = 42
+    partioner: CustomPartitioner,
+    partition_id: int,
+    partion_df,
+    seed: int = 42,
 ):
     """Split partition into train and validation sets.
 
@@ -87,7 +89,7 @@ def _build_model_components(
     """Build model, callbacks, and metrics collector with federated context."""
     if is_federated and client_id is not None:
         centerlized_trainer.logger.info(
-            f"[Utils] Building components for federated client_id={client_id}, round={round_number}, run_id={run_id}"
+            f"[Utils] Building components for federated client_id={client_id}, round={round_number}, run_id={run_id}",
         )
 
     model, callbacks, metrics_collector = (
@@ -167,7 +169,13 @@ def _extract_metrics_from_result(result_dict: dict):
 
 
 def _create_metric_record_dict(
-    loss, accuracy, precision, recall, f1, auroc, num_examples: int
+    loss,
+    accuracy,
+    precision,
+    recall,
+    f1,
+    auroc,
+    num_examples: int,
 ):
     """Create metric record dictionary with all metrics.
 
@@ -220,10 +228,10 @@ def read_configs_to_toml() -> dict:
     # Read num-server-rounds (number of federated learning rounds)
     if config_manager.has_key("experiment.num-server-rounds"):
         flwr_configs["num_server_rounds"] = config_manager.get(
-            "experiment.num-server-rounds"
+            "experiment.num-server-rounds",
         )
         print(
-            f"[Config Reader] [OK] num-server-rounds: {flwr_configs['num_server_rounds']}"
+            f"[Config Reader] [OK] num-server-rounds: {flwr_configs['num_server_rounds']}",
         )
     else:
         print("[Config Reader] [WARN] experiment.num-server-rounds not found in config")
@@ -236,28 +244,28 @@ def read_configs_to_toml() -> dict:
         # Fallback to local_epochs if max-epochs not found
         flwr_configs["max_epochs"] = config_manager.get("experiment.local_epochs")
         print(
-            f"[Config Reader] [OK] max-epochs (from local_epochs): {flwr_configs['max_epochs']}"
+            f"[Config Reader] [OK] max-epochs (from local_epochs): {flwr_configs['max_epochs']}",
         )
     else:
         print(
-            "[Config Reader] [WARN] experiment.max-epochs or experiment.local_epochs not found"
+            "[Config Reader] [WARN] experiment.max-epochs or experiment.local_epochs not found",
         )
 
     # Read num-supernodes (number of clients in simulation)
     if config_manager.has_key("experiment.options.num-supernodes"):
         flwr_configs["num_supernodes"] = config_manager.get(
-            "experiment.options.num-supernodes"
+            "experiment.options.num-supernodes",
         )
         print(f"[Config Reader] [OK] num-supernodes: {flwr_configs['num_supernodes']}")
     elif config_manager.has_key("experiment.num_clients"):
         # Fallback to num_clients if num-supernodes not found
         flwr_configs["num_supernodes"] = config_manager.get("experiment.num_clients")
         print(
-            f"[Config Reader] [OK] num-supernodes (from num_clients): {flwr_configs['num_supernodes']}"
+            f"[Config Reader] [OK] num-supernodes (from num_clients): {flwr_configs['num_supernodes']}",
         )
     else:
         print(
-            "[Config Reader] [WARN] experiment.options.num-supernodes or experiment.num_clients not found"
+            "[Config Reader] [WARN] experiment.options.num-supernodes or experiment.num_clients not found",
         )
 
     print(f"[Config Reader] Final configs to write to pyproject.toml: {flwr_configs}")
@@ -298,7 +306,8 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
         logger.info(f"Database URI configured: {db_uri[:20]}... (truncated)")
     except Exception as e:
         logger.error(
-            f"[ERROR] CRITICAL: Failed to load database settings: {e}", exc_info=True
+            f"[ERROR] CRITICAL: Failed to load database settings: {e}",
+            exc_info=True,
         )
         logger.error("Check if .env file is loaded and environment variables are set!")
         return
@@ -324,7 +333,7 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
                 try:
                     metrics_dict = ast.literal_eval(metric_record)
                     logger.info(
-                        f"    Parsed string metrics: {list(metrics_dict.keys())}"
+                        f"    Parsed string metrics: {list(metrics_dict.keys())}",
                     )
                 except Exception as parse_err:
                     logger.error(f"    Failed to parse metric string: {parse_err}")
@@ -333,7 +342,7 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
                 metrics_dict = metric_record
 
             logger.info(
-                f"    Metrics dict type: {type(metrics_dict)}, keys: {list(metrics_dict.keys()) if isinstance(metrics_dict, dict) else 'N/A'}"
+                f"    Metrics dict type: {type(metrics_dict)}, keys: {list(metrics_dict.keys()) if isinstance(metrics_dict, dict) else 'N/A'}",
             )
 
             # Extract metrics with 'server_' prefix (from server_evaluation.py)

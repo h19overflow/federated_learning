@@ -142,7 +142,8 @@ async def generate_heatmap(
 @router.post("/heatmap-batch", response_model=BatchHeatmapResponse)
 async def generate_heatmaps_batch(
     files: List[UploadFile] = File(
-        ..., description="Chest X-ray image files (PNG, JPEG)"
+        ...,
+        description="Chest X-ray image files (PNG, JPEG)",
     ),
     colormap: str = Query(
         default="jet",
@@ -191,7 +192,7 @@ async def generate_heatmaps_batch(
                     success=False,
                     error=e.detail,
                     processing_time_ms=0.0,
-                )
+                ),
             )
         except Exception as e:
             logger.error(f"Failed to process {file.filename}: {e}")
@@ -201,7 +202,7 @@ async def generate_heatmaps_batch(
                     success=False,
                     error=str(e),
                     processing_time_ms=0.0,
-                )
+                ),
             )
 
     total_processing_time_ms = (time.time() - batch_start_time) * 1000

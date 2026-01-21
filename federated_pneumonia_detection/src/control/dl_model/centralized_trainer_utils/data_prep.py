@@ -10,8 +10,8 @@ from federated_pneumonia_detection.src.control.dl_model.internals.model.xray_dat
     XRayDataModule,
 )
 from federated_pneumonia_detection.src.internals.data_processing import (
-    load_metadata,
     create_train_val_split,
+    load_metadata,
 )
 
 

@@ -13,21 +13,21 @@ For orchestrated workflows, use the DataProcessor class.
 """
 
 import os
-from typing import Tuple, TYPE_CHECKING
-import pandas as pd
+from typing import TYPE_CHECKING, Tuple
 
-from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+import pandas as pd
 
 # Import all utility functions from the new module
 from federated_pneumonia_detection.src.internals.data_processing_functions import (
+    create_train_val_split,
+    get_data_statistics,
+    get_image_directory_path,
+    load_and_split_data,
     load_metadata,
     sample_dataframe,
-    create_train_val_split,
-    load_and_split_data,
     validate_image_paths,
-    get_image_directory_path,
-    get_data_statistics,
 )
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
@@ -166,7 +166,10 @@ class DataProcessor:
                 raise ValueError(f"Missing values found in column: {col}")
 
     def _sample_data(
-        self, df: pd.DataFrame, sample_fraction: float, seed: int
+        self,
+        df: pd.DataFrame,
+        sample_fraction: float,
+        seed: int,
     ) -> pd.DataFrame:
         """
         Sample data (backward compatibility wrapper).
@@ -180,11 +183,18 @@ class DataProcessor:
             Sampled DataFrame
         """
         return sample_dataframe(
-            df, sample_fraction, self.config.get("columns.target"), seed, self.logger
+            df,
+            sample_fraction,
+            self.config.get("columns.target"),
+            seed,
+            self.logger,
         )
 
     def _create_train_val_split(
-        self, df: pd.DataFrame, validation_split: float, seed: int
+        self,
+        df: pd.DataFrame,
+        validation_split: float,
+        seed: int,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Create train/val split (backward compatibility wrapper).
@@ -198,5 +208,9 @@ class DataProcessor:
             Tuple of (train_df, val_df) DataFrames
         """
         return create_train_val_split(
-            df, validation_split, self.config.get("columns.target"), seed, self.logger
+            df,
+            validation_split,
+            self.config.get("columns.target"),
+            seed,
+            self.logger,
         )

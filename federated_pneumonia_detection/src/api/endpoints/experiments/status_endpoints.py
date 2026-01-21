@@ -70,7 +70,8 @@ async def get_experiment_status(experiment_id: str) -> Dict[str, Any]:
 
         if not log_file:
             raise HTTPException(
-                status_code=404, detail=f"Experiment not found: {experiment_id}"
+                status_code=404,
+                detail=f"Experiment not found: {experiment_id}",
             )
 
         # Read log file
@@ -117,7 +118,8 @@ async def get_experiment_status(experiment_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting status for experiment {experiment_id}: {str(e)}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to get experiment status: {str(e)}"
+            status_code=500,
+            detail=f"Failed to get experiment status: {str(e)}",
         )
 
 
@@ -169,7 +171,8 @@ async def list_experiments() -> Dict[str, Any]:
                     {
                         "experiment_id": experiment_id,
                         "experiment_name": metadata.get(
-                            "experiment_name", experiment_id
+                            "experiment_name",
+                            experiment_id,
                         ),
                         "status": metadata.get("status", "unknown"),
                         "training_mode": metadata.get("training_mode", "unknown"),
@@ -177,7 +180,7 @@ async def list_experiments() -> Dict[str, Any]:
                         "current_epoch": log_data.get("current_epoch"),
                         "start_time": metadata.get("start_time"),
                         "end_time": metadata.get("end_time"),
-                    }
+                    },
                 )
             except Exception as e:
                 logger.warning(f"Error reading experiment log {log_file}: {str(e)}")
@@ -194,5 +197,6 @@ async def list_experiments() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error listing experiments: {str(e)}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to list experiments: {str(e)}"
+            status_code=500,
+            detail=f"Failed to list experiments: {str(e)}",
         )
