@@ -62,7 +62,7 @@ async def _download_paper_via_mcp(paper_id: str) -> Dict[str, Any]:
     Returns:
         Dict with 'status', 'path', and optionally 'error'
     """
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
         MCPManager,
     )
 

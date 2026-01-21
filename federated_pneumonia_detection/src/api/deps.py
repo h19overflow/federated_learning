@@ -17,9 +17,8 @@ from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD
 
 if TYPE_CHECKING:
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import QueryEngine
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import MCPManager
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent import ArxivAugmentedEngine
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import QueryEngine
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import MCPManager
     from federated_pneumonia_detection.src.control.model_inferance import (
         InferenceService,
         InferenceEngine,
@@ -62,7 +61,6 @@ def get_run_metric_crud() -> RunMetricCRUD:
 
 _query_engine = None
 _mcp_manager = None
-_arxiv_engine: Optional["ArxivAugmentedEngine"] = None
 
 
 def get_query_engine() -> Optional["QueryEngine"]:
@@ -73,7 +71,7 @@ def get_query_engine() -> Optional["QueryEngine"]:
     global _query_engine
     if _query_engine is None:
         try:
-            from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import (
+            from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
                 QueryEngine,
             )
             _query_engine = QueryEngine()
@@ -88,25 +86,12 @@ def get_mcp_manager() -> "MCPManager":
     """Get MCPManager singleton."""
     global _mcp_manager
     if _mcp_manager is None:
-        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
+        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
             MCPManager,
         )
         _mcp_manager = MCPManager.get_instance()
         logger.info("MCPManager initialized successfully")
     return _mcp_manager
-
-
-def get_arxiv_engine() -> "ArxivAugmentedEngine":
-    """Get or create ArxivAugmentedEngine singleton."""
-    global _arxiv_engine
-    if _arxiv_engine is None:
-        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent import (
-            ArxivAugmentedEngine,
-        )
-        _arxiv_engine = ArxivAugmentedEngine()
-        logger.info("ArxivAugmentedEngine initialized successfully")
-    return _arxiv_engine
-
 
 
 def get_inference_service() -> "InferenceService":
@@ -132,7 +117,8 @@ def get_inference_engine() -> Optional["InferenceEngine"]:
 
 
 def get_clinical_agent():
-    """Get the ClinicalInterpretationAgent singleton.
+    """Get the 
+    singleton.
 
     Returns None if the agent cannot be initialized.
     """

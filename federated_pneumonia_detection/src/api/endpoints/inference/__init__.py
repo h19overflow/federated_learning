@@ -3,7 +3,6 @@
 This module provides API endpoints for running inference on chest X-ray images.
 Uses layered architecture:
 - Control layer: InferenceEngine (core logic)
-- Agentic layer: ClinicalInterpretationAgent (LLM agent)
 - Boundary layer: InferenceService (service abstraction)
 - API layer: This module (endpoints + schemas)
 """

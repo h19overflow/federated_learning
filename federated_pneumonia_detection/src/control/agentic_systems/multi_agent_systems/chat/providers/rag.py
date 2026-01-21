@@ -27,7 +27,9 @@ class QueryEngine:
         Args:
             max_history: Maximum number of conversation turns to keep in memory
         """
-        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.arxiv_agent.history import ChatHistoryManager
+        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history import (
+            ChatHistoryManager,
+        )
 
         logger.info(f"[QueryEngine] Initializing with max_history={max_history}")
         self.max_history = max_history

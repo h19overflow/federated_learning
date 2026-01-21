@@ -14,7 +14,7 @@ from federated_pneumonia_detection.src.api.endpoints.streaming.websocket_server 
     start_websocket_server_thread,
 )
 from federated_pneumonia_detection.src.boundary.engine import create_tables
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.mcp_manager import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
     MCPManager,
 )
 from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (

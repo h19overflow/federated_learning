@@ -4,7 +4,7 @@ RAG Tool - LangChain tool wrapper for local knowledge base search.
 Wraps QueryEngine.query() to allow agent access to local research papers.
 
 Dependencies:
-    - QueryEngine from retriver module
+    - QueryEngine from providers.rag module
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from langchain_core.tools import tool, BaseTool
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.retriver import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
         QueryEngine,
     )
 

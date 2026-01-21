@@ -1,7 +1,4 @@
-"""Chat history management with PostgreSQL persistence.
-
-Provides session-based conversation history using PostgresChatMessageHistory.
-"""
+"""Chat history management with PostgreSQL persistence."""
 
 from __future__ import annotations
 
