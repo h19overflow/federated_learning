@@ -6,7 +6,7 @@
  * and PDF reports with optional GradCAM heatmaps.
  */
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Download,
   FileSpreadsheet,
@@ -14,23 +14,26 @@ import {
   FileText,
   Loader2,
   Flame,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { BatchInferenceResponse, BatchHeatmapResponse } from '@/types/inference';
+} from "@/components/ui/dropdown-menu";
+import {
+  BatchInferenceResponse,
+  BatchHeatmapResponse,
+} from "@/types/inference";
 import {
   generateBatchPdfReport,
   generateBatchHeatmaps,
   generateBatchPdfReportWithHeatmaps,
   downloadBlob,
-} from '@/services/inferenceApi';
-import { useToast } from '@/hooks/use-toast';
+} from "@/services/inferenceApi";
+import { useToast } from "@/hooks/use-toast";
 
 interface BatchExportButtonProps {
   data: BatchInferenceResponse;
@@ -47,10 +50,14 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
   const [pdfHeatmapLoading, setPdfHeatmapLoading] = useState(false);
   const { toast } = useToast();
 
-  const downloadFile = (content: string, filename: string, mimeType: string) => {
+  const downloadFile = (
+    content: string,
+    filename: string,
+    mimeType: string,
+  ) => {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
     link.download = filename;
     document.body.appendChild(link);
@@ -65,7 +72,7 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
       reader.onload = () => {
         const result = reader.result as string;
         // Remove data URL prefix (e.g., "data:image/png;base64,")
-        const base64 = result.split(',')[1];
+        const base64 = result.split(",")[1];
         resolve(base64);
       };
       reader.onerror = reject;
@@ -76,36 +83,43 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
   const handleExportCSV = () => {
     // CSV headers
     const headers = [
-      'Filename',
-      'Status',
-      'Prediction',
-      'Confidence',
-      'Pneumonia Probability',
-      'Normal Probability',
-      'Risk Level',
-      'Processing Time (ms)',
-      'Error',
+      "Filename",
+      "Status",
+      "Prediction",
+      "Confidence",
+      "Pneumonia Probability",
+      "Normal Probability",
+      "Risk Level",
+      "Processing Time (ms)",
+      "Error",
     ];
 
     // CSV rows
     const rows = data.results.map((result) => {
       const prediction = result.prediction;
-      const riskLevel = result.clinical_interpretation?.risk_assessment?.risk_level ?? 'N/A';
+      const riskLevel =
+        result.clinical_interpretation?.risk_assessment?.risk_level ?? "N/A";
 
       return [
         result.filename,
-        result.success ? 'Success' : 'Failed',
-        prediction?.predicted_class ?? 'N/A',
-        prediction ? (prediction.confidence * 100).toFixed(2) : 'N/A',
-        prediction ? (prediction.pneumonia_probability * 100).toFixed(2) : 'N/A',
-        prediction ? (prediction.normal_probability * 100).toFixed(2) : 'N/A',
+        result.success ? "Success" : "Failed",
+        prediction?.predicted_class ?? "N/A",
+        prediction ? (prediction.confidence * 100).toFixed(2) : "N/A",
+        prediction
+          ? (prediction.pneumonia_probability * 100).toFixed(2)
+          : "N/A",
+        prediction ? (prediction.normal_probability * 100).toFixed(2) : "N/A",
         riskLevel,
         result.processing_time_ms.toFixed(2),
-        result.error ?? '',
+        result.error ?? "",
       ].map((cell) => {
         // Escape cells containing commas, quotes, or newlines
         const cellStr = String(cell);
-        if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+        if (
+          cellStr.includes(",") ||
+          cellStr.includes('"') ||
+          cellStr.includes("\n")
+        ) {
           return `"${cellStr.replace(/"/g, '""')}"`;
         }
         return cellStr;
@@ -114,38 +128,51 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
 
     // Combine headers and rows
     const csvContent = [
-      headers.join(','),
-      ...rows.map((row) => row.join(',')),
-    ].join('\n');
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    downloadFile(csvContent, `batch-results-${timestamp}.csv`, 'text/csv');
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .slice(0, -5);
+    downloadFile(csvContent, `batch-results-${timestamp}.csv`, "text/csv");
   };
 
   const handleExportJSON = () => {
     // Export the full BatchInferenceResponse as pretty-printed JSON
     const jsonContent = JSON.stringify(data, null, 2);
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    downloadFile(jsonContent, `batch-results-${timestamp}.json`, 'application/json');
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .slice(0, -5);
+    downloadFile(
+      jsonContent,
+      `batch-results-${timestamp}.json`,
+      "application/json",
+    );
   };
 
   const handleExportPDF = async () => {
     setPdfLoading(true);
     try {
       const pdfBlob = await generateBatchPdfReport(data);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")
+        .slice(0, -5);
       downloadBlob(pdfBlob, `batch-analysis-report-${timestamp}.pdf`);
 
       toast({
-        title: 'PDF Report Generated',
-        description: 'Your clinical report has been downloaded.',
+        title: "PDF Report Generated",
+        description: "Your clinical report has been downloaded.",
       });
     } catch (error: any) {
       toast({
-        title: 'PDF Generation Failed',
-        description: error.message || 'Failed to generate PDF report',
-        variant: 'destructive',
+        title: "PDF Generation Failed",
+        description: error.message || "Failed to generate PDF report",
+        variant: "destructive",
       });
     } finally {
       setPdfLoading(false);
@@ -155,9 +182,9 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
   const handleExportPDFWithHeatmaps = async () => {
     if (!imageFiles || imageFiles.size === 0) {
       toast({
-        title: 'No Images Available',
-        description: 'Image files are required for heatmap generation.',
-        variant: 'destructive',
+        title: "No Images Available",
+        description: "Image files are required for heatmap generation.",
+        variant: "destructive",
       });
       return;
     }
@@ -177,9 +204,10 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
 
       if (filesToProcess.length === 0) {
         toast({
-          title: 'No Valid Images',
-          description: 'No matching image files found for successful predictions.',
-          variant: 'destructive',
+          title: "No Valid Images",
+          description:
+            "No matching image files found for successful predictions.",
+          variant: "destructive",
         });
         setPdfHeatmapLoading(false);
         return;
@@ -187,7 +215,7 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
 
       // Generate heatmaps in batch
       toast({
-        title: 'Generating Heatmaps',
+        title: "Generating Heatmaps",
         description: `Processing ${filesToProcess.length} images...`,
       });
 
@@ -202,34 +230,43 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
           heatmaps.set(heatmapItem.filename, heatmapItem.heatmap_base64);
         }
         if (heatmapItem.success && heatmapItem.original_image_base64) {
-          originalImages.set(heatmapItem.filename, heatmapItem.original_image_base64);
+          originalImages.set(
+            heatmapItem.filename,
+            heatmapItem.original_image_base64,
+          );
         }
       }
 
       // Generate PDF with heatmaps
       toast({
-        title: 'Generating PDF',
-        description: 'Creating report with heatmap appendix...',
+        title: "Generating PDF",
+        description: "Creating report with heatmap appendix...",
       });
 
       const pdfBlob = await generateBatchPdfReportWithHeatmaps(
         data,
         heatmaps,
-        originalImages
+        originalImages,
       );
 
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      downloadBlob(pdfBlob, `batch-analysis-report-with-heatmaps-${timestamp}.pdf`);
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")
+        .slice(0, -5);
+      downloadBlob(
+        pdfBlob,
+        `batch-analysis-report-with-heatmaps-${timestamp}.pdf`,
+      );
 
       toast({
-        title: 'PDF Report Generated',
+        title: "PDF Report Generated",
         description: `Report with ${heatmaps.size} heatmaps has been downloaded.`,
       });
     } catch (error: any) {
       toast({
-        title: 'PDF Generation Failed',
-        description: error.message || 'Failed to generate PDF with heatmaps',
-        variant: 'destructive',
+        title: "PDF Generation Failed",
+        description: error.message || "Failed to generate PDF with heatmaps",
+        variant: "destructive",
       });
     } finally {
       setPdfHeatmapLoading(false);
@@ -273,7 +310,9 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
         >
           <FileJson className="w-5 h-5 mr-3 text-[hsl(172_63%_28%)]" />
           <div className="flex-1">
-            <p className="font-medium text-[hsl(172_43%_15%)]">Export as JSON</p>
+            <p className="font-medium text-[hsl(172_43%_15%)]">
+              Export as JSON
+            </p>
             <p className="text-xs text-[hsl(215_15%_50%)]">
               Full data with metadata
             </p>
@@ -294,7 +333,7 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
           )}
           <div className="flex-1">
             <p className="font-medium text-[hsl(172_43%_15%)]">
-              {pdfLoading ? 'Generating...' : 'Export as PDF'}
+              {pdfLoading ? "Generating..." : "Export as PDF"}
             </p>
             <p className="text-xs text-[hsl(215_15%_50%)]">
               Professional clinical report
@@ -314,12 +353,12 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
           )}
           <div className="flex-1">
             <p className="font-medium text-[hsl(172_43%_15%)]">
-              {pdfHeatmapLoading ? 'Generating...' : 'PDF with Heatmaps'}
+              {pdfHeatmapLoading ? "Generating..." : "PDF with Heatmaps"}
             </p>
             <p className="text-xs text-[hsl(215_15%_50%)]">
               {hasImageFiles
-                ? 'Report with GradCAM appendix'
-                : 'Requires image files'}
+                ? "Report with GradCAM appendix"
+                : "Requires image files"}
             </p>
           </div>
         </DropdownMenuItem>

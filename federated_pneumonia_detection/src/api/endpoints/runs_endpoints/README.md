@@ -46,34 +46,27 @@ flowchart TB
 ### Module responsibilities
 
 - `__init__.py`
-
   - Aggregates routers from each module.
 
 - `runs_list.py`
-
   - `GET /list`: returns summaries of runs.
   - `POST /backfill/{run_id}/server-evaluations`: triggers backfill of server eval records from a results JSON file.
 
 - `runs_metrics.py`
-
   - `GET /{run_id}/metrics`: returns a frontend-compatible “ExperimentResults”-like dictionary.
   - Uses `_transform_run_to_results(run)`.
 
 - `runs_download.py`
-
   - `GET /{run_id}/download/csv`: converts `training_history` into CSV and streams it as a download.
   - Uses `shared/exporters.py` + `_transform_run_to_results(run)`.
 
 - `runs_federated_rounds.py`
-
   - `GET /{run_id}/federated-rounds`: returns round-indexed server evaluation metrics suitable for charting.
 
 - `runs_server_evaluation.py`
-
   - `GET /{run_id}/server-evaluation`: returns a detailed evaluation list per round plus summary stats.
 
 - `runs_analytics.py` + `runs_analytics_utils.py`
-
   - `GET /analytics/summary`: returns aggregated statistics for centralized vs federated runs.
   - Business logic in `generate_analytics_summary(...)`.
 
@@ -209,13 +202,11 @@ These are based on the current implementation and are ordered roughly by impact.
 ### A) Correctness / consistency
 
 1. **Fix possible “final metrics” correctness when metrics are unordered**
-
    - `_transform_run_to_results` currently updates `final_metrics` during iteration using `epoch >= max(metrics_by_epoch.keys())`.
    - If `run.metrics` isn’t sorted by epoch, late-arriving metrics for earlier epochs can cause `final_metrics` to reflect a mix of epochs.
    - Recommendation: first group all metrics, compute `last_epoch = max(keys)`, then compute `final_metrics` from that epoch only.
 
 2. **Remove duplicated implementations of the transformer utilities**
-
    - `runs_endpoints/utils.py` and `runs_endpoints/shared/utils.py` both contain `_transform_run_to_results` and `_calculate_summary_statistics`.
    - Recommendation: keep a single source of truth (e.g., `shared/utils.py`) and import it everywhere.
 
@@ -226,7 +217,6 @@ These are based on the current implementation and are ordered roughly by impact.
 ### B) API design
 
 4. **Add `response_model` for endpoints returning raw dicts**
-
    - Today: `/{run_id}/metrics`, `/{run_id}/federated-rounds`, `/{run_id}/server-evaluation`, `/{run_id}/download/csv` do not declare response models.
    - Recommendation: add Pydantic models for stable contracts and OpenAPI docs.
 
@@ -243,7 +233,6 @@ These are based on the current implementation and are ordered roughly by impact.
 ### D) Robustness / security
 
 7. **Harden backfill parsing**
-
    - `BackfillService._parse_metrics_string` uses `ast.literal_eval` on a string from the file.
    - It’s safer than `eval`, but still brittle.
    - Recommendation: store metrics in JSON (not stringified dict) and use `json.loads`.

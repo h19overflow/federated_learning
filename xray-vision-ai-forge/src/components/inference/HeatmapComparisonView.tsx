@@ -5,15 +5,15 @@
  * with zoom controls and a color legend explaining the heatmap.
  */
 
-import React, { useState } from 'react';
-import { ZoomIn, ZoomOut, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useState } from "react";
+import { ZoomIn, ZoomOut, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 
 interface HeatmapComparisonViewProps {
   /** URL or base64 data URL of the original X-ray image */
@@ -21,7 +21,7 @@ interface HeatmapComparisonViewProps {
   /** Base64-encoded heatmap overlay image (without data URL prefix) */
   heatmapBase64: string;
   /** Prediction class for contextual information */
-  predictionClass?: 'NORMAL' | 'PNEUMONIA';
+  predictionClass?: "NORMAL" | "PNEUMONIA";
   /** Optional custom class name */
   className?: string;
 }
@@ -30,12 +30,12 @@ export const HeatmapComparisonView: React.FC<HeatmapComparisonViewProps> = ({
   originalImageUrl,
   heatmapBase64,
   predictionClass,
-  className = '',
+  className = "",
 }) => {
   const [isZoomed, setIsZoomed] = useState(false);
 
   // Format heatmap as data URL if needed
-  const heatmapDataUrl = heatmapBase64.startsWith('data:')
+  const heatmapDataUrl = heatmapBase64.startsWith("data:")
     ? heatmapBase64
     : `data:image/png;base64,${heatmapBase64}`;
 
@@ -91,7 +91,7 @@ export const HeatmapComparisonView: React.FC<HeatmapComparisonViewProps> = ({
       {/* Side-by-side images */}
       <div
         className={`grid grid-cols-2 gap-4 transition-all duration-300 ${
-          isZoomed ? 'scale-110 origin-center' : ''
+          isZoomed ? "scale-110 origin-center" : ""
         }`}
       >
         {/* Original Image */}
@@ -139,11 +139,11 @@ export const HeatmapComparisonView: React.FC<HeatmapComparisonViewProps> = ({
       {predictionClass && (
         <div className="p-3 rounded-xl bg-white/80 border border-[hsl(172_30%_88%)]">
           <p className="text-sm text-[hsl(215_15%_45%)]">
-            {predictionClass === 'PNEUMONIA' ? (
+            {predictionClass === "PNEUMONIA" ? (
               <>
                 <span className="font-medium text-amber-700">
                   Pneumonia detected:
-                </span>{' '}
+                </span>{" "}
                 Red/orange regions highlight areas where the model identified
                 patterns consistent with pneumonia, such as consolidation or
                 infiltrates.
@@ -152,7 +152,7 @@ export const HeatmapComparisonView: React.FC<HeatmapComparisonViewProps> = ({
               <>
                 <span className="font-medium text-emerald-700">
                   Normal finding:
-                </span>{' '}
+                </span>{" "}
                 The heatmap shows regions the model examined. Low activation
                 across lung fields supports the normal classification.
               </>

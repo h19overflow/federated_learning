@@ -69,9 +69,13 @@ def train(msg: Message, context: Context):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-    centerlized_trainer.logger.info(f"[Federated Train] Set global seed={seed} for reproducibility")
+    centerlized_trainer.logger.info(
+        f"[Federated Train] Set global seed={seed} for reproducibility"
+    )
 
-    train_df, val_df = _prepare_partition_and_split(partioner, partition_id, partion_df, seed=seed)
+    train_df, val_df = _prepare_partition_and_split(
+        partioner, partition_id, partion_df, seed=seed
+    )
 
     # Create data module
     data_module = XRayDataModule(

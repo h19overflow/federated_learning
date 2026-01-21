@@ -70,22 +70,32 @@ async def _download_paper_via_mcp(paper_id: str) -> Dict[str, Any]:
 
     # Ensure MCP Manager is initialized before checking availability
     if not manager.is_available:
-        logger.info("[EmbedTool] MCP Manager not initialized, attempting initialization...")
+        logger.info(
+            "[EmbedTool] MCP Manager not initialized, attempting initialization..."
+        )
         try:
             await manager.initialize()
         except Exception as e:
-            logger.error(f"[EmbedTool] Failed to initialize MCP Manager: {e}", exc_info=True)
-            return {"status": "error", "error": f"Failed to initialize MCP Manager: {str(e)}"}
+            logger.error(
+                f"[EmbedTool] Failed to initialize MCP Manager: {e}", exc_info=True
+            )
+            return {
+                "status": "error",
+                "error": f"Failed to initialize MCP Manager: {str(e)}",
+            }
 
     if not manager.is_available:
-        return {"status": "error", "error": "MCP Manager not available after initialization attempt"}
-    
+        return {
+            "status": "error",
+            "error": "MCP Manager not available after initialization attempt",
+        }
+
     tools = manager.get_arxiv_tools()
     download_tool = next((t for t in tools if t.name == "download_paper"), None)
-    
+
     if not download_tool:
         return {"status": "error", "error": "download_paper tool not found"}
-    
+
     try:
         result = await download_tool.ainvoke({"paper_id": paper_id})
         logger.info(f"[EmbedTool] Raw download result type: {type(result)}")
@@ -109,7 +119,7 @@ async def _download_paper_via_mcp(paper_id: str) -> Dict[str, Any]:
             return data
         else:
             return {"status": "error", "error": "Empty response from download tool"}
-            
+
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse download result: {e}")
         return {"status": "error", "error": f"JSON parse error: {str(e)}"}
@@ -123,13 +133,13 @@ def _read_markdown_file(path: str) -> str:
     # Handle file:// URLs
     if path.startswith("file://"):
         path = path[7:]  # Remove file:// prefix
-    
+
     # Normalize path for Windows
     path = path.replace("\\\\", "\\").replace("/", os.sep)
-    
+
     if not os.path.exists(path):
         raise FileNotFoundError(f"Paper not found at: {path}")
-    
+
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
@@ -137,11 +147,11 @@ def _read_markdown_file(path: str) -> str:
 def _chunk_content(content: str, paper_id: str) -> list[Document]:
     """
     Split markdown content into chunks for embedding.
-    
+
     Args:
         content: Markdown text content
         paper_id: Arxiv paper ID for metadata
-        
+
     Returns:
         List of Document objects with metadata
     """
@@ -150,9 +160,9 @@ def _chunk_content(content: str, paper_id: str) -> list[Document]:
         chunk_overlap=200,
         separators=["\n## ", "\n### ", "\n\n", "\n", " "],
     )
-    
+
     chunks = splitter.split_text(content)
-    
+
     documents = [
         Document(
             page_content=chunk,
@@ -160,21 +170,21 @@ def _chunk_content(content: str, paper_id: str) -> list[Document]:
                 "source": f"arxiv:{paper_id}",
                 "paper_id": paper_id,
                 "chunk_index": i,
-            }
+            },
         )
         for i, chunk in enumerate(chunks)
     ]
-    
+
     return documents
 
 
 async def embed_arxiv_paper_async(paper_id: str) -> Dict[str, Any]:
     """
     Core async logic for embedding an arxiv paper.
-    
+
     Args:
         paper_id: Arxiv paper ID
-        
+
     Returns:
         Dict with status and details
     """
@@ -196,14 +206,16 @@ async def embed_arxiv_paper_async(paper_id: str) -> Dict[str, Any]:
     file_path = download_result.get("resource_uri") or download_result.get("path")
     logger.info(f"[EmbedTool] File path from download: {file_path}")
     if not file_path:
-        logger.error(f"[EmbedTool] No 'resource_uri' or 'path' key in download_result. Keys present: {download_result.keys()}")
+        logger.error(
+            f"[EmbedTool] No 'resource_uri' or 'path' key in download_result. Keys present: {download_result.keys()}"
+        )
         return {
             "success": False,
             "error": "No file path returned from download",
         }
-    
+
     logger.info(f"[EmbedTool] Paper downloaded to: {file_path}")
-    
+
     # Step 3: Read content
     try:
         content = _read_markdown_file(file_path)
@@ -212,26 +224,36 @@ async def embed_arxiv_paper_async(paper_id: str) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
     except Exception as e:
         return {"success": False, "error": f"Failed to read file: {str(e)}"}
-    
+
     # Step 4: Chunk content
     documents = _chunk_content(content, paper_id)
     logger.info(f"[EmbedTool] Created {len(documents)} chunks")
-    
+
     # Step 5: Insert into vector store
     try:
         vectorstore = _get_vectorstore()
-        logger.info(f"[EmbedTool] Inserting {len(documents)} chunks into vectorstore...")
+        logger.info(
+            f"[EmbedTool] Inserting {len(documents)} chunks into vectorstore..."
+        )
 
         # Add documents to the vector store
         ids = vectorstore.add_documents(documents)
 
-        logger.info(f"[EmbedTool] Successfully embedded {len(documents)} chunks for {paper_id}")
-        logger.info(f"[EmbedTool] Document IDs: {ids[:3]}..." if len(ids) > 3 else f"[EmbedTool] Document IDs: {ids}")
+        logger.info(
+            f"[EmbedTool] Successfully embedded {len(documents)} chunks for {paper_id}"
+        )
+        logger.info(
+            f"[EmbedTool] Document IDs: {ids[:3]}..."
+            if len(ids) > 3
+            else f"[EmbedTool] Document IDs: {ids}"
+        )
 
     except Exception as e:
-        logger.error(f"[EmbedTool] Failed to insert into vectorstore: {e}", exc_info=True)
+        logger.error(
+            f"[EmbedTool] Failed to insert into vectorstore: {e}", exc_info=True
+        )
         return {"success": False, "error": f"Vector store insertion failed: {str(e)}"}
-    
+
     return {
         "success": True,
         "paper_id": paper_id,
@@ -244,33 +266,35 @@ async def embed_arxiv_paper_async(paper_id: str) -> Dict[str, Any]:
 async def embed_arxiv_paper(paper_id: str) -> str:
     """
     Download and embed an arxiv paper into the local knowledge base.
-    
+
     This tool downloads a research paper from arxiv, converts it to text,
     splits it into chunks, and stores it in the vector database for future
     retrieval. Use this when the user explicitly requests to add a paper
     to the knowledge base.
-    
+
     IMPORTANT: Always ask the user for confirmation before using this tool,
     as it permanently adds content to the knowledge base.
-    
+
     Args:
         paper_id: The arxiv paper ID (e.g., '1706.03762')
-        
+
     Returns:
         Success or error message
     """
     result = await embed_arxiv_paper_async(paper_id)
-    
+
     if result.get("success"):
         return result["message"]
     else:
-        return f"Failed to embed paper {paper_id}: {result.get('error', 'Unknown error')}"
+        return (
+            f"Failed to embed paper {paper_id}: {result.get('error', 'Unknown error')}"
+        )
 
 
 def create_arxiv_embedding_tool():
     """
     Create the arxiv embedding tool.
-    
+
     Returns:
         The embed_arxiv_paper tool ready for agent use
     """

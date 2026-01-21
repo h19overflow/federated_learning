@@ -2,7 +2,6 @@
 
 from typing import Dict, Any
 
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.models import Run
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
@@ -31,10 +30,14 @@ class RunSummaryBuilder:
         best_val_recall = 0.0
         best_val_accuracy = 0.0
         if run.metrics:
-            recall_vals = [m.metric_value for m in run.metrics if m.metric_name == "val_recall"]
+            recall_vals = [
+                m.metric_value for m in run.metrics if m.metric_name == "val_recall"
+            ]
             if recall_vals:
                 best_val_recall = max(recall_vals)
-            acc_vals = [m.metric_value for m in run.metrics if m.metric_name == "val_acc"]
+            acc_vals = [
+                m.metric_value for m in run.metrics if m.metric_name == "val_acc"
+            ]
             if acc_vals:
                 best_val_accuracy = max(acc_vals)
 

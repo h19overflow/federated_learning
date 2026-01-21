@@ -44,7 +44,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
               transition={{ duration: 0.2, delay: 0.05 }}
               className={cn(
                 "flex",
-                message.role === "user" ? "justify-end" : "justify-start"
+                message.role === "user" ? "justify-end" : "justify-start",
               )}
             >
               <div
@@ -52,7 +52,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                   "max-w-[85%] px-4 py-3 relative group",
                   message.role === "user"
                     ? "bg-[hsl(172_63%_22%)] text-white rounded-2xl rounded-br-md shadow-md shadow-[hsl(172_63%_22%)]/15"
-                    : "bg-[hsl(168_25%_96%)] text-[hsl(172_43%_15%)] rounded-2xl rounded-bl-md border border-[hsl(168_20%_92%)]"
+                    : "bg-[hsl(168_25%_96%)] text-[hsl(172_43%_15%)] rounded-2xl rounded-bl-md border border-[hsl(168_20%_92%)]",
                 )}
               >
                 {/* Message Toolbar */}
@@ -97,7 +97,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                 {message.role === "assistant" ? (
                   (() => {
                     const { cleanedContent, citations } = parseCitations(
-                      message.content
+                      message.content,
                     );
                     return (
                       <>

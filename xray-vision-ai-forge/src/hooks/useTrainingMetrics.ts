@@ -4,9 +4,9 @@
  * Implements throttling (500ms) and data windowing (max 200 points).
  */
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { TrainingProgressWebSocket } from '@/services/websocket';
-import type { BatchMetricsData, BatchMetricsDataPoint } from '@/types/api';
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import type { TrainingProgressWebSocket } from "@/services/websocket";
+import type { BatchMetricsData, BatchMetricsDataPoint } from "@/types/api";
 
 const MAX_DATA_POINTS = 200;
 const THROTTLE_MS = 500; // 2 Hz updates
@@ -21,7 +21,7 @@ interface UseTrainingMetricsReturn {
 }
 
 export function useTrainingMetrics(
-  ws: TrainingProgressWebSocket | null
+  ws: TrainingProgressWebSocket | null,
 ): UseTrainingMetricsReturn {
   const [batchMetrics, setBatchMetrics] = useState<BatchMetricsDataPoint[]>([]);
   const [isReceiving, setIsReceiving] = useState(false);
@@ -64,7 +64,7 @@ export function useTrainingMetrics(
       scheduleFlush();
     };
 
-    const unsubBatch = ws.on('batch_metrics', handleBatchMetrics);
+    const unsubBatch = ws.on("batch_metrics", handleBatchMetrics);
 
     return () => {
       unsubBatch();

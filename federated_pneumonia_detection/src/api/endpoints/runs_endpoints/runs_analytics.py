@@ -6,11 +6,12 @@ with aggregated metrics and top-performing runs. Delegates business logic to
 runs_analytics_utils following SOLID principles.
 """
 
-from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 
-from federated_pneumonia_detection.src.boundary.engine import get_session
+from fastapi import APIRouter, HTTPException, Query
+
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 from ..schema.runs_schemas import AnalyticsSummaryResponse
@@ -24,7 +25,7 @@ logger = get_logger(__name__)
 async def get_analytics_summary(
     status: Optional[str] = Query("completed", description="Filter by run status"),
     training_mode: Optional[str] = Query(None, description="Filter by training mode"),
-    days: Optional[int] = Query(None, description="Filter by last N days")
+    days: Optional[int] = Query(None, description="Filter by last N days"),
 ) -> AnalyticsSummaryResponse:
     """
     Get aggregated statistics for centralized vs federated training comparison.
@@ -41,7 +42,9 @@ async def get_analytics_summary(
 
     try:
         # Fetch runs with database-level filtering
-        runs = run_crud.get_by_status_and_mode(db, status=status, training_mode=training_mode)
+        runs = run_crud.get_by_status_and_mode(
+            db, status=status, training_mode=training_mode
+        )
 
         # Delegate business logic to utility function
         return generate_analytics_summary(db, runs, status, training_mode, days)

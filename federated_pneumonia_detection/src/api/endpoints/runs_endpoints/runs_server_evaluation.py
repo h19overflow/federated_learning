@@ -6,12 +6,13 @@ Provides endpoint to fetch server-side evaluation metrics for federated training
 
 from fastapi import APIRouter, HTTPException
 
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
+from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+
 from ..schema.runs_schemas import ServerEvaluationResponse
 
 router = APIRouter()

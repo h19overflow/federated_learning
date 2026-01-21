@@ -18,7 +18,7 @@ Structure:
         - observability_logger.py: W&B logging
     - inference_service.py: Main service facade
 """
-int
+
 # Re-export from components
 from .internals import (
     InferenceEngine,

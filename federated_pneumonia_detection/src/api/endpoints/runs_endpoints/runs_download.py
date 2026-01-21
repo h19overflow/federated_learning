@@ -7,17 +7,16 @@ Uses shared exporter modules and download service following SOLID principles.
 
 from fastapi import APIRouter, HTTPException
 
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
+from .shared.exporters import CSVExporter, DownloadService
 from .shared.utils import _transform_run_to_results
-from .shared.exporters import (
-    CSVExporter,
-    DownloadService
-)
+
 router = APIRouter()
 logger = get_logger(__name__)
+
 
 @router.get("/{run_id}/download/csv")
 async def download_metrics_csv(run_id: int):
@@ -44,10 +43,7 @@ async def download_metrics_csv(run_id: int):
             raise HTTPException(status_code=404, detail="No training history available")
 
         return DownloadService.prepare_download(
-            data=results,
-            run_id=run_id,
-            prefix="metrics",
-            exporter=CSVExporter()
+            data=results, run_id=run_id, prefix="metrics", exporter=CSVExporter()
         )
 
     except HTTPException:
@@ -57,4 +53,3 @@ async def download_metrics_csv(run_id: int):
         raise HTTPException(status_code=500, detail=f"Failed to generate CSV: {str(e)}")
     finally:
         db.close()
-

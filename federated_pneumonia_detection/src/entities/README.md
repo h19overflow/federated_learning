@@ -97,6 +97,7 @@ flowchart LR
 | Class distribution | Counts per label for imbalance detection |
 
 **Utils:**
+
 - `image_ops.py` - PIL loading with RGB intermediate
 - `stats.py` - Class distribution, memory estimation
 - `validation.py` - Multi-stage file validation
@@ -140,6 +141,7 @@ flowchart TB
 | Model info | Parameter counts, architecture summary |
 
 **Utils:**
+
 - `model_builder.py` - Backbone/head creation functions
 - `model_ops.py` - Freeze/unfreeze, dropout, feature hooks
 - `validation.py` - Parameter validation
@@ -207,12 +209,12 @@ flowchart TB
 
 ## Quick Reference
 
-| Action | Method |
-|--------|--------|
-| Create dataset | `CustomImageDataset(df, image_dir, config)` |
-| Get class counts | `dataset.get_class_distribution()` |
-| Validate all images | `dataset.validate_all_images()` |
-| Create model | `ResNetWithCustomHead(config, num_classes=1)` |
-| Freeze backbone | `model.freeze_backbone()` |
+| Action                 | Method                                            |
+| ---------------------- | ------------------------------------------------- |
+| Create dataset         | `CustomImageDataset(df, image_dir, config)`       |
+| Get class counts       | `dataset.get_class_distribution()`                |
+| Validate all images    | `dataset.validate_all_images()`                   |
+| Create model           | `ResNetWithCustomHead(config, num_classes=1)`     |
+| Freeze backbone        | `model.freeze_backbone()`                         |
 | Unfreeze last N layers | `ResNetWithCustomHead(fine_tune_layers_count=-N)` |
-| Extract features | `model.get_feature_maps(x, "layer4")` |
+| Extract features       | `model.get_feature_maps(x, "layer4")`             |

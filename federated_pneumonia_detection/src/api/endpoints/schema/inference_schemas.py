@@ -4,13 +4,15 @@ This module contains data models for X-ray inference API requests and responses,
 including clinical interpretation from the AI agent.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class PredictionClass(str, Enum):
     """Prediction classification result."""
+
     NORMAL = "NORMAL"
     PNEUMONIA = "PNEUMONIA"
 
@@ -24,6 +26,7 @@ class InferencePrediction(BaseModel):
         pneumonia_probability: Raw probability of pneumonia.
         normal_probability: Raw probability of normal.
     """
+
     predicted_class: PredictionClass
     confidence: float = Field(ge=0.0, le=1.0, description="Model confidence score")
     pneumonia_probability: float = Field(ge=0.0, le=1.0)
@@ -38,6 +41,7 @@ class RiskAssessment(BaseModel):
         false_negative_risk: Estimated risk of false negative.
         factors: List of factors contributing to the assessment.
     """
+
     risk_level: str = Field(description="LOW, MODERATE, HIGH, or CRITICAL")
     false_negative_risk: str = Field(description="Risk of missed pneumonia case")
     factors: List[str] = Field(default_factory=list)
@@ -53,6 +57,7 @@ class ClinicalInterpretation(BaseModel):
         recommendations: Clinical recommendations based on findings.
         disclaimer: Medical disclaimer for AI-generated content.
     """
+
     summary: str
     confidence_explanation: str
     risk_assessment: RiskAssessment
@@ -73,6 +78,7 @@ class InferenceResponse(BaseModel):
         model_version: Version/checkpoint of the model used.
         processing_time_ms: Time taken for inference in milliseconds.
     """
+
     success: bool = True
     prediction: InferencePrediction
     clinical_interpretation: Optional[ClinicalInterpretation] = None
@@ -88,6 +94,7 @@ class InferenceError(BaseModel):
         error: Error type identifier.
         detail: Human-readable error description.
     """
+
     success: bool = False
     error: str
     detail: str
@@ -104,6 +111,7 @@ class SingleImageResult(BaseModel):
         error: Error message if inference failed.
         processing_time_ms: Time taken for this image.
     """
+
     filename: str
     success: bool = True
     prediction: Optional[InferencePrediction] = None
@@ -125,6 +133,7 @@ class BatchSummaryStats(BaseModel):
         avg_processing_time_ms: Average processing time per image.
         high_risk_count: Number of HIGH/CRITICAL risk assessments.
     """
+
     total_images: int
     successful: int
     failed: int
@@ -145,6 +154,7 @@ class BatchInferenceResponse(BaseModel):
         model_version: Version of the model used.
         total_processing_time_ms: Total time for entire batch.
     """
+
     success: bool = True
     results: List[SingleImageResult]
     summary: BatchSummaryStats
@@ -161,6 +171,7 @@ class HealthCheckResponse(BaseModel):
         gpu_available: Whether GPU acceleration is available.
         model_version: Currently loaded model version.
     """
+
     status: str
     model_loaded: bool
     gpu_available: bool
@@ -168,6 +179,7 @@ class HealthCheckResponse(BaseModel):
 
 
 # GradCAM Visualization Schemas
+
 
 class HeatmapResponse(BaseModel):
     """Response containing GradCAM heatmap visualization.
@@ -179,6 +191,7 @@ class HeatmapResponse(BaseModel):
         original_image_base64: Base64-encoded original image.
         processing_time_ms: Time taken to generate heatmap.
     """
+
     success: bool = True
     filename: str
     heatmap_base64: str = Field(description="Base64-encoded PNG of heatmap overlay")
@@ -197,6 +210,7 @@ class BatchHeatmapItem(BaseModel):
         error: Error message if generation failed.
         processing_time_ms: Time taken for this image.
     """
+
     filename: str
     success: bool = True
     heatmap_base64: Optional[str] = None
@@ -213,6 +227,7 @@ class BatchHeatmapResponse(BaseModel):
         results: List of individual heatmap results.
         total_processing_time_ms: Total time for entire batch.
     """
+
     success: bool = True
     results: List[BatchHeatmapItem]
     total_processing_time_ms: float = Field(ge=0.0)

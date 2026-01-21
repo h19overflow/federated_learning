@@ -1,4 +1,3 @@
-
 """
 Endpoints for running centralized training experiments.
 
@@ -15,13 +14,15 @@ The training process:
 Configuration should be set prior to invoking training via the configuration endpoints.
 """
 
-from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form
-from typing import Dict, Any
 import os
 import shutil
+from typing import Any, Dict
+
+from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile
 
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
-from .utils import run_centralized_training_task, prepare_zip
+
+from .utils import prepare_zip, run_centralized_training_task
 
 router = APIRouter(
     prefix="/experiments/centralized",
@@ -29,8 +30,6 @@ router = APIRouter(
 )
 
 logger = get_logger(__name__)
-
-
 
 
 @router.post("/train")
@@ -69,7 +68,7 @@ async def start_centralized_training(
     temp_dir = None
     try:
         # Create temp directory for extraction
-        source_path = await prepare_zip(data_zip,logger,experiment_name)
+        source_path = await prepare_zip(data_zip, logger, experiment_name)
         background_tasks.add_task(
             run_centralized_training_task,
             source_path=source_path,

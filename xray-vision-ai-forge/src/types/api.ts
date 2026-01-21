@@ -41,7 +41,7 @@ export interface ExperimentConfigBackend {
   dropout_rate?: number;
   fine_tune_layers_count?: number;
   num_classes?: number;
-  monitor_metric?: 'val_loss' | 'val_acc' | 'val_f1' | 'val_auroc';
+  monitor_metric?: "val_loss" | "val_acc" | "val_f1" | "val_auroc";
 
   // Training parameters
   early_stopping_patience?: number;
@@ -57,11 +57,11 @@ export interface ExperimentConfigBackend {
   local_epochs?: number;
 
   // System parameters
-  device?: 'auto' | 'cpu' | 'cuda' | 'mps';
+  device?: "auto" | "cpu" | "cuda" | "mps";
   num_workers?: number;
 
   // Image processing parameters
-  color_mode?: 'RGB' | 'L';
+  color_mode?: "RGB" | "L";
   use_imagenet_norm?: boolean;
   augmentation_strength?: number;
   use_custom_preprocessing?: boolean;
@@ -124,12 +124,12 @@ export interface TrainingStartResponse {
   experiment_id?: string;
   checkpoint_dir?: string;
   logs_dir?: string;
-  status: 'queued' | 'running' | 'completed' | 'failed';
+  status: "queued" | "running" | "completed" | "failed";
 }
 
 export interface TrainingStatusResponse {
   experiment_id: string;
-  status: 'queued' | 'running' | 'completed' | 'failed';
+  status: "queued" | "running" | "completed" | "failed";
   progress?: number;
   current_epoch?: number;
   total_epochs?: number;
@@ -175,7 +175,7 @@ export interface FinalMetrics {
 }
 
 export interface TrainingResults {
-  status: 'completed' | 'failed';
+  status: "completed" | "failed";
   experiment_name: string;
   final_metrics?: FinalMetrics;
   training_history?: TrainingHistory[];
@@ -238,11 +238,11 @@ export interface ConfusionMatrix {
   false_positives: number;
   false_negatives: number;
   // Summary statistics calculated from CM values
-  sensitivity: number;      // TP / (TP + FN) - true positive rate
-  specificity: number;      // TN / (TN + FP) - true negative rate
-  precision_cm: number;     // TP / (TP + FP)
-  accuracy_cm: number;      // (TP + TN) / Total
-  f1_cm: number;            // 2 * (Precision * Sensitivity) / (Precision + Sensitivity)
+  sensitivity: number; // TP / (TP + FN) - true positive rate
+  specificity: number; // TN / (TN + FP) - true negative rate
+  precision_cm: number; // TP / (TP + FP)
+  accuracy_cm: number; // (TP + TN) / Total
+  f1_cm: number; // 2 * (Precision * Sensitivity) / (Precision + Sensitivity)
 }
 
 export interface ResultsTrainingHistoryEntry {
@@ -334,23 +334,23 @@ export interface ComparisonResults {
 // ============================================================================
 
 export type WebSocketMessageType =
-  | 'connected'
-  | 'training_start'
-  | 'training_end'
-  | 'training_mode'
-  | 'round_metrics'
-  | 'epoch_start'
-  | 'epoch_end'
-  | 'round_start'
-  | 'round_end'
-  | 'local_epoch'
-  | 'client_training_start'
-  | 'client_progress'
-  | 'client_complete'
-  | 'early_stopping'
-  | 'status'
-  | 'error'
-  | 'pong';
+  | "connected"
+  | "training_start"
+  | "training_end"
+  | "training_mode"
+  | "round_metrics"
+  | "epoch_start"
+  | "epoch_end"
+  | "round_start"
+  | "round_end"
+  | "local_epoch"
+  | "client_training_start"
+  | "client_progress"
+  | "client_complete"
+  | "early_stopping"
+  | "status"
+  | "error"
+  | "pong";
 
 export interface WebSocketMessage<T = any> {
   type: WebSocketMessageType;
@@ -365,7 +365,7 @@ export interface EpochStartData {
 
 export interface EpochEndData {
   epoch: number;
-  phase: 'train' | 'val' | 'test';
+  phase: "train" | "val" | "test";
   metrics: EpochMetrics;
 }
 
@@ -444,7 +444,7 @@ export interface ClientCompleteData {
 }
 
 export interface StatusData {
-  status: 'started' | 'running' | 'completed' | 'failed';
+  status: "started" | "running" | "completed" | "failed";
   message?: string;
 }
 
@@ -463,7 +463,7 @@ export interface TrainingStartData {
 
 export interface TrainingEndData {
   run_id: number;
-  status: 'completed' | 'failed';
+  status: "completed" | "failed";
   experiment_name: string;
   best_epoch?: number;
   best_val_recall?: number;
@@ -561,7 +561,7 @@ export interface KnowledgeBaseDocument {
   source: string;
   paper_id?: string;
   display_name: string;
-  type: 'arxiv' | 'uploaded';
+  type: "arxiv" | "uploaded";
   chunk_count: number;
 }
 

@@ -3,6 +3,7 @@ Database models for the federated pneumonia detection system.
 
 This module exports all SQLAlchemy ORM models used for database persistence.
 """
+
 from .run import Base, Run
 from .client import Client
 from .round import Round
@@ -19,5 +20,4 @@ __all__ = [
     "RunMetric",
     "ServerEvaluation",
     "ChatSession",
-
 ]

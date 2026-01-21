@@ -6,18 +6,23 @@
  * and detail modal on click.
  */
 
-import React, { useState, useMemo } from 'react';
-import { CheckCircle2, AlertTriangle, XCircle, ArrowUpDown } from 'lucide-react';
-import { SingleImageResult } from '@/types/inference';
-import { Button } from '@/components/ui/button';
+import React, { useState, useMemo } from "react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  ArrowUpDown,
+} from "lucide-react";
+import { SingleImageResult } from "@/types/inference";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import ResultDetailModal from './ResultDetailModal';
+} from "@/components/ui/select";
+import ResultDetailModal from "./ResultDetailModal";
 
 interface BatchResultsGridProps {
   results: SingleImageResult[];
@@ -25,16 +30,16 @@ interface BatchResultsGridProps {
   imageFiles?: Map<string, File>; // filename -> File object for heatmap generation
 }
 
-type FilterType = 'all' | 'normal' | 'pneumonia' | 'failed';
-type SortType = 'filename' | 'confidence' | 'time';
+type FilterType = "all" | "normal" | "pneumonia" | "failed";
+type SortType = "filename" | "confidence" | "time";
 
 export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
   results,
   imageUrls,
   imageFiles,
 }) => {
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [sortBy, setSortBy] = useState<SortType>('filename');
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [sortBy, setSortBy] = useState<SortType>("filename");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   // Filter results
@@ -42,14 +47,18 @@ export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
     let filtered = [...results];
 
     switch (filter) {
-      case 'normal':
-        filtered = filtered.filter(r => r.success && r.prediction?.predicted_class === 'NORMAL');
+      case "normal":
+        filtered = filtered.filter(
+          (r) => r.success && r.prediction?.predicted_class === "NORMAL",
+        );
         break;
-      case 'pneumonia':
-        filtered = filtered.filter(r => r.success && r.prediction?.predicted_class === 'PNEUMONIA');
+      case "pneumonia":
+        filtered = filtered.filter(
+          (r) => r.success && r.prediction?.predicted_class === "PNEUMONIA",
+        );
         break;
-      case 'failed':
-        filtered = filtered.filter(r => !r.success);
+      case "failed":
+        filtered = filtered.filter((r) => !r.success);
         break;
       // 'all' - no filtering
     }
@@ -62,17 +71,17 @@ export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
     const sorted = [...filteredResults];
 
     switch (sortBy) {
-      case 'filename':
+      case "filename":
         sorted.sort((a, b) => a.filename.localeCompare(b.filename));
         break;
-      case 'confidence':
+      case "confidence":
         sorted.sort((a, b) => {
           const confA = a.prediction?.confidence ?? -1;
           const confB = b.prediction?.confidence ?? -1;
           return confB - confA; // Descending
         });
         break;
-      case 'time':
+      case "time":
         sorted.sort((a, b) => a.processing_time_ms - b.processing_time_ms); // Ascending
         break;
     }
@@ -100,30 +109,36 @@ export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
     }
   };
 
-  const selectedResult = selectedIndex !== null ? sortedResults[selectedIndex] : null;
-  const selectedImageUrl = selectedResult ? imageUrls.get(selectedResult.filename) ?? null : null;
-  const selectedImageFile = selectedResult && imageFiles ? imageFiles.get(selectedResult.filename) ?? null : null;
+  const selectedResult =
+    selectedIndex !== null ? sortedResults[selectedIndex] : null;
+  const selectedImageUrl = selectedResult
+    ? (imageUrls.get(selectedResult.filename) ?? null)
+    : null;
+  const selectedImageFile =
+    selectedResult && imageFiles
+      ? (imageFiles.get(selectedResult.filename) ?? null)
+      : null;
 
   // Get border color based on result
   const getBorderColor = (result: SingleImageResult) => {
     if (!result.success) {
-      return 'border-red-500'; // Failed - red
+      return "border-red-500"; // Failed - red
     }
-    if (result.prediction?.predicted_class === 'PNEUMONIA') {
-      return 'border-amber-500'; // Pneumonia - amber
+    if (result.prediction?.predicted_class === "PNEUMONIA") {
+      return "border-amber-500"; // Pneumonia - amber
     }
-    return 'border-green-500'; // Normal - green
+    return "border-green-500"; // Normal - green
   };
 
   // Get badge color
   const getBadgeColor = (result: SingleImageResult) => {
     if (!result.success) {
-      return 'bg-red-100 text-red-700 border-red-300';
+      return "bg-red-100 text-red-700 border-red-300";
     }
-    if (result.prediction?.predicted_class === 'PNEUMONIA') {
-      return 'bg-amber-100 text-amber-700 border-amber-300';
+    if (result.prediction?.predicted_class === "PNEUMONIA") {
+      return "bg-amber-100 text-amber-700 border-amber-300";
     }
-    return 'bg-green-100 text-green-700 border-green-300';
+    return "bg-green-100 text-green-700 border-green-300";
   };
 
   return (
@@ -133,62 +148,78 @@ export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
         {/* Filter buttons */}
         <div className="flex flex-wrap gap-2">
           <Button
-            variant={filter === 'all' ? 'default' : 'outline'}
+            variant={filter === "all" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilter('all')}
+            onClick={() => setFilter("all")}
             className={`rounded-xl ${
-              filter === 'all'
-                ? 'bg-[hsl(172_63%_28%)] text-white'
-                : 'border-[hsl(172_30%_85%)]'
+              filter === "all"
+                ? "bg-[hsl(172_63%_28%)] text-white"
+                : "border-[hsl(172_30%_85%)]"
             }`}
           >
             All ({results.length})
           </Button>
           <Button
-            variant={filter === 'normal' ? 'default' : 'outline'}
+            variant={filter === "normal" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilter('normal')}
+            onClick={() => setFilter("normal")}
             className={`rounded-xl ${
-              filter === 'normal'
-                ? 'bg-green-600 text-white'
-                : 'border-green-300 text-green-700 hover:bg-green-50'
+              filter === "normal"
+                ? "bg-green-600 text-white"
+                : "border-green-300 text-green-700 hover:bg-green-50"
             }`}
           >
             <CheckCircle2 className="w-4 h-4 mr-1" />
-            Normal ({results.filter(r => r.success && r.prediction?.predicted_class === 'NORMAL').length})
+            Normal (
+            {
+              results.filter(
+                (r) => r.success && r.prediction?.predicted_class === "NORMAL",
+              ).length
+            }
+            )
           </Button>
           <Button
-            variant={filter === 'pneumonia' ? 'default' : 'outline'}
+            variant={filter === "pneumonia" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilter('pneumonia')}
+            onClick={() => setFilter("pneumonia")}
             className={`rounded-xl ${
-              filter === 'pneumonia'
-                ? 'bg-amber-600 text-white'
-                : 'border-amber-300 text-amber-700 hover:bg-amber-50'
+              filter === "pneumonia"
+                ? "bg-amber-600 text-white"
+                : "border-amber-300 text-amber-700 hover:bg-amber-50"
             }`}
           >
             <AlertTriangle className="w-4 h-4 mr-1" />
-            Pneumonia ({results.filter(r => r.success && r.prediction?.predicted_class === 'PNEUMONIA').length})
+            Pneumonia (
+            {
+              results.filter(
+                (r) =>
+                  r.success && r.prediction?.predicted_class === "PNEUMONIA",
+              ).length
+            }
+            )
           </Button>
           <Button
-            variant={filter === 'failed' ? 'default' : 'outline'}
+            variant={filter === "failed" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilter('failed')}
+            onClick={() => setFilter("failed")}
             className={`rounded-xl ${
-              filter === 'failed'
-                ? 'bg-red-600 text-white'
-                : 'border-red-300 text-red-700 hover:bg-red-50'
+              filter === "failed"
+                ? "bg-red-600 text-white"
+                : "border-red-300 text-red-700 hover:bg-red-50"
             }`}
           >
             <XCircle className="w-4 h-4 mr-1" />
-            Failed ({results.filter(r => !r.success).length})
+            Failed ({results.filter((r) => !r.success).length})
           </Button>
         </div>
 
         {/* Sort dropdown */}
         <div className="flex items-center gap-2 sm:ml-auto">
           <ArrowUpDown className="w-4 h-4 text-[hsl(172_63%_28%)]" />
-          <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortType)}>
+          <Select
+            value={sortBy}
+            onValueChange={(value) => setSortBy(value as SortType)}
+          >
             <SelectTrigger className="w-[160px] rounded-xl border-[hsl(172_30%_85%)]">
               <SelectValue />
             </SelectTrigger>
@@ -203,7 +234,8 @@ export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
 
       {/* Results count */}
       <p className="text-sm text-[hsl(215_15%_45%)]">
-        Showing {sortedResults.length} result{sortedResults.length !== 1 ? 's' : ''}
+        Showing {sortedResults.length} result
+        {sortedResults.length !== 1 ? "s" : ""}
       </p>
 
       {/* Thumbnail grid */}
@@ -246,16 +278,22 @@ export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
 
                   {/* Badge */}
                   {result.success && result.prediction ? (
-                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold border ${badgeColor}`}>
-                      {result.prediction.predicted_class === 'PNEUMONIA' ? (
+                    <div
+                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold border ${badgeColor}`}
+                    >
+                      {result.prediction.predicted_class === "PNEUMONIA" ? (
                         <AlertTriangle className="w-3 h-3" />
                       ) : (
                         <CheckCircle2 className="w-3 h-3" />
                       )}
-                      <span>{(result.prediction.confidence * 100).toFixed(1)}%</span>
+                      <span>
+                        {(result.prediction.confidence * 100).toFixed(1)}%
+                      </span>
                     </div>
                   ) : (
-                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold border ${badgeColor}`}>
+                    <div
+                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold border ${badgeColor}`}
+                    >
                       <XCircle className="w-3 h-3" />
                       <span>Failed</span>
                     </div>
@@ -291,7 +329,9 @@ export const BatchResultsGrid: React.FC<BatchResultsGridProps> = ({
         imageFile={selectedImageFile}
         onNext={handleNext}
         onPrevious={handlePrevious}
-        canGoNext={selectedIndex !== null && selectedIndex < sortedResults.length - 1}
+        canGoNext={
+          selectedIndex !== null && selectedIndex < sortedResults.length - 1
+        }
         canGoPrevious={selectedIndex !== null && selectedIndex > 0}
         currentIndex={selectedIndex ?? undefined}
         totalResults={sortedResults.length}

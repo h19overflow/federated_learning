@@ -57,10 +57,10 @@ def generate_prediction_report(
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=20*mm,
-        leftMargin=20*mm,
-        topMargin=20*mm,
-        bottomMargin=20*mm,
+        rightMargin=20 * mm,
+        leftMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm,
     )
 
     styles = get_styles()
@@ -109,10 +109,10 @@ def generate_batch_summary_report(
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=18*mm,
-        leftMargin=18*mm,
-        topMargin=15*mm,
-        bottomMargin=15*mm,
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=15 * mm,
+        bottomMargin=15 * mm,
     )
 
     styles = get_styles()

@@ -45,9 +45,7 @@ def prepare_dataset(
         logger,
     )
 
-    logger.info(
-        f"Dataset prepared: {len(train_df)} train, {len(val_df)} validation"
-    )
+    logger.info(f"Dataset prepared: {len(train_df)} train, {len(val_df)} validation")
     return train_df, val_df
 
 

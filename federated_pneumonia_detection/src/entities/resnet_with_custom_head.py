@@ -37,7 +37,7 @@ class ResNetWithCustomHead(nn.Module):
 
     def __init__(
         self,
-        config: Optional['ConfigManager'] = None,
+        config: Optional["ConfigManager"] = None,
         base_model_weights: Optional[ResNet50_Weights] = None,
         num_classes: int = 1,
         dropout_rate: Optional[float] = None,
@@ -60,7 +60,10 @@ class ResNetWithCustomHead(nn.Module):
         """
         super().__init__()
         if config is None:
-            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            from federated_pneumonia_detection.config.config_manager import (
+                ConfigManager,
+            )
+
             config = ConfigManager()
 
         self.config = config
@@ -81,7 +84,10 @@ class ResNetWithCustomHead(nn.Module):
 
         # Validate parameters
         validate_parameters(
-            self.num_classes, self.dropout_rate, self.fine_tune_layers_count, self.logger
+            self.num_classes,
+            self.dropout_rate,
+            self.fine_tune_layers_count,
+            self.logger,
         )
 
         # Set up backbone weights
@@ -195,4 +201,5 @@ class ResNetWithCustomHead(nn.Module):
             This is a progressive unfreezing method used by callbacks.
         """
         from .res_internals.model_builder import unfreeze_last_n_layers
+
         unfreeze_last_n_layers(self.features, n_layers, self.logger)

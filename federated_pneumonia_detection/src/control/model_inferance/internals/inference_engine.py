@@ -71,15 +71,17 @@ class InferenceEngine:
 
     def _setup_transforms(self) -> None:
         """Setup image preprocessing transforms."""
-        self._transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.CenterCrop((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-        ])
+        self._transform = transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.CenterCrop((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
+                ),
+            ]
+        )
 
     def preprocess(self, image: Image.Image) -> torch.Tensor:
         """Preprocess a PIL image for inference."""
@@ -110,7 +112,9 @@ class InferenceEngine:
             confidence = normal_prob
 
         inference_time = (time.time() - start_time) * 1000
-        logger.debug(f"Inference: {predicted_class} ({confidence:.4f}) in {inference_time:.2f}ms")
+        logger.debug(
+            f"Inference: {predicted_class} ({confidence:.4f}) in {inference_time:.2f}ms"
+        )
 
         return predicted_class, confidence, pneumonia_prob, normal_prob
 

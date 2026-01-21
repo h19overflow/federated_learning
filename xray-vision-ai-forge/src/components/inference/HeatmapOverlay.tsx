@@ -6,9 +6,9 @@
  * Helps doctors understand the AI's reasoning.
  */
 
-import React, { useState } from 'react';
-import { Flame, ZoomIn, ZoomOut, Info } from 'lucide-react';
-import { InferencePrediction } from '@/types/inference';
+import React, { useState } from "react";
+import { Flame, ZoomIn, ZoomOut, Info } from "lucide-react";
+import { InferencePrediction } from "@/types/inference";
 
 interface HeatmapOverlayProps {
   originalImageUrl: string;
@@ -22,7 +22,7 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   prediction,
 }) => {
   const [isZoomed, setIsZoomed] = useState(false);
-  const isPneumonia = prediction.predicted_class === 'PNEUMONIA';
+  const isPneumonia = prediction.predicted_class === "PNEUMONIA";
 
   const heatmapDataUrl = `data:image/png;base64,${heatmapBase64}`;
 
@@ -47,7 +47,7 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
         <button
           onClick={() => setIsZoomed(!isZoomed)}
           className="p-2 rounded-lg bg-white/80 border border-[hsl(168_20%_90%)] hover:bg-white transition-colors"
-          title={isZoomed ? 'Zoom out' : 'Zoom in'}
+          title={isZoomed ? "Zoom out" : "Zoom in"}
         >
           {isZoomed ? (
             <ZoomOut className="w-5 h-5 text-[hsl(172_63%_28%)]" />
@@ -61,18 +61,18 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
       <div
         className={`relative rounded-2xl overflow-hidden border-2 shadow-lg transition-all duration-300 ${
           isPneumonia
-            ? 'border-amber-300 shadow-amber-100'
-            : 'border-emerald-300 shadow-emerald-100'
-        } ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
+            ? "border-amber-300 shadow-amber-100"
+            : "border-emerald-300 shadow-emerald-100"
+        } ${isZoomed ? "cursor-zoom-out" : "cursor-zoom-in"}`}
         onClick={() => setIsZoomed(!isZoomed)}
       >
         <img
           src={heatmapDataUrl}
           alt="GradCAM heatmap visualization"
           className={`w-full transition-transform duration-300 ${
-            isZoomed ? 'scale-150' : 'scale-100'
+            isZoomed ? "scale-150" : "scale-100"
           }`}
-          style={{ imageRendering: 'auto' }}
+          style={{ imageRendering: "auto" }}
         />
 
         {/* Color scale legend */}
@@ -91,18 +91,20 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
           <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <div className="space-y-2">
             <p className="text-sm text-[hsl(215_20%_35%)]">
-              <strong>How to interpret:</strong> Warmer colors (red/orange) indicate regions
-              that strongly influenced the model's {isPneumonia ? 'pneumonia' : 'normal'} prediction.
+              <strong>How to interpret:</strong> Warmer colors (red/orange)
+              indicate regions that strongly influenced the model's{" "}
+              {isPneumonia ? "pneumonia" : "normal"} prediction.
               {isPneumonia && (
                 <span className="block mt-1">
-                  These highlighted areas may show opacity patterns, consolidation,
-                  or infiltrates typically associated with pneumonia.
+                  These highlighted areas may show opacity patterns,
+                  consolidation, or infiltrates typically associated with
+                  pneumonia.
                 </span>
               )}
             </p>
             <p className="text-xs text-[hsl(215_15%_50%)]">
-              This visualization uses Gradient-weighted Class Activation Mapping (GradCAM)
-              to provide explainable AI insights for clinical review.
+              This visualization uses Gradient-weighted Class Activation Mapping
+              (GradCAM) to provide explainable AI insights for clinical review.
             </p>
           </div>
         </div>

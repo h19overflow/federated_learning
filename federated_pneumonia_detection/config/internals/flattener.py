@@ -15,9 +15,7 @@ class ConfigFlattener:
         """Initialize the flattener with logger."""
         self.logger = get_logger(__name__)
 
-    def flatten(
-        self, config_dict: Dict[str, Any], prefix: str = ""
-    ) -> Dict[str, Any]:
+    def flatten(self, config_dict: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
         """
         Convert nested config dictionary to dot-notation keys.
 
@@ -53,9 +51,7 @@ class ConfigFlattener:
                 flattened[full_key] = value
         return flattened
 
-    def collect_keys(
-        self, config: Dict[str, Any], prefix: str = ""
-    ) -> list:
+    def collect_keys(self, config: Dict[str, Any], prefix: str = "") -> list:
         """
         Collect all keys from a configuration dictionary in dot notation.
 

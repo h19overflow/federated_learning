@@ -113,7 +113,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       .filter((r) => r.start_time)
       .sort(
         (a, b) =>
-          new Date(b.start_time!).getTime() - new Date(a.start_time!).getTime()
+          new Date(b.start_time!).getTime() - new Date(a.start_time!).getTime(),
       )
       .slice(0, 5);
   }, [availableRuns]);
@@ -266,7 +266,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       // This handles the case where frontend loads before backend MCP is ready
       if (!available && retryCount < maxRetries) {
         retryCount++;
-        console.log(`[ChatSidebar] Arxiv not available, retry ${retryCount}/${maxRetries} in ${retryDelay}ms`);
+        console.log(
+          `[ChatSidebar] Arxiv not available, retry ${retryCount}/${maxRetries} in ${retryDelay}ms`,
+        );
         setTimeout(checkWithRetry, retryDelay);
       }
     };
@@ -278,7 +280,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
+        "[data-radix-scroll-area-viewport]",
       );
       if (scrollElement) {
         scrollElement.scrollTop = scrollElement.scrollHeight;
@@ -305,7 +307,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         setIsResizing(false);
       }
     },
-    [isResizing]
+    [isResizing],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -417,7 +419,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       inputRef.current.style.height = "auto";
       inputRef.current.style.height = `${Math.min(
         inputRef.current.scrollHeight,
-        200
+        200,
       )}px`;
     }
 
@@ -668,7 +670,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           "flex flex-col border-l border-[hsl(210_15%_92%)] bg-white overflow-hidden relative",
           "h-full",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none",
-          !isResizing && "transition-all duration-300 ease-out"
+          !isResizing && "transition-all duration-300 ease-out",
         )}
         style={{ width: isOpen ? (isRailMode ? 64 : width) : 0 }}
       >
@@ -679,7 +681,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             className={cn(
               "absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 group",
               "hover:bg-[hsl(172_63%_35%)] transition-colors",
-              isResizing && "bg-[hsl(172_63%_35%)]"
+              isResizing && "bg-[hsl(172_63%_35%)]",
             )}
           >
             <div
@@ -687,7 +689,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 "absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-8 rounded-md flex items-center justify-center",
                 "opacity-0 group-hover:opacity-100 transition-opacity",
                 "bg-[hsl(172_63%_22%)] shadow-md",
-                isResizing && "opacity-100"
+                isResizing && "opacity-100",
               )}
             >
               <GripVertical className="h-4 w-4 text-white" />
@@ -780,7 +782,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       "h-9 w-9 rounded-xl transition-all",
                       showHistory
                         ? "text-[hsl(172_63%_22%)] bg-[hsl(172_40%_94%)]"
-                        : "text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)]"
+                        : "text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)]",
                     )}
                   >
                     <History className="h-4 w-4" />
@@ -807,7 +809,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       }
                     }}
                     title={isRailMode ? "Close chat" : "Collapse to rail"}
-                    aria-label={isRailMode ? "Close chat sidebar" : "Collapse to rail"}
+                    aria-label={
+                      isRailMode ? "Close chat sidebar" : "Collapse to rail"
+                    }
                     className="h-9 w-9 rounded-xl text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)] transition-all"
                   >
                     <PanelLeftClose className="h-4 w-4" />
@@ -855,7 +859,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                               "group p-4 rounded-2xl cursor-pointer transition-all border-2",
                               sessionId === session.id
                                 ? "bg-[hsl(172_40%_96%)] border-[hsl(172_63%_35%)]"
-                                : "bg-[hsl(210_15%_98%)] border-transparent hover:border-[hsl(210_15%_88%)] hover:bg-white"
+                                : "bg-[hsl(210_15%_98%)] border-transparent hover:border-[hsl(210_15%_88%)] hover:bg-white",
                             )}
                           >
                             <div className="flex items-center justify-between gap-3">
@@ -867,11 +871,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                   <Database className="h-3 w-3 text-[hsl(215_15%_60%)]" />
                                   <p className="text-[10px] text-[hsl(215_15%_55%)]">
                                     {new Date(
-                                      session.created_at
+                                      session.created_at,
                                     ).toLocaleDateString()}{" "}
                                     at{" "}
                                     {new Date(
-                                      session.created_at
+                                      session.created_at,
                                     ).toLocaleTimeString([], {
                                       hour: "2-digit",
                                       minute: "2-digit",
@@ -927,10 +931,12 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                   "text-[10px] font-medium px-2 py-0.5 rounded-full",
                                   selectedRun.status === "completed"
                                     ? "bg-green-100 text-green-700"
-                                    : "bg-amber-100 text-amber-700"
+                                    : "bg-amber-100 text-amber-700",
                                 )}
                               >
-                                {selectedRun.status === "completed" ? "Completed" : "In Progress"}
+                                {selectedRun.status === "completed"
+                                  ? "Completed"
+                                  : "In Progress"}
                               </span>
                             </div>
                             <Button
@@ -947,11 +953,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             <p className="text-xs text-[hsl(215_15%_50%)]">
                               {selectedRun.trainingMode} training
                             </p>
-                            {selectedRun.bestRecall !== undefined && selectedRun.bestRecall > 0 && (
-                              <span className="text-xs font-medium text-[hsl(152_60%_35%)]">
-                                Best Recall: {(selectedRun.bestRecall * 100).toFixed(2)}%
-                              </span>
-                            )}
+                            {selectedRun.bestRecall !== undefined &&
+                              selectedRun.bestRecall > 0 && (
+                                <span className="text-xs font-medium text-[hsl(152_60%_35%)]">
+                                  Best Recall:{" "}
+                                  {(selectedRun.bestRecall * 100).toFixed(2)}%
+                                </span>
+                              )}
                           </div>
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-end gap-0.5 h-4">
@@ -988,8 +996,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                           </p>
                         </div>
                         <p className="text-xs text-[hsl(215_15%_50%)] leading-relaxed">
-                          Click the <BookOpen className="inline h-3 w-3 mx-0.5" />{" "}
-                          button to enable academic paper search. When active, your
+                          Click the{" "}
+                          <BookOpen className="inline h-3 w-3 mx-0.5" /> button
+                          to enable academic paper search. When active, your
                           queries will be augmented with relevant research from
                           arXiv.
                         </p>
@@ -1007,8 +1016,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         How can I help you today?
                       </h3>
                       <p className="text-sm text-[hsl(215_15%_50%)] leading-relaxed mb-8 max-w-xs text-balance">
-                        Select a suggested inquiry or type your own question below to
-                        start our conversation.
+                        Select a suggested inquiry or type your own question
+                        below to start our conversation.
                       </p>
 
                       <div className="w-full max-w-sm">
@@ -1053,7 +1062,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                               "flex",
                               message.role === "user"
                                 ? "justify-end"
-                                : "justify-start"
+                                : "justify-start",
                             )}
                           >
                             <div
@@ -1061,7 +1070,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                 "max-w-[85%] px-4 py-3 relative group",
                                 message.role === "user"
                                   ? "bg-[hsl(172_63%_22%)] text-white rounded-2xl rounded-br-md shadow-md shadow-[hsl(172_63%_22%)]/15"
-                                  : "bg-[hsl(168_25%_96%)] text-[hsl(172_43%_15%)] rounded-2xl rounded-bl-md border border-[hsl(168_20%_92%)]"
+                                  : "bg-[hsl(168_25%_96%)] text-[hsl(172_43%_15%)] rounded-2xl rounded-bl-md border border-[hsl(168_20%_92%)]",
                               )}
                             >
                               {/* Message Toolbar */}
@@ -1069,7 +1078,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleCopy(message.content, index)}
+                                  onClick={() =>
+                                    handleCopy(message.content, index)
+                                  }
                                   className="h-6 w-6 p-1 rounded-md hover:bg-[hsl(172_40%_94%)] text-[hsl(215_15%_45%)]"
                                   title="Copy message"
                                   aria-label="Copy message"
@@ -1105,7 +1116,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
                               {message.role === "assistant" ? (
                                 (() => {
-                                  const { cleanedContent, citations } = parseCitations(message.content);
+                                  const { cleanedContent, citations } =
+                                    parseCitations(message.content);
                                   return (
                                     <>
                                       <Markdown
@@ -1175,7 +1187,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         autoFocus
                       />
                     </div>
-                    <CommandList className="max-h-72 overflow-y-auto p-2 scrollbar-none" role="listbox">
+                    <CommandList
+                      className="max-h-72 overflow-y-auto p-2 scrollbar-none"
+                      role="listbox"
+                    >
                       {loadingRuns ? (
                         <div className="p-8 flex flex-col items-center justify-center gap-3">
                           <Loader2 className="h-6 w-6 animate-spin text-[hsl(172_63%_35%)]" />
@@ -1217,7 +1232,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                       "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors",
                                       run.training_mode === "federated"
                                         ? "bg-[hsl(210_60%_92%)] text-[hsl(210_60%_40%)]"
-                                        : "bg-[hsl(152_50%_92%)] text-[hsl(152_60%_35%)]"
+                                        : "bg-[hsl(152_50%_92%)] text-[hsl(152_60%_35%)]",
                                     )}
                                   >
                                     <BarChart className="h-5 w-5" />
@@ -1233,7 +1248,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                     {run.best_val_recall > 0 && (
                                       <p className="text-xs text-[hsl(152_60%_35%)] font-medium mt-1">
                                         Best Recall:{" "}
-                                        {(run.best_val_recall * 100).toFixed(2)}%
+                                        {(run.best_val_recall * 100).toFixed(2)}
+                                        %
                                       </p>
                                     )}
                                   </div>
@@ -1266,12 +1282,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                       Run #{run.id}
                                     </p>
                                     <p className="text-xs opacity-70 truncate mt-0.5">
-                                      Federated • {formatRunTime(run.start_time)}
+                                      Federated •{" "}
+                                      {formatRunTime(run.start_time)}
                                     </p>
                                     {run.best_val_recall > 0 && (
                                       <p className="text-xs text-[hsl(152_60%_35%)] font-medium mt-1">
                                         Best Recall:{" "}
-                                        {(run.best_val_recall * 100).toFixed(2)}%
+                                        {(run.best_val_recall * 100).toFixed(2)}
+                                        %
                                       </p>
                                     )}
                                   </div>
@@ -1304,12 +1322,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                       Run #{run.id}
                                     </p>
                                     <p className="text-xs opacity-70 truncate mt-0.5">
-                                      Centralized • {formatRunTime(run.start_time)}
+                                      Centralized •{" "}
+                                      {formatRunTime(run.start_time)}
                                     </p>
                                     {run.best_val_recall > 0 && (
                                       <p className="text-xs text-[hsl(152_60%_35%)] font-medium mt-1">
                                         Best Recall:{" "}
-                                        {(run.best_val_recall * 100).toFixed(2)}%
+                                        {(run.best_val_recall * 100).toFixed(2)}
+                                        %
                                       </p>
                                     )}
                                   </div>
@@ -1341,14 +1361,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       arxivEnabled
                         ? "Search with arXiv research..."
                         : selectedRun
-                        ? `Ask about Run #${selectedRun.runId}...`
-                        : "Type / to select a run..."
+                          ? `Ask about Run #${selectedRun.runId}...`
+                          : "Type / to select a run..."
                     }
                     disabled={isLoading}
                     rows={1}
                     className={cn(
                       "flex-1 min-h-[44px] max-h-[200px] rounded-xl border-2 border-[hsl(210_15%_90%)] hover:border-[hsl(172_40%_80%)] focus:border-[hsl(172_63%_35%)] focus-visible:ring-0 transition-all duration-200 px-4 py-2.5 bg-[hsl(168_25%_99%)] placeholder:text-[hsl(215_15%_60%)] resize-none scrollbar-none",
-                      arxivEnabled && "ring-2 ring-[hsl(172_63%_35%)]/30 border-[hsl(172_63%_35%)]"
+                      arxivEnabled &&
+                        "ring-2 ring-[hsl(172_63%_35%)]/30 border-[hsl(172_63%_35%)]",
                     )}
                   />
                   <Button
@@ -1373,7 +1394,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       arxivEnabled
                         ? "bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white border-0 shadow-md shadow-[hsl(172_63%_22%)]/20"
                         : "border-2 border-[hsl(210_15%_90%)] hover:border-[hsl(172_40%_80%)] hover:bg-[hsl(172_40%_94%)] text-[hsl(215_15%_45%)]",
-                      !arxivAvailable && "opacity-50 cursor-not-allowed"
+                      !arxivAvailable && "opacity-50 cursor-not-allowed",
                     )}
                   >
                     <BookOpen className="h-4 w-4" />

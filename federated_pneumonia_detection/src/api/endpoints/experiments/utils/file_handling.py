@@ -12,6 +12,7 @@ from typing import Optional
 
 from fastapi import UploadFile
 
+
 # the zip file verification happens on client side.
 async def prepare_zip(data_zip: UploadFile, logger, experiment_name: str) -> str:
     """
@@ -54,7 +55,9 @@ async def prepare_zip(data_zip: UploadFile, logger, experiment_name: str) -> str
             if os.path.isdir(potential_root):
                 # Check if this directory contains Images/ and CSV file
                 root_items = os.listdir(potential_root)
-                if "Images" in root_items and any(f.endswith(".csv") for f in root_items):
+                if "Images" in root_items and any(
+                    f.endswith(".csv") for f in root_items
+                ):
                     source_path = potential_root
                 else:
                     source_path = extract_path

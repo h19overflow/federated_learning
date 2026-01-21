@@ -5,10 +5,10 @@
  * Green pulsing dot when healthy, red when unavailable.
  */
 
-import React, { useEffect, useState } from 'react';
-import { Activity, AlertCircle } from 'lucide-react';
-import { checkInferenceHealth } from '@/services/inferenceApi';
-import { HealthCheckResponse } from '@/types/inference';
+import React, { useEffect, useState } from "react";
+import { Activity, AlertCircle } from "lucide-react";
+import { checkInferenceHealth } from "@/services/inferenceApi";
+import { HealthCheckResponse } from "@/types/inference";
 
 export const InferenceStatusBadge: React.FC = () => {
   const [health, setHealth] = useState<HealthCheckResponse | null>(null);
@@ -38,14 +38,16 @@ export const InferenceStatusBadge: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const isHealthy = health?.status === 'healthy' && health?.model_loaded;
+  const isHealthy = health?.status === "healthy" && health?.model_loaded;
 
   if (loading) {
     return (
       <div className="fixed top-20 right-6 z-40 px-4 py-2 rounded-2xl bg-white/90 backdrop-blur-sm border border-[hsl(168_20%_90%)] shadow-lg">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-[hsl(215_15%_70%)] animate-pulse" />
-          <span className="text-xs font-medium text-[hsl(215_15%_50%)]">Checking...</span>
+          <span className="text-xs font-medium text-[hsl(215_15%_50%)]">
+            Checking...
+          </span>
         </div>
       </div>
     );

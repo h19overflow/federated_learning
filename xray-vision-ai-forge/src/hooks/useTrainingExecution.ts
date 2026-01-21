@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
-import { toast } from 'sonner';
-import api from '@/services/api';
-import { createTrainingProgressWebSocket } from '@/services/websocket';
-import { mapToBackendConfig, generateExperimentName } from '@/utils/configMapper';
+import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import api from "@/services/api";
+import { createTrainingProgressWebSocket } from "@/services/websocket";
+import {
+  mapToBackendConfig,
+  generateExperimentName,
+} from "@/utils/configMapper";
 import type {
   EpochStartData,
   EpochEndData,
@@ -18,12 +21,12 @@ import type {
   ClientProgressData,
   ClientCompleteData,
   EarlyStoppingData,
-} from '@/types/api';
-import { ExperimentConfiguration } from '@/components/ExperimentConfig';
+} from "@/types/api";
+import { ExperimentConfiguration } from "@/components/ExperimentConfig";
 
 export type StatusMessage = {
   id: number;
-  type: 'info' | 'progress' | 'success' | 'error';
+  type: "info" | "progress" | "success" | "error";
   message: string;
   progress?: number;
   timestamp?: string;
@@ -35,29 +38,35 @@ export const useTrainingExecution = (
   config: ExperimentConfiguration,
   datasetFile: File | null,
   trainSplit: number,
-  onComplete: (runId: number) => void
+  onComplete: (runId: number) => void,
 ) => {
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [statusMessages, setStatusMessages] = useState<StatusMessage[]>([]);
-  const [overallStatus, setOverallStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
-  const [experimentId, setExperimentId] = useState<string>('');
+  const [overallStatus, setOverallStatus] = useState<
+    "idle" | "running" | "completed" | "error"
+  >("idle");
+  const [experimentId, setExperimentId] = useState<string>("");
   const [runId, setRunId] = useState<number | null>(null);
   const [totalEpochs, setTotalEpochs] = useState<number>(0);
 
   // Federated learning state
   const [isFederatedTraining, setIsFederatedTraining] = useState(false);
-  const [federatedRounds, setFederatedRounds] = useState<Array<{
-    round: number;
-    metrics: Record<string, number>;
-  }>>([]);
+  const [federatedRounds, setFederatedRounds] = useState<
+    Array<{
+      round: number;
+      metrics: Record<string, number>;
+    }>
+  >([]);
   const [federatedContext, setFederatedContext] = useState({
     numRounds: 0,
     numClients: 0,
   });
 
   const messageIdRef = useRef(0);
-  const wsRef = useRef<ReturnType<typeof createTrainingProgressWebSocket> | null>(null);
+  const wsRef = useRef<ReturnType<
+    typeof createTrainingProgressWebSocket
+  > | null>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
   const messageBufferRef = useRef<StatusMessage[]>([]);
   const bufferTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -93,12 +102,12 @@ export const useTrainingExecution = (
       return a.id - b.id;
     });
 
-    setStatusMessages(prev => [...prev, ...sorted]);
+    setStatusMessages((prev) => [...prev, ...sorted]);
     messageBufferRef.current = [];
   };
 
   const addStatusMessage = (
-    type: StatusMessage['type'],
+    type: StatusMessage["type"],
     message: string,
     progress?: number,
     metadata?: {
@@ -107,7 +116,7 @@ export const useTrainingExecution = (
       clientId?: string;
       localEpoch?: number;
       immediate?: boolean;
-    }
+    },
   ) => {
     const msg: StatusMessage = {
       id: ++messageIdRef.current,
@@ -119,16 +128,22 @@ export const useTrainingExecution = (
 
     // Create sortKey for proper ordering: round_clientId_localEpoch_timestamp
     if (metadata) {
-      const roundPart = metadata.round !== undefined ? metadata.round.toString().padStart(5, '0') : '00000';
-      const clientPart = metadata.clientId || 'z';
-      const epochPart = metadata.localEpoch !== undefined ? metadata.localEpoch.toString().padStart(3, '0') : '999';
+      const roundPart =
+        metadata.round !== undefined
+          ? metadata.round.toString().padStart(5, "0")
+          : "00000";
+      const clientPart = metadata.clientId || "z";
+      const epochPart =
+        metadata.localEpoch !== undefined
+          ? metadata.localEpoch.toString().padStart(3, "0")
+          : "999";
       msg.sortKey = `${roundPart}_${clientPart}_${epochPart}_${msg.timestamp}`;
       msg.group = `round_${metadata.round}_client_${metadata.clientId}`;
     }
 
     // Immediate messages (like initial setup) bypass buffering
     if (metadata?.immediate) {
-      setStatusMessages(prev => [...prev, msg]);
+      setStatusMessages((prev) => [...prev, msg]);
       return;
     }
 
@@ -146,11 +161,16 @@ export const useTrainingExecution = (
     const ws = createTrainingProgressWebSocket(expId);
     wsRef.current = ws;
 
-    ws.on('connected', () => {
-      addStatusMessage('info', 'Connected to training progress stream', undefined, { immediate: true });
+    ws.on("connected", () => {
+      addStatusMessage(
+        "info",
+        "Connected to training progress stream",
+        undefined,
+        { immediate: true },
+      );
     });
 
-    ws.on('training_mode', (data: TrainingModeData) => {
+    ws.on("training_mode", (data: TrainingModeData) => {
       setIsFederatedTraining(data.is_federated);
       if (data.is_federated) {
         setFederatedContext({
@@ -158,73 +178,91 @@ export const useTrainingExecution = (
           numClients: data.num_clients,
         });
         addStatusMessage(
-          'info',
+          "info",
           `🔗 Federated Learning: ${data.num_clients} clients × ${data.num_rounds} rounds`,
           undefined,
-          { immediate: true }
+          { immediate: true },
         );
       }
     });
 
-    ws.on('round_metrics', (data: RoundMetricsData) => {
-      setFederatedRounds(prev => [...prev, {
-        round: data.round,
-        metrics: data.metrics as Record<string, number>,
-      }]);
+    ws.on("round_metrics", (data: RoundMetricsData) => {
+      setFederatedRounds((prev) => [
+        ...prev,
+        {
+          round: data.round,
+          metrics: data.metrics as Record<string, number>,
+        },
+      ]);
 
-      const acc = data.metrics.accuracy ? (data.metrics.accuracy * 100).toFixed(1) : 'N/A';
-      const loss = data.metrics.loss ? data.metrics.loss.toFixed(4) : 'N/A';
+      const acc = data.metrics.accuracy
+        ? (data.metrics.accuracy * 100).toFixed(1)
+        : "N/A";
+      const loss = data.metrics.loss ? data.metrics.loss.toFixed(4) : "N/A";
       addStatusMessage(
-        'success',
+        "success",
         `✅ Round ${data.round}/${data.total_rounds}: Accuracy = ${acc}%, Loss = ${loss}`,
         (data.round / data.total_rounds) * 100,
-        { immediate: true }
+        { immediate: true },
       );
     });
 
-    ws.on('training_start', (data: TrainingStartData) => {
+    ws.on("training_start", (data: TrainingStartData) => {
       setRunId(data.run_id);
       setTotalEpochs(data.max_epochs);
-      addStatusMessage('success', `Training started! Run ID: ${data.run_id}`, undefined, { immediate: true });
-      addStatusMessage('info', `Training mode: ${data.training_mode}`, undefined, { immediate: true });
+      addStatusMessage(
+        "success",
+        `Training started! Run ID: ${data.run_id}`,
+        undefined,
+        { immediate: true },
+      );
+      addStatusMessage(
+        "info",
+        `Training mode: ${data.training_mode}`,
+        undefined,
+        { immediate: true },
+      );
     });
 
-    ws.on('client_training_start', (data: ClientTrainingStartData) => {
-      console.log('[TrainingExecution] client_training_start handler called:', data);
+    ws.on("client_training_start", (data: ClientTrainingStartData) => {
+      console.log(
+        "[TrainingExecution] client_training_start handler called:",
+        data,
+      );
       if (data.run_id) setRunId(data.run_id);
 
       const round = data.round || 1;
-      const clientId = data.client_id?.toString() || '0';
+      const clientId = data.client_id?.toString() || "0";
 
       addStatusMessage(
-        'info',
+        "info",
         `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🚀 Client ${clientId} - Round ${round}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
         undefined,
         {
           round,
           clientId,
           timestamp: data.timestamp,
-          immediate: false
-        }
+          immediate: false,
+        },
       );
       addStatusMessage(
-        'info',
+        "info",
         `   Local epochs: ${data.local_epochs} | Training samples: ${data.num_samples}`,
         undefined,
         {
           round,
           clientId,
           timestamp: data.timestamp,
-          immediate: false
-        }
+          immediate: false,
+        },
       );
     });
 
-    ws.on('round_start', (data: RoundStartData) => {
-      console.log('[TrainingExecution] round_start handler called:', data);
+    ws.on("round_start", (data: RoundStartData) => {
+      console.log("[TrainingExecution] round_start handler called:", data);
       if (data.run_id) setRunId(data.run_id);
 
-      const round = (data.round || 0);
+      const round = data.round || 0;
 
       if (data.total_rounds > 0) {
         const roundProgress = (round / data.total_rounds) * 100;
@@ -232,65 +270,75 @@ export const useTrainingExecution = (
       }
     });
 
-    ws.on('client_progress', (data: ClientProgressData) => {
-      console.log('[TrainingExecution] client_progress handler called:', data);
+    ws.on("client_progress", (data: ClientProgressData) => {
+      console.log("[TrainingExecution] client_progress handler called:", data);
       const metrics = data.metrics;
-      const metricsStr = `loss: ${metrics.train_loss?.toFixed(4) || 'N/A'}, lr: ${metrics.learning_rate || 'N/A'}`;
-      const progressInfo = metrics.epoch_progress ? ` ${metrics.epoch_progress}` : '';
-      const percentInfo = metrics.overall_progress_percent ? ` - ${metrics.overall_progress_percent.toFixed(1)}%` : '';
+      const metricsStr = `loss: ${metrics.train_loss?.toFixed(4) || "N/A"}, lr: ${metrics.learning_rate || "N/A"}`;
+      const progressInfo = metrics.epoch_progress
+        ? ` ${metrics.epoch_progress}`
+        : "";
+      const percentInfo = metrics.overall_progress_percent
+        ? ` - ${metrics.overall_progress_percent.toFixed(1)}%`
+        : "";
 
       const round = data.round || 1;
-      const clientId = data.client_id?.toString() || '0';
+      const clientId = data.client_id?.toString() || "0";
       const localEpoch = data.local_epoch || 0;
 
       addStatusMessage(
-        'progress',
+        "progress",
         `   ├─ Epoch ${localEpoch + 1}${progressInfo}: ${metricsStr}${percentInfo}`,
         metrics.overall_progress_percent,
         {
           round,
           clientId,
           localEpoch,
-          timestamp: data.timestamp
-        }
+          timestamp: data.timestamp,
+        },
       );
     });
 
-    ws.on('client_complete', (data: ClientCompleteData) => {
-      console.log('[TrainingExecution] client_complete handler called:', data);
+    ws.on("client_complete", (data: ClientCompleteData) => {
+      console.log("[TrainingExecution] client_complete handler called:", data);
 
-      const clientId = data.client_id?.toString() || '0';
+      const clientId = data.client_id?.toString() || "0";
 
       addStatusMessage(
-        'success',
-        `   └─ ✅ Completed - Best accuracy: ${data.best_val_accuracy?.toFixed(4) || 'N/A'}`,
+        "success",
+        `   └─ ✅ Completed - Best accuracy: ${data.best_val_accuracy?.toFixed(4) || "N/A"}`,
         undefined,
         {
           round: data.best_round || 0,
           clientId,
           localEpoch: 999, // Put completion at end
-          immediate: false
-        }
+          immediate: false,
+        },
       );
     });
 
-    ws.on('round_end', (data: RoundEndData) => {
-      console.log('[TrainingExecution] round_end handler called:', data);
+    ws.on("round_end", (data: RoundEndData) => {
+      console.log("[TrainingExecution] round_end handler called:", data);
       const fitMetrics = Object.entries(data.fit_metrics || {})
-        .filter(([k, v]) => typeof v === 'number')
+        .filter(([k, v]) => typeof v === "number")
         .map(([k, v]) => `${k}: ${(v as number).toFixed(4)}`)
-        .join(', ');
+        .join(", ");
 
       const evalMetrics = Object.entries(data.eval_metrics || {})
-        .filter(([k, v]) => typeof v === 'number')
+        .filter(([k, v]) => typeof v === "number")
         .map(([k, v]) => `${k}: ${(v as number).toFixed(4)}`)
-        .join(', ');
+        .join(", ");
 
       if (fitMetrics) {
-        addStatusMessage('progress', `✅ Round ${data.round} [train] - ${fitMetrics}`);
+        addStatusMessage(
+          "progress",
+          `✅ Round ${data.round} [train] - ${fitMetrics}`,
+        );
       }
       if (evalMetrics) {
-        addStatusMessage('progress', `✅ Round ${data.round} [val] - ${evalMetrics}`);
+        addStatusMessage(
+          "progress",
+          `✅ Round ${data.round} [val] - ${evalMetrics}`,
+        );
       }
     });
 
@@ -318,23 +366,26 @@ export const useTrainingExecution = (
     //   );
     // });
 
-    ws.on('epoch_start', (data: EpochStartData) => {
-      addStatusMessage('info', `Starting epoch ${data.epoch}/${data.total_epochs}...`);
+    ws.on("epoch_start", (data: EpochStartData) => {
+      addStatusMessage(
+        "info",
+        `Starting epoch ${data.epoch}/${data.total_epochs}...`,
+      );
       const epochProgress = ((data.epoch - 1) / data.total_epochs) * 100;
       setProgress(Math.min(epochProgress, 95));
     });
 
-    ws.on('epoch_end', (data: EpochEndData) => {
+    ws.on("epoch_end", (data: EpochEndData) => {
       const metrics = data.metrics;
       const metricsStr = Object.entries(metrics)
-        .filter(([_, v]) => typeof v === 'number')
+        .filter(([_, v]) => typeof v === "number")
         .map(([k, v]) => `${k}: ${(v as number).toFixed(4)}`)
-        .join(', ');
+        .join(", ");
 
       addStatusMessage(
-        'progress',
+        "progress",
         `Epoch ${data.epoch} [${data.phase}] - ${metricsStr}`,
-        metrics.accuracy ? metrics.accuracy * 100 : undefined
+        metrics.accuracy ? metrics.accuracy * 100 : undefined,
       );
 
       if (totalEpochs > 0) {
@@ -343,49 +394,79 @@ export const useTrainingExecution = (
       }
     });
 
-    ws.on('status', (data: StatusData) => {
+    ws.on("status", (data: StatusData) => {
       if (data.message) {
-        addStatusMessage('info', data.message);
+        addStatusMessage("info", data.message);
       }
 
-      if (data.status === 'completed') {
+      if (data.status === "completed") {
         setProgress(100);
         setIsRunning(false);
-        setOverallStatus('completed');
-        toast.success('Training completed successfully!');
-      } else if (data.status === 'failed') {
+        setOverallStatus("completed");
+        toast.success("Training completed successfully!");
+      } else if (data.status === "failed") {
         setIsRunning(false);
-        setOverallStatus('error');
-        toast.error('Training failed!');
-      } else if (data.status === 'running') {
-        setOverallStatus('running');
+        setOverallStatus("error");
+        toast.error("Training failed!");
+      } else if (data.status === "running") {
+        setOverallStatus("running");
       }
     });
 
-    ws.on('training_end', (data: TrainingEndData) => {
+    ws.on("training_end", (data: TrainingEndData) => {
       // Flush any remaining buffered messages before showing completion
       flushMessageBuffer();
 
-      if (data.status === 'completed') {
-        addStatusMessage('success', `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, undefined, { immediate: true });
-        addStatusMessage('success', `✅ Training completed! Run ID: ${data.run_id}`, undefined, { immediate: true });
-        addStatusMessage('info', `Best epoch: ${data.best_epoch}, Best recall: ${data.best_val_recall?.toFixed(4) || 'N/A'}`, undefined, { immediate: true });
-        addStatusMessage('info', `Total epochs: ${data.total_epochs}, Duration: ${data.training_duration || 'N/A'}`, undefined, { immediate: true });
-        addStatusMessage('success', `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`, undefined, { immediate: true });
+      if (data.status === "completed") {
+        addStatusMessage(
+          "success",
+          `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          undefined,
+          { immediate: true },
+        );
+        addStatusMessage(
+          "success",
+          `✅ Training completed! Run ID: ${data.run_id}`,
+          undefined,
+          { immediate: true },
+        );
+        addStatusMessage(
+          "info",
+          `Best epoch: ${data.best_epoch}, Best recall: ${data.best_val_recall?.toFixed(4) || "N/A"}`,
+          undefined,
+          { immediate: true },
+        );
+        addStatusMessage(
+          "info",
+          `Total epochs: ${data.total_epochs}, Duration: ${data.training_duration || "N/A"}`,
+          undefined,
+          { immediate: true },
+        );
+        addStatusMessage(
+          "success",
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`,
+          undefined,
+          { immediate: true },
+        );
         setProgress(100);
         setIsRunning(false);
-        setOverallStatus('completed');
-        toast.success('Training completed successfully!');
+        setOverallStatus("completed");
+        toast.success("Training completed successfully!");
 
         // Trigger navigation to results view
         if (data.run_id) {
           onComplete(data.run_id);
         }
       } else {
-        addStatusMessage('error', `Training failed for run ${data.run_id}`, undefined, { immediate: true });
+        addStatusMessage(
+          "error",
+          `Training failed for run ${data.run_id}`,
+          undefined,
+          { immediate: true },
+        );
         setIsRunning(false);
-        setOverallStatus('error');
-        toast.error('Training failed!');
+        setOverallStatus("error");
+        toast.error("Training failed!");
       }
 
       if (wsRef.current) {
@@ -394,19 +475,48 @@ export const useTrainingExecution = (
       }
     });
 
-    ws.on('early_stopping', (data: EarlyStoppingData) => {
-      console.log('[TrainingExecution] early_stopping handler called:', data);
+    ws.on("early_stopping", (data: EarlyStoppingData) => {
+      console.log("[TrainingExecution] early_stopping handler called:", data);
 
       // Show prominent log messages
-      addStatusMessage('info', `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, undefined, { immediate: true });
-      addStatusMessage('success', `⏹️ Early Stopping Triggered`, undefined, { immediate: true });
-      addStatusMessage('info', `   Stopped at epoch: ${data.epoch}`, undefined, { immediate: true });
-      addStatusMessage('info', `   Best ${data.metric_name}: ${data.best_metric_value?.toFixed(4) || 'N/A'}`, undefined, { immediate: true });
-      addStatusMessage('info', `   Patience: ${data.patience} epochs without improvement`, undefined, { immediate: true });
+      addStatusMessage(
+        "info",
+        `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        undefined,
+        { immediate: true },
+      );
+      addStatusMessage("success", `⏹️ Early Stopping Triggered`, undefined, {
+        immediate: true,
+      });
+      addStatusMessage(
+        "info",
+        `   Stopped at epoch: ${data.epoch}`,
+        undefined,
+        { immediate: true },
+      );
+      addStatusMessage(
+        "info",
+        `   Best ${data.metric_name}: ${data.best_metric_value?.toFixed(4) || "N/A"}`,
+        undefined,
+        { immediate: true },
+      );
+      addStatusMessage(
+        "info",
+        `   Patience: ${data.patience} epochs without improvement`,
+        undefined,
+        { immediate: true },
+      );
       if (data.reason) {
-        addStatusMessage('info', `   ${data.reason}`, undefined, { immediate: true });
+        addStatusMessage("info", `   ${data.reason}`, undefined, {
+          immediate: true,
+        });
       }
-      addStatusMessage('info', `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`, undefined, { immediate: true });
+      addStatusMessage(
+        "info",
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`,
+        undefined,
+        { immediate: true },
+      );
 
       // Show toast notification
       toast.info(`Early Stopping: Training stopped at epoch ${data.epoch}`, {
@@ -414,12 +524,14 @@ export const useTrainingExecution = (
       });
     });
 
-    ws.on('error', (data: ErrorData) => {
-      console.error('[TrainingExecution] WebSocket error:', data);
+    ws.on("error", (data: ErrorData) => {
+      console.error("[TrainingExecution] WebSocket error:", data);
       flushMessageBuffer(); // Flush before showing error
       setIsRunning(false);
-      setOverallStatus('error');
-      addStatusMessage('error', `Error: ${data.error}`, undefined, { immediate: true });
+      setOverallStatus("error");
+      addStatusMessage("error", `Error: ${data.error}`, undefined, {
+        immediate: true,
+      });
       toast.error(`Training error: ${data.error}`);
 
       if (wsRef.current) {
@@ -428,13 +540,23 @@ export const useTrainingExecution = (
       }
     });
 
-    ws.on('disconnected', () => {
+    ws.on("disconnected", () => {
       flushMessageBuffer(); // Flush on disconnect
-      addStatusMessage('info', 'Disconnected from training progress stream', undefined, { immediate: true });
-      if (overallStatus === 'running') {
+      addStatusMessage(
+        "info",
+        "Disconnected from training progress stream",
+        undefined,
+        { immediate: true },
+      );
+      if (overallStatus === "running") {
         setIsRunning(false);
-        setOverallStatus('error');
-        addStatusMessage('error', 'Connection lost during training', undefined, { immediate: true });
+        setOverallStatus("error");
+        addStatusMessage(
+          "error",
+          "Connection lost during training",
+          undefined,
+          { immediate: true },
+        );
       }
     });
 
@@ -443,13 +565,13 @@ export const useTrainingExecution = (
 
   const startTraining = async () => {
     if (!datasetFile) {
-      toast.error('Please upload a dataset file first');
+      toast.error("Please upload a dataset file first");
       return;
     }
 
     try {
       setIsRunning(true);
-      setOverallStatus('running');
+      setOverallStatus("running");
       setProgress(0);
       setStatusMessages([]);
       setRunId(null);
@@ -460,13 +582,22 @@ export const useTrainingExecution = (
       setFederatedRounds([]);
       setFederatedContext({ numRounds: 0, numClients: 0 });
 
-      addStatusMessage('info', 'Preparing to start training...', undefined, { immediate: true });
+      addStatusMessage("info", "Preparing to start training...", undefined, {
+        immediate: true,
+      });
 
       const expName = generateExperimentName(config.trainingMode);
       setExperimentId(expName);
-      addStatusMessage('info', `Experiment: ${expName}`, undefined, { immediate: true });
+      addStatusMessage("info", `Experiment: ${expName}`, undefined, {
+        immediate: true,
+      });
 
-      addStatusMessage('info', 'Uploading dataset and starting training...', undefined, { immediate: true });
+      addStatusMessage(
+        "info",
+        "Uploading dataset and starting training...",
+        undefined,
+        { immediate: true },
+      );
 
       // Convert trainSplit (e.g., 80%) to validation_split (e.g., 0.20)
       const validationSplit = (100 - trainSplit) / 100;
@@ -474,48 +605,78 @@ export const useTrainingExecution = (
         system: { validation_split: validationSplit },
       });
 
-      console.log(`[TrainingExecution] Setting validation_split=${validationSplit} (trainSplit=${trainSplit}%)`);
+      console.log(
+        `[TrainingExecution] Setting validation_split=${validationSplit} (trainSplit=${trainSplit}%)`,
+      );
       await api.configuration.setConfiguration(backendConfig);
-      addStatusMessage('info', `Configuration set: Train ${trainSplit}% / Validation ${100 - trainSplit}%`, undefined, { immediate: true });
+      addStatusMessage(
+        "info",
+        `Configuration set: Train ${trainSplit}% / Validation ${100 - trainSplit}%`,
+        undefined,
+        { immediate: true },
+      );
 
       setupWebSocket(expName);
 
       let response;
-      if (config.trainingMode === 'centralized') {
-        response = await api.experiments.startCentralizedTraining(datasetFile, expName);
-      } else if (config.trainingMode === 'federated') {
+      if (config.trainingMode === "centralized") {
+        response = await api.experiments.startCentralizedTraining(
+          datasetFile,
+          expName,
+        );
+      } else if (config.trainingMode === "federated") {
         response = await api.experiments.startFederatedTraining(
           datasetFile,
           expName,
-          'stage2_train_metadata.csv',
-          config.federatedRounds || 3
+          "stage2_train_metadata.csv",
+          config.federatedRounds || 3,
         );
       } else {
-        addStatusMessage('info', 'Running both centralized and federated training...', undefined, { immediate: true });
-        await api.experiments.startCentralizedTraining(datasetFile, `${expName}_centralized`);
+        addStatusMessage(
+          "info",
+          "Running both centralized and federated training...",
+          undefined,
+          { immediate: true },
+        );
+        await api.experiments.startCentralizedTraining(
+          datasetFile,
+          `${expName}_centralized`,
+        );
         response = await api.experiments.startFederatedTraining(
           datasetFile,
           `${expName}_federated`,
-          'stage2_train_metadata.csv',
-          config.federatedRounds || 3
+          "stage2_train_metadata.csv",
+          config.federatedRounds || 3,
         );
       }
 
-      addStatusMessage('success', response.message || 'Training started successfully', undefined, { immediate: true });
-      addStatusMessage('info', 'Waiting for progress updates...', undefined, { immediate: true });
+      addStatusMessage(
+        "success",
+        response.message || "Training started successfully",
+        undefined,
+        { immediate: true },
+      );
+      addStatusMessage("info", "Waiting for progress updates...", undefined, {
+        immediate: true,
+      });
     } catch (error: any) {
-      console.error('Failed to start training:', error);
+      console.error("Failed to start training:", error);
       flushMessageBuffer(); // Flush any pending messages before showing error
       setIsRunning(false);
-      setOverallStatus('error');
-      addStatusMessage('error', `Failed to start training: ${error.message || 'Unknown error'}`, undefined, { immediate: true });
-      toast.error('Failed to start training. Please try again.');
+      setOverallStatus("error");
+      addStatusMessage(
+        "error",
+        `Failed to start training: ${error.message || "Unknown error"}`,
+        undefined,
+        { immediate: true },
+      );
+      toast.error("Failed to start training. Please try again.");
     }
   };
 
   const handleCompleteStep = () => {
     if (runId === null) {
-      toast.error('No run ID available. Cannot proceed to results.');
+      toast.error("No run ID available. Cannot proceed to results.");
       return;
     }
     onComplete(runId);

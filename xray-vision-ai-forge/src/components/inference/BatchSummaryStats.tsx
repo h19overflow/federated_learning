@@ -6,16 +6,26 @@
  * confidence metrics, processing time, detection rates, and high-risk warnings.
  */
 
-import React from 'react';
-import { CheckCircle2, XCircle, AlertTriangle, Clock, TrendingUp, Activity, BarChart3 } from 'lucide-react';
-import { BatchSummaryStats as BatchSummaryStatsType } from '@/types/inference';
-import { Progress } from '@/components/ui/progress';
+import React from "react";
+import {
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Clock,
+  TrendingUp,
+  Activity,
+  BarChart3,
+} from "lucide-react";
+import { BatchSummaryStats as BatchSummaryStatsType } from "@/types/inference";
+import { Progress } from "@/components/ui/progress";
 
 interface BatchSummaryStatsProps {
   summary: BatchSummaryStatsType;
 }
 
-export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({ summary }) => {
+export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({
+  summary,
+}) => {
   const {
     total_images,
     successful,
@@ -29,9 +39,12 @@ export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({ summary })
 
   const successRate = total_images > 0 ? (successful / total_images) * 100 : 0;
   const avgConfidencePercent = avg_confidence * 100;
-  const pneumoniaDetectionRate = successful > 0 ? (pneumonia_count / successful) * 100 : 0;
-  const normalDetectionRate = successful > 0 ? (normal_count / successful) * 100 : 0;
-  const totalProcessingTimeSeconds = (avg_processing_time_ms * successful) / 1000;
+  const pneumoniaDetectionRate =
+    successful > 0 ? (pneumonia_count / successful) * 100 : 0;
+  const normalDetectionRate =
+    successful > 0 ? (normal_count / successful) * 100 : 0;
+  const totalProcessingTimeSeconds =
+    (avg_processing_time_ms * successful) / 1000;
   const avgProcessingTimeSeconds = avg_processing_time_ms / 1000;
 
   return (
@@ -46,7 +59,8 @@ export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({ summary })
             Batch Analysis Summary
           </h3>
           <p className="text-sm text-[hsl(215_15%_45%)]">
-            {total_images} image{total_images !== 1 ? 's' : ''} processed in {totalProcessingTimeSeconds.toFixed(1)}s
+            {total_images} image{total_images !== 1 ? "s" : ""} processed in{" "}
+            {totalProcessingTimeSeconds.toFixed(1)}s
           </p>
         </div>
       </div>
@@ -141,7 +155,7 @@ export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({ summary })
                 {normal_count}
               </p>
               <span className="text-sm text-[hsl(152_60%_35%)] mb-1">
-                {successful > 0 ? `(${normalDetectionRate.toFixed(1)}%)` : '-'}
+                {successful > 0 ? `(${normalDetectionRate.toFixed(1)}%)` : "-"}
               </span>
             </div>
             <div className="mt-2 w-full bg-white/50 rounded-full h-2">
@@ -165,7 +179,9 @@ export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({ summary })
                 {pneumonia_count}
               </p>
               <span className="text-sm text-[hsl(35_70%_40%)] mb-1">
-                {successful > 0 ? `(${pneumoniaDetectionRate.toFixed(1)}%)` : '-'}
+                {successful > 0
+                  ? `(${pneumoniaDetectionRate.toFixed(1)}%)`
+                  : "-"}
               </span>
             </div>
             <div className="mt-2 w-full bg-white/50 rounded-full h-2">
@@ -195,11 +211,15 @@ export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({ summary })
                 Overall confidence across all successful predictions
               </p>
             </div>
-            <span className={`text-3xl font-bold ${
-              avgConfidencePercent >= 90 ? 'text-[hsl(152_60%_30%)]' :
-              avgConfidencePercent >= 70 ? 'text-[hsl(35_70%_35%)]' :
-              'text-[hsl(0_70%_40%)]'
-            }`}>
+            <span
+              className={`text-3xl font-bold ${
+                avgConfidencePercent >= 90
+                  ? "text-[hsl(152_60%_30%)]"
+                  : avgConfidencePercent >= 70
+                    ? "text-[hsl(35_70%_35%)]"
+                    : "text-[hsl(0_70%_40%)]"
+              }`}
+            >
               {avgConfidencePercent.toFixed(1)}%
             </span>
           </div>
@@ -225,8 +245,9 @@ export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({ summary })
                 High Risk Detections
               </h4>
               <p className="text-[hsl(35_70%_40%)] leading-relaxed">
-                <span className="font-bold text-2xl">{high_risk_count}</span> image{high_risk_count !== 1 ? 's' : ''} flagged as high or critical risk.
-                Review clinical interpretations carefully.
+                <span className="font-bold text-2xl">{high_risk_count}</span>{" "}
+                image{high_risk_count !== 1 ? "s" : ""} flagged as high or
+                critical risk. Review clinical interpretations carefully.
               </p>
             </div>
           </div>

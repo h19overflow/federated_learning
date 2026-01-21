@@ -20,6 +20,7 @@ Migration Strategy:
     - Production: Use Alembic migrations (alembic upgrade head)
     - The USE_ALEMBIC environment variable controls behavior
 """
+
 import logging
 import os
 from sqlalchemy import create_engine, inspect
@@ -80,7 +81,7 @@ def _get_engine():
             pool_pre_ping=True,
             pool_recycle=3600,
             echo=False,
-            connect_args={"connect_timeout": 10}
+            connect_args={"connect_timeout": 10},
         )
 
         # Create session factory bound to the global engine
@@ -144,13 +145,11 @@ def create_tables(force: bool = False):
             "[MIGRATION-AWARE] USE_ALEMBIC=true detected. "
             "Schema changes should be managed via Alembic migrations."
         )
-        logger.warning(
-            "To apply migrations, run: alembic upgrade head"
+        logger.warning("To apply migrations, run: alembic upgrade head")
+        logger.warning("To force table creation anyway, call create_tables(force=True)")
+        logger.info(
+            "Skipping Base.metadata.create_all() - using Alembic for schema management"
         )
-        logger.warning(
-            "To force table creation anyway, call create_tables(force=True)"
-        )
-        logger.info("Skipping Base.metadata.create_all() - using Alembic for schema management")
 
         # Verify tables exist (but don't create them)
         inspector = inspect(engine)
@@ -174,7 +173,9 @@ def create_tables(force: bool = False):
 
     # Development mode or force=True: Create tables directly
     if force:
-        logger.info("[FORCE MODE] Creating database tables via Base.metadata.create_all()...")
+        logger.info(
+            "[FORCE MODE] Creating database tables via Base.metadata.create_all()..."
+        )
     else:
         logger.info("Creating database tables via Base.metadata.create_all()...")
 
@@ -198,7 +199,9 @@ def create_tables(force: bool = False):
     if created_all:
         logger.info("[OK] All expected tables are present in the database.")
     else:
-        logger.warning("[!] Some expected tables were not found after creation attempt.")
+        logger.warning(
+            "[!] Some expected tables were not found after creation attempt."
+        )
 
     return engine
 

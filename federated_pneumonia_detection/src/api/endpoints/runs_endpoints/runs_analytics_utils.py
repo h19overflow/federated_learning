@@ -6,15 +6,17 @@ and generating analytics responses. Separated from endpoint definitions to follo
 SOLID principles and maintain clean separation of concerns.
 """
 
-from typing import Optional, List
 from datetime import datetime, timedelta
+from typing import List, Optional
+
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 from federated_pneumonia_detection.src.api.endpoints.schema.runs_schemas import (
     AnalyticsSummaryResponse,
-    ModeMetrics
+    ModeMetrics,
 )
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+
 from .shared.metrics import RunAggregator, get_metric_extractor
 
 logger = get_logger(__name__)
@@ -25,7 +27,7 @@ def generate_analytics_summary(
     runs: List,
     status: str,
     training_mode: Optional[str],
-    days: Optional[int]
+    days: Optional[int],
 ) -> AnalyticsSummaryResponse:
     """
     Generate analytics summary from filtered runs.
@@ -41,6 +43,7 @@ def generate_analytics_summary(
         AnalyticsSummaryResponse with aggregated statistics and top runs
     """
     from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+
     from .shared.services import RunRanker
 
     # Apply time filter if specified
@@ -72,7 +75,9 @@ def generate_analytics_summary(
     # of all status-matching runs passed through additional filters (training_mode, days, etc.)
     total_runs = len(runs)
     all_status_runs = run_crud.get_by_status(db, status)
-    filtered_run_ratio = total_runs / len(all_status_runs) if len(all_status_runs) > 0 else 0.0
+    filtered_run_ratio = (
+        total_runs / len(all_status_runs) if len(all_status_runs) > 0 else 0.0
+    )
 
     logger.info(
         f"Analytics summary generated: {total_runs} runs "
@@ -82,10 +87,12 @@ def generate_analytics_summary(
 
     return AnalyticsSummaryResponse(
         total_runs=total_runs,
-        success_rate=round(filtered_run_ratio, 4),  # Proportion: filtered_count / all_status_count
+        success_rate=round(
+            filtered_run_ratio, 4
+        ),  # Proportion: filtered_count / all_status_count
         centralized=ModeMetrics(**centralized_stats),
         federated=ModeMetrics(**federated_stats),
-        top_runs=top_runs
+        top_runs=top_runs,
     )
 
 
@@ -110,18 +117,24 @@ def extract_run_detail(db: Session, run) -> Optional[dict]:
 
         duration_minutes = None
         if run.start_time and run.end_time:
-            duration_minutes = round((run.end_time - run.start_time).total_seconds() / 60, 2)
+            duration_minutes = round(
+                (run.end_time - run.start_time).total_seconds() / 60, 2
+            )
 
         return {
             "run_id": run.id,
             "training_mode": run.training_mode,
             "best_accuracy": round(accuracy, 4) if accuracy else None,
-            "best_precision": round(extractor.get_best_metric(db, run.id, "precision") or 0, 4),
-            "best_recall": round(extractor.get_best_metric(db, run.id, "recall") or 0, 4),
+            "best_precision": round(
+                extractor.get_best_metric(db, run.id, "precision") or 0, 4
+            ),
+            "best_recall": round(
+                extractor.get_best_metric(db, run.id, "recall") or 0, 4
+            ),
             "best_f1": round(extractor.get_best_metric(db, run.id, "f1_score") or 0, 4),
             "duration_minutes": duration_minutes,
             "start_time": run.start_time.isoformat() if run.start_time else None,
-            "status": run.status
+            "status": run.status,
         }
     except Exception as e:
         logger.error(f"Error extracting details for run {run.id}: {e}")
@@ -141,12 +154,12 @@ def create_empty_response() -> AnalyticsSummaryResponse:
         avg_precision=None,
         avg_recall=None,
         avg_f1=None,
-        avg_duration_minutes=None
+        avg_duration_minutes=None,
     )
     return AnalyticsSummaryResponse(
         total_runs=0,
         success_rate=0.0,
         centralized=empty_stats,
         federated=empty_stats,
-        top_runs=[]
+        top_runs=[],
     )

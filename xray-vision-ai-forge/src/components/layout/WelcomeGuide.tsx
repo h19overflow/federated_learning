@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,17 +6,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, ArrowLeft } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface WelcomeGuideProps {
   onClose: () => void;
-  initialGuide?: 'training' | 'inference';
+  initialGuide?: "training" | "inference";
 }
 
-type GuideType = 'training' | 'inference';
+type GuideType = "training" | "inference";
 
 interface Step {
   title: string;
@@ -30,7 +30,10 @@ interface Step {
  * Redesigned to match Landing page aesthetic - Apple-inspired, glass morphism, deep teal
  * Supports both Training and Inference guides
  */
-const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps) => {
+const WelcomeGuide = ({
+  onClose,
+  initialGuide = "training",
+}: WelcomeGuideProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [open, setOpen] = useState(true);
   const [activeGuide, setActiveGuide] = useState<GuideType>(initialGuide);
@@ -40,97 +43,263 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
   const icons = {
     welcome: (
       <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
-        <circle cx="20" cy="20" r="16" stroke="hsl(172 63% 22%)" strokeWidth="2" fill="hsl(168 40% 95%)" />
-        <path d="M13 20c0-3.9 3.1-7 7-7s7 3.1 7 7-3.1 7-7 7" stroke="hsl(172 63% 22%)" strokeWidth="2" strokeLinecap="round" />
+        <circle
+          cx="20"
+          cy="20"
+          r="16"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          fill="hsl(168 40% 95%)"
+        />
+        <path
+          d="M13 20c0-3.9 3.1-7 7-7s7 3.1 7 7-3.1 7-7 7"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
         <circle cx="20" cy="20" r="3" fill="hsl(172 63% 22%)" />
-        <path d="M20 7v3M20 30v3M7 20h3M30 20h3" stroke="hsl(172 40% 70%)" strokeWidth="1.5" strokeLinecap="round" />
+        <path
+          d="M20 7v3M20 30v3M7 20h3M30 20h3"
+          stroke="hsl(172 40% 70%)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
       </svg>
     ),
     upload: (
       <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
-        <rect x="7" y="12" width="26" height="21" rx="3" stroke="hsl(172 63% 22%)" strokeWidth="2" fill="hsl(168 40% 95%)" />
+        <rect
+          x="7"
+          y="12"
+          width="26"
+          height="21"
+          rx="3"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          fill="hsl(168 40% 95%)"
+        />
         <path d="M7 18h26" stroke="hsl(172 63% 22%)" strokeWidth="2" />
         <circle cx="12" cy="15" r="1.5" fill="hsl(172 63% 35%)" />
         <circle cx="17" cy="15" r="1.5" fill="hsl(172 63% 35%)" />
-        <path d="M20 24v6M17 27l3-3 3 3" stroke="hsl(172 63% 22%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d="M20 24v6M17 27l3-3 3 3"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     ),
     configure: (
       <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
-        <circle cx="20" cy="20" r="13" stroke="hsl(172 63% 22%)" strokeWidth="2" fill="hsl(168 40% 95%)" />
-        <path d="M20 10v5m0 10v5m-10-10h5m10 0h5" stroke="hsl(172 63% 22%)" strokeWidth="2" strokeLinecap="round" />
+        <circle
+          cx="20"
+          cy="20"
+          r="13"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          fill="hsl(168 40% 95%)"
+        />
+        <path
+          d="M20 10v5m0 10v5m-10-10h5m10 0h5"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
         <circle cx="20" cy="20" r="4" fill="hsl(172 63% 22%)" />
-        <circle cx="20" cy="20" r="7" stroke="hsl(172 40% 70%)" strokeWidth="1" strokeDasharray="2 2" />
+        <circle
+          cx="20"
+          cy="20"
+          r="7"
+          stroke="hsl(172 40% 70%)"
+          strokeWidth="1"
+          strokeDasharray="2 2"
+        />
       </svg>
     ),
     train: (
       <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
-        <path d="M7 30l8-8 6 6 14-14" stroke="hsl(172 63% 22%)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <path
+          d="M7 30l8-8 6 6 14-14"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
         <circle cx="33" cy="14" r="4" fill="hsl(152 60% 42%)" />
-        <path d="M7 33h26" stroke="hsl(172 30% 80%)" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="15" cy="22" r="2.5" fill="hsl(168 40% 95%)" stroke="hsl(172 63% 22%)" strokeWidth="1.5" />
+        <path
+          d="M7 33h26"
+          stroke="hsl(172 30% 80%)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <circle
+          cx="15"
+          cy="22"
+          r="2.5"
+          fill="hsl(168 40% 95%)"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="1.5"
+        />
       </svg>
     ),
     analyze: (
       <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
-        <rect x="5" y="8" width="13" height="24" rx="2" stroke="hsl(172 63% 22%)" strokeWidth="2" fill="hsl(168 40% 95%)" />
-        <rect x="22" y="8" width="13" height="24" rx="2" stroke="hsl(172 63% 22%)" strokeWidth="2" fill="hsl(168 40% 95%)" />
-        <path d="M9 15h5M9 20h5M9 25h3" stroke="hsl(172 50% 50%)" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M26 15h5M26 20h5M26 25h3" stroke="hsl(172 50% 50%)" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M18 17l2 2 2-2M18 23l2-2 2 2" stroke="hsl(152 60% 42%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <rect
+          x="5"
+          y="8"
+          width="13"
+          height="24"
+          rx="2"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          fill="hsl(168 40% 95%)"
+        />
+        <rect
+          x="22"
+          y="8"
+          width="13"
+          height="24"
+          rx="2"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          fill="hsl(168 40% 95%)"
+        />
+        <path
+          d="M9 15h5M9 20h5M9 25h3"
+          stroke="hsl(172 50% 50%)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M26 15h5M26 20h5M26 25h3"
+          stroke="hsl(172 50% 50%)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M18 17l2 2 2-2M18 23l2-2 2 2"
+          stroke="hsl(152 60% 42%)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     ),
     image: (
       <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
-        <rect x="6" y="10" width="28" height="20" rx="3" stroke="hsl(172 63% 22%)" strokeWidth="2" fill="hsl(168 40% 95%)" />
-        <circle cx="14" cy="17" r="3" fill="hsl(172 40% 85%)" stroke="hsl(172 63% 22%)" strokeWidth="1.5" />
-        <path d="M6 26l8-6 6 4 8-6 6 5" stroke="hsl(172 63% 22%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <rect
+          x="6"
+          y="10"
+          width="28"
+          height="20"
+          rx="3"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          fill="hsl(168 40% 95%)"
+        />
+        <circle
+          cx="14"
+          cy="17"
+          r="3"
+          fill="hsl(172 40% 85%)"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M6 26l8-6 6 4 8-6 6 5"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     ),
     stethoscope: (
       <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
-        <path d="M12 8v10a8 8 0 0016 0V8" stroke="hsl(172 63% 22%)" strokeWidth="2" strokeLinecap="round" fill="none" />
+        <path
+          d="M12 8v10a8 8 0 0016 0V8"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          fill="none"
+        />
         <circle cx="12" cy="6" r="2" fill="hsl(172 63% 35%)" />
         <circle cx="28" cy="6" r="2" fill="hsl(172 63% 35%)" />
-        <circle cx="20" cy="28" r="5" fill="hsl(168 40% 95%)" stroke="hsl(172 63% 22%)" strokeWidth="2" />
+        <circle
+          cx="20"
+          cy="28"
+          r="5"
+          fill="hsl(168 40% 95%)"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+        />
         <circle cx="20" cy="28" r="2" fill="hsl(152 60% 42%)" />
       </svg>
     ),
     export: (
       <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
-        <rect x="8" y="6" width="24" height="28" rx="3" stroke="hsl(172 63% 22%)" strokeWidth="2" fill="hsl(168 40% 95%)" />
-        <path d="M14 15h12M14 21h8M14 27h10" stroke="hsl(172 50% 50%)" strokeWidth="2" strokeLinecap="round" />
-        <path d="M20 35v-6M16 32l4 4 4-4" stroke="hsl(152 60% 42%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <rect
+          x="8"
+          y="6"
+          width="24"
+          height="28"
+          rx="3"
+          stroke="hsl(172 63% 22%)"
+          strokeWidth="2"
+          fill="hsl(168 40% 95%)"
+        />
+        <path
+          d="M14 15h12M14 21h8M14 27h10"
+          stroke="hsl(172 50% 50%)"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+        <path
+          d="M20 35v-6M16 32l4 4 4-4"
+          stroke="hsl(152 60% 42%)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     ),
   };
 
   const trainingSteps: Step[] = [
     {
-      title: 'Train Your Model',
-      description: 'Build pneumonia detection models with your data',
+      title: "Train Your Model",
+      description: "Build pneumonia detection models with your data",
       content: (
         <div className="space-y-5">
           <p className="text-[hsl(215_15%_40%)] leading-relaxed">
             Train deep learning models to detect pneumonia from chest X-rays.
-            Choose between <span className="font-semibold text-[hsl(172_43%_25%)]">Centralized</span> or
-            privacy-preserving <span className="font-semibold text-[hsl(172_43%_25%)]">Federated Learning</span>.
+            Choose between{" "}
+            <span className="font-semibold text-[hsl(172_43%_25%)]">
+              Centralized
+            </span>{" "}
+            or privacy-preserving{" "}
+            <span className="font-semibold text-[hsl(172_43%_25%)]">
+              Federated Learning
+            </span>
+            .
           </p>
 
           {/* Training mode cards */}
           <div className="grid grid-cols-2 gap-3">
             {[
               {
-                title: 'Centralized',
-                badge: 'Traditional',
-                badgeColor: 'hsl(210 60% 40%)',
-                desc: 'Training on one machine',
+                title: "Centralized",
+                badge: "Traditional",
+                badgeColor: "hsl(210 60% 40%)",
+                desc: "Training on one machine",
               },
               {
-                title: 'Federated',
-                badge: 'Privacy-First',
-                badgeColor: 'hsl(172 63% 28%)',
-                desc: 'Distributed privacy-preserving',
+                title: "Federated",
+                badge: "Privacy-First",
+                badgeColor: "hsl(172 63% 28%)",
+                desc: "Distributed privacy-preserving",
               },
             ].map((mode, i) => (
               <div key={i} className="relative group">
@@ -138,12 +307,19 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
                 <div className="relative p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-[hsl(172_30%_88%)] hover:shadow-md transition-all">
                   <div
                     className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium mb-2"
-                    style={{ backgroundColor: `${mode.badgeColor}15`, color: mode.badgeColor }}
+                    style={{
+                      backgroundColor: `${mode.badgeColor}15`,
+                      color: mode.badgeColor,
+                    }}
                   >
                     {mode.badge}
                   </div>
-                  <h4 className="font-semibold text-[hsl(172_43%_18%)] text-sm">{mode.title}</h4>
-                  <p className="text-xs text-[hsl(215_15%_50%)] mt-1">{mode.desc}</p>
+                  <h4 className="font-semibold text-[hsl(172_43%_18%)] text-sm">
+                    {mode.title}
+                  </h4>
+                  <p className="text-xs text-[hsl(215_15%_50%)] mt-1">
+                    {mode.desc}
+                  </p>
                 </div>
               </div>
             ))}
@@ -153,8 +329,8 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
       icon: icons.welcome,
     },
     {
-      title: 'Upload & Configure',
-      description: 'Prepare your dataset and set parameters',
+      title: "Upload & Configure",
+      description: "Prepare your dataset and set parameters",
       content: (
         <div className="space-y-5">
           <div className="relative group">
@@ -162,16 +338,28 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
             <div className="relative bg-white/75 backdrop-blur-sm rounded-[1.25rem] p-5 border border-[hsl(172_30%_88%)]">
               <div className="space-y-4">
                 {[
-                  { icon: icons.upload, title: 'Upload Dataset', desc: 'ZIP file with X-ray images organized by class' },
-                  { icon: icons.configure, title: 'Set Parameters', desc: 'Learning rate, batch size, epochs, train/val split' },
+                  {
+                    icon: icons.upload,
+                    title: "Upload Dataset",
+                    desc: "ZIP file with X-ray images organized by class",
+                  },
+                  {
+                    icon: icons.configure,
+                    title: "Set Parameters",
+                    desc: "Learning rate, batch size, epochs, train/val split",
+                  },
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="w-9 h-9 rounded-lg bg-[hsl(172_40%_94%)] flex items-center justify-center flex-shrink-0 [&>svg]:w-5 [&>svg]:h-5">
                       {item.icon}
                     </div>
                     <div>
-                      <span className="font-medium text-[hsl(172_43%_18%)] text-sm">{item.title}</span>
-                      <span className="text-[hsl(215_15%_50%)] text-xs block mt-0.5">{item.desc}</span>
+                      <span className="font-medium text-[hsl(172_43%_18%)] text-sm">
+                        {item.title}
+                      </span>
+                      <span className="text-[hsl(215_15%_50%)] text-xs block mt-0.5">
+                        {item.desc}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -181,7 +369,8 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
 
           <div className="p-3.5 rounded-xl bg-[hsl(35_60%_96%)] border border-[hsl(35_50%_85%)]">
             <p className="text-sm text-[hsl(35_50%_30%)]">
-              <span className="font-semibold text-[hsl(35_70%_35%)]">Tip:</span> Default values work great for most cases!
+              <span className="font-semibold text-[hsl(35_70%_35%)]">Tip:</span>{" "}
+              Default values work great for most cases!
             </p>
           </div>
         </div>
@@ -189,8 +378,8 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
       icon: icons.upload,
     },
     {
-      title: 'Train & Analyze',
-      description: 'Monitor progress and view results',
+      title: "Train & Analyze",
+      description: "Monitor progress and view results",
       content: (
         <div className="space-y-5">
           <div className="relative group">
@@ -198,16 +387,28 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
             <div className="relative bg-white/75 backdrop-blur-sm rounded-[1.25rem] p-5 border border-[hsl(172_30%_88%)]">
               <div className="space-y-4">
                 {[
-                  { icon: icons.train, title: 'Real-time Monitoring', desc: 'Watch loss, accuracy update live via WebSocket' },
-                  { icon: icons.analyze, title: 'Comprehensive Analytics', desc: 'Accuracy, precision, recall, F1, AUROC, confusion matrix' },
+                  {
+                    icon: icons.train,
+                    title: "Real-time Monitoring",
+                    desc: "Watch loss, accuracy update live via WebSocket",
+                  },
+                  {
+                    icon: icons.analyze,
+                    title: "Comprehensive Analytics",
+                    desc: "Accuracy, precision, recall, F1, AUROC, confusion matrix",
+                  },
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="w-9 h-9 rounded-lg bg-[hsl(172_40%_94%)] flex items-center justify-center flex-shrink-0 [&>svg]:w-5 [&>svg]:h-5">
                       {item.icon}
                     </div>
                     <div>
-                      <span className="font-medium text-[hsl(172_43%_18%)] text-sm">{item.title}</span>
-                      <span className="text-[hsl(215_15%_50%)] text-xs block mt-0.5">{item.desc}</span>
+                      <span className="font-medium text-[hsl(172_43%_18%)] text-sm">
+                        {item.title}
+                      </span>
+                      <span className="text-[hsl(215_15%_50%)] text-xs block mt-0.5">
+                        {item.desc}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -220,11 +421,22 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
             <div className="absolute inset-0 bg-gradient-to-r from-[hsl(172_55%_28%)] to-transparent opacity-50" />
             <div className="relative flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <svg
+                  className="w-4 h-4 text-white"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                >
+                  <path
+                    d="M8 3v10M3 8h10"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </div>
-              <span className="font-medium text-sm">Ready to train your first model!</span>
+              <span className="font-medium text-sm">
+                Ready to train your first model!
+              </span>
             </div>
           </div>
         </div>
@@ -235,30 +447,37 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
 
   const inferenceSteps: Step[] = [
     {
-      title: 'Analyze X-Rays',
-      description: 'Get instant AI-powered pneumonia detection',
+      title: "Analyze X-Rays",
+      description: "Get instant AI-powered pneumonia detection",
       content: (
         <div className="space-y-5">
           <p className="text-[hsl(215_15%_40%)] leading-relaxed">
-            Upload chest X-ray images and get instant predictions.
-            Supports <span className="font-semibold text-[hsl(172_43%_25%)]">single image</span> and
-            <span className="font-semibold text-[hsl(172_43%_25%)]"> batch analysis</span> modes.
+            Upload chest X-ray images and get instant predictions. Supports{" "}
+            <span className="font-semibold text-[hsl(172_43%_25%)]">
+              single image
+            </span>{" "}
+            and
+            <span className="font-semibold text-[hsl(172_43%_25%)]">
+              {" "}
+              batch analysis
+            </span>{" "}
+            modes.
           </p>
 
           {/* Mode cards */}
           <div className="grid grid-cols-2 gap-3">
             {[
               {
-                title: 'Single Image',
-                badge: 'Quick',
-                badgeColor: 'hsl(172 63% 28%)',
-                desc: 'Analyze one X-ray instantly',
+                title: "Single Image",
+                badge: "Quick",
+                badgeColor: "hsl(172 63% 28%)",
+                desc: "Analyze one X-ray instantly",
               },
               {
-                title: 'Batch Mode',
-                badge: 'Up to 500',
-                badgeColor: 'hsl(210 60% 40%)',
-                desc: 'Process multiple images at once',
+                title: "Batch Mode",
+                badge: "Up to 500",
+                badgeColor: "hsl(210 60% 40%)",
+                desc: "Process multiple images at once",
               },
             ].map((mode, i) => (
               <div key={i} className="relative group">
@@ -266,12 +485,19 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
                 <div className="relative p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-[hsl(172_30%_88%)] hover:shadow-md transition-all">
                   <div
                     className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium mb-2"
-                    style={{ backgroundColor: `${mode.badgeColor}15`, color: mode.badgeColor }}
+                    style={{
+                      backgroundColor: `${mode.badgeColor}15`,
+                      color: mode.badgeColor,
+                    }}
                   >
                     {mode.badge}
                   </div>
-                  <h4 className="font-semibold text-[hsl(172_43%_18%)] text-sm">{mode.title}</h4>
-                  <p className="text-xs text-[hsl(215_15%_50%)] mt-1">{mode.desc}</p>
+                  <h4 className="font-semibold text-[hsl(172_43%_18%)] text-sm">
+                    {mode.title}
+                  </h4>
+                  <p className="text-xs text-[hsl(215_15%_50%)] mt-1">
+                    {mode.desc}
+                  </p>
                 </div>
               </div>
             ))}
@@ -281,8 +507,8 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
       icon: icons.image,
     },
     {
-      title: 'Upload & Predict',
-      description: 'Simple drag-and-drop interface',
+      title: "Upload & Predict",
+      description: "Simple drag-and-drop interface",
       content: (
         <div className="space-y-5">
           <div className="relative group">
@@ -290,16 +516,28 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
             <div className="relative bg-white/75 backdrop-blur-sm rounded-[1.25rem] p-5 border border-[hsl(172_30%_88%)]">
               <div className="space-y-4">
                 {[
-                  { icon: icons.upload, title: 'Drag & Drop', desc: 'Simply drag X-ray image(s) onto the upload zone' },
-                  { icon: icons.stethoscope, title: 'Clinical Interpretation', desc: 'Get AI-generated clinical analysis with recommendations' },
+                  {
+                    icon: icons.upload,
+                    title: "Drag & Drop",
+                    desc: "Simply drag X-ray image(s) onto the upload zone",
+                  },
+                  {
+                    icon: icons.stethoscope,
+                    title: "Clinical Interpretation",
+                    desc: "Get AI-generated clinical analysis with recommendations",
+                  },
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="w-9 h-9 rounded-lg bg-[hsl(172_40%_94%)] flex items-center justify-center flex-shrink-0 [&>svg]:w-5 [&>svg]:h-5">
                       {item.icon}
                     </div>
                     <div>
-                      <span className="font-medium text-[hsl(172_43%_18%)] text-sm">{item.title}</span>
-                      <span className="text-[hsl(215_15%_50%)] text-xs block mt-0.5">{item.desc}</span>
+                      <span className="font-medium text-[hsl(172_43%_18%)] text-sm">
+                        {item.title}
+                      </span>
+                      <span className="text-[hsl(215_15%_50%)] text-xs block mt-0.5">
+                        {item.desc}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -309,7 +547,10 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
 
           <div className="p-3.5 rounded-xl bg-[hsl(35_60%_96%)] border border-[hsl(35_50%_85%)]">
             <p className="text-sm text-[hsl(35_50%_30%)]">
-              <span className="font-semibold text-[hsl(35_70%_35%)]">Supported:</span> PNG, JPEG, DICOM formats
+              <span className="font-semibold text-[hsl(35_70%_35%)]">
+                Supported:
+              </span>{" "}
+              PNG, JPEG, DICOM formats
             </p>
           </div>
         </div>
@@ -317,8 +558,8 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
       icon: icons.upload,
     },
     {
-      title: 'Review & Export',
-      description: 'Understand results and export data',
+      title: "Review & Export",
+      description: "Understand results and export data",
       content: (
         <div className="space-y-5">
           <div className="relative group">
@@ -326,16 +567,28 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
             <div className="relative bg-white/75 backdrop-blur-sm rounded-[1.25rem] p-5 border border-[hsl(172_30%_88%)]">
               <div className="space-y-4">
                 {[
-                  { icon: icons.analyze, title: 'Detailed Results', desc: 'Prediction confidence, class probabilities, clinical notes' },
-                  { icon: icons.export, title: 'Export Options', desc: 'Download batch results as CSV or JSON' },
+                  {
+                    icon: icons.analyze,
+                    title: "Detailed Results",
+                    desc: "Prediction confidence, class probabilities, clinical notes",
+                  },
+                  {
+                    icon: icons.export,
+                    title: "Export Options",
+                    desc: "Download batch results as CSV or JSON",
+                  },
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="w-9 h-9 rounded-lg bg-[hsl(172_40%_94%)] flex items-center justify-center flex-shrink-0 [&>svg]:w-5 [&>svg]:h-5">
                       {item.icon}
                     </div>
                     <div>
-                      <span className="font-medium text-[hsl(172_43%_18%)] text-sm">{item.title}</span>
-                      <span className="text-[hsl(215_15%_50%)] text-xs block mt-0.5">{item.desc}</span>
+                      <span className="font-medium text-[hsl(172_43%_18%)] text-sm">
+                        {item.title}
+                      </span>
+                      <span className="text-[hsl(215_15%_50%)] text-xs block mt-0.5">
+                        {item.desc}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -348,11 +601,22 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
             <div className="absolute inset-0 bg-gradient-to-r from-[hsl(172_55%_28%)] to-transparent opacity-50" />
             <div className="relative flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <svg
+                  className="w-4 h-4 text-white"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                >
+                  <path
+                    d="M8 3v10M3 8h10"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </div>
-              <span className="font-medium text-sm">Ready to analyze your first X-ray!</span>
+              <span className="font-medium text-sm">
+                Ready to analyze your first X-ray!
+              </span>
             </div>
           </div>
         </div>
@@ -361,7 +625,7 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
     },
   ];
 
-  const steps = activeGuide === 'training' ? trainingSteps : inferenceSteps;
+  const steps = activeGuide === "training" ? trainingSteps : inferenceSteps;
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
   const isFirstStep = currentStep === 0;
@@ -429,16 +693,24 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
           {/* Guide Type Tabs - refined */}
           <div className="relative flex border-b border-[hsl(168_20%_90%)]">
             {[
-              { key: 'training' as GuideType, label: 'Training Guide', icon: icons.configure },
-              { key: 'inference' as GuideType, label: 'Inference Guide', icon: icons.stethoscope },
+              {
+                key: "training" as GuideType,
+                label: "Training Guide",
+                icon: icons.configure,
+              },
+              {
+                key: "inference" as GuideType,
+                label: "Inference Guide",
+                icon: icons.stethoscope,
+              },
             ].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => handleGuideSwitch(tab.key)}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium transition-all ${
                   activeGuide === tab.key
-                    ? 'text-[hsl(172_63%_22%)] border-b-2 border-[hsl(172_63%_22%)] bg-[hsl(172_40%_98%)]'
-                    : 'text-[hsl(215_15%_50%)] hover:text-[hsl(172_43%_30%)] hover:bg-[hsl(168_25%_97%)]'
+                    ? "text-[hsl(172_63%_22%)] border-b-2 border-[hsl(172_63%_22%)] bg-[hsl(172_40%_98%)]"
+                    : "text-[hsl(215_15%_50%)] hover:text-[hsl(172_43%_30%)] hover:bg-[hsl(168_25%_97%)]"
                 }`}
               >
                 <span className="[&>svg]:w-4 [&>svg]:h-4">{tab.icon}</span>
@@ -478,7 +750,7 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
                   initial="enter"
                   animate="center"
                   exit="exit"
-                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
                 >
                   {currentStepData.content}
                 </motion.div>
@@ -494,10 +766,10 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
                   aria-label={`Go to step ${index + 1}`}
                   className={`rounded-full transition-all duration-300 ${
                     index === currentStep
-                      ? 'w-8 h-2 bg-[hsl(172_63%_22%)] shadow-md shadow-[hsl(172_63%_22%)]/30'
+                      ? "w-8 h-2 bg-[hsl(172_63%_22%)] shadow-md shadow-[hsl(172_63%_22%)]/30"
                       : index < currentStep
-                        ? 'w-2 h-2 bg-[hsl(152_60%_42%)]'
-                        : 'w-2 h-2 bg-[hsl(210_15%_85%)] hover:bg-[hsl(210_15%_75%)]'
+                        ? "w-2 h-2 bg-[hsl(152_60%_42%)]"
+                        : "w-2 h-2 bg-[hsl(210_15%_85%)] hover:bg-[hsl(210_15%_75%)]"
                   }`}
                 />
               ))}
@@ -530,7 +802,9 @@ const WelcomeGuide = ({ onClose, initialGuide = 'training' }: WelcomeGuideProps)
                   onClick={handleNext}
                   className="rounded-xl px-5 py-4 bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white shadow-lg shadow-[hsl(172_63%_22%)]/25 transition-all duration-300 hover:shadow-xl hover:shadow-[hsl(172_63%_22%)]/35 hover:-translate-y-0.5"
                 >
-                  {isLastStep ? 'Get Started' : (
+                  {isLastStep ? (
+                    "Get Started"
+                  ) : (
                     <>
                       Next <ArrowRight className="ml-1.5 h-4 w-4" />
                     </>

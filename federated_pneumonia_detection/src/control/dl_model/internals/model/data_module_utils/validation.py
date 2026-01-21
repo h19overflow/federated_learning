@@ -38,7 +38,7 @@ def validate_inputs(
         logger.error(f"Image directory path is not a directory: {image_dir}")
         raise ValueError(f"Image directory path is not a directory: {image_dir}")
 
-    if color_mode not in ['RGB', 'L']:
+    if color_mode not in ["RGB", "L"]:
         logger.error("color_mode must be 'RGB' or 'L'")
         raise ValueError("color_mode must be 'RGB' or 'L'")
 
@@ -47,7 +47,7 @@ def validate_inputs(
         raise ValueError("Both train and validation DataFrames are empty")
 
     # Validate required columns
-    for name, df in [('train', train_df), ('val', val_df)]:
+    for name, df in [("train", train_df), ("val", val_df)]:
         if not df.empty:
             required_cols = [filename_column, target_column]
             missing_cols = [col for col in required_cols if col not in df.columns]

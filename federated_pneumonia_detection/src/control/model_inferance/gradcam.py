@@ -37,7 +37,7 @@ class GradCAM:
         self.hooks = []
 
         # Get the actual model from Lightning wrapper if needed
-        if hasattr(model, 'model'):
+        if hasattr(model, "model"):
             self.base_model = model.model
         else:
             self.base_model = model
@@ -60,10 +60,10 @@ class GradCAM:
     def _get_last_conv_layer(self) -> torch.nn.Module:
         """Find the last convolutional layer in the model."""
         # For ResNetWithCustomHead, the features backbone is the ResNet
-        if hasattr(self.base_model, 'features'):
+        if hasattr(self.base_model, "features"):
             # Access layer4 of the ResNet backbone
             features = self.base_model.features
-            if hasattr(features, 'layer4'):
+            if hasattr(features, "layer4"):
                 return features.layer4
             # Fallback: find last Conv2d
             last_conv = None
@@ -85,6 +85,7 @@ class GradCAM:
 
     def _register_hooks(self):
         """Register forward and backward hooks on target layer."""
+
         def forward_hook(module, input, output):
             self.activations = output.detach()
 
@@ -173,7 +174,7 @@ class GradCAM:
 def generate_heatmap_overlay(
     original_image: Image.Image,
     heatmap: np.ndarray,
-    colormap: str = 'jet',
+    colormap: str = "jet",
     alpha: float = 0.4,
 ) -> Image.Image:
     """Overlay heatmap on original image.
@@ -188,7 +189,6 @@ def generate_heatmap_overlay(
         PIL Image with heatmap overlay
     """
     import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
 
     # Resize heatmap to match original image
     heatmap_resized = Image.fromarray((heatmap * 255).astype(np.uint8))
@@ -204,8 +204,8 @@ def generate_heatmap_overlay(
     heatmap_img = Image.fromarray(colored_heatmap)
 
     # Ensure original is RGB
-    if original_image.mode != 'RGB':
-        original_image = original_image.convert('RGB')
+    if original_image.mode != "RGB":
+        original_image = original_image.convert("RGB")
 
     # Blend images
     overlay = Image.blend(original_image, heatmap_img, alpha)
@@ -216,7 +216,7 @@ def generate_heatmap_overlay(
 def heatmap_to_base64(
     heatmap: np.ndarray,
     original_image: Image.Image,
-    colormap: str = 'jet',
+    colormap: str = "jet",
     alpha: float = 0.4,
 ) -> str:
     """Convert heatmap overlay to base64 string.
@@ -233,7 +233,7 @@ def heatmap_to_base64(
     overlay = generate_heatmap_overlay(original_image, heatmap, colormap, alpha)
 
     buffer = BytesIO()
-    overlay.save(buffer, format='PNG')
+    overlay.save(buffer, format="PNG")
     buffer.seek(0)
 
-    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    return base64.b64encode(buffer.getvalue()).decode("utf-8")

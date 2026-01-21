@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 
 def build_dataloader_kwargs(
-    config: 'ConfigManager',
+    config: "ConfigManager",
     shuffle: bool,
     pin_memory: bool,
     persistent_workers: bool,
@@ -31,21 +31,21 @@ def build_dataloader_kwargs(
     Returns:
         Dictionary with DataLoader kwargs
     """
-    num_workers = config.get('experiment.num_workers', 4)
+    num_workers = config.get("experiment.num_workers", 4)
 
     loader_kwargs = {
-        'batch_size': config.get('experiment.batch_size', 32),
-        'shuffle': shuffle,
-        'num_workers': num_workers,
-        'pin_memory': pin_memory,
-        'drop_last': False,
+        "batch_size": config.get("experiment.batch_size", 32),
+        "shuffle": shuffle,
+        "num_workers": num_workers,
+        "pin_memory": pin_memory,
+        "drop_last": False,
     }
 
     # Only set these parameters when using multiprocessing (num_workers > 0)
     if num_workers > 0:
-        loader_kwargs['persistent_workers'] = persistent_workers
-        loader_kwargs['prefetch_factor'] = prefetch_factor
-        loader_kwargs['worker_init_fn'] = worker_init_fn
+        loader_kwargs["persistent_workers"] = persistent_workers
+        loader_kwargs["prefetch_factor"] = prefetch_factor
+        loader_kwargs["worker_init_fn"] = worker_init_fn
 
     return loader_kwargs
 

@@ -39,7 +39,7 @@ class CustomImageDataset(Dataset):
         self,
         dataframe: pd.DataFrame,
         image_dir: Union[str, Path],
-        config: Optional['ConfigManager'] = None,
+        config: Optional["ConfigManager"] = None,
         filename_column: Optional[str] = None,
         target_column: Optional[str] = None,
         transform: Optional[Callable] = None,
@@ -64,7 +64,10 @@ class CustomImageDataset(Dataset):
             FileNotFoundError: If image directory doesn't exist
         """
         if config is None:
-            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            from federated_pneumonia_detection.config.config_manager import (
+                ConfigManager,
+            )
+
             config = ConfigManager()
 
         self.logger = get_logger(__name__)
@@ -74,8 +77,10 @@ class CustomImageDataset(Dataset):
         self.image_dir = Path(image_dir)
 
         # Get column names from config if not provided
-        self.filename_column = filename_column or config.get('columns.filename', 'filename')
-        self.target_column = target_column or config.get('columns.target', 'Target')
+        self.filename_column = filename_column or config.get(
+            "columns.filename", "filename"
+        )
+        self.target_column = target_column or config.get("columns.target", "Target")
 
         # Validate inputs
         validate_inputs(
@@ -98,7 +103,9 @@ class CustomImageDataset(Dataset):
 
             # Validate images if requested
             if validate_images:
-                self.valid_indices = validate_image_files(self.filenames, self.image_dir)
+                self.valid_indices = validate_image_files(
+                    self.filenames, self.image_dir
+                )
             else:
                 self.valid_indices = np.arange(len(self.filenames))
 
@@ -158,7 +165,9 @@ class CustomImageDataset(Dataset):
 
     def get_sample_info(self, idx: int) -> dict:
         """Get detailed information about a sample."""
-        return get_sample_info(idx, self.valid_indices, self.filenames, self.labels, self.image_dir)
+        return get_sample_info(
+            idx, self.valid_indices, self.filenames, self.labels, self.image_dir
+        )
 
     def validate_all_images(self) -> Tuple[int, int, list]:
         """Validate all images in the dataset."""

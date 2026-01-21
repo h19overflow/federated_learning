@@ -1,2 +1,2 @@
-export { ChatSidebar } from './ChatSidebar';
-export { KnowledgeBasePanel } from './KnowledgeBasePanel';
+export { ChatSidebar } from "./ChatSidebar";
+export { KnowledgeBasePanel } from "./KnowledgeBasePanel";

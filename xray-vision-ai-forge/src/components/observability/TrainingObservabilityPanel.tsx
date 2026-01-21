@@ -3,10 +3,10 @@
  * Shows accuracy and F1 metrics with summary cards and chart.
  */
 
-import React, { memo } from 'react';
-import { Activity, Percent, Zap } from 'lucide-react';
-import BatchMetricsChart from './BatchMetricsChart';
-import type { BatchMetricsDataPoint } from '@/types/api';
+import React, { memo } from "react";
+import { Activity, Percent, Zap } from "lucide-react";
+import BatchMetricsChart from "./BatchMetricsChart";
+import type { BatchMetricsDataPoint } from "@/types/api";
 
 interface TrainingObservabilityPanelProps {
   batchMetrics: BatchMetricsDataPoint[];
@@ -14,7 +14,7 @@ interface TrainingObservabilityPanelProps {
   currentAccuracy: number | null;
   currentF1: number | null;
   isReceiving: boolean;
-  trainingMode: 'centralized' | 'federated';
+  trainingMode: "centralized" | "federated";
 }
 
 const StatCard = memo(function StatCard({
@@ -50,9 +50,9 @@ const TrainingObservabilityPanel = memo(function TrainingObservabilityPanel({
   trainingMode,
 }: TrainingObservabilityPanelProps) {
   const formatPercent = (val: number | null) =>
-    val !== null ? `${(val * 100).toFixed(1)}%` : '—';
+    val !== null ? `${(val * 100).toFixed(1)}%` : "—";
   const formatLoss = (val: number | null) =>
-    val !== null ? val.toFixed(4) : '—';
+    val !== null ? val.toFixed(4) : "—";
 
   return (
     <div className="space-y-4 p-4 bg-[hsl(168_25%_97%)] rounded-2xl border border-[hsl(168_20%_90%)]">
@@ -71,15 +71,30 @@ const TrainingObservabilityPanel = memo(function TrainingObservabilityPanel({
           )}
         </div>
         <span className="text-xs px-2 py-1 rounded-full bg-[hsl(210_60%_95%)] text-[hsl(210_60%_40%)]">
-          {trainingMode === 'federated' ? 'Federated' : 'Centralized'}
+          {trainingMode === "federated" ? "Federated" : "Centralized"}
         </span>
       </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Loss" value={formatLoss(currentLoss)} icon={Activity} color="bg-[hsl(0_65%_55%)]" />
-        <StatCard label="Accuracy" value={formatPercent(currentAccuracy)} icon={Percent} color="bg-[hsl(172_63%_35%)]" />
-        <StatCard label="F1 Score" value={formatPercent(currentF1)} icon={Zap} color="bg-[hsl(210_60%_50%)]" />
+        <StatCard
+          label="Loss"
+          value={formatLoss(currentLoss)}
+          icon={Activity}
+          color="bg-[hsl(0_65%_55%)]"
+        />
+        <StatCard
+          label="Accuracy"
+          value={formatPercent(currentAccuracy)}
+          icon={Percent}
+          color="bg-[hsl(172_63%_35%)]"
+        />
+        <StatCard
+          label="F1 Score"
+          value={formatPercent(currentF1)}
+          icon={Zap}
+          color="bg-[hsl(210_60%_50%)]"
+        />
       </div>
 
       {/* Chart */}

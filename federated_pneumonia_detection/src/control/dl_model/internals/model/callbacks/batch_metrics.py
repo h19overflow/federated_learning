@@ -85,11 +85,17 @@ class BatchMetricsCallback(pl.Callback):
 
         if "train_acc" in trainer.callback_metrics:
             acc_tensor = trainer.callback_metrics["train_acc"]
-            accuracy = acc_tensor.item() if hasattr(acc_tensor, "item") else float(acc_tensor)
+            accuracy = (
+                acc_tensor.item() if hasattr(acc_tensor, "item") else float(acc_tensor)
+            )
 
         if "train_recall" in trainer.callback_metrics:
             recall_tensor = trainer.callback_metrics["train_recall"]
-            recall = recall_tensor.item() if hasattr(recall_tensor, "item") else float(recall_tensor)
+            recall = (
+                recall_tensor.item()
+                if hasattr(recall_tensor, "item")
+                else float(recall_tensor)
+            )
 
         if "train_f1" in trainer.callback_metrics:
             f1_tensor = trainer.callback_metrics["train_f1"]

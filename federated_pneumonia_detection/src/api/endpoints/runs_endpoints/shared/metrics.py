@@ -20,7 +20,9 @@ class MetricExtractor(ABC):
     """Base class for extracting metrics from different training modes."""
 
     @abstractmethod
-    def get_best_metric(self, db: Session, run_id: int, metric_name: str) -> Optional[float]:
+    def get_best_metric(
+        self, db: Session, run_id: int, metric_name: str
+    ) -> Optional[float]:
         """Extract best metric value for a run."""
         pass
 
@@ -28,7 +30,9 @@ class MetricExtractor(ABC):
 class FederatedMetricExtractor(MetricExtractor):
     """Extract metrics from federated runs via server evaluations."""
 
-    def get_best_metric(self, db: Session, run_id: int, metric_name: str) -> Optional[float]:
+    def get_best_metric(
+        self, db: Session, run_id: int, metric_name: str
+    ) -> Optional[float]:
         """Get best metric from server evaluations, excluding round 0."""
         summary = server_evaluation_crud.get_summary_stats(db, run_id)
         if not summary:
@@ -51,7 +55,9 @@ class CentralizedMetricExtractor(MetricExtractor):
         "auroc": "val_auroc",
     }
 
-    def get_best_metric(self, db: Session, run_id: int, metric_name: str) -> Optional[float]:
+    def get_best_metric(
+        self, db: Session, run_id: int, metric_name: str
+    ) -> Optional[float]:
         """Get best metric from run_metrics table."""
         # Use mapping to get actual database field name
         metric_field = self.METRIC_NAME_MAP.get(metric_name, f"val_{metric_name}")
@@ -74,7 +80,9 @@ class MetricsAggregator:
         items: List[Any], field: str, default: Optional[float] = None
     ) -> Optional[float]:
         """Get maximum value from collection."""
-        values = [getattr(item, field) for item in items if getattr(item, field) is not None]
+        values = [
+            getattr(item, field) for item in items if getattr(item, field) is not None
+        ]
         return max(values) if values else default
 
     @staticmethod
@@ -82,7 +90,9 @@ class MetricsAggregator:
         items: List[Any], field: str, default: Optional[float] = None
     ) -> Optional[float]:
         """Get minimum value from collection."""
-        values = [getattr(item, field) for item in items if getattr(item, field) is not None]
+        values = [
+            getattr(item, field) for item in items if getattr(item, field) is not None
+        ]
         return min(values) if values else default
 
     @staticmethod

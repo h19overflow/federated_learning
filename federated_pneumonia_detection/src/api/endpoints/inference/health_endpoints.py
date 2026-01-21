@@ -3,6 +3,7 @@
 Provides endpoint for monitoring the health and availability
 of the inference service, including model loading status and GPU availability.
 """
+
 import logging
 
 from fastapi import APIRouter, Depends

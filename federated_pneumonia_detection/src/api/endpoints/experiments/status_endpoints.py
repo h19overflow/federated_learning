@@ -11,16 +11,17 @@ Dependencies:
 - fastapi: HTTP endpoint framework
 """
 
-from fastapi import APIRouter, HTTPException
-from typing import Dict, Any
-from pathlib import Path
 import json
+from pathlib import Path
+from typing import Any, Dict
 
-from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+from fastapi import APIRouter, HTTPException
+
 from federated_pneumonia_detection.src.api.endpoints.experiments.utils import (
-    find_experiment_log_file,
     calculate_progress,
+    find_experiment_log_file,
 )
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 router = APIRouter(
     prefix="/experiments",

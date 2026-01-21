@@ -202,7 +202,9 @@ def prepare_trainer_and_callbacks_pl(
     )
 
     # Batch metrics callback - send batch-level metrics for real-time observability
-    batch_interval = batch_sample_interval or config.get("experiment.batch_sample_interval", 10)
+    batch_interval = batch_sample_interval or config.get(
+        "experiment.batch_sample_interval", 10
+    )
     batch_metrics_callback = BatchMetricsCallback(
         websocket_sender=websocket_sender,
         sample_interval=batch_interval,
@@ -211,7 +213,9 @@ def prepare_trainer_and_callbacks_pl(
     )
 
     # Gradient monitor callback - track gradient norms and learning rate
-    gradient_interval = gradient_sample_interval or config.get("experiment.gradient_sample_interval", 20)
+    gradient_interval = gradient_sample_interval or config.get(
+        "experiment.gradient_sample_interval", 20
+    )
     gradient_monitor_callback = GradientMonitorCallback(
         websocket_sender=websocket_sender,
         sample_interval=gradient_interval,

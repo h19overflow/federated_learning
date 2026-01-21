@@ -6,35 +6,50 @@
  * Supports both single image and batch analysis modes.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Activity, RefreshCw, Sparkles, Layers, Image as ImageIcon, Flame } from 'lucide-react';
-import { Header, Footer, WelcomeGuide } from '@/components/layout';
-import ImageDropzone from '@/components/inference/ImageDropzone';
-import PredictionResult from '@/components/inference/PredictionResult';
-import InferenceStatusBadge from '@/components/inference/InferenceStatusBadge';
-import BatchUploadZone from '@/components/inference/BatchUploadZone';
-import BatchSummaryStats from '@/components/inference/BatchSummaryStats';
-import BatchResultsGrid from '@/components/inference/BatchResultsGrid';
-import BatchExportButton from '@/components/inference/BatchExportButton';
-import HeatmapComparisonView from '@/components/inference/HeatmapComparisonView';
-import { predictImage, batchPredictImages, generateHeatmap } from '@/services/inferenceApi';
-import { InferenceResponse, BatchInferenceResponse, HeatmapResponse } from '@/types/inference';
-import { useToast } from '@/hooks/use-toast';
-import { Progress } from '@/components/ui/progress';
-import gsap from 'gsap';
+import React, { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Activity,
+  RefreshCw,
+  Sparkles,
+  Layers,
+  Image as ImageIcon,
+  Flame,
+} from "lucide-react";
+import { Header, Footer, WelcomeGuide } from "@/components/layout";
+import ImageDropzone from "@/components/inference/ImageDropzone";
+import PredictionResult from "@/components/inference/PredictionResult";
+import InferenceStatusBadge from "@/components/inference/InferenceStatusBadge";
+import BatchUploadZone from "@/components/inference/BatchUploadZone";
+import BatchSummaryStats from "@/components/inference/BatchSummaryStats";
+import BatchResultsGrid from "@/components/inference/BatchResultsGrid";
+import BatchExportButton from "@/components/inference/BatchExportButton";
+import HeatmapComparisonView from "@/components/inference/HeatmapComparisonView";
+import {
+  predictImage,
+  batchPredictImages,
+  generateHeatmap,
+} from "@/services/inferenceApi";
+import {
+  InferenceResponse,
+  BatchInferenceResponse,
+  HeatmapResponse,
+} from "@/types/inference";
+import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
+import gsap from "gsap";
 
 const ANIMATION_CONFIG = {
   duration: 0.8,
   staggerDelay: 0.15,
-  ease: 'power2.out',
+  ease: "power2.out",
 } as const;
 
-type AnalysisMode = 'single' | 'batch';
+type AnalysisMode = "single" | "batch";
 
 const Inference = () => {
   // Mode selection
-  const [mode, setMode] = useState<AnalysisMode>('single');
+  const [mode, setMode] = useState<AnalysisMode>("single");
 
   // Help guide state
   const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
@@ -43,13 +58,17 @@ const Inference = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [result, setResult] = useState<InferenceResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [singleHeatmap, setSingleHeatmap] = useState<HeatmapResponse | null>(null);
+  const [singleHeatmap, setSingleHeatmap] = useState<HeatmapResponse | null>(
+    null,
+  );
   const [singleHeatmapLoading, setSingleHeatmapLoading] = useState(false);
   const [showSingleHeatmap, setShowSingleHeatmap] = useState(false);
 
   // Batch mode state
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [batchResult, setBatchResult] = useState<BatchInferenceResponse | null>(null);
+  const [batchResult, setBatchResult] = useState<BatchInferenceResponse | null>(
+    null,
+  );
   const [batchLoading, setBatchLoading] = useState(false);
   const [imageUrls, setImageUrls] = useState<Map<string, string>>(new Map());
   const [imageFiles, setImageFiles] = useState<Map<string, File>>(new Map());
@@ -78,7 +97,7 @@ const Inference = () => {
       const response = await predictImage(selectedImage);
       setResult(response);
 
-      gsap.from('.result-card', {
+      gsap.from(".result-card", {
         opacity: 0,
         y: 40,
         duration: ANIMATION_CONFIG.duration,
@@ -87,14 +106,14 @@ const Inference = () => {
       });
 
       toast({
-        title: 'Analysis Complete',
+        title: "Analysis Complete",
         description: `Prediction: ${response.prediction.predicted_class}`,
       });
     } catch (error: any) {
       toast({
-        title: 'Prediction Failed',
-        description: error.message || 'Failed to analyze image',
-        variant: 'destructive',
+        title: "Prediction Failed",
+        description: error.message || "Failed to analyze image",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -103,11 +122,11 @@ const Inference = () => {
 
   const handleTryAnother = () => {
     handleClear();
-    gsap.from('.upload-area', {
+    gsap.from(".upload-area", {
       opacity: 0,
       scale: 0.95,
       duration: 0.5,
-      ease: 'back.out(1.7)',
+      ease: "back.out(1.7)",
     });
   };
 
@@ -120,14 +139,14 @@ const Inference = () => {
       setSingleHeatmap(response);
       setShowSingleHeatmap(true);
       toast({
-        title: 'Heatmap Generated',
+        title: "Heatmap Generated",
         description: `GradCAM visualization ready (${response.processing_time_ms.toFixed(0)}ms)`,
       });
     } catch (error: any) {
       toast({
-        title: 'Heatmap Generation Failed',
-        description: error.message || 'Failed to generate GradCAM heatmap',
-        variant: 'destructive',
+        title: "Heatmap Generation Failed",
+        description: error.message || "Failed to generate GradCAM heatmap",
+        variant: "destructive",
       });
     } finally {
       setSingleHeatmapLoading(false);
@@ -164,7 +183,7 @@ const Inference = () => {
       const response = await batchPredictImages(selectedImages);
       setBatchResult(response);
 
-      gsap.from('.batch-results', {
+      gsap.from(".batch-results", {
         opacity: 0,
         y: 40,
         duration: ANIMATION_CONFIG.duration,
@@ -173,14 +192,14 @@ const Inference = () => {
       });
 
       toast({
-        title: 'Batch Analysis Complete',
+        title: "Batch Analysis Complete",
         description: `Processed ${response.summary.total_images} images successfully`,
       });
     } catch (error: any) {
       toast({
-        title: 'Batch Analysis Failed',
-        description: error.message || 'Failed to analyze images',
-        variant: 'destructive',
+        title: "Batch Analysis Failed",
+        description: error.message || "Failed to analyze images",
+        variant: "destructive",
       });
     } finally {
       setBatchLoading(false);
@@ -189,17 +208,17 @@ const Inference = () => {
 
   const handleBatchTryAnother = () => {
     handleBatchClear();
-    gsap.from('.batch-upload-area', {
+    gsap.from(".batch-upload-area", {
       opacity: 0,
       scale: 0.95,
       duration: 0.5,
-      ease: 'back.out(1.7)',
+      ease: "back.out(1.7)",
     });
   };
 
   const handleModeSwitch = (newMode: AnalysisMode) => {
     setMode(newMode);
-    if (newMode === 'single') {
+    if (newMode === "single") {
       handleBatchClear();
     } else {
       handleClear();
@@ -215,42 +234,62 @@ const Inference = () => {
 
   // GSAP entrance animations
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     if (prefersReducedMotion) return;
 
     const ctx = gsap.context(() => {
-      const timeline = gsap.timeline({ defaults: { ease: ANIMATION_CONFIG.ease } });
+      const timeline = gsap.timeline({
+        defaults: { ease: ANIMATION_CONFIG.ease },
+      });
 
-      timeline.from('.hero-badge', {
+      timeline.from(".hero-badge", {
         opacity: 0,
         y: 20,
         duration: ANIMATION_CONFIG.duration,
       });
 
-      timeline.from('.hero-title', {
-        opacity: 0,
-        y: 30,
-        duration: ANIMATION_CONFIG.duration,
-      }, '-=0.4');
+      timeline.from(
+        ".hero-title",
+        {
+          opacity: 0,
+          y: 30,
+          duration: ANIMATION_CONFIG.duration,
+        },
+        "-=0.4",
+      );
 
-      timeline.from('.hero-subtitle', {
-        opacity: 0,
-        y: 20,
-        duration: ANIMATION_CONFIG.duration,
-      }, '-=0.3');
+      timeline.from(
+        ".hero-subtitle",
+        {
+          opacity: 0,
+          y: 20,
+          duration: ANIMATION_CONFIG.duration,
+        },
+        "-=0.3",
+      );
 
-      timeline.from('.hero-mode-toggle', {
-        opacity: 0,
-        y: 20,
-        duration: ANIMATION_CONFIG.duration,
-      }, '-=0.2');
+      timeline.from(
+        ".hero-mode-toggle",
+        {
+          opacity: 0,
+          y: 20,
+          duration: ANIMATION_CONFIG.duration,
+        },
+        "-=0.2",
+      );
 
-      timeline.from('.content-card', {
-        opacity: 0,
-        y: 60,
-        stagger: ANIMATION_CONFIG.staggerDelay,
-        duration: ANIMATION_CONFIG.duration,
-      }, '-=0.2');
+      timeline.from(
+        ".content-card",
+        {
+          opacity: 0,
+          y: 60,
+          stagger: ANIMATION_CONFIG.staggerDelay,
+          duration: ANIMATION_CONFIG.duration,
+        },
+        "-=0.2",
+      );
     });
 
     return () => ctx.revert();
@@ -288,27 +327,28 @@ const Inference = () => {
             </h1>
 
             <p className="hero-subtitle text-lg md:text-xl text-[hsl(215_15%_45%)] max-w-2xl mx-auto mb-8">
-              Upload a chest X-ray image to detect pneumonia using our state-of-the-art AI model.
+              Upload a chest X-ray image to detect pneumonia using our
+              state-of-the-art AI model.
             </p>
 
             <div className="hero-mode-toggle inline-flex items-center gap-1 p-1.5 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(172_30%_85%)] shadow-lg">
               <button
-                onClick={() => handleModeSwitch('single')}
+                onClick={() => handleModeSwitch("single")}
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                  mode === 'single'
-                    ? 'bg-[hsl(172_63%_28%)] text-white shadow-md'
-                    : 'text-[hsl(172_43%_25%)] hover:bg-white/60'
+                  mode === "single"
+                    ? "bg-[hsl(172_63%_28%)] text-white shadow-md"
+                    : "text-[hsl(172_43%_25%)] hover:bg-white/60"
                 }`}
               >
                 <ImageIcon className="w-5 h-5" />
                 <span>Single Image</span>
               </button>
               <button
-                onClick={() => handleModeSwitch('batch')}
+                onClick={() => handleModeSwitch("batch")}
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                  mode === 'batch'
-                    ? 'bg-[hsl(172_63%_28%)] text-white shadow-md'
-                    : 'text-[hsl(172_43%_25%)] hover:bg-white/60'
+                  mode === "batch"
+                    ? "bg-[hsl(172_63%_28%)] text-white shadow-md"
+                    : "text-[hsl(172_43%_25%)] hover:bg-white/60"
                 }`}
               >
                 <Layers className="w-5 h-5" />
@@ -322,7 +362,7 @@ const Inference = () => {
         <section className="pb-20 px-6">
           <div className="max-w-7xl mx-auto">
             {/* Single Image Mode */}
-            {mode === 'single' && (
+            {mode === "single" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Left Column - Upload */}
                 <div className="content-card upload-area">
@@ -391,7 +431,9 @@ const Inference = () => {
                         <h3 className="text-xl font-semibold text-[hsl(172_43%_15%)]">
                           Analyzing X-Ray...
                         </h3>
-                        <p className="text-[hsl(215_15%_45%)]">Running AI model inference</p>
+                        <p className="text-[hsl(215_15%_45%)]">
+                          Running AI model inference
+                        </p>
                       </div>
                       <div className="w-full max-w-md space-y-3">
                         {[...Array(3)].map((_, i) => (
@@ -408,7 +450,13 @@ const Inference = () => {
                   {!loading && !result && (
                     <div className="flex flex-col items-center justify-center h-full min-h-[400px] space-y-4">
                       <div className="w-20 h-20 rounded-2xl bg-[hsl(172_40%_94%)] flex items-center justify-center">
-                        <svg className="w-10 h-10 text-[hsl(172_63%_28%)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          className="w-10 h-10 text-[hsl(172_63%_28%)]"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                           <polyline points="17 8 12 3 7 8" />
                           <line x1="12" y1="3" x2="12" y2="15" />
@@ -447,7 +495,9 @@ const Inference = () => {
 
                         {/* GradCAM Heatmap Section */}
                         <div className="result-card">
-                          {showSingleHeatmap && singleHeatmap && selectedImage ? (
+                          {showSingleHeatmap &&
+                          singleHeatmap &&
+                          selectedImage ? (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)]">
@@ -463,9 +513,13 @@ const Inference = () => {
                                 </Button>
                               </div>
                               <HeatmapComparisonView
-                                originalImageUrl={URL.createObjectURL(selectedImage)}
+                                originalImageUrl={URL.createObjectURL(
+                                  selectedImage,
+                                )}
                                 heatmapBase64={singleHeatmap.heatmap_base64}
-                                predictionClass={result.prediction.predicted_class}
+                                predictionClass={
+                                  result.prediction.predicted_class
+                                }
                               />
                             </div>
                           ) : (
@@ -476,7 +530,8 @@ const Inference = () => {
                                     GradCAM Heatmap
                                   </h3>
                                   <p className="text-sm text-[hsl(215_15%_45%)]">
-                                    Visualize which regions influenced the model's prediction
+                                    Visualize which regions influenced the
+                                    model's prediction
                                   </p>
                                 </div>
                                 <Button
@@ -508,7 +563,7 @@ const Inference = () => {
             )}
 
             {/* Batch Analysis Mode */}
-            {mode === 'batch' && (
+            {mode === "batch" && (
               <div className="space-y-8">
                 <div className="content-card batch-upload-area">
                   <div className="mb-6">
@@ -543,7 +598,8 @@ const Inference = () => {
                         ) : (
                           <>
                             <Sparkles className="mr-2 h-5 w-5" />
-                            Analyze {selectedImages.length} Image{selectedImages.length !== 1 ? 's' : ''}
+                            Analyze {selectedImages.length} Image
+                            {selectedImages.length !== 1 ? "s" : ""}
                           </>
                         )}
                       </Button>
@@ -580,7 +636,10 @@ const Inference = () => {
                         </p>
                       </div>
                       <div className="w-full max-w-md">
-                        <Progress value={undefined} className="h-3 bg-[hsl(168_25%_96%)]" />
+                        <Progress
+                          value={undefined}
+                          className="h-3 bg-[hsl(168_25%_96%)]"
+                        />
                       </div>
                     </div>
                   </div>
@@ -598,10 +657,14 @@ const Inference = () => {
                           Export Results
                         </h3>
                         <p className="text-sm text-[hsl(215_15%_45%)]">
-                          Download batch analysis data in CSV, JSON, or PDF format
+                          Download batch analysis data in CSV, JSON, or PDF
+                          format
                         </p>
                       </div>
-                      <BatchExportButton data={batchResult} imageFiles={imageFiles} />
+                      <BatchExportButton
+                        data={batchResult}
+                        imageFiles={imageFiles}
+                      />
                     </div>
 
                     <div className="content-card batch-results">
@@ -613,7 +676,11 @@ const Inference = () => {
                           Click on any image to view full prediction details
                         </p>
                       </div>
-                      <BatchResultsGrid results={batchResult.results} imageUrls={imageUrls} imageFiles={imageFiles} />
+                      <BatchResultsGrid
+                        results={batchResult.results}
+                        imageUrls={imageUrls}
+                        imageFiles={imageFiles}
+                      />
                     </div>
                   </div>
                 )}

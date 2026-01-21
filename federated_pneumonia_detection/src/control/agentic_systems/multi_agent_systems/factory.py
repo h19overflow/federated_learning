@@ -24,6 +24,7 @@ class AgentFactory:
             self._research_agent = ResearchAgent()
         return self._research_agent
 
+
 _agent_factory: Optional[AgentFactory] = None
 
 

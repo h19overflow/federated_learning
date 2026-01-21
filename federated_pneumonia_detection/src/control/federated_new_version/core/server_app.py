@@ -112,7 +112,9 @@ def main(grid: Grid, context: Context) -> None:
     # Load ConfigManager FIRST (before any config access)
     # Make config path configurable via environment or use default relative path
     default_config_path = (
-        Path(__file__).parent.parent.parent.parent.parent / "config" / "default_config.yaml"
+        Path(__file__).parent.parent.parent.parent.parent
+        / "config"
+        / "default_config.yaml"
     )
     config_path = os.getenv("CONFIG_PATH", str(default_config_path))
     config_manager = ConfigManager(config_path=str(config_path))

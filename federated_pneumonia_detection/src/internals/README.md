@@ -27,12 +27,12 @@ flowchart TB
 
 ## Module Overview
 
-| Module | Purpose | Key Pattern |
-|--------|---------|-------------|
-| **data_processing.py** | Load CSV, stratified splits | Config-driven columns |
+| Module                           | Purpose                     | Key Pattern             |
+| -------------------------------- | --------------------------- | ----------------------- |
+| **data_processing.py**           | Load CSV, stratified splits | Config-driven columns   |
 | **data_processing_functions.py** | Sampling, validation, stats | Stratified preservation |
-| **image_transforms.py** | Augmentation pipelines | Builder pattern |
-| **loggers/** | Structured logging | Third-party silencing |
+| **image_transforms.py**          | Augmentation pipelines      | Builder pattern         |
+| **loggers/**                     | Structured logging          | Third-party silencing   |
 
 ## Data Processing
 
@@ -60,6 +60,7 @@ flowchart LR
 | `get_data_statistics()` | Class counts, balance ratio |
 
 **Stratified Split:**
+
 ```mermaid
 flowchart LR
     subgraph Before["Original (100 samples)"]
@@ -109,6 +110,7 @@ flowchart TB
 ```
 
 **Augmentation Strength:**
+
 - `strength=0.0` → No augmentation
 - `strength=1.0` → Moderate (default)
 - `strength=2.0` → Aggressive
@@ -121,6 +123,7 @@ flowchart TB
 | `adaptive_histogram()` | CLAHE (requires cv2) |
 
 **Normalization:**
+
 - ImageNet: mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
 - Alternative: [-1, 1] range
 
@@ -150,6 +153,7 @@ flowchart LR
 | Handlers | Console only |
 
 **Usage:**
+
 ```python
 from utils.loggers import get_logger
 logger = get_logger(__name__)
@@ -223,14 +227,14 @@ flowchart LR
 
 ## Quick Reference
 
-| Action | Function |
-|--------|----------|
-| Load CSV metadata | `load_metadata(path, config)` |
-| Stratified split | `create_train_val_split(df, val_split=0.2)` |
-| Sample preserving class dist | `sample_dataframe(df, frac=0.5)` |
-| Get class counts | `get_data_statistics(df)` |
-| Training transforms | `TransformBuilder(config).build_training_transforms()` |
-| Validation transforms | `TransformBuilder(config).build_validation_transforms()` |
-| Quick transform access | `get_transforms(mode='train', config=config)` |
-| Get logger | `get_logger(__name__)` |
-| Configure logging | `configure_logging()` |
+| Action                       | Function                                                 |
+| ---------------------------- | -------------------------------------------------------- |
+| Load CSV metadata            | `load_metadata(path, config)`                            |
+| Stratified split             | `create_train_val_split(df, val_split=0.2)`              |
+| Sample preserving class dist | `sample_dataframe(df, frac=0.5)`                         |
+| Get class counts             | `get_data_statistics(df)`                                |
+| Training transforms          | `TransformBuilder(config).build_training_transforms()`   |
+| Validation transforms        | `TransformBuilder(config).build_validation_transforms()` |
+| Quick transform access       | `get_transforms(mode='train', config=config)`            |
+| Get logger                   | `get_logger(__name__)`                                   |
+| Configure logging            | `configure_logging()`                                    |

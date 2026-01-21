@@ -1,6 +1,6 @@
-import React from 'react';
-import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /**
  * LoadingOverlay Component
@@ -16,25 +16,25 @@ import { cn } from '@/lib/utils';
 interface LoadingOverlayProps {
   isVisible: boolean;
   message?: string;
-  variant?: 'overlay' | 'inline';
+  variant?: "overlay" | "inline";
 }
 
 const LoadingOverlay = ({
   isVisible,
-  message = 'Loading...',
-  variant = 'inline'
+  message = "Loading...",
+  variant = "inline",
 }: LoadingOverlayProps) => {
   if (!isVisible) return null;
 
-  if (variant === 'overlay') {
+  if (variant === "overlay") {
     return (
       <div
         className="fixed inset-0 bg-[hsl(172_30%_15%)]/40 backdrop-blur-sm flex items-center justify-center z-50"
-        style={{ animation: 'fadeIn 0.2s ease-out' }}
+        style={{ animation: "fadeIn 0.2s ease-out" }}
       >
         <div
           className="bg-white/95 backdrop-blur-xl rounded-2xl p-8 flex flex-col items-center gap-5 shadow-xl shadow-[hsl(172_40%_85%)]/30 border border-[hsl(168_20%_92%)]"
-          style={{ animation: 'fadeIn 0.3s ease-out' }}
+          style={{ animation: "fadeIn 0.3s ease-out" }}
         >
           <div className="relative">
             {/* Glow effect */}
@@ -42,8 +42,12 @@ const LoadingOverlay = ({
             <Loader2 className="w-10 h-10 text-[hsl(172_63%_28%)] animate-spin relative z-10" />
           </div>
           <div className="text-center">
-            <p className="text-[hsl(172_43%_20%)] font-medium text-lg">{message}</p>
-            <p className="text-[hsl(215_15%_55%)] text-sm mt-1">Please wait...</p>
+            <p className="text-[hsl(172_43%_20%)] font-medium text-lg">
+              {message}
+            </p>
+            <p className="text-[hsl(215_15%_55%)] text-sm mt-1">
+              Please wait...
+            </p>
           </div>
         </div>
       </div>
@@ -53,7 +57,7 @@ const LoadingOverlay = ({
   return (
     <div
       className="flex items-center justify-center py-16"
-      style={{ animation: 'fadeIn 0.3s ease-out' }}
+      style={{ animation: "fadeIn 0.3s ease-out" }}
     >
       <div className="flex flex-col items-center gap-4">
         <div className="relative">

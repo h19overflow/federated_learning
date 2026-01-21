@@ -45,8 +45,9 @@ async def retrieve_documents(message: ChatMessage) -> Dict[str, Any]:
 @router.get("/knowledge-base")
 async def list_knowledge_base_documents() -> Dict[str, Any]:
     """List all documents in the knowledge base."""
-    from federated_pneumonia_detection.src.boundary.engine import get_engine
     from sqlalchemy import text
+
+    from federated_pneumonia_detection.src.boundary.engine import get_engine
 
     try:
         engine = get_engine()
@@ -54,7 +55,7 @@ async def list_knowledge_base_documents() -> Dict[str, Any]:
             result = conn.execute(
                 text(
                     """
-                SELECT DISTINCT 
+                SELECT DISTINCT
                     cmetadata->>'source' as source,
                     cmetadata->>'paper_id' as paper_id,
                     COUNT(*) as chunk_count

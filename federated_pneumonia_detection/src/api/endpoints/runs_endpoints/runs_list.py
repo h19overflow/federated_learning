@@ -5,17 +5,18 @@ Provides endpoints to list all runs with summary information and backfill operat
 Uses shared modules for summary building and backfill services following SOLID principles.
 """
 
-from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
+from fastapi import APIRouter, HTTPException, Query
+
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.models import Run
-from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
-from ..schema.runs_schemas import RunsListResponse, RunSummary, BackfillResponse
-from .shared.summary_builder import RunSummaryBuilder
+from ..schema.runs_schemas import BackfillResponse, RunsListResponse, RunSummary
 from .shared.services import BackfillService
+from .shared.summary_builder import RunSummaryBuilder
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -23,12 +24,18 @@ logger = get_logger(__name__)
 
 @router.get("/list", response_model=RunsListResponse)
 async def list_all_runs(
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of runs to return"),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of runs to return"
+    ),
     offset: int = Query(0, ge=0, description="Number of runs to skip"),
-    status: Optional[str] = Query(None, description="Filter by status (e.g., 'completed', 'running')"),
-    training_mode: Optional[str] = Query(None, description="Filter by training mode (e.g., 'centralized', 'federated')"),
+    status: Optional[str] = Query(
+        None, description="Filter by status (e.g., 'completed', 'running')"
+    ),
+    training_mode: Optional[str] = Query(
+        None, description="Filter by training mode (e.g., 'centralized', 'federated')"
+    ),
     sort_by: str = Query("start_time", description="Field to sort by"),
-    sort_order: str = Query("desc", description="Sort order: 'asc' or 'desc'")
+    sort_order: str = Query("desc", description="Sort order: 'asc' or 'desc'"),
 ) -> RunsListResponse:
     """
     List training runs with pagination and filtering.
@@ -70,8 +77,7 @@ async def list_all_runs(
         run_summaries = [RunSummaryBuilder.build(run, db) for run in runs]
 
         return RunsListResponse(
-            runs=[RunSummary(**summary) for summary in run_summaries],
-            total=total_count
+            runs=[RunSummary(**summary) for summary in run_summaries], total=total_count
         )
 
     except Exception as e:

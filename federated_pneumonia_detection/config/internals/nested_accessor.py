@@ -61,9 +61,7 @@ class NestedAccessor:
             if key not in current:
                 current[key] = {}
             elif not isinstance(current[key], dict):
-                error_msg = (
-                    f"Cannot set nested value: '{key}' is not a dictionary"
-                )
+                error_msg = f"Cannot set nested value: '{key}' is not a dictionary"
                 self.logger.error(error_msg)
                 raise ValueError(error_msg)
             current = current[key]

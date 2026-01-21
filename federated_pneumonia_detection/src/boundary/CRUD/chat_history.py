@@ -2,19 +2,30 @@ from typing import List, Optional
 from ..models.chat_session import ChatSession
 from ..engine import get_session
 
-def create_chat_session(title: Optional[str] = None, session_id: Optional[str] = None) -> ChatSession:
+
+def create_chat_session(
+    title: Optional[str] = None, session_id: Optional[str] = None
+) -> ChatSession:
     """
     Create a new chat session.
     """
     db = get_session()
     try:
-        new_session = ChatSession(id=session_id, title=title) if session_id else ChatSession(title=title)
+        new_session = (
+            ChatSession(id=session_id, title=title)
+            if session_id
+            else ChatSession(title=title)
+        )
         db.add(new_session)
         db.commit()
         db.refresh(new_session)
+        db.expunge(
+            new_session
+        )  # Detach instance so attributes remain accessible after session closes
         return new_session
     finally:
         db.close()
+
 
 def get_chat_session(session_id: str) -> Optional[ChatSession]:
     """
@@ -22,9 +33,15 @@ def get_chat_session(session_id: str) -> Optional[ChatSession]:
     """
     db = get_session()
     try:
-        return db.query(ChatSession).filter(ChatSession.id == session_id).first()
+        session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+        if session:
+            db.expunge(
+                session
+            )  # Detach instance so attributes remain accessible after session closes
+        return session
     finally:
         db.close()
+
 
 def get_all_chat_sessions() -> List[ChatSession]:
     """
@@ -32,9 +49,15 @@ def get_all_chat_sessions() -> List[ChatSession]:
     """
     db = get_session()
     try:
-        return db.query(ChatSession).order_by(ChatSession.updated_at.desc()).all()
+        sessions = db.query(ChatSession).order_by(ChatSession.updated_at.desc()).all()
+        for session in sessions:
+            db.expunge(
+                session
+            )  # Detach each instance so attributes remain accessible after session closes
+        return sessions
     finally:
         db.close()
+
 
 def update_chat_session_title(session_id: str, title: str) -> Optional[ChatSession]:
     """
@@ -47,9 +70,13 @@ def update_chat_session_title(session_id: str, title: str) -> Optional[ChatSessi
             session.title = title
             db.commit()
             db.refresh(session)
+            db.expunge(
+                session
+            )  # Detach instance so attributes remain accessible after session closes
         return session
     finally:
         db.close()
+
 
 def delete_chat_session(session_id: str) -> bool:
     """

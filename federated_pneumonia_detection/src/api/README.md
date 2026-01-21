@@ -73,19 +73,20 @@ graph TD
 
 ## Module Overview
 
-| Module | Purpose | Key Patterns |
-|--------|---------|--------------|
-| **experiments/** | Start training jobs | Background tasks, subprocess spawning |
-| **inference/** | Run predictions | Single/batch processing, GradCAM heatmaps |
-| **runs_endpoints/** | Query training results | Pluggable exporters, strategy pattern |
-| **chat/** | Research assistant | SSE streaming, ArXiv RAG integration |
-| **streaming/** | Real-time updates | WebSocket broadcast, SSE polling |
-| **reports/** | Generate PDFs | Template rendering |
-| **middleware/** | Security | Prompt injection detection |
+| Module              | Purpose                | Key Patterns                              |
+| ------------------- | ---------------------- | ----------------------------------------- |
+| **experiments/**    | Start training jobs    | Background tasks, subprocess spawning     |
+| **inference/**      | Run predictions        | Single/batch processing, GradCAM heatmaps |
+| **runs_endpoints/** | Query training results | Pluggable exporters, strategy pattern     |
+| **chat/**           | Research assistant     | SSE streaming, ArXiv RAG integration      |
+| **streaming/**      | Real-time updates      | WebSocket broadcast, SSE polling          |
+| **reports/**        | Generate PDFs          | Template rendering                        |
+| **middleware/**     | Security               | Prompt injection detection                |
 
 ## Data Flow
 
 ### Training Flow
+
 ```mermaid
 sequenceDiagram
     participant UI as React UI
@@ -110,6 +111,7 @@ sequenceDiagram
 ```
 
 ### Inference Flow
+
 ```mermaid
 sequenceDiagram
     participant UI as React UI
@@ -146,10 +148,10 @@ api/
 
 Two channels for live updates:
 
-| Channel | Port | Use Case |
-|---------|------|----------|
-| **SSE** | 8001 | Training progress events |
-| **WebSocket** | 8765 | Metric broadcasts |
+| Channel       | Port | Use Case                 |
+| ------------- | ---- | ------------------------ |
+| **SSE**       | 8001 | Training progress events |
+| **WebSocket** | 8765 | Metric broadcasts        |
 
 ## Security
 
@@ -176,14 +178,14 @@ Database is **critical** (fails startup). Others are optional with warnings.
 
 ## Quick Reference
 
-| Action | Endpoint |
-|--------|----------|
+| Action                     | Endpoint                              |
+| -------------------------- | ------------------------------------- |
 | Start centralized training | `POST /experiments/centralized/train` |
-| Start federated training | `POST /experiments/federated/train` |
-| Check training status | `GET /experiments/status/{id}` |
-| Get run metrics | `GET /runs/{id}/metrics` |
-| Download results | `GET /runs/{id}/download/csv` |
-| Run single prediction | `POST /inference/predict` |
-| Run batch prediction | `POST /inference/predict-batch` |
-| Generate heatmap | `POST /inference/heatmap` |
-| Query research chat | `POST /chat/query/stream` |
+| Start federated training   | `POST /experiments/federated/train`   |
+| Check training status      | `GET /experiments/status/{id}`        |
+| Get run metrics            | `GET /runs/{id}/metrics`              |
+| Download results           | `GET /runs/{id}/download/csv`         |
+| Run single prediction      | `POST /inference/predict`             |
+| Run batch prediction       | `POST /inference/predict-batch`       |
+| Generate heatmap           | `POST /inference/heatmap`             |
+| Query research chat        | `POST /chat/query/stream`             |

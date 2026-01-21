@@ -30,10 +30,12 @@ export const RunContextBadge: React.FC<RunContextBadgeProps> = ({
                   "text-[10px] font-medium px-2 py-0.5 rounded-full",
                   selectedRun.status === "completed"
                     ? "bg-green-100 text-green-700"
-                    : "bg-amber-100 text-amber-700"
+                    : "bg-amber-100 text-amber-700",
                 )}
               >
-                {selectedRun.status === "completed" ? "Completed" : "In Progress"}
+                {selectedRun.status === "completed"
+                  ? "Completed"
+                  : "In Progress"}
               </span>
             </div>
             <Button
@@ -50,11 +52,12 @@ export const RunContextBadge: React.FC<RunContextBadgeProps> = ({
             <p className="text-xs text-[hsl(215_15%_50%)]">
               {selectedRun.trainingMode} training
             </p>
-            {selectedRun.bestRecall !== undefined && selectedRun.bestRecall > 0 && (
-              <span className="text-xs font-medium text-[hsl(152_60%_35%)]">
-                Best Recall: {(selectedRun.bestRecall * 100).toFixed(2)}%
-              </span>
-            )}
+            {selectedRun.bestRecall !== undefined &&
+              selectedRun.bestRecall > 0 && (
+                <span className="text-xs font-medium text-[hsl(152_60%_35%)]">
+                  Best Recall: {(selectedRun.bestRecall * 100).toFixed(2)}%
+                </span>
+              )}
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-end gap-0.5 h-4">

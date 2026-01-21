@@ -7,11 +7,12 @@ for a specific run from the database.
 
 from fastapi import APIRouter, HTTPException
 
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
-from .shared.utils import _transform_run_to_results
+
 from ..schema.runs_schemas import MetricsResponse
+from .shared.utils import _transform_run_to_results
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -47,6 +48,8 @@ async def get_run_metrics(run_id: int) -> MetricsResponse:
         raise
     except Exception as e:
         logger.error(f"Error fetching run {run_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch run results: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch run results: {str(e)}"
+        )
     finally:
         db.close()

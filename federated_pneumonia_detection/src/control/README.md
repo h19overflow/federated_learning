@@ -65,13 +65,13 @@ graph LR
 
 ## Module Overview
 
-| Module | Purpose | Key Pattern |
-|--------|---------|-------------|
-| **dl_model/** | Single-node GPU training | PyTorch Lightning + callbacks |
-| **federated_new_version/** | Multi-client distributed training | Flower framework |
-| **agentic_systems/** | LLM research assistants | LangChain + MCP tools |
-| **model_inferance/** | Predictions + explanations | GradCAM heatmaps |
-| **report_generation/** | PDF export | ReportLab templates |
+| Module                     | Purpose                           | Key Pattern                   |
+| -------------------------- | --------------------------------- | ----------------------------- |
+| **dl_model/**              | Single-node GPU training          | PyTorch Lightning + callbacks |
+| **federated_new_version/** | Multi-client distributed training | Flower framework              |
+| **agentic_systems/**       | LLM research assistants           | LangChain + MCP tools         |
+| **model_inferance/**       | Predictions + explanations        | GradCAM heatmaps              |
+| **report_generation/**     | PDF export                        | ReportLab templates           |
 
 ## Centralized Training Flow
 
@@ -98,6 +98,7 @@ sequenceDiagram
 ```
 
 **Callbacks Chain:**
+
 ```mermaid
 flowchart LR
     A[ModelCheckpoint] --> B[EarlyStopping]
@@ -207,6 +208,7 @@ flowchart LR
 ```
 
 **GradCAM Process:**
+
 1. Hook final conv layer
 2. Backward pass on target class
 3. Global average pool gradients
@@ -262,21 +264,21 @@ flowchart LR
     style Collector fill:#3498db,stroke:#2980b9,color:#fff
 ```
 
-| Metric | Centralized | Federated |
-|--------|-------------|-----------|
-| Loss | Per epoch | Per round (server eval) |
-| Accuracy | Per epoch | Per round |
-| Recall | Per epoch (primary) | Per round |
-| AUROC | Per epoch | Per round |
-| Confusion Matrix | Final | Per round |
+| Metric           | Centralized         | Federated               |
+| ---------------- | ------------------- | ----------------------- |
+| Loss             | Per epoch           | Per round (server eval) |
+| Accuracy         | Per epoch           | Per round               |
+| Recall           | Per epoch (primary) | Per round               |
+| AUROC            | Per epoch           | Per round               |
+| Confusion Matrix | Final               | Per round               |
 
 ## Quick Reference
 
-| Action | Entry Point |
-|--------|-------------|
+| Action                     | Entry Point                          |
+| -------------------------- | ------------------------------------ |
 | Start centralized training | `CentralizedTrainer(config).train()` |
-| Start federated training | `ServerApp(config).main()` |
-| Run single prediction | `InferenceEngine().predict(image)` |
-| Generate heatmap | `GradCAM(model)(image)` |
-| Query research agent | `ArxivAgentEngine().stream(query)` |
-| Generate PDF report | `generate_prediction_report(result)` |
+| Start federated training   | `ServerApp(config).main()`           |
+| Run single prediction      | `InferenceEngine().predict(image)`   |
+| Generate heatmap           | `GradCAM(model)(image)`              |
+| Query research agent       | `ArxivAgentEngine().stream(query)`   |
+| Generate PDF report        | `generate_prediction_report(result)` |

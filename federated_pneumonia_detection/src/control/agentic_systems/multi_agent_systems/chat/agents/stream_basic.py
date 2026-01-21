@@ -37,7 +37,9 @@ async def stream_basic(
                     state.full_response += content
                     yield create_sse_event(SSEEventType.TOKEN, content=content)
     except Exception as exc:
-        logger.error("[ArxivEngine] Basic mode streaming failed: %s", exc, exc_info=True)
+        logger.error(
+            "[ArxivEngine] Basic mode streaming failed: %s", exc, exc_info=True
+        )
         yield create_sse_event(
             SSEEventType.ERROR, message=f"Streaming failed: {str(exc)}"
         )

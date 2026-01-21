@@ -46,7 +46,7 @@ export const KnowledgeBasePanel: React.FC<KnowledgeBasePanelProps> = ({
   const filteredDocs = documents.filter(
     (doc) =>
       doc.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.paper_id?.toLowerCase().includes(searchQuery.toLowerCase())
+      doc.paper_id?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -98,7 +98,7 @@ export const KnowledgeBasePanel: React.FC<KnowledgeBasePanelProps> = ({
                       "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm",
                       doc.type === "arxiv"
                         ? "bg-[hsl(172_40%_92%)] text-[hsl(172_63%_25%)]"
-                        : "bg-[hsl(210_60%_92%)] text-[hsl(210_60%_40%)]"
+                        : "bg-[hsl(210_60%_92%)] text-[hsl(210_60%_40%)]",
                     )}
                   >
                     {doc.type === "arxiv" ? (

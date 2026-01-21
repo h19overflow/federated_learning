@@ -39,7 +39,6 @@ def run_federated_training_task(
     """
 
     try:
-
         # Construct the full paths for training data
         csv_path = os.path.join(source_path, csv_filename)
         image_dir = os.path.join(source_path, "Images")
@@ -55,7 +54,11 @@ def run_federated_training_task(
 
         # Update configuration with uploaded data paths
         task_logger.info("\nUpdating configuration...")
-        config_path = Path(__file__).parent.parent.parent.parent.parent.parent / "config" / "default_config.yaml"
+        config_path = (
+            Path(__file__).parent.parent.parent.parent.parent.parent
+            / "config"
+            / "default_config.yaml"
+        )
         config_manager = ConfigManager(config_path=str(config_path))
 
         # Store current config for logging

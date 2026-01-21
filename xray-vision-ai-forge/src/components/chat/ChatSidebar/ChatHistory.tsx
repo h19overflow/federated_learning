@@ -35,7 +35,9 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({
         <div className="w-12 h-12 rounded-2xl bg-[hsl(210_15%_95%)] flex items-center justify-center mx-auto mb-4">
           <History className="h-6 w-6 text-[hsl(215_15%_50%)]" />
         </div>
-        <p className="text-sm font-medium text-[hsl(172_43%_15%)]">No history yet</p>
+        <p className="text-sm font-medium text-[hsl(172_43%_15%)]">
+          No history yet
+        </p>
         <p className="text-xs text-[hsl(215_15%_55%)] mt-1">
           Your conversations will appear here
         </p>
@@ -54,7 +56,7 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({
               "group p-4 rounded-2xl cursor-pointer transition-all border-2",
               currentSessionId === session.id
                 ? "bg-[hsl(172_40%_96%)] border-[hsl(172_63%_35%)]"
-                : "bg-[hsl(210_15%_98%)] border-transparent hover:border-[hsl(210_15%_88%)] hover:bg-white"
+                : "bg-[hsl(210_15%_98%)] border-transparent hover:border-[hsl(210_15%_88%)] hover:bg-white",
             )}
           >
             <div className="flex items-center justify-between gap-3">

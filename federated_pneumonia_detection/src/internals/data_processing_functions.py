@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 def load_metadata(
     metadata_path: Union[str, Path],
-    config_or_constants: Optional[Union['ConfigManager']] = None,
+    config_or_constants: Optional[Union["ConfigManager"]] = None,
     logger: Optional[logging.Logger] = None,
 ) -> pd.DataFrame:
     """
@@ -65,31 +65,33 @@ def load_metadata(
     # Handle both ConfigManager and old SystemConstants
     if config_or_constants is None:
         from federated_pneumonia_detection.config.config_manager import ConfigManager
+
         config = ConfigManager()
-    elif hasattr(config_or_constants, 'get'):  # ConfigManager
+    elif hasattr(config_or_constants, "get"):  # ConfigManager
         config = config_or_constants
     else:  # Old SystemConstants
         warnings.warn(
             "Passing SystemConstants to load_metadata is deprecated. "
             "Use ConfigManager instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         # Convert old constants to config access pattern
         constants = config_or_constants
         from federated_pneumonia_detection.config.config_manager import ConfigManager
+
         config = ConfigManager()
-        
+
         patient_id_col = constants.PATIENT_ID_COLUMN
         target_col = constants.TARGET_COLUMN
         filename_col = constants.FILENAME_COLUMN
         image_ext = constants.IMAGE_EXTENSION
 
     # New ConfigManager path
-    patient_id_col = config.get('columns.patient_id')
-    target_col = config.get('columns.target')
-    filename_col = config.get('columns.filename')
-    image_ext = config.get('system.image_extension')
+    patient_id_col = config.get("columns.patient_id")
+    target_col = config.get("columns.target")
+    filename_col = config.get("columns.filename")
+    image_ext = config.get("system.image_extension")
 
     # Validate required columns
     if patient_id_col not in df.columns:
@@ -232,7 +234,7 @@ def create_train_val_split(
 
 
 def load_and_split_data(
-    config_or_constants: Optional[Union['ConfigManager']] = None,
+    config_or_constants: Optional[Union["ConfigManager"]] = None,
     metadata_path: Optional[Union[str, Path]] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -255,44 +257,50 @@ def load_and_split_data(
     try:
         # Handle ConfigManager vs old objects
         if config_or_constants is None:
-            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            from federated_pneumonia_detection.config.config_manager import (
+                ConfigManager,
+            )
+
             config = ConfigManager()
-        elif hasattr(config_or_constants, 'get'):  # ConfigManager
+        elif hasattr(config_or_constants, "get"):  # ConfigManager
             config = config_or_constants
         else:  # Old SystemConstants (deprecated but supported via load_metadata)
-            config = None # load_metadata will handle converting constants
+            config = None  # load_metadata will handle converting constants
 
         # New ConfigManager path
         if metadata_path is None:
             if config:
-                base_path = config.get('paths.base_path', '.')
-                metadata_filename = config.get('paths.metadata_filename', 'Train_metadata.csv')
+                base_path = config.get("paths.base_path", ".")
+                metadata_filename = config.get(
+                    "paths.metadata_filename", "Train_metadata.csv"
+                )
             else:
                 # SystemConstants path
                 base_path = config_or_constants.BASE_PATH
                 metadata_filename = config_or_constants.METADATA_FILENAME
-            
+
             metadata_path = os.path.join(base_path, metadata_filename)
 
         df = load_metadata(metadata_path, config_or_constants, logger)
-        
+
         if config:
-            sample_frac = config.get('experiment.sample_fraction', 0.1)
-            val_split = config.get('experiment.validation_split', 0.2)
-            seed = config.get('experiment.seed', 42)
-            target_column = config.get('columns.target', 'Target')
+            sample_frac = config.get("experiment.sample_fraction", 0.1)
+            val_split = config.get("experiment.validation_split", 0.2)
+            seed = config.get("experiment.seed", 42)
+            target_column = config.get("columns.target", "Target")
         else:
             # Fallback for deprecated constants
-            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            from federated_pneumonia_detection.config.config_manager import (
+                ConfigManager,
+            )
+
             config_fallback = ConfigManager()
-            sample_frac = config_fallback.get('experiment.sample_fraction', 0.1)
-            val_split = config_fallback.get('experiment.validation_split', 0.2)
-            seed = config_fallback.get('experiment.seed', 42)
+            sample_frac = config_fallback.get("experiment.sample_fraction", 0.1)
+            val_split = config_fallback.get("experiment.validation_split", 0.2)
+            seed = config_fallback.get("experiment.seed", 42)
             target_column = config_or_constants.TARGET_COLUMN
 
-        df_sample = sample_dataframe(
-            df, sample_frac, target_column, seed, logger
-        )
+        df_sample = sample_dataframe(df, sample_frac, target_column, seed, logger)
 
         train_df, val_df = create_train_val_split(
             df_sample,
@@ -313,8 +321,8 @@ def load_and_split_data(
 
 
 def validate_image_paths(
-    config_or_constants: Optional[Union['ConfigManager']] = None,
-    logger: Optional[logging.Logger] = None
+    config_or_constants: Optional[Union["ConfigManager"]] = None,
+    logger: Optional[logging.Logger] = None,
 ) -> bool:
     """
     Validate that image directories exist.
@@ -331,12 +339,15 @@ def validate_image_paths(
 
     if config_or_constants is None:
         from federated_pneumonia_detection.config.config_manager import ConfigManager
+
         config = ConfigManager()
-    elif hasattr(config_or_constants, 'get'):  # ConfigManager
+    elif hasattr(config_or_constants, "get"):  # ConfigManager
         config = config_or_constants
     else:  # Old SystemConstants
         constants = config_or_constants
-        main_images_path = os.path.join(constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER)
+        main_images_path = os.path.join(
+            constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER
+        )
         image_dir_path = os.path.join(main_images_path, constants.IMAGES_SUBFOLDER)
 
         if not os.path.exists(main_images_path):
@@ -351,10 +362,10 @@ def validate_image_paths(
         return True
 
     # New ConfigManager path
-    base_path = config.get('paths.base_path', '.')
-    main_images_folder = config.get('paths.main_images_folder', 'Images')
-    images_subfolder = config.get('paths.images_subfolder', 'Images')
-    
+    base_path = config.get("paths.base_path", ".")
+    main_images_folder = config.get("paths.main_images_folder", "Images")
+    images_subfolder = config.get("paths.images_subfolder", "Images")
+
     main_images_path = os.path.join(base_path, main_images_folder)
     image_dir_path = os.path.join(main_images_path, images_subfolder)
 
@@ -371,7 +382,7 @@ def validate_image_paths(
 
 
 def get_image_directory_path(
-    config_or_constants: Optional[Union['ConfigManager']] = None
+    config_or_constants: Optional[Union["ConfigManager"]] = None,
 ) -> str:
     """
     Get the full path to the image directory.
@@ -382,22 +393,25 @@ def get_image_directory_path(
     Returns:
         Full path to image directory
     """
-    
+
     if config_or_constants is None:
         from federated_pneumonia_detection.config.config_manager import ConfigManager
+
         config = ConfigManager()
-    elif hasattr(config_or_constants, 'get'):  # ConfigManager
+    elif hasattr(config_or_constants, "get"):  # ConfigManager
         config = config_or_constants
     else:  # Old SystemConstants
         constants = config_or_constants
-        main_images_path = os.path.join(constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER)
+        main_images_path = os.path.join(
+            constants.BASE_PATH, constants.MAIN_IMAGES_FOLDER
+        )
         return os.path.join(main_images_path, constants.IMAGES_SUBFOLDER)
 
     # New ConfigManager path
-    base_path = config.get('paths.base_path', '.')
-    main_images_folder = config.get('paths.main_images_folder', 'Images')
-    images_subfolder = config.get('paths.images_subfolder', 'Images')
-    
+    base_path = config.get("paths.base_path", ".")
+    main_images_folder = config.get("paths.main_images_folder", "Images")
+    images_subfolder = config.get("paths.images_subfolder", "Images")
+
     main_images_path = os.path.join(base_path, main_images_folder)
     return os.path.join(main_images_path, images_subfolder)
 

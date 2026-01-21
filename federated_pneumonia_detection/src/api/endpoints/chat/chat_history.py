@@ -7,8 +7,8 @@ from typing import Dict
 
 from fastapi import APIRouter, HTTPException
 
-from federated_pneumonia_detection.src.api.endpoints.schema import ChatHistoryResponse
 from federated_pneumonia_detection.src.api.deps import get_query_engine
+from federated_pneumonia_detection.src.api.endpoints.schema import ChatHistoryResponse
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems import (
     get_agent_factory,
 )

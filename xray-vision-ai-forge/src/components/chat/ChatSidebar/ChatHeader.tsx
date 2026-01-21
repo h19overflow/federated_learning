@@ -45,7 +45,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               "h-9 w-9 rounded-xl transition-all",
               showHistory
                 ? "text-[hsl(172_63%_22%)] bg-[hsl(172_40%_94%)]"
-                : "text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)]"
+                : "text-[hsl(215_15%_45%)] hover:text-[hsl(172_63%_22%)] hover:bg-[hsl(172_40%_94%)]",
             )}
           >
             <History className="h-4 w-4" />

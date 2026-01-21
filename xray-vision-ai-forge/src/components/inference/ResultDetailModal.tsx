@@ -7,21 +7,21 @@
  * Supports navigation between results with arrow keys and prev/next buttons.
  */
 
-import React, { useEffect, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Activity, Flame } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { X, ChevronLeft, ChevronRight, Activity, Flame } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { SingleImageResult, HeatmapResponse } from '@/types/inference';
-import { generateHeatmap } from '@/services/inferenceApi';
-import { useToast } from '@/hooks/use-toast';
-import PredictionResult from './PredictionResult';
-import ClinicalInterpretation from './ClinicalInterpretation';
-import HeatmapComparisonView from './HeatmapComparisonView';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { SingleImageResult, HeatmapResponse } from "@/types/inference";
+import { generateHeatmap } from "@/services/inferenceApi";
+import { useToast } from "@/hooks/use-toast";
+import PredictionResult from "./PredictionResult";
+import ClinicalInterpretation from "./ClinicalInterpretation";
+import HeatmapComparisonView from "./HeatmapComparisonView";
 
 interface ResultDetailModalProps {
   isOpen: boolean;
@@ -67,25 +67,25 @@ export const ResultDetailModal: React.FC<ResultDetailModalProps> = ({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' && canGoNext && onNext) {
+      if (e.key === "ArrowRight" && canGoNext && onNext) {
         onNext();
-      } else if (e.key === 'ArrowLeft' && canGoPrevious && onPrevious) {
+      } else if (e.key === "ArrowLeft" && canGoPrevious && onPrevious) {
         onPrevious();
-      } else if (e.key === 'Escape') {
+      } else if (e.key === "Escape") {
         onClose();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, canGoNext, canGoPrevious, onNext, onPrevious, onClose]);
 
   const handleGenerateHeatmap = async () => {
     if (!imageFile) {
       toast({
-        title: 'Cannot Generate Heatmap',
-        description: 'Image file not available for heatmap generation.',
-        variant: 'destructive',
+        title: "Cannot Generate Heatmap",
+        description: "Image file not available for heatmap generation.",
+        variant: "destructive",
       });
       return;
     }
@@ -96,14 +96,14 @@ export const ResultDetailModal: React.FC<ResultDetailModalProps> = ({
       setHeatmapData(response);
       setShowHeatmap(true);
       toast({
-        title: 'Heatmap Generated',
+        title: "Heatmap Generated",
         description: `GradCAM visualization ready (${response.processing_time_ms.toFixed(0)}ms)`,
       });
     } catch (error: any) {
       toast({
-        title: 'Heatmap Generation Failed',
-        description: error.message || 'Failed to generate GradCAM heatmap',
-        variant: 'destructive',
+        title: "Heatmap Generation Failed",
+        description: error.message || "Failed to generate GradCAM heatmap",
+        variant: "destructive",
       });
     } finally {
       setHeatmapLoading(false);

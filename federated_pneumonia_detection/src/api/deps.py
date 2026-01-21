@@ -17,8 +17,12 @@ from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD
 
 if TYPE_CHECKING:
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import QueryEngine
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import MCPManager
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
+        QueryEngine,
+    )
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
+        MCPManager,
+    )
     from federated_pneumonia_detection.src.control.model_inferance import (
         InferenceService,
         InferenceEngine,
@@ -74,10 +78,13 @@ def get_query_engine() -> Optional["QueryEngine"]:
             from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
                 QueryEngine,
             )
+
             _query_engine = QueryEngine()
             logger.info("QueryEngine initialized successfully")
         except Exception as e:
-            logger.warning(f"QueryEngine initialization failed (database unavailable): {e}")
+            logger.warning(
+                f"QueryEngine initialization failed (database unavailable): {e}"
+            )
             return None
     return _query_engine
 
@@ -89,6 +96,7 @@ def get_mcp_manager() -> "MCPManager":
         from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
             MCPManager,
         )
+
         _mcp_manager = MCPManager.get_instance()
         logger.info("MCPManager initialized successfully")
     return _mcp_manager
@@ -102,6 +110,7 @@ def get_inference_service() -> "InferenceService":
     from federated_pneumonia_detection.src.control.model_inferance import (
         get_inference_service as _get_service,
     )
+
     return _get_service()
 
 
@@ -113,11 +122,12 @@ def get_inference_engine() -> Optional["InferenceEngine"]:
     from federated_pneumonia_detection.src.control.model_inferance import (
         get_inference_engine as _get_engine,
     )
+
     return _get_engine()
 
 
 def get_clinical_agent():
-    """Get the 
+    """Get the
     singleton.
 
     Returns None if the agent cannot be initialized.
@@ -125,4 +135,5 @@ def get_clinical_agent():
     from federated_pneumonia_detection.src.control.model_inferance import (
         get_clinical_agent as _get_agent,
     )
+
     return _get_agent()

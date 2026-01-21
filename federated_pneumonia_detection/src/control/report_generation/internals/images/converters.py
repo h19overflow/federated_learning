@@ -12,7 +12,9 @@ from reportlab.platypus import Image as RLImage
 logger = logging.getLogger(__name__)
 
 
-def base64_to_image(base64_string: str, max_width: float = 4*inch) -> Optional[RLImage]:
+def base64_to_image(
+    base64_string: str, max_width: float = 4 * inch
+) -> Optional[RLImage]:
     """Convert base64 string to ReportLab Image.
 
     Args:
@@ -32,7 +34,7 @@ def base64_to_image(base64_string: str, max_width: float = 4*inch) -> Optional[R
 
         image_buffer.seek(0)
 
-        img_width = min(max_width, 4*inch)
+        img_width = min(max_width, 4 * inch)
         img_height = img_width * aspect_ratio
 
         return RLImage(image_buffer, width=img_width, height=img_height)
@@ -42,7 +44,7 @@ def base64_to_image(base64_string: str, max_width: float = 4*inch) -> Optional[R
 
 
 def pil_to_reportlab_image(
-    pil_image: Image.Image, max_width: float = 4*inch
+    pil_image: Image.Image, max_width: float = 4 * inch
 ) -> Optional[RLImage]:
     """Convert PIL Image to ReportLab Image.
 
@@ -55,13 +57,13 @@ def pil_to_reportlab_image(
     """
     try:
         buffer = io.BytesIO()
-        pil_image.save(buffer, format='PNG')
+        pil_image.save(buffer, format="PNG")
         buffer.seek(0)
 
         width, height = pil_image.size
         aspect_ratio = height / width
 
-        img_width = min(max_width, 4*inch)
+        img_width = min(max_width, 4 * inch)
         img_height = img_width * aspect_ratio
 
         return RLImage(buffer, width=img_width, height=img_height)

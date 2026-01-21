@@ -67,9 +67,7 @@ class FocalLoss(nn.Module):
         targets = targets.float()
 
         # Compute binary cross-entropy with logits (more stable)
-        bce_loss = F.binary_cross_entropy_with_logits(
-            inputs, targets, reduction="none"
-        )
+        bce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
 
         # Compute probabilities
         probs = torch.sigmoid(inputs)

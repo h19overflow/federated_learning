@@ -64,10 +64,7 @@ def _format_results(documents: list) -> str:
         content = doc.page_content[:500]  # Truncate for readability
 
         formatted_parts.append(
-            f"[Document {i}]\n"
-            f"Source: {source}\n"
-            f"Page: {page}\n"
-            f"Content: {content}...\n"
+            f"[Document {i}]\nSource: {source}\nPage: {page}\nContent: {content}...\n"
         )
 
     return "\n---\n".join(formatted_parts)

@@ -5,8 +5,9 @@ separating schema definitions from business logic to follow SRP.
 All schemas include comprehensive validation using Pydantic Field constraints.
 """
 
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
 
 
 class ModeMetrics(BaseModel):
@@ -20,6 +21,7 @@ class ModeMetrics(BaseModel):
         avg_f1: Average F1-score across runs (0-1).
         avg_duration_minutes: Average training duration in minutes.
     """
+
     count: int = Field(ge=0, description="Number of runs")
     avg_accuracy: Optional[float] = Field(
         None, ge=0, le=1, description="Average accuracy"
@@ -27,9 +29,7 @@ class ModeMetrics(BaseModel):
     avg_precision: Optional[float] = Field(
         None, ge=0, le=1, description="Average precision"
     )
-    avg_recall: Optional[float] = Field(
-        None, ge=0, le=1, description="Average recall"
-    )
+    avg_recall: Optional[float] = Field(None, ge=0, le=1, description="Average recall")
     avg_f1: Optional[float] = Field(None, ge=0, le=1, description="Average F1-score")
     avg_duration_minutes: Optional[float] = Field(
         None, ge=0, description="Average duration in minutes"
@@ -50,6 +50,7 @@ class RunDetail(BaseModel):
         start_time: ISO format start timestamp.
         status: Current run status.
     """
+
     run_id: int = Field(gt=0, description="Unique run identifier")
     training_mode: str = Field(description="Training mode")
     best_accuracy: Optional[float] = Field(None, ge=0, le=1)
@@ -73,11 +74,12 @@ class AnalyticsSummaryResponse(BaseModel):
         federated: Aggregated metrics for federated training.
         top_runs: Top performing runs by accuracy.
     """
+
     total_runs: int = Field(ge=0, description="Total number of runs")
     success_rate: float = Field(
         ge=0,
         le=1,
-        description="Proportion of filtered runs to total status-matching runs (filtered_count / all_status_count)"
+        description="Proportion of filtered runs to total status-matching runs (filtered_count / all_status_count)",
     )
     centralized: ModeMetrics = Field(description="Centralized mode metrics")
     federated: ModeMetrics = Field(description="Federated mode metrics")
@@ -96,11 +98,10 @@ class FederatedInfo(BaseModel):
         latest_round: Most recent round number.
         latest_accuracy: Accuracy from the latest round.
     """
+
     num_rounds: int = Field(ge=0, description="Number of training rounds")
     num_clients: int = Field(ge=0, description="Number of clients")
-    has_server_evaluation: bool = Field(
-        description="Server evaluation enabled"
-    )
+    has_server_evaluation: bool = Field(description="Server evaluation enabled")
     best_accuracy: Optional[float] = Field(None, ge=0, le=1)
     best_recall: Optional[float] = Field(None, ge=0, le=1)
     latest_round: Optional[int] = Field(None, ge=0)
@@ -122,6 +123,7 @@ class RunSummary(BaseModel):
         run_description: Optional description of the run.
         federated_info: Federated-specific info if applicable.
     """
+
     id: int = Field(gt=0, description="Run identifier")
     training_mode: str = Field(description="Training mode")
     status: str = Field(description="Run status")
@@ -143,6 +145,7 @@ class RunsListResponse(BaseModel):
         runs: List of run summaries.
         total: Total number of available runs.
     """
+
     runs: List[RunSummary] = Field(default=[], description="List of runs")
     total: int = Field(ge=0, description="Total number of runs")
 
@@ -156,6 +159,7 @@ class BackfillResponse(BaseModel):
         message: Human-readable status message.
         rounds_processed: Number of rounds processed.
     """
+
     run_id: int = Field(gt=0, description="Run identifier")
     success: bool = Field(description="Operation success status")
     message: str = Field(description="Status message")
@@ -174,13 +178,18 @@ class MetricsResponse(BaseModel):
         metadata: Additional metadata including best metrics and timestamps.
         confusion_matrix: Optional confusion matrix from final epoch.
     """
+
     experiment_id: str = Field(description="Experiment identifier")
     status: str = Field(description="Run status")
     final_metrics: Dict[str, float] = Field(description="Final epoch metrics")
-    training_history: List[Dict[str, Any]] = Field(description="Per-epoch training history")
+    training_history: List[Dict[str, Any]] = Field(
+        description="Per-epoch training history"
+    )
     total_epochs: int = Field(ge=0, description="Total epochs")
     metadata: Dict[str, Any] = Field(description="Additional metadata")
-    confusion_matrix: Optional[Dict[str, Any]] = Field(None, description="Confusion matrix")
+    confusion_matrix: Optional[Dict[str, Any]] = Field(
+        None, description="Confusion matrix"
+    )
 
 
 class FederatedRoundsResponse(BaseModel):
@@ -192,6 +201,7 @@ class FederatedRoundsResponse(BaseModel):
         num_clients: Number of participating clients.
         rounds: List of per-round metrics.
     """
+
     is_federated: bool = Field(description="Federated training flag")
     num_rounds: int = Field(ge=0, description="Number of rounds")
     num_clients: int = Field(ge=0, description="Number of clients")
@@ -208,8 +218,11 @@ class ServerEvaluationResponse(BaseModel):
         evaluations: List of server evaluations per round.
         summary: Summary statistics across all rounds.
     """
+
     run_id: int = Field(gt=0, description="Run identifier")
     is_federated: bool = Field(description="Federated training flag")
     has_server_evaluation: bool = Field(description="Has evaluation data")
-    evaluations: List[Dict[str, Any]] = Field(default=[], description="Server evaluations")
+    evaluations: List[Dict[str, Any]] = Field(
+        default=[], description="Server evaluations"
+    )
     summary: Dict[str, Any] = Field(default={}, description="Summary statistics")

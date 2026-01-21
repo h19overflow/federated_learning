@@ -77,11 +77,20 @@ class CentralizedTrainer:
             image_dir, csv_path = self.data_source_extractor.extract_and_validate(
                 source_path, csv_filename
             )
-            train_df, val_df = prepare_dataset(csv_path, image_dir, self.config, self.logger)
-            data_module = create_data_module(train_df, val_df, image_dir, self.config, self.logger)
+            train_df, val_df = prepare_dataset(
+                csv_path, image_dir, self.config, self.logger
+            )
+            data_module = create_data_module(
+                train_df, val_df, image_dir, self.config, self.logger
+            )
             model, callbacks, metrics_collector = build_model_and_callbacks(
-                train_df, self.config, self.checkpoint_dir, self.logs_dir,
-                self.logger, experiment_name, run_id
+                train_df,
+                self.config,
+                self.checkpoint_dir,
+                self.logs_dir,
+                self.logger,
+                experiment_name,
+                run_id,
             )
             trainer = build_trainer(
                 self.config, callbacks, self.logs_dir, experiment_name, self.logger
@@ -92,8 +101,13 @@ class CentralizedTrainer:
                 complete_training_run(run_id, self.logger)
 
             results = collect_training_results(
-                trainer, model, metrics_collector, self.logs_dir,
-                self.checkpoint_dir, self.logger, run_id
+                trainer,
+                model,
+                metrics_collector,
+                self.logs_dir,
+                self.checkpoint_dir,
+                self.logger,
+                run_id,
             )
             return results
 

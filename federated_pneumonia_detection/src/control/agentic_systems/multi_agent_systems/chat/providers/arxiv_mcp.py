@@ -74,24 +74,12 @@ class MCPManager:
                     "arxiv": {
                         "command": "arxiv-mcp-server",
                         "args": [],
-                        "transport": "stdio"
+                        "transport": "stdio",
                     }
                 }
 
                 self._client = MultiServerMCPClient(server_config)
                 self._tools = await self._client.get_tools()
-                self._is_available = True
-
-                tool_names = [tool.name for tool in self._tools]
-                logger.info(f"MCP Manager initialized with tools: {tool_names}")
-
-            except FileNotFoundError:
-                logger.error(
-                    "arxiv-mcp-server not found. "
-                    "Install with: uv tool install arxiv-mcp-server"
-                )
-                self._is_available = False
-
             except Exception as e:
                 logger.error(f"Failed to initialize MCP Manager: {e}")
                 self._is_available = False
@@ -105,7 +93,6 @@ class MCPManager:
                 return
 
             try:
-                # New API: client doesn't need explicit cleanup
                 self._client = None
                 self._tools = []
                 self._is_available = False

@@ -1,6 +1,7 @@
 """
 Client model - represents a federated learning participant.
 """
+
 from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, JSON
 from sqlalchemy.orm import relationship
 from .run import Base
@@ -28,4 +29,6 @@ class Client(Base):
     client_config = Column(JSON, nullable=True)
 
     run = relationship("Run", back_populates="clients")
-    rounds = relationship("Round", back_populates="client", cascade="all, delete-orphan")
+    rounds = relationship(
+        "Round", back_populates="client", cascade="all, delete-orphan"
+    )

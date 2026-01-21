@@ -76,16 +76,27 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
 
             # Store any additional metrics
             excluded_keys = {
-                "loss", "accuracy", "precision", "recall", "f1_score", "f1",
-                "auroc", "auc", "confusion_matrix",
-                "server_cm_tp", "server_cm_tn", "server_cm_fp", "server_cm_fn",
-                "server_loss", "server_accuracy", "server_precision", "server_recall",
-                "server_f1", "server_auroc"
+                "loss",
+                "accuracy",
+                "precision",
+                "recall",
+                "f1_score",
+                "f1",
+                "auroc",
+                "auc",
+                "confusion_matrix",
+                "server_cm_tp",
+                "server_cm_tn",
+                "server_cm_fp",
+                "server_cm_fn",
+                "server_loss",
+                "server_accuracy",
+                "server_precision",
+                "server_recall",
+                "server_f1",
+                "server_auroc",
             }
-            additional = {
-                k: v for k, v in metrics.items()
-                if k not in excluded_keys
-            }
+            additional = {k: v for k, v in metrics.items() if k not in excluded_keys}
             if additional:
                 eval_data["additional_metrics"] = additional
 
@@ -223,7 +234,9 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
             default=None,
         )
         best_recall = max(
-            (e for e in evals_for_best if e.recall), key=lambda x: x.recall, default=None
+            (e for e in evals_for_best if e.recall),
+            key=lambda x: x.recall,
+            default=None,
         )
         best_precision = max(
             (e for e in evals_for_best if e.precision),

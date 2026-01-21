@@ -5,9 +5,9 @@
  * Color-coded for NORMAL (green) vs PNEUMONIA (amber/red).
  */
 
-import React from 'react';
-import { CheckCircle2, AlertTriangle, Activity } from 'lucide-react';
-import { InferencePrediction } from '@/types/inference';
+import React from "react";
+import { CheckCircle2, AlertTriangle, Activity } from "lucide-react";
+import { InferencePrediction } from "@/types/inference";
 
 interface PredictionResultProps {
   prediction: InferencePrediction;
@@ -20,24 +20,24 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
   modelVersion,
   processingTimeMs,
 }) => {
-  const isPneumonia = prediction.predicted_class === 'PNEUMONIA';
+  const isPneumonia = prediction.predicted_class === "PNEUMONIA";
   const confidence = prediction.confidence * 100;
 
   // Color scheme based on prediction
   const colors = isPneumonia
     ? {
-        primary: 'hsl(35 70% 45%)', // Amber
-        bg: 'hsl(35 60% 95%)',
-        border: 'hsl(35 60% 80%)',
+        primary: "hsl(35 70% 45%)", // Amber
+        bg: "hsl(35 60% 95%)",
+        border: "hsl(35 60% 80%)",
         icon: AlertTriangle,
-        label: 'Pneumonia Detected',
+        label: "Pneumonia Detected",
       }
     : {
-        primary: 'hsl(152 60% 42%)', // Green
-        bg: 'hsl(152 50% 95%)',
-        border: 'hsl(152 50% 80%)',
+        primary: "hsl(152 60% 42%)", // Green
+        bg: "hsl(152 50% 95%)",
+        border: "hsl(152 50% 80%)",
         icon: CheckCircle2,
-        label: 'Normal',
+        label: "Normal",
       };
 
   const Icon = colors.icon;
@@ -56,7 +56,7 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
         <div className="flex items-center gap-4 mb-6">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md"
-            style={{ backgroundColor: 'white' }}
+            style={{ backgroundColor: "white" }}
           >
             <Icon className="w-8 h-8" style={{ color: colors.primary }} />
           </div>
@@ -76,7 +76,10 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
             <span className="text-sm font-semibold text-[hsl(172_43%_20%)]">
               Confidence Level
             </span>
-            <span className="text-lg font-bold" style={{ color: colors.primary }}>
+            <span
+              className="text-lg font-bold"
+              style={{ color: colors.primary }}
+            >
               {confidence.toFixed(1)}%
             </span>
           </div>
@@ -106,7 +109,9 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
               <div className="flex-1 h-2 bg-white rounded-full overflow-hidden shadow-inner">
                 <div
                   className="h-full bg-[hsl(35_70%_50%)] transition-all duration-700"
-                  style={{ width: `${prediction.pneumonia_probability * 100}%` }}
+                  style={{
+                    width: `${prediction.pneumonia_probability * 100}%`,
+                  }}
                 />
               </div>
               <span className="text-sm font-medium text-[hsl(172_43%_20%)] w-14 text-right">
@@ -149,7 +154,13 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
 
         <div className="p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] shadow-md">
           <div className="flex items-center gap-2 mb-1">
-            <svg className="w-4 h-4 text-[hsl(172_63%_28%)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="w-4 h-4 text-[hsl(172_63%_28%)]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>

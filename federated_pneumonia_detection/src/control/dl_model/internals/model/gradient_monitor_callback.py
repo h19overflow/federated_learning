@@ -5,7 +5,6 @@ Provides insights into optimizer behavior and gradient flow.
 
 import logging
 from typing import Dict, Optional
-import torch
 import pytorch_lightning as pl
 
 

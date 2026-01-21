@@ -80,9 +80,7 @@ class XRayPreprocessor:
         Returns:
             Original image (CLAHE currently disabled)
         """
-        logging.warning(
-            "cv2 not installed, skipping adaptive histogram equalization"
-        )
+        logging.warning("cv2 not installed, skipping adaptive histogram equalization")
         return image
 
     @staticmethod
@@ -165,7 +163,7 @@ class TransformBuilder:
     Provides flexible and extensible transform pipeline creation.
     """
 
-    def __init__(self, config: Optional['ConfigManager'] = None):
+    def __init__(self, config: Optional["ConfigManager"] = None):
         """
         Initialize transform builder.
 
@@ -173,9 +171,12 @@ class TransformBuilder:
             config: ConfigManager for configuration
         """
         if config is None:
-            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            from federated_pneumonia_detection.config.config_manager import (
+                ConfigManager,
+            )
+
             config = ConfigManager()
-        
+
         self.config = config
         self.preprocessor = XRayPreprocessor()
         self.logger = get_logger(__name__)
@@ -198,10 +199,12 @@ class TransformBuilder:
             Composed transform pipeline
         """
         if augmentation_strength is None:
-            augmentation_strength = self.config.get('experiment.augmentation_strength', 1.0)
-        
-        img_size = tuple(self.config.get('system.img_size', [224, 224]))
-        
+            augmentation_strength = self.config.get(
+                "experiment.augmentation_strength", 1.0
+            )
+
+        img_size = tuple(self.config.get("system.img_size", [224, 224]))
+
         transform_list = []
 
         # Resize and augmentation
@@ -256,7 +259,7 @@ class TransformBuilder:
             Composed transform pipeline
         """
         transform_list = []
-        img_size = tuple(self.config.get('system.img_size', [224, 224]))
+        img_size = tuple(self.config.get("system.img_size", [224, 224]))
 
         # Simple resize and crop for validation
         transform_list.extend(
@@ -289,7 +292,7 @@ class TransformBuilder:
             List of transform pipelines
         """
         transforms_list = []
-        img_size = tuple(self.config.get('system.img_size', [224, 224]))
+        img_size = tuple(self.config.get("system.img_size", [224, 224]))
 
         for i in range(num_augmentations):
             transform_list = []
@@ -357,7 +360,7 @@ class TransformBuilder:
             Custom transform pipeline
         """
         transform_list = []
-        img_size = tuple(self.config.get('system.img_size', [224, 224]))
+        img_size = tuple(self.config.get("system.img_size", [224, 224]))
 
         # Resize strategy
         if resize_strategy == "resize_crop":
@@ -405,7 +408,7 @@ class TransformBuilder:
 
 # Convenience functions for backward compatibility and ease of use
 def get_transforms(
-    config: Optional['ConfigManager'],
+    config: Optional["ConfigManager"],
     is_training: bool = True,
     use_custom_preprocessing: bool = False,
     augmentation_strength: Optional[float] = None,
@@ -452,8 +455,7 @@ def get_transforms(
 
 
 def create_preprocessing_function(
-    config: Optional['ConfigManager'],
-    contrast_stretch: bool = True, **kwargs
+    config: Optional["ConfigManager"], contrast_stretch: bool = True, **kwargs
 ) -> Callable[[Image.Image], Image.Image]:
     """
     Create standalone preprocessing function for X-ray images.

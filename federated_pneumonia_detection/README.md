@@ -23,6 +23,7 @@ This platform enables hospitals to collaboratively train AI models for chest X-r
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Python 3.11+
 - PostgreSQL database
 - UV package manager
@@ -73,6 +74,7 @@ uv run flwr run src/control/federated_new_version
 ## 💡 How It Works
 
 ### Centralized Mode
+
 Traditional single-machine training for baseline comparisons. Fast iteration with full dataset access.
 
 ```
@@ -80,6 +82,7 @@ Upload Dataset → Train ResNet50 → Validate → Export Metrics
 ```
 
 ### Federated Mode
+
 Distributed training across multiple clients with privacy preservation.
 
 ```
@@ -101,6 +104,7 @@ Repeat for N rounds
 ## 📊 Metrics & Outputs
 
 ### Training Metrics
+
 - **Loss**: Binary cross-entropy loss
 - **Accuracy**: Overall classification accuracy
 - **Precision**: Positive predictive value (TP / [TP + FP])
@@ -110,6 +114,7 @@ Repeat for N rounds
 - **Confusion Matrix**: TP, TN, FP, FN breakdown
 
 ### Real-Time Streaming
+
 ```json
 // WebSocket event (ws://localhost:8765)
 {
@@ -122,6 +127,7 @@ Repeat for N rounds
 ```
 
 ### Data Persistence
+
 - **PostgreSQL**: Runs, metrics, client sessions, server evaluations
 - **Checkpoints**: Best models saved by validation recall
 - **Exports**: JSON/CSV results for analysis
@@ -158,35 +164,39 @@ Repeat for N rounds
 
 ### Module Documentation
 
-| Module | Purpose | Docs |
-|--------|---------|------|
-| **src/api/** | REST endpoints & WebSocket | [README](src/api/README.md) |
-| **src/control/dl_model/** | Centralized training | [README](src/control/dl_model/README.md) |
-| **src/control/federated_new_version/** | Federated learning (Flower) | [README](src/control/federated_new_version/README.md) |
-| **src/entities/** | Neural network models | [README](src/entities/README.md) |
-| **src/boundary/** | Database operations | [README](src/boundary/README.md) |
-| **src/utils/** | Data processing & transforms | [README](src/utils/README.md) |
-| **config/** | Configuration management | [README](config/README.md) |
+| Module                                 | Purpose                      | Docs                                                  |
+| -------------------------------------- | ---------------------------- | ----------------------------------------------------- |
+| **src/api/**                           | REST endpoints & WebSocket   | [README](src/api/README.md)                           |
+| **src/control/dl_model/**              | Centralized training         | [README](src/control/dl_model/README.md)              |
+| **src/control/federated_new_version/** | Federated learning (Flower)  | [README](src/control/federated_new_version/README.md) |
+| **src/entities/**                      | Neural network models        | [README](src/entities/README.md)                      |
+| **src/boundary/**                      | Database operations          | [README](src/boundary/README.md)                      |
+| **src/utils/**                         | Data processing & transforms | [README](src/utils/README.md)                         |
+| **config/**                            | Configuration management     | [README](config/README.md)                            |
 
 ---
 
 ## 🛠️ Technology Stack
 
 ### Core ML
+
 - **PyTorch 2.8.0** + **PyTorch Lightning 2.5.5**: Deep learning framework
 - **torchvision**: ResNet50 backbone, image transforms
 - **torchmetrics**: Metric computation
 
 ### Federated Learning
+
 - **Flower 1.22.0**: Federated learning orchestration
 - **Flower-datasets**: Vision dataset utilities
 
 ### Backend
+
 - **FastAPI**: REST API with automatic documentation
 - **PostgreSQL** + **SQLAlchemy 2.x**: Data persistence
 - **WebSockets**: Real-time metric streaming
 
 ### Data & Config
+
 - **pandas**: Data manipulation
 - **PyYAML**: Configuration files
 - **scikit-learn**: Train/val splitting, class weights
@@ -206,6 +216,7 @@ config["experiment"]["batch_size"] = 64
 ```
 
 **Key Parameters**:
+
 - `experiment.epochs`: Training epochs (default: 50)
 - `experiment.batch_size`: Batch size (default: 32)
 - `federated.num_rounds`: Federated rounds (default: 10)

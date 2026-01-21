@@ -1,6 +1,7 @@
 """Pydantic schemas for configuration endpoint requests."""
 
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 

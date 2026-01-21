@@ -4,6 +4,7 @@ Database cleanup script for development/testing.
 This script provides utilities to clean up database records or reset the database schema.
 Use with caution - this will delete data permanently!
 """
+
 import sys
 from typing import Optional
 from sqlalchemy import text
@@ -16,6 +17,7 @@ from federated_pneumonia_detection.src.boundary.engine import (
     Base,
 )
 from logging import getLogger
+
 logger = getLogger(__name__)
 
 
@@ -24,14 +26,14 @@ def confirm_action(message: str) -> bool:
     Prompt user for confirmation before destructive actions.
 
     Args:
-        message: Confirmation message to display        
+        message: Confirmation message to display
 
     Returns:
         True if user confirms, False otherwise
     """
     print(f"\n⚠️  WARNING: {message}")
     response = input("Type 'yes' to confirm: ").strip().lower()
-    return response == 'yes'
+    return response == "yes"
 
 
 def delete_all_records(db: Optional[Session] = None) -> None:
@@ -83,7 +85,7 @@ def delete_all_records(db: Optional[Session] = None) -> None:
 
         # Show record counts (should all be 0)
         print("\n--- Record Counts After Cleanup ---")
-        for table in ['runs', 'clients', 'rounds', 'run_metrics', 'server_evaluations']:
+        for table in ["runs", "clients", "rounds", "run_metrics", "server_evaluations"]:
             result = db.execute(text(f"SELECT COUNT(*) FROM {table}"))
             count = result.scalar()
             print(f"{table}: {count}")
@@ -134,7 +136,7 @@ def show_record_counts() -> None:
 
     try:
         print("\n--- Current Record Counts ---")
-        tables = ['runs', 'clients', 'rounds', 'run_metrics', 'server_evaluations']
+        tables = ["runs", "clients", "rounds", "run_metrics", "server_evaluations"]
 
         for table in tables:
             result = db.execute(text(f"SELECT COUNT(*) FROM {table}"))
@@ -155,8 +157,10 @@ def delete_runs_by_mode(training_mode: str) -> None:
     Args:
         training_mode: Either 'centralized' or 'federated'
     """
-    if training_mode not in ['centralized', 'federated']:
-        logger.error(f"Invalid training_mode: {training_mode}. Must be 'centralized' or 'federated'")
+    if training_mode not in ["centralized", "federated"]:
+        logger.error(
+            f"Invalid training_mode: {training_mode}. Must be 'centralized' or 'federated'"
+        )
         return
 
     if not confirm_action(
@@ -173,7 +177,7 @@ def delete_runs_by_mode(training_mode: str) -> None:
         # Get run IDs to delete
         result = db.execute(
             text("SELECT id FROM runs WHERE training_mode = :mode"),
-            {"mode": training_mode}
+            {"mode": training_mode},
         )
         run_ids = [row[0] for row in result]
 
@@ -184,23 +188,27 @@ def delete_runs_by_mode(training_mode: str) -> None:
         logger.info(f"Found {len(run_ids)} {training_mode} runs to delete")
 
         # Delete related records first (foreign key constraints)
-        run_ids_str = ','.join(map(str, run_ids))
+        run_ids_str = ",".join(map(str, run_ids))
 
         logger.info("Deleting run_metrics...")
         db.execute(text(f"DELETE FROM run_metrics WHERE run_id IN ({run_ids_str})"))
 
         logger.info("Deleting server_evaluations...")
-        db.execute(text(f"DELETE FROM server_evaluations WHERE run_id IN ({run_ids_str})"))
+        db.execute(
+            text(f"DELETE FROM server_evaluations WHERE run_id IN ({run_ids_str})")
+        )
 
-        if training_mode == 'federated':
+        if training_mode == "federated":
             # Delete federated-specific records
             logger.info("Deleting rounds...")
-            db.execute(text(f"""
+            db.execute(
+                text(f"""
                 DELETE FROM rounds
                 WHERE client_id IN (
                     SELECT id FROM clients WHERE run_id IN ({run_ids_str})
                 )
-            """))
+            """)
+            )
 
             logger.info("Deleting clients...")
             db.execute(text(f"DELETE FROM clients WHERE run_id IN ({run_ids_str})"))
@@ -224,9 +232,9 @@ def interactive_menu() -> None:
     Interactive menu for database cleanup operations.
     """
     while True:
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("DATABASE CLEANUP UTILITY")
-        print("="*50)
+        print("=" * 50)
         print("\n1. Show current record counts")
         print("2. Delete all records (preserve schema)")
         print("3. Delete only centralized runs")
@@ -237,17 +245,17 @@ def interactive_menu() -> None:
 
         choice = input("Enter your choice (1-6): ").strip()
 
-        if choice == '1':
+        if choice == "1":
             show_record_counts()
-        elif choice == '2':
+        elif choice == "2":
             delete_all_records()
-        elif choice == '3':
-            delete_runs_by_mode('centralized')
-        elif choice == '4':
-            delete_runs_by_mode('federated')
-        elif choice == '5':
+        elif choice == "3":
+            delete_runs_by_mode("centralized")
+        elif choice == "4":
+            delete_runs_by_mode("federated")
+        elif choice == "5":
             reset_database()
-        elif choice == '6':
+        elif choice == "6":
             print("\nExiting...")
             break
         else:
@@ -259,15 +267,15 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         command = sys.argv[1].lower()
 
-        if command == 'show':
+        if command == "show":
             show_record_counts()
-        elif command == 'delete-all':
+        elif command == "delete-all":
             delete_all_records()
-        elif command == 'delete-centralized':
-            delete_runs_by_mode('centralized')
-        elif command == 'delete-federated':
-            delete_runs_by_mode('federated')
-        elif command == 'reset':
+        elif command == "delete-centralized":
+            delete_runs_by_mode("centralized")
+        elif command == "delete-federated":
+            delete_runs_by_mode("federated")
+        elif command == "reset":
             reset_database()
         else:
             print(f"Unknown command: {command}")

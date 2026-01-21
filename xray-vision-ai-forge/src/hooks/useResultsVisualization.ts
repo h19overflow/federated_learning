@@ -1,8 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
-import { toast } from 'sonner';
-import api from '@/services/api';
-import type { ExperimentResults, ComparisonResults, ResultsTrainingHistoryEntry } from '@/types/api';
-import { ExperimentConfiguration } from '@/types/experiment';
+import { useState, useEffect, useMemo } from "react";
+import { toast } from "sonner";
+import api from "@/services/api";
+import type {
+  ExperimentResults,
+  ComparisonResults,
+  ResultsTrainingHistoryEntry,
+} from "@/types/api";
+import { ExperimentConfiguration } from "@/types/experiment";
 
 interface UseResultsVisualizationProps {
   config: ExperimentConfiguration;
@@ -78,18 +82,25 @@ interface ServerEvaluationData {
   summary: any;
 }
 
-export const useResultsVisualization = ({ config, runId }: UseResultsVisualizationProps) => {
-  const [activeTab, setActiveTab] = useState('metrics');
+export const useResultsVisualization = ({
+  config,
+  runId,
+}: UseResultsVisualizationProps) => {
+  const [activeTab, setActiveTab] = useState("metrics");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Data states
-  const [centralizedResults, setCentralizedResults] = useState<ExperimentResults | null>(null);
-  const [federatedResults, setFederatedResults] = useState<ExperimentResults | null>(null);
-  const [comparisonData, setComparisonData] = useState<ComparisonResults | null>(null);
-  const [serverEvaluation, setServerEvaluation] = useState<ServerEvaluationData | null>(null);
+  const [centralizedResults, setCentralizedResults] =
+    useState<ExperimentResults | null>(null);
+  const [federatedResults, setFederatedResults] =
+    useState<ExperimentResults | null>(null);
+  const [comparisonData, setComparisonData] =
+    useState<ComparisonResults | null>(null);
+  const [serverEvaluation, setServerEvaluation] =
+    useState<ServerEvaluationData | null>(null);
 
-  const showComparison = config.trainingMode === 'both';
+  const showComparison = config.trainingMode === "both";
 
   // Fetch results on mount
   useEffect(() => {
@@ -100,9 +111,9 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
       try {
         const results = await api.results.getRunMetrics(runId);
 
-        if (config.trainingMode === 'centralized') {
+        if (config.trainingMode === "centralized") {
           setCentralizedResults(results);
-        } else if (config.trainingMode === 'federated') {
+        } else if (config.trainingMode === "federated") {
           setFederatedResults(results);
 
           // Fetch server evaluation data for federated runs
@@ -110,20 +121,28 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
             const serverEval = await api.results.getServerEvaluation(runId);
             if (serverEval.has_server_evaluation) {
               setServerEvaluation(serverEval);
-              console.log('[useResultsVisualization] Server evaluation loaded:', serverEval);
+              console.log(
+                "[useResultsVisualization] Server evaluation loaded:",
+                serverEval,
+              );
             }
           } catch (serverEvalErr: any) {
-            console.warn('[useResultsVisualization] Failed to fetch server evaluation:', serverEvalErr);
+            console.warn(
+              "[useResultsVisualization] Failed to fetch server evaluation:",
+              serverEvalErr,
+            );
             // Non-critical error, continue without server evaluation
           }
-        } else if (config.trainingMode === 'both') {
+        } else if (config.trainingMode === "both") {
           setCentralizedResults(results);
-          console.warn('Comparison mode requires separate run_ids for centralized and federated');
+          console.warn(
+            "Comparison mode requires separate run_ids for centralized and federated",
+          );
         }
       } catch (err: any) {
-        console.error('Error fetching results:', err);
-        setError(err.message || 'Failed to load results');
-        toast.error('Failed to load results');
+        console.error("Error fetching results:", err);
+        setError(err.message || "Failed to load results");
+        toast.error("Failed to load results");
       } finally {
         setLoading(false);
       }
@@ -134,8 +153,8 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
 
   // Get active results based on training mode
   const activeResults = useMemo(() => {
-    if (config.trainingMode === 'centralized') return centralizedResults;
-    if (config.trainingMode === 'federated') return federatedResults;
+    if (config.trainingMode === "centralized") return centralizedResults;
+    if (config.trainingMode === "federated") return federatedResults;
     return centralizedResults || federatedResults;
   }, [config.trainingMode, centralizedResults, federatedResults]);
 
@@ -143,17 +162,19 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
   const trainingHistoryData = useMemo((): TrainingHistoryData[] => {
     if (!activeResults?.training_history) return [];
 
-    return activeResults.training_history.map((entry: ResultsTrainingHistoryEntry) => ({
-      epoch: entry.epoch,
-      trainLoss: entry.train_loss,
-      valLoss: entry.val_loss,
-      trainAcc: entry.train_acc,
-      valAcc: entry.val_acc,
-      valPrecision: (entry as any).val_precision,
-      valRecall: (entry as any).val_recall,
-      valF1: (entry as any).val_f1,
-      valAuroc: (entry as any).val_auroc,
-    }));
+    return activeResults.training_history.map(
+      (entry: ResultsTrainingHistoryEntry) => ({
+        epoch: entry.epoch,
+        trainLoss: entry.train_loss,
+        valLoss: entry.val_loss,
+        trainAcc: entry.train_acc,
+        valAcc: entry.val_acc,
+        valPrecision: (entry as any).val_precision,
+        valRecall: (entry as any).val_recall,
+        valF1: (entry as any).val_f1,
+        valAuroc: (entry as any).val_auroc,
+      }),
+    );
   }, [activeResults]);
 
   // Transform confusion matrix data for pie chart
@@ -162,10 +183,10 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
 
     const cm = activeResults.confusion_matrix;
     return [
-      { name: 'True Positives', value: cm.true_positives },
-      { name: 'True Negatives', value: cm.true_negatives },
-      { name: 'False Positives', value: cm.false_positives },
-      { name: 'False Negatives', value: cm.false_negatives },
+      { name: "True Positives", value: cm.true_positives },
+      { name: "True Negatives", value: cm.true_negatives },
+      { name: "False Positives", value: cm.false_positives },
+      { name: "False Negatives", value: cm.false_negatives },
     ];
   }, [activeResults]);
 
@@ -184,12 +205,15 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
   // Uses BEST validation metrics from metadata for consistency with cards display
   const metricsChartData = useMemo((): MetricsChartData[] => {
     if (!activeResults?.metadata) {
-      console.warn('[useResultsVisualization] No metadata in activeResults:', activeResults);
+      console.warn(
+        "[useResultsVisualization] No metadata in activeResults:",
+        activeResults,
+      );
       return [];
     }
 
     const metadata = activeResults.metadata;
-    console.log('[useResultsVisualization] metricsChartData metadata:', {
+    console.log("[useResultsVisualization] metricsChartData metadata:", {
       best_val_accuracy: metadata.best_val_accuracy,
       best_val_precision: metadata.best_val_precision,
       best_val_recall: metadata.best_val_recall,
@@ -198,11 +222,11 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
     });
 
     return [
-      { name: 'Accuracy', value: metadata.best_val_accuracy || 0 },
-      { name: 'Precision', value: metadata.best_val_precision || 0 },
-      { name: 'Recall', value: metadata.best_val_recall || 0 },
-      { name: 'F1-Score', value: metadata.best_val_f1 || 0 },
-      { name: 'AUC', value: metadata.best_val_auroc || 0 },
+      { name: "Accuracy", value: metadata.best_val_accuracy || 0 },
+      { name: "Precision", value: metadata.best_val_precision || 0 },
+      { name: "Recall", value: metadata.best_val_recall || 0 },
+      { name: "F1-Score", value: metadata.best_val_f1 || 0 },
+      { name: "AUC", value: metadata.best_val_auroc || 0 },
     ];
   }, [activeResults]);
 
@@ -212,11 +236,11 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
 
     const metrics = activeResults.final_metrics;
     return [
-      { metric: 'Accuracy', value: metrics.accuracy },
-      { metric: 'Precision', value: metrics.precision },
-      { metric: 'Recall', value: metrics.recall },
-      { metric: 'F1 Score', value: metrics.f1_score },
-      { metric: 'AUC', value: metrics.auc },
+      { metric: "Accuracy", value: metrics.accuracy },
+      { metric: "Precision", value: metrics.precision },
+      { metric: "Recall", value: metrics.recall },
+      { metric: "F1 Score", value: metrics.f1_score },
+      { metric: "AUC", value: metrics.auc },
     ];
   }, [activeResults]);
 
@@ -228,11 +252,27 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
     const fMetrics = federatedResults.final_metrics;
 
     return [
-      { metric: 'Accuracy', centralized: cMetrics.accuracy, federated: fMetrics.accuracy },
-      { metric: 'Precision', centralized: cMetrics.precision, federated: fMetrics.precision },
-      { metric: 'Recall', centralized: cMetrics.recall, federated: fMetrics.recall },
-      { metric: 'F1 Score', centralized: cMetrics.f1_score, federated: fMetrics.f1_score },
-      { metric: 'AUC', centralized: cMetrics.auc, federated: fMetrics.auc },
+      {
+        metric: "Accuracy",
+        centralized: cMetrics.accuracy,
+        federated: fMetrics.accuracy,
+      },
+      {
+        metric: "Precision",
+        centralized: cMetrics.precision,
+        federated: fMetrics.precision,
+      },
+      {
+        metric: "Recall",
+        centralized: cMetrics.recall,
+        federated: fMetrics.recall,
+      },
+      {
+        metric: "F1 Score",
+        centralized: cMetrics.f1_score,
+        federated: fMetrics.f1_score,
+      },
+      { metric: "AUC", centralized: cMetrics.auc, federated: fMetrics.auc },
     ];
   }, [showComparison, centralizedResults, federatedResults]);
 
@@ -240,12 +280,15 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
   const comparisonMetricsData = useMemo((): ComparisonMetricsData[] => {
     if (!comparisonData) return [];
 
-    return Object.entries(comparisonData.comparison_metrics).map(([metric, data]) => ({
-      name: metric.charAt(0).toUpperCase() + metric.slice(1).replace('_', ' '),
-      centralized: data.centralized,
-      federated: data.federated,
-      difference: data.difference.toFixed(3),
-    }));
+    return Object.entries(comparisonData.comparison_metrics).map(
+      ([metric, data]) => ({
+        name:
+          metric.charAt(0).toUpperCase() + metric.slice(1).replace("_", " "),
+        centralized: data.centralized,
+        federated: data.federated,
+        difference: data.difference.toFixed(3),
+      }),
+    );
   }, [comparisonData]);
 
   // Centralized-specific data transformations
@@ -255,28 +298,30 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
 
     const metadata = centralizedResults.metadata;
     return [
-      { name: 'Accuracy', value: metadata.best_val_accuracy || 0 },
-      { name: 'Precision', value: metadata.best_val_precision || 0 },
-      { name: 'Recall', value: metadata.best_val_recall || 0 },
-      { name: 'F1-Score', value: metadata.best_val_f1 || 0 },
-      { name: 'AUC', value: metadata.best_val_auroc || 0 },
+      { name: "Accuracy", value: metadata.best_val_accuracy || 0 },
+      { name: "Precision", value: metadata.best_val_precision || 0 },
+      { name: "Recall", value: metadata.best_val_recall || 0 },
+      { name: "F1-Score", value: metadata.best_val_f1 || 0 },
+      { name: "AUC", value: metadata.best_val_auroc || 0 },
     ];
   }, [centralizedResults]);
 
   const centralizedHistoryData = useMemo((): TrainingHistoryData[] => {
     if (!centralizedResults?.training_history) return [];
 
-    return centralizedResults.training_history.map((entry: ResultsTrainingHistoryEntry) => ({
-      epoch: entry.epoch,
-      trainLoss: entry.train_loss,
-      valLoss: entry.val_loss,
-      trainAcc: entry.train_acc,
-      valAcc: entry.val_acc,
-      valPrecision: (entry as any).val_precision,
-      valRecall: (entry as any).val_recall,
-      valF1: (entry as any).val_f1,
-      valAuroc: (entry as any).val_auroc,
-    }));
+    return centralizedResults.training_history.map(
+      (entry: ResultsTrainingHistoryEntry) => ({
+        epoch: entry.epoch,
+        trainLoss: entry.train_loss,
+        valLoss: entry.val_loss,
+        trainAcc: entry.train_acc,
+        valAcc: entry.val_acc,
+        valPrecision: (entry as any).val_precision,
+        valRecall: (entry as any).val_recall,
+        valF1: (entry as any).val_f1,
+        valAuroc: (entry as any).val_auroc,
+      }),
+    );
   }, [centralizedResults]);
 
   const centralizedConfusionMatrix = useMemo((): ConfusionMatrix2D | null => {
@@ -295,28 +340,30 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
 
     const metrics = federatedResults.final_metrics;
     return [
-      { name: 'Accuracy', value: metrics.accuracy },
-      { name: 'Precision', value: metrics.precision },
-      { name: 'Recall', value: metrics.recall },
-      { name: 'F1-Score', value: metrics.f1_score },
-      { name: 'AUC', value: metrics.auc },
+      { name: "Accuracy", value: metrics.accuracy },
+      { name: "Precision", value: metrics.precision },
+      { name: "Recall", value: metrics.recall },
+      { name: "F1-Score", value: metrics.f1_score },
+      { name: "AUC", value: metrics.auc },
     ];
   }, [federatedResults]);
 
   const federatedHistoryData = useMemo((): TrainingHistoryData[] => {
     if (!federatedResults?.training_history) return [];
 
-    return federatedResults.training_history.map((entry: ResultsTrainingHistoryEntry) => ({
-      epoch: entry.epoch,
-      trainLoss: entry.train_loss,
-      valLoss: entry.val_loss,
-      trainAcc: entry.train_acc,
-      valAcc: entry.val_acc,
-      valPrecision: (entry as any).val_precision,
-      valRecall: (entry as any).val_recall,
-      valF1: (entry as any).val_f1,
-      valAuroc: (entry as any).val_auroc,
-    }));
+    return federatedResults.training_history.map(
+      (entry: ResultsTrainingHistoryEntry) => ({
+        epoch: entry.epoch,
+        trainLoss: entry.train_loss,
+        valLoss: entry.val_loss,
+        trainAcc: entry.train_acc,
+        valAcc: entry.val_acc,
+        valPrecision: (entry as any).val_precision,
+        valRecall: (entry as any).val_recall,
+        valF1: (entry as any).val_f1,
+        valAuroc: (entry as any).val_auroc,
+      }),
+    );
   }, [federatedResults]);
 
   const federatedConfusionMatrix = useMemo((): ConfusionMatrix2D | null => {
@@ -332,27 +379,27 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
   // Get confusion matrix cell color
   const getConfusionMatrixColor = (name: string): string => {
     const colorMap: Record<string, string> = {
-      'True Positives': '#0A9396',
-      'True Negatives': '#94D2BD',
-      'False Positives': '#E9C46A',
-      'False Negatives': '#E76F51',
+      "True Positives": "#0A9396",
+      "True Negatives": "#94D2BD",
+      "False Positives": "#E9C46A",
+      "False Negatives": "#E76F51",
     };
-    return colorMap[name] || '#888';
+    return colorMap[name] || "#888";
   };
 
   // Handle download
-  const handleDownload = async (format: 'json' | 'csv' | 'summary') => {
+  const handleDownload = async (format: "json" | "csv" | "summary") => {
     try {
       const formatLabels: Record<string, string> = {
-        json: 'Metrics JSON',
-        csv: 'Metrics CSV',
-        summary: 'Summary Report',
+        json: "Metrics JSON",
+        csv: "Metrics CSV",
+        summary: "Summary Report",
       };
 
       await api.results.triggerRunDownload(runId, format);
       toast.success(`${formatLabels[format]} download started`);
     } catch (err: any) {
-      console.error('Download error:', err);
+      console.error("Download error:", err);
       toast.error(`Failed to download ${format}`);
     }
   };
@@ -361,7 +408,7 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
   const serverEvaluationChartData = useMemo(() => {
     if (!serverEvaluation?.evaluations) return [];
 
-    return serverEvaluation.evaluations.map(evaluation => ({
+    return serverEvaluation.evaluations.map((evaluation) => ({
       round: evaluation.round,
       loss: evaluation.loss,
       accuracy: evaluation.accuracy,
@@ -373,22 +420,32 @@ export const useResultsVisualization = ({ config, runId }: UseResultsVisualizati
   }, [serverEvaluation]);
 
   const serverEvaluationLatestMetrics = useMemo(() => {
-    if (!serverEvaluation?.evaluations || serverEvaluation.evaluations.length === 0) return null;
+    if (
+      !serverEvaluation?.evaluations ||
+      serverEvaluation.evaluations.length === 0
+    )
+      return null;
 
-    const latest = serverEvaluation.evaluations[serverEvaluation.evaluations.length - 1];
+    const latest =
+      serverEvaluation.evaluations[serverEvaluation.evaluations.length - 1];
     return [
-      { name: 'Accuracy', value: latest.accuracy || 0 },
-      { name: 'Precision', value: latest.precision || 0 },
-      { name: 'Recall', value: latest.recall || 0 },
-      { name: 'F1-Score', value: latest.f1_score || 0 },
-      { name: 'AUC', value: latest.auroc || 0 },
+      { name: "Accuracy", value: latest.accuracy || 0 },
+      { name: "Precision", value: latest.precision || 0 },
+      { name: "Recall", value: latest.recall || 0 },
+      { name: "F1-Score", value: latest.f1_score || 0 },
+      { name: "AUC", value: latest.auroc || 0 },
     ];
   }, [serverEvaluation]);
 
   const serverEvaluationConfusionMatrix = useMemo(() => {
-    if (!serverEvaluation?.evaluations || serverEvaluation.evaluations.length === 0) return null;
+    if (
+      !serverEvaluation?.evaluations ||
+      serverEvaluation.evaluations.length === 0
+    )
+      return null;
 
-    const latest = serverEvaluation.evaluations[serverEvaluation.evaluations.length - 1];
+    const latest =
+      serverEvaluation.evaluations[serverEvaluation.evaluations.length - 1];
     if (!latest.confusion_matrix) return null;
 
     const cm = latest.confusion_matrix;

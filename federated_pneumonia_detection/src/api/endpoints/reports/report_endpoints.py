@@ -10,14 +10,14 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
-from federated_pneumonia_detection.src.api.endpoints.schema.report_schemas import (
-    BatchReportRequest,
-    SingleReportRequest,
-)
 from federated_pneumonia_detection.src.api.endpoints.reports.utils import (
     decode_base64_image,
     prepare_batch_results_for_report,
     prepare_summary_stats_for_report,
+)
+from federated_pneumonia_detection.src.api.endpoints.schema.report_schemas import (
+    BatchReportRequest,
+    SingleReportRequest,
 )
 from federated_pneumonia_detection.src.control.report_generation.pdf_report import (
     generate_batch_summary_report,

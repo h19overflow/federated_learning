@@ -36,7 +36,7 @@ class ArxivAugmentedEngine:
             max_history: Maximum conversation turns to keep in memory
         """
         logger.info(f"[ArxivEngine] Initializing with max_history={max_history}")
-        
+
         # Initialize history manager
         self._history_manager = ChatHistoryManager(max_history=max_history)
 
@@ -68,7 +68,7 @@ class ArxivAugmentedEngine:
     # =========================================================================
     # History delegation methods
     # =========================================================================
-    
+
     def add_to_history(
         self, session_id: str, user_message: str, ai_response: str
     ) -> None:
@@ -132,7 +132,9 @@ class ArxivAugmentedEngine:
         full_response = ""
         tool_calls = []
 
-        async for chunk in self.query_stream(query, session_id, arxiv_enabled, original_query):
+        async for chunk in self.query_stream(
+            query, session_id, arxiv_enabled, original_query
+        ):
             if chunk["type"] == "token":
                 full_response += chunk["content"]
             elif chunk["type"] == "tool_call":

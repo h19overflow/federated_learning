@@ -67,13 +67,13 @@ erDiagram
 
 ## Module Overview
 
-| Module | Purpose | Pattern |
-|--------|---------|---------|
-| **engine.py** | DB connection + session factory | Singleton, connection pooling |
-| **models/** | SQLAlchemy ORM definitions | Declarative base |
-| **CRUD/** | Data access operations | Generic base class |
-| **inference_service.py** | ML prediction wrapper | Lazy singleton |
-| **vdb_query_engine.py** | Semantic search for RAG | PGVector + HuggingFace |
+| Module                   | Purpose                         | Pattern                       |
+| ------------------------ | ------------------------------- | ----------------------------- |
+| **engine.py**            | DB connection + session factory | Singleton, connection pooling |
+| **models/**              | SQLAlchemy ORM definitions      | Declarative base              |
+| **CRUD/**                | Data access operations          | Generic base class            |
+| **inference_service.py** | ML prediction wrapper           | Lazy singleton                |
+| **vdb_query_engine.py**  | Semantic search for RAG         | PGVector + HuggingFace        |
 
 ## Database Engine
 
@@ -94,12 +94,12 @@ flowchart LR
     style Pool fill:#f39c12,stroke:#d35400,color:#fff
 ```
 
-| Setting | Value |
-|---------|-------|
-| Pool size | 5 |
-| Max overflow | 10 |
-| Pre-ping | Enabled |
-| Recycle | 1 hour |
+| Setting      | Value   |
+| ------------ | ------- |
+| Pool size    | 5       |
+| Max overflow | 10      |
+| Pre-ping     | Enabled |
+| Recycle      | 1 hour  |
 
 ## CRUD Pattern
 
@@ -143,6 +143,7 @@ classDiagram
 ## Data Flow
 
 ### Centralized Training
+
 ```mermaid
 sequenceDiagram
     participant T as Trainer
@@ -155,6 +156,7 @@ sequenceDiagram
 ```
 
 ### Federated Training
+
 ```mermaid
 sequenceDiagram
     participant S as FL Server
@@ -231,11 +233,11 @@ boundary/
 
 ## Quick Reference
 
-| Action | Class/Method |
-|--------|--------------|
-| Create training run | `RunCRUD.create()` |
-| Save epoch metrics | `RunCRUD.persist_metrics()` |
-| Get best accuracy | `ServerEvaluationCRUD.get_best_by_metric('accuracy')` |
-| Run prediction | `InferenceService.predict(image)` |
-| Search papers | `VDBQueryEngine.query("federated learning")` |
-| List chat sessions | `get_all_chat_sessions()` |
+| Action              | Class/Method                                          |
+| ------------------- | ----------------------------------------------------- |
+| Create training run | `RunCRUD.create()`                                    |
+| Save epoch metrics  | `RunCRUD.persist_metrics()`                           |
+| Get best accuracy   | `ServerEvaluationCRUD.get_best_by_metric('accuracy')` |
+| Run prediction      | `InferenceService.predict(image)`                     |
+| Search papers       | `VDBQueryEngine.query("federated learning")`          |
+| List chat sessions  | `get_all_chat_sessions()`                             |

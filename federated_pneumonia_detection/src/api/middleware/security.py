@@ -203,7 +203,9 @@ class MaliciousPromptMiddleware(BaseHTTPMiddleware):
             is_malicious, category = detect_malicious_patterns(query)
             if is_malicious:
                 elapsed = (time.perf_counter() - start_time) * 1000
-                logger.info(f"[SECURITY] Blocked in {elapsed:.2f}ms. Category: {category}")
+                logger.info(
+                    f"[SECURITY] Blocked in {elapsed:.2f}ms. Category: {category}"
+                )
                 return self._security_violation_response(category)
 
             # Run heuristic detection

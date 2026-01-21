@@ -16,7 +16,9 @@ from torchvision.models import ResNet50_Weights
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.entities.resnet_with_custom_head import ResNetWithCustomHead
+from federated_pneumonia_detection.src.entities.resnet_with_custom_head import (
+    ResNetWithCustomHead,
+)
 from federated_pneumonia_detection.src.control.dl_model.internals.model.focal_loss import (
     FocalLoss,
     FocalLossWithLabelSmoothing,
@@ -68,7 +70,10 @@ class LitResNetEnhanced(pl.LightningModule):
         super().__init__()
 
         if config is None:
-            from federated_pneumonia_detection.config.config_manager import ConfigManager
+            from federated_pneumonia_detection.config.config_manager import (
+                ConfigManager,
+            )
+
             config = ConfigManager()
 
         self.config = config
@@ -85,9 +90,9 @@ class LitResNetEnhanced(pl.LightningModule):
         self.warmup_epochs = warmup_epochs
 
         # Save hyperparameters
-        self.save_hyperparameters(ignore=[
-            "config", "base_model_weights", "class_weights_tensor"
-        ])
+        self.save_hyperparameters(
+            ignore=["config", "base_model_weights", "class_weights_tensor"]
+        )
 
         # Validate configuration
         self._validate_config()
@@ -98,18 +103,22 @@ class LitResNetEnhanced(pl.LightningModule):
             base_model_weights=base_model_weights,
             num_classes=num_classes,
             dropout_rate=self.config.get("experiment.dropout_rate", 0.5),
-            fine_tune_layers_count=self.config.get("experiment.fine_tune_layers_count", 0)
+            fine_tune_layers_count=self.config.get(
+                "experiment.fine_tune_layers_count", 0
+            ),
         )
 
         # Apply torch.compile if enabled (PyTorch 2.0+ performance optimization)
-        if self.config.get('experiment.use_torch_compile', False):
-            compile_mode = self.config.get('experiment.torch_compile_mode', 'default')
+        if self.config.get("experiment.use_torch_compile", False):
+            compile_mode = self.config.get("experiment.torch_compile_mode", "default")
             self.logger_obj.info(f"Applying torch.compile with mode='{compile_mode}'")
             try:
                 self.model = torch.compile(self.model, mode=compile_mode)
                 self.logger_obj.info("Model compiled successfully")
             except Exception as e:
-                self.logger_obj.warning(f"torch.compile failed, falling back to eager mode: {e}")
+                self.logger_obj.warning(
+                    f"torch.compile failed, falling back to eager mode: {e}"
+                )
 
         # Store class weights
         self.class_weights_tensor = class_weights_tensor
@@ -147,20 +156,32 @@ class LitResNetEnhanced(pl.LightningModule):
         task_type = "binary" if self.num_classes == 1 else "multiclass"
 
         # Training metrics
-        self.train_accuracy = torchmetrics.Accuracy(task=task_type, num_classes=num_classes)
+        self.train_accuracy = torchmetrics.Accuracy(
+            task=task_type, num_classes=num_classes
+        )
         self.train_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
 
         # Validation metrics
-        self.val_accuracy = torchmetrics.Accuracy(task=task_type, num_classes=num_classes)
-        self.val_precision = torchmetrics.Precision(task=task_type, num_classes=num_classes)
+        self.val_accuracy = torchmetrics.Accuracy(
+            task=task_type, num_classes=num_classes
+        )
+        self.val_precision = torchmetrics.Precision(
+            task=task_type, num_classes=num_classes
+        )
         self.val_recall = torchmetrics.Recall(task=task_type, num_classes=num_classes)
         self.val_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
         self.val_auroc = torchmetrics.AUROC(task=task_type, num_classes=num_classes)
-        self.val_confusion = torchmetrics.ConfusionMatrix(task=task_type, num_classes=num_classes)
+        self.val_confusion = torchmetrics.ConfusionMatrix(
+            task=task_type, num_classes=num_classes
+        )
 
         # Test metrics
-        self.test_accuracy = torchmetrics.Accuracy(task=task_type, num_classes=num_classes)
-        self.test_precision = torchmetrics.Precision(task=task_type, num_classes=num_classes)
+        self.test_accuracy = torchmetrics.Accuracy(
+            task=task_type, num_classes=num_classes
+        )
+        self.test_precision = torchmetrics.Precision(
+            task=task_type, num_classes=num_classes
+        )
         self.test_recall = torchmetrics.Recall(task=task_type, num_classes=num_classes)
         self.test_f1 = torchmetrics.F1Score(task=task_type, num_classes=num_classes)
         self.test_auroc = torchmetrics.AUROC(task=task_type, num_classes=num_classes)
@@ -169,7 +190,9 @@ class LitResNetEnhanced(pl.LightningModule):
         """Setup loss function with enhanced options."""
         pos_weight = None
         if self.class_weights_tensor is not None:
-            pos_weight = self.class_weights_tensor[1] / (self.class_weights_tensor[0] + 1e-8)
+            pos_weight = self.class_weights_tensor[1] / (
+                self.class_weights_tensor[0] + 1e-8
+            )
             self.logger_obj.info(f"Using positive class weight: {pos_weight}")
 
         if self.use_focal_loss:
@@ -198,9 +221,13 @@ class LitResNetEnhanced(pl.LightningModule):
         """Forward pass through the model."""
         return self.model(x)
 
-    def _calculate_loss(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    def _calculate_loss(
+        self, logits: torch.Tensor, targets: torch.Tensor
+    ) -> torch.Tensor:
         """Calculate loss based on task type."""
-        targets = targets.float().unsqueeze(1) if targets.dim() == 1 else targets.float()
+        targets = (
+            targets.float().unsqueeze(1) if targets.dim() == 1 else targets.float()
+        )
         return self.loss_fn(logits, targets)
 
     def _get_predictions(self, logits: torch.Tensor) -> torch.Tensor:
@@ -211,7 +238,9 @@ class LitResNetEnhanced(pl.LightningModule):
         """Prepare targets for metric computation."""
         return targets.int().unsqueeze(1) if targets.dim() == 1 else targets.int()
 
-    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
+    def training_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> torch.Tensor:
         """Perform training step."""
         x, y = batch
         logits = self(x)
@@ -223,13 +252,31 @@ class LitResNetEnhanced(pl.LightningModule):
         self.train_accuracy.update(preds, targets_for_metrics)
         self.train_f1.update(preds, targets_for_metrics)
 
-        self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log("train_acc", self.train_accuracy, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log("train_f1", self.train_f1, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(
+            "train_loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+        )
+        self.log(
+            "train_acc",
+            self.train_accuracy,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+        )
+        self.log(
+            "train_f1", self.train_f1, on_step=False, on_epoch=True, sync_dist=True
+        )
 
         return loss
 
-    def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
+    def validation_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> torch.Tensor:
         """Perform validation step."""
         x, y = batch
         logits = self(x)
@@ -245,16 +292,42 @@ class LitResNetEnhanced(pl.LightningModule):
         self.val_auroc.update(preds, targets_for_metrics)
         self.val_confusion.update(preds, targets_for_metrics)
 
-        self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log("val_acc", self.val_accuracy, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log("val_precision", self.val_precision, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("val_recall", self.val_recall, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(
+            "val_loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+        )
+        self.log(
+            "val_acc",
+            self.val_accuracy,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+        )
+        self.log(
+            "val_precision",
+            self.val_precision,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.log(
+            "val_recall", self.val_recall, on_step=False, on_epoch=True, sync_dist=True
+        )
         self.log("val_f1", self.val_f1, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("val_auroc", self.val_auroc, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(
+            "val_auroc", self.val_auroc, on_step=False, on_epoch=True, sync_dist=True
+        )
 
         return loss
 
-    def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
+    def test_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> torch.Tensor:
         """Perform test step."""
         x, y = batch
         logits = self(x)
@@ -270,11 +343,27 @@ class LitResNetEnhanced(pl.LightningModule):
         self.test_auroc.update(preds, targets_for_metrics)
 
         self.log("test_loss", loss, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("test_acc", self.test_accuracy, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("test_precision", self.test_precision, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("test_recall", self.test_recall, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(
+            "test_acc", self.test_accuracy, on_step=False, on_epoch=True, sync_dist=True
+        )
+        self.log(
+            "test_precision",
+            self.test_precision,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.log(
+            "test_recall",
+            self.test_recall,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
         self.log("test_f1", self.test_f1, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("test_auroc", self.test_auroc, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(
+            "test_auroc", self.test_auroc, on_step=False, on_epoch=True, sync_dist=True
+        )
 
         return loss
 
@@ -300,7 +389,7 @@ class LitResNetEnhanced(pl.LightningModule):
                     "scheduler": scheduler,
                     "interval": "epoch",
                     "frequency": 1,
-                }
+                },
             }
         else:
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -317,8 +406,8 @@ class LitResNetEnhanced(pl.LightningModule):
                     "monitor": self.monitor_metric,
                     "interval": "epoch",
                     "frequency": 1,
-                    "strict": True
-                }
+                    "strict": True,
+                },
             }
 
     def on_train_epoch_start(self) -> None:
@@ -350,7 +439,9 @@ class LitResNetEnhanced(pl.LightningModule):
         """
         self.unfrozen_layers += layers_to_unfreeze
         self.model._unfreeze_last_n_layers(self.unfrozen_layers)
-        self.logger_obj.info(f"Progressive unfreeze: {self.unfrozen_layers} layers unfrozen")
+        self.logger_obj.info(
+            f"Progressive unfreeze: {self.unfrozen_layers} layers unfrozen"
+        )
 
     def freeze_backbone(self) -> None:
         """Freeze all backbone parameters."""
@@ -364,18 +455,23 @@ class LitResNetEnhanced(pl.LightningModule):
     def get_model_summary(self) -> Dict[str, Any]:
         """Get comprehensive model summary."""
         model_info = self.model.get_model_info()
-        model_info.update({
-            "lightning_module": "LitResNetEnhanced",
-            "optimizer": "AdamW",
-            "learning_rate": self.config.get("experiment.learning_rate", 0),
-            "weight_decay": self.config.get("experiment.weight_decay", 0),
-            "scheduler": "CosineAnnealingWarmRestarts" if self.use_cosine_scheduler else "ReduceLROnPlateau",
-            "loss_function": "FocalLoss" if self.use_focal_loss else "BCEWithLogitsLoss",
-            "label_smoothing": self.label_smoothing,
-            "focal_alpha": self.focal_alpha if self.use_focal_loss else None,
-            "focal_gamma": self.focal_gamma if self.use_focal_loss else None,
-            "unfrozen_layers": self.unfrozen_layers,
-            "device": str(self.device)
-        })
+        model_info.update(
+            {
+                "lightning_module": "LitResNetEnhanced",
+                "optimizer": "AdamW",
+                "learning_rate": self.config.get("experiment.learning_rate", 0),
+                "weight_decay": self.config.get("experiment.weight_decay", 0),
+                "scheduler": "CosineAnnealingWarmRestarts"
+                if self.use_cosine_scheduler
+                else "ReduceLROnPlateau",
+                "loss_function": "FocalLoss"
+                if self.use_focal_loss
+                else "BCEWithLogitsLoss",
+                "label_smoothing": self.label_smoothing,
+                "focal_alpha": self.focal_alpha if self.use_focal_loss else None,
+                "focal_gamma": self.focal_gamma if self.use_focal_loss else None,
+                "unfrozen_layers": self.unfrozen_layers,
+                "device": str(self.device),
+            }
+        )
         return model_info
-

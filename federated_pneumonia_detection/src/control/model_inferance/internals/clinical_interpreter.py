@@ -93,10 +93,12 @@ class ClinicalInterpreter:
         # Build recommendations
         recommendations = []
         if risk_level in ["HIGH", "CRITICAL"]:
-            recommendations.extend([
-                "Immediate radiologist review recommended",
-                "Consider clinical correlation with symptoms",
-            ])
+            recommendations.extend(
+                [
+                    "Immediate radiologist review recommended",
+                    "Consider clinical correlation with symptoms",
+                ]
+            )
         elif risk_level == "MODERATE":
             recommendations.append("Radiologist review within 24 hours recommended")
         else:

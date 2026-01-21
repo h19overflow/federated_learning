@@ -1,7 +1,13 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -26,10 +32,10 @@ interface ChatProviderProps {
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({
   children,
-  apiUrl = 'http://127.0.0.1:8001',
+  apiUrl = "http://127.0.0.1:8001",
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [sessionId, setSessionId] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
   const addMessage = useCallback((message: Message) => {
@@ -58,7 +64,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 export const useChatContext = (): ChatContextType => {
   const context = useContext(ChatContext);
   if (!context) {
-    throw new Error('useChatContext must be used within ChatProvider');
+    throw new Error("useChatContext must be used within ChatProvider");
   }
   return context;
 };

@@ -49,7 +49,7 @@ experiment:
   weight_decay: 0.0001
 logging:
   file_logging: true
-  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   level: INFO
 output:
   checkpoint_dir: models/checkpoints
@@ -64,8 +64,8 @@ system:
   batch_size: 128
   image_extension: .png
   img_size:
-  - 256
-  - 256
+    - 256
+    - 256
   sample_fraction: 1.0
   seed: 42
   use_imagenet_norm: true

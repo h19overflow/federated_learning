@@ -69,7 +69,7 @@ class MetricsCollectorCallback(pl.Callback):
                 f"[MetricsCollector] Initialized in FEDERATED mode for client_id={self.client_id}, round={self.current_round}"
             )
         else:
-            self.logger.info(f"[MetricsCollector] Initialized in CENTRALIZED mode")
+            self.logger.info("[MetricsCollector] Initialized in CENTRALIZED mode")
 
         # Initialize file persister
         self.file_persister = MetricsFilePersister(save_dir, experiment_name)
@@ -460,12 +460,12 @@ class MetricsCollectorCallback(pl.Callback):
             )
 
             # Update run completion time if training finished normally
-            if run_id and hasattr(self, 'training_end_time') and self.training_end_time:
+            if run_id and hasattr(self, "training_end_time") and self.training_end_time:
                 try:
                     run_crud.update(
                         db,
                         run_id,
-                        status="completed"
+                        status="completed",
                         # end_time is set by centralized_trainer.complete_run() - not here to avoid race condition
                     )
                     self.logger.info(

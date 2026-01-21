@@ -23,13 +23,13 @@ import {
   ExperimentArtifactsResponse,
   ExperimentListResponse,
   ComparisonResults,
-} from '@/types/api';
+} from "@/types/api";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-const API_BASE_URL = 'http://127.0.0.1:8001';
+const API_BASE_URL = "http://127.0.0.1:8001";
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 300000; // 5 minutes default
 
 // ============================================================================
@@ -40,10 +40,10 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public statusCode?: number,
-    public response?: any
+    public response?: any,
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
@@ -79,12 +79,12 @@ async function handleResponse<T>(response: Response): Promise<T> {
 function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
-  timeout: number = API_TIMEOUT
+  timeout: number = API_TIMEOUT,
 ): Promise<Response> {
   return Promise.race([
     fetch(url, options),
     new Promise<Response>((_, reject) =>
-      setTimeout(() => reject(new Error('Request timeout')), timeout)
+      setTimeout(() => reject(new Error("Request timeout")), timeout),
     ),
   ]);
 }
@@ -97,7 +97,10 @@ export const configurationApi = {
   /**
    * Get current backend configuration
    */
-  async getCurrentConfiguration(): Promise<{ config: any; config_path: string }> {
+  async getCurrentConfiguration(): Promise<{
+    config: any;
+    config_path: string;
+  }> {
     const response = await fetchWithTimeout(`${API_BASE_URL}/config/current`);
     return handleResponse<{ config: any; config_path: string }>(response);
   },
@@ -106,12 +109,12 @@ export const configurationApi = {
    * Update backend configuration
    */
   async setConfiguration(
-    config: ConfigurationUpdateRequest
+    config: ConfigurationUpdateRequest,
   ): Promise<ConfigurationResponse> {
     const response = await fetchWithTimeout(`${API_BASE_URL}/config/update`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(config),
     });
@@ -130,14 +133,14 @@ export const datasetApi = {
    */
   async uploadDataset(
     file: File,
-    onProgress?: (progress: UploadProgress) => void
-  ): Promise<{ message: string, dataset_summary?: DatasetSummary }> {
+    onProgress?: (progress: UploadProgress) => void,
+  ): Promise<{ message: string; dataset_summary?: DatasetSummary }> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
 
       // Track upload progress
       if (onProgress) {
-        xhr.upload.addEventListener('progress', (e) => {
+        xhr.upload.addEventListener("progress", (e) => {
           if (e.lengthComputable) {
             onProgress({
               loaded: e.loaded,
@@ -149,13 +152,13 @@ export const datasetApi = {
       }
 
       // Handle completion
-      xhr.addEventListener('load', () => {
+      xhr.addEventListener("load", () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response = JSON.parse(xhr.responseText);
             resolve(response);
           } catch (e) {
-            reject(new ApiError('Failed to parse response'));
+            reject(new ApiError("Failed to parse response"));
           }
         } else {
           reject(new ApiError(`Upload failed: ${xhr.statusText}`, xhr.status));
@@ -163,20 +166,20 @@ export const datasetApi = {
       });
 
       // Handle errors
-      xhr.addEventListener('error', () => {
-        reject(new ApiError('Upload failed: Network error'));
+      xhr.addEventListener("error", () => {
+        reject(new ApiError("Upload failed: Network error"));
       });
 
-      xhr.addEventListener('abort', () => {
-        reject(new ApiError('Upload aborted'));
+      xhr.addEventListener("abort", () => {
+        reject(new ApiError("Upload aborted"));
       });
 
       // Note: Actual upload will be part of training request
       // This is a placeholder for future separate upload endpoint
-      xhr.open('POST', `${API_BASE_URL}/upload/dataset`);
+      xhr.open("POST", `${API_BASE_URL}/upload/dataset`);
 
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
 
       xhr.send(formData);
     });
@@ -193,25 +196,25 @@ export const experimentsApi = {
    */
   async startCentralizedTraining(
     dataZip: File,
-    experimentName: string = 'pneumonia_centralized',
-    checkpointDir: string = 'results/centralized/checkpoints',
-    logsDir: string = 'results/centralized/logs',
-    csvFilename: string = 'stage2_train_metadata.csv'
+    experimentName: string = "pneumonia_centralized",
+    checkpointDir: string = "results/centralized/checkpoints",
+    logsDir: string = "results/centralized/logs",
+    csvFilename: string = "stage2_train_metadata.csv",
   ): Promise<TrainingStartResponse> {
     const formData = new FormData();
-    formData.append('data_zip', dataZip);
-    formData.append('experiment_name', experimentName);
-    formData.append('checkpoint_dir', checkpointDir);
-    formData.append('logs_dir', logsDir);
-    formData.append('csv_filename', csvFilename);
+    formData.append("data_zip", dataZip);
+    formData.append("experiment_name", experimentName);
+    formData.append("checkpoint_dir", checkpointDir);
+    formData.append("logs_dir", logsDir);
+    formData.append("csv_filename", csvFilename);
 
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/experiments/centralized/train`,
       {
-        method: 'POST',
+        method: "POST",
         body: formData,
       },
-      600000 // 10 minute timeout for upload
+      600000, // 10 minute timeout for upload
     );
 
     return handleResponse<TrainingStartResponse>(response);
@@ -222,23 +225,23 @@ export const experimentsApi = {
    */
   async startFederatedTraining(
     dataZip: File,
-    experimentName: string = 'pneumonia_federated',
-    csvFilename: string = 'stage2_train_metadata.csv',
-    numServerRounds: number = 3
+    experimentName: string = "pneumonia_federated",
+    csvFilename: string = "stage2_train_metadata.csv",
+    numServerRounds: number = 3,
   ): Promise<TrainingStartResponse> {
     const formData = new FormData();
-    formData.append('data_zip', dataZip);
-    formData.append('experiment_name', experimentName);
-    formData.append('csv_filename', csvFilename);
-    formData.append('num_server_rounds', numServerRounds.toString());
+    formData.append("data_zip", dataZip);
+    formData.append("experiment_name", experimentName);
+    formData.append("csv_filename", csvFilename);
+    formData.append("num_server_rounds", numServerRounds.toString());
 
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/experiments/federated/train`,
       {
-        method: 'POST',
+        method: "POST",
         body: formData,
       },
-      600000 // 10 minute timeout for upload
+      600000, // 10 minute timeout for upload
     );
 
     return handleResponse<TrainingStartResponse>(response);
@@ -248,9 +251,7 @@ export const experimentsApi = {
    * List all experiments
    */
   async listExperiments(): Promise<{ experiments: TrainingStatusResponse[] }> {
-    const response = await fetchWithTimeout(
-      `${API_BASE_URL}/experiments/list`
-    );
+    const response = await fetchWithTimeout(`${API_BASE_URL}/experiments/list`);
 
     return handleResponse<{ experiments: TrainingStatusResponse[] }>(response);
   },
@@ -266,10 +267,10 @@ export const loggingApi = {
    */
   async getExperimentLogs(
     experimentId: string,
-    lines: number = 100
+    lines: number = 100,
   ): Promise<ExperimentLogs> {
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/logs/experiments/${experimentId}?lines=${lines}`
+      `${API_BASE_URL}/logs/experiments/${experimentId}?lines=${lines}`,
     );
 
     return handleResponse<ExperimentLogs>(response);
@@ -280,10 +281,10 @@ export const loggingApi = {
    */
   async tailExperimentLogs(
     experimentId: string,
-    lines: number = 50
+    lines: number = 50,
   ): Promise<ExperimentLogs> {
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/logs/experiments/${experimentId}/tail?lines=${lines}`
+      `${API_BASE_URL}/logs/experiments/${experimentId}/tail?lines=${lines}`,
     );
 
     return handleResponse<ExperimentLogs>(response);
@@ -293,9 +294,7 @@ export const loggingApi = {
    * List available experiment logs
    */
   async listAvailableLogs(): Promise<{ experiments: string[] }> {
-    const response = await fetchWithTimeout(
-      `${API_BASE_URL}/logs/experiments`
-    );
+    const response = await fetchWithTimeout(`${API_BASE_URL}/logs/experiments`);
 
     return handleResponse<{ experiments: string[] }>(response);
   },
@@ -310,9 +309,7 @@ export const resultsApi = {
    * List all training runs with summary information
    */
   async listRuns(): Promise<{ runs: any[]; total: number }> {
-    const response = await fetchWithTimeout(
-      `${API_BASE_URL}/api/runs/list`
-    );
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/runs/list`);
     return handleResponse<{ runs: any[]; total: number }>(response);
   },
 
@@ -321,7 +318,7 @@ export const resultsApi = {
    */
   async getExperimentResults(experimentId: string): Promise<ExperimentResults> {
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/results/experiments/${experimentId}`
+      `${API_BASE_URL}/results/experiments/${experimentId}`,
     );
     return handleResponse<ExperimentResults>(response);
   },
@@ -331,7 +328,7 @@ export const resultsApi = {
    */
   async getRunMetrics(runId: number): Promise<ExperimentResults> {
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/api/runs/${runId}/metrics`
+      `${API_BASE_URL}/api/runs/${runId}/metrics`,
     );
     return handleResponse<ExperimentResults>(response);
   },
@@ -349,7 +346,7 @@ export const resultsApi = {
     }>;
   }> {
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/api/runs/${runId}/federated-rounds`
+      `${API_BASE_URL}/api/runs/${runId}/federated-rounds`,
     );
     return handleResponse<{
       is_federated: boolean;
@@ -396,7 +393,7 @@ export const resultsApi = {
     };
   }> {
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/api/runs/${runId}/server-evaluation`
+      `${API_BASE_URL}/api/runs/${runId}/server-evaluation`,
     );
     return handleResponse(response);
   },
@@ -404,9 +401,11 @@ export const resultsApi = {
   /**
    * Get experiment metrics only (lighter weight than full results)
    */
-  async getExperimentMetrics(experimentId: string): Promise<ExperimentMetricsResponse> {
+  async getExperimentMetrics(
+    experimentId: string,
+  ): Promise<ExperimentMetricsResponse> {
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/results/experiments/${experimentId}/metrics`
+      `${API_BASE_URL}/results/experiments/${experimentId}/metrics`,
     );
     return handleResponse<ExperimentMetricsResponse>(response);
   },
@@ -416,7 +415,7 @@ export const resultsApi = {
    */
   async getExperimentArtifacts(
     experimentId: string,
-    artifactType?: string
+    artifactType?: string,
   ): Promise<ExperimentArtifactsResponse> {
     const url = artifactType
       ? `${API_BASE_URL}/results/experiments/${experimentId}/artifacts?artifact_type=${artifactType}`
@@ -432,15 +431,15 @@ export const resultsApi = {
   async listExperiments(
     status?: string,
     limit: number = 50,
-    offset: number = 0
+    offset: number = 0,
   ): Promise<ExperimentListResponse> {
     const params = new URLSearchParams();
-    if (status) params.append('status', status);
-    params.append('limit', limit.toString());
-    params.append('offset', offset.toString());
+    if (status) params.append("status", status);
+    params.append("limit", limit.toString());
+    params.append("offset", offset.toString());
 
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/results/experiments?${params.toString()}`
+      `${API_BASE_URL}/results/experiments?${params.toString()}`,
     );
     return handleResponse<ExperimentListResponse>(response);
   },
@@ -450,7 +449,7 @@ export const resultsApi = {
    */
   async getComparisonResults(comparisonId: string): Promise<ComparisonResults> {
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/results/comparison/${comparisonId}`
+      `${API_BASE_URL}/results/comparison/${comparisonId}`,
     );
     return handleResponse<ComparisonResults>(response);
   },
@@ -460,14 +459,17 @@ export const resultsApi = {
    */
   async downloadRunArtifact(
     runId: number,
-    format: 'json' | 'csv' | 'summary'
+    format: "json" | "csv" | "summary",
   ): Promise<Blob> {
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/api/runs/${runId}/download/${format}`
+      `${API_BASE_URL}/api/runs/${runId}/download/${format}`,
     );
 
     if (!response.ok) {
-      throw new ApiError(`Download failed: ${response.statusText}`, response.status);
+      throw new ApiError(
+        `Download failed: ${response.statusText}`,
+        response.status,
+      );
     }
 
     return response.blob();
@@ -478,11 +480,11 @@ export const resultsApi = {
    */
   async triggerRunDownload(
     runId: number,
-    format: 'json' | 'csv' | 'summary'
+    format: "json" | "csv" | "summary",
   ): Promise<void> {
     const blob = await this.downloadRunArtifact(runId, format);
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
 
     // Let the backend set the filename via Content-Disposition header
@@ -501,14 +503,22 @@ export const resultsApi = {
    */
   async downloadArtifact(
     experimentId: string,
-    artifactType: 'metrics_json' | 'metrics_csv' | 'summary' | 'logs' | 'checkpoint'
+    artifactType:
+      | "metrics_json"
+      | "metrics_csv"
+      | "summary"
+      | "logs"
+      | "checkpoint",
   ): Promise<Blob> {
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/results/experiments/${experimentId}/download/${artifactType}`
+      `${API_BASE_URL}/results/experiments/${experimentId}/download/${artifactType}`,
     );
 
     if (!response.ok) {
-      throw new ApiError(`Download failed: ${response.statusText}`, response.status);
+      throw new ApiError(
+        `Download failed: ${response.statusText}`,
+        response.status,
+      );
     }
 
     return response.blob();
@@ -520,12 +530,17 @@ export const resultsApi = {
    */
   async triggerDownload(
     experimentId: string,
-    artifactType: 'metrics_json' | 'metrics_csv' | 'summary' | 'logs' | 'checkpoint',
-    filename?: string
+    artifactType:
+      | "metrics_json"
+      | "metrics_csv"
+      | "summary"
+      | "logs"
+      | "checkpoint",
+    filename?: string,
   ): Promise<void> {
     const blob = await this.downloadArtifact(experimentId, artifactType);
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = filename || `${experimentId}_${artifactType}`;
     document.body.appendChild(a);
@@ -544,7 +559,9 @@ export const chatApi = {
    * Get all documents in the knowledge base
    */
   async getKnowledgeBase(): Promise<{ documents: any[]; total_count: number }> {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/chat/knowledge-base`);
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/chat/knowledge-base`,
+    );
     return handleResponse<{ documents: any[]; total_count: number }>(response);
   },
 };

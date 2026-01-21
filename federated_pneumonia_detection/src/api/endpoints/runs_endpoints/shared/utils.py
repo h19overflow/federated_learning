@@ -103,22 +103,32 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
     for epoch in sorted(metrics_by_epoch.keys()):
         epoch_data = metrics_by_epoch[epoch]
 
-        training_history.append({
-            "epoch": epoch + 1,  # Convert from 0-indexed to 1-indexed for display
-            "train_loss": epoch_data.get("train_loss", 0.0),
-            "val_loss": epoch_data.get("val_loss", 0.0),
-            "train_acc": epoch_data.get("train_accuracy", epoch_data.get("train_acc", 0.0)),
-            "val_acc": epoch_data.get("val_accuracy", epoch_data.get("val_acc", 0.0)),
-            "train_f1": epoch_data.get("train_f1", 0.0),
-            "val_precision": epoch_data.get("val_precision", 0.0),
-            "val_recall": epoch_data.get("val_recall", 0.0),
-            "val_f1": epoch_data.get("val_f1", 0.0),
-            "val_auroc": epoch_data.get("val_auroc", epoch_data.get("val_auc", 0.0)),
-        })
+        training_history.append(
+            {
+                "epoch": epoch + 1,  # Convert from 0-indexed to 1-indexed for display
+                "train_loss": epoch_data.get("train_loss", 0.0),
+                "val_loss": epoch_data.get("val_loss", 0.0),
+                "train_acc": epoch_data.get(
+                    "train_accuracy", epoch_data.get("train_acc", 0.0)
+                ),
+                "val_acc": epoch_data.get(
+                    "val_accuracy", epoch_data.get("val_acc", 0.0)
+                ),
+                "train_f1": epoch_data.get("train_f1", 0.0),
+                "val_precision": epoch_data.get("val_precision", 0.0),
+                "val_recall": epoch_data.get("val_recall", 0.0),
+                "val_f1": epoch_data.get("val_f1", 0.0),
+                "val_auroc": epoch_data.get(
+                    "val_auroc", epoch_data.get("val_auc", 0.0)
+                ),
+            }
+        )
 
     # Extract final metrics from the LAST epoch (highest epoch number)
     # IMPORTANT: Do this AFTER metrics_by_epoch is fully populated to avoid out-of-order issues
-    last_epoch_data = metrics_by_epoch[max(metrics_by_epoch.keys())] if metrics_by_epoch else {}
+    last_epoch_data = (
+        metrics_by_epoch[max(metrics_by_epoch.keys())] if metrics_by_epoch else {}
+    )
 
     # Calculate final metrics from last epoch data
     accuracy = last_epoch_data.get("val_accuracy", last_epoch_data.get("val_acc", 0.0))
@@ -170,12 +180,24 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
             "end_time": run.end_time.isoformat() if run.end_time else "",
             "total_epochs": len(training_history),
             "best_epoch": _find_best_epoch(training_history),
-            "best_val_accuracy": max([h.get("val_acc", 0) for h in training_history], default=0.0),
-            "best_val_precision": max([h.get("val_precision", 0) for h in training_history], default=0.0),
-            "best_val_recall": max([h.get("val_recall", 0) for h in training_history], default=0.0),
-            "best_val_loss": min([h.get("val_loss", float('inf')) for h in training_history], default=0.0),
-            "best_val_f1": max([h.get("val_f1", 0) for h in training_history], default=0.0),
-            "best_val_auroc": max([h.get("val_auroc", 0) for h in training_history], default=0.0),
+            "best_val_accuracy": max(
+                [h.get("val_acc", 0) for h in training_history], default=0.0
+            ),
+            "best_val_precision": max(
+                [h.get("val_precision", 0) for h in training_history], default=0.0
+            ),
+            "best_val_recall": max(
+                [h.get("val_recall", 0) for h in training_history], default=0.0
+            ),
+            "best_val_loss": min(
+                [h.get("val_loss", float("inf")) for h in training_history], default=0.0
+            ),
+            "best_val_f1": max(
+                [h.get("val_f1", 0) for h in training_history], default=0.0
+            ),
+            "best_val_auroc": max(
+                [h.get("val_auroc", 0) for h in training_history], default=0.0
+            ),
             # Include all final metrics in metadata for display
             "final_accuracy": accuracy,
             "final_precision": precision,
@@ -254,7 +276,7 @@ def safe_get_nested(data: Dict[str, Any], path: str, default: Any = None) -> Any
     Returns:
         Value at path or default if not found
     """
-    keys = path.split('.')
+    keys = path.split(".")
     current = data
 
     for key in keys:

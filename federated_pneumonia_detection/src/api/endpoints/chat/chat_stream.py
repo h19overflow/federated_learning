@@ -41,9 +41,7 @@ async def query_chat_stream(message: ChatMessage):
 
     async def generate():
         session_id = message.session_id or str(uuid.uuid4())
-        yield sse_pack(
-            {"type": AgentEventType.SESSION.value, "session_id": session_id}
-        )
+        yield sse_pack({"type": AgentEventType.SESSION.value, "session_id": session_id})
 
         session_manager.ensure_session(session_id, message.query)
         enhanced_query = prepare_enhanced_query(message.query, message.run_id)

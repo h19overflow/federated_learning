@@ -1,9 +1,12 @@
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { cn } from '@/lib/utils';
-import type { Components } from 'react-markdown';
-import { Citation, CitationHoverCard } from '@/components/chat/CitationRenderer';
+import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { cn } from "@/lib/utils";
+import type { Components } from "react-markdown";
+import {
+  Citation,
+  CitationHoverCard,
+} from "@/components/chat/CitationRenderer";
 
 interface MarkdownProps {
   content: string;
@@ -43,9 +46,7 @@ const createComponents = (citations?: Citation[]): Components => ({
       {children}
     </ol>
   ),
-  li: ({ children }) => (
-    <li className="text-sm leading-relaxed">{children}</li>
-  ),
+  li: ({ children }) => <li className="text-sm leading-relaxed">{children}</li>,
   // Emphasis
   strong: ({ children }) => (
     <strong className="font-semibold text-[hsl(172_43%_18%)]">
@@ -69,8 +70,8 @@ const createComponents = (citations?: Citation[]): Components => ({
     return (
       <code
         className={cn(
-          'block p-3 bg-[hsl(220_15%_12%)] text-[hsl(0_0%_90%)] rounded-lg text-xs font-mono overflow-x-auto my-2',
-          className
+          "block p-3 bg-[hsl(220_15%_12%)] text-[hsl(0_0%_90%)] rounded-lg text-xs font-mono overflow-x-auto my-2",
+          className,
         )}
         {...props}
       >
@@ -110,10 +111,10 @@ const createComponents = (citations?: Citation[]): Components => ({
   ),
   // Links
   a: ({ href, children }) => {
-    if (href?.startsWith('citation:')) {
-      const id = href.split(':')[1];
-      const citation = citations?.find(c => c.id === id);
-      
+    if (href?.startsWith("citation:")) {
+      const id = href.split(":")[1];
+      const citation = citations?.find((c) => c.id === id);
+
       const reference = (
         <sup className="text-[10px] font-bold text-[hsl(172_63%_30%)] ml-0.5 px-0.5 cursor-help select-none hover:text-[hsl(172_63%_20%)] transition-colors">
           [{id}]
@@ -122,12 +123,10 @@ const createComponents = (citations?: Citation[]): Components => ({
 
       if (citation) {
         return (
-          <CitationHoverCard citation={citation}>
-            {reference}
-          </CitationHoverCard>
+          <CitationHoverCard citation={citation}>{reference}</CitationHoverCard>
         );
       }
-      
+
       return reference;
     }
     return (
@@ -151,14 +150,19 @@ export const Markdown = ({ content, className, citations }: MarkdownProps) => {
   }
 
   // Memoize components to avoid unnecessary re-renders when content changes but citations don't
-  const memoizedComponents = React.useMemo(() => createComponents(citations), [citations]);
+  const memoizedComponents = React.useMemo(
+    () => createComponents(citations),
+    [citations],
+  );
 
   return (
-    <div className={cn('prose prose-sm max-w-none', className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedComponents}>
+    <div className={cn("prose prose-sm max-w-none", className)}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={memoizedComponents}
+      >
         {content}
       </ReactMarkdown>
     </div>
   );
 };
-

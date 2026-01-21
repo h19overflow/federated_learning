@@ -34,9 +34,7 @@ class YamlConfigLoader:
         """
         config_path = Path(config_path)
         if not config_path.exists():
-            raise FileNotFoundError(
-                f"Configuration file not found: {config_path}"
-            )
+            raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
         try:
             with open(config_path, "r", encoding="utf-8") as file:
@@ -61,9 +59,7 @@ class YamlConfigLoader:
         config_path = Path(config_path)
         try:
             with open(config_path, "w", encoding="utf-8") as file:
-                yaml.safe_dump(
-                    config, file, default_flow_style=False, indent=2
-                )
+                yaml.safe_dump(config, file, default_flow_style=False, indent=2)
                 file.flush()
                 os.fsync(file.fileno())
             self.logger.info(f"Saved configuration to {config_path}")

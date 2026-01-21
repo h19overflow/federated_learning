@@ -6,7 +6,9 @@ import torchvision.models as models
 from torchvision.models import ResNet50_Weights
 
 
-def create_backbone(base_model_weights: ResNet50_Weights, logger: Any) -> tuple[nn.Sequential, list]:
+def create_backbone(
+    base_model_weights: ResNet50_Weights, logger: Any
+) -> tuple[nn.Sequential, list]:
     """
     Create and configure the ResNet50 backbone.
 
@@ -40,7 +42,10 @@ def create_backbone(base_model_weights: ResNet50_Weights, logger: Any) -> tuple[
 
 
 def create_classifier_head(
-    num_classes: int, dropout_rate: float, custom_head_sizes: Optional[list], logger: Any
+    num_classes: int,
+    dropout_rate: float,
+    custom_head_sizes: Optional[list],
+    logger: Any,
 ) -> nn.Sequential:
     """
     Create the custom classification head.
@@ -82,9 +87,7 @@ def create_classifier_head(
 
         # Add activation and dropout except for the final layer
         if i < len(head_sizes) - 2:
-            classifier_layers.extend(
-                [nn.ReLU(inplace=True), nn.Dropout(dropout_rate)]
-            )
+            classifier_layers.extend([nn.ReLU(inplace=True), nn.Dropout(dropout_rate)])
 
     classifier = nn.Sequential(*classifier_layers)
 
@@ -93,7 +96,9 @@ def create_classifier_head(
     return classifier
 
 
-def configure_fine_tuning(features: nn.Sequential, fine_tune_layers_count: int, logger: Any) -> None:
+def configure_fine_tuning(
+    features: nn.Sequential, fine_tune_layers_count: int, logger: Any
+) -> None:
     """
     Configure fine-tuning of backbone layers.
 

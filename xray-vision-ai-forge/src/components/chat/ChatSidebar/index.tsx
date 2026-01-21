@@ -63,7 +63,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       .filter((r) => r.start_time)
       .sort(
         (a, b) =>
-          new Date(b.start_time!).getTime() - new Date(a.start_time!).getTime()
+          new Date(b.start_time!).getTime() - new Date(a.start_time!).getTime(),
       )
       .slice(0, 5);
   }, [availableRuns]);
@@ -200,7 +200,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       if (!available && retryCount < maxRetries) {
         retryCount++;
         console.log(
-          `[ChatSidebar] Arxiv not available, retry ${retryCount}/${maxRetries} in ${retryDelay}ms`
+          `[ChatSidebar] Arxiv not available, retry ${retryCount}/${maxRetries} in ${retryDelay}ms`,
         );
         setTimeout(checkWithRetry, retryDelay);
       }
@@ -212,7 +212,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
+        "[data-radix-scroll-area-viewport]",
       );
       if (scrollElement) {
         scrollElement.scrollTop = scrollElement.scrollHeight;
@@ -237,7 +237,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         setIsResizing(false);
       }
     },
-    [isResizing]
+    [isResizing],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -534,7 +534,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      console.log("[ChatSidebar] Enter key pressed - calling handleSendMessage");
+      console.log(
+        "[ChatSidebar] Enter key pressed - calling handleSendMessage",
+      );
       handleSendMessage();
     }
   };
@@ -562,7 +564,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           "flex flex-col border-l border-[hsl(210_15%_92%)] bg-white overflow-hidden relative",
           "h-full",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none",
-          !isResizing && "transition-all duration-300 ease-out"
+          !isResizing && "transition-all duration-300 ease-out",
         )}
         style={{ width: isOpen ? (isRailMode ? 64 : width) : 0 }}
       >
@@ -572,7 +574,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             className={cn(
               "absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 group",
               "hover:bg-[hsl(172_63%_35%)] transition-colors",
-              isResizing && "bg-[hsl(172_63%_35%)]"
+              isResizing && "bg-[hsl(172_63%_35%)]",
             )}
           >
             <div
@@ -580,7 +582,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 "absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-8 rounded-md flex items-center justify-center",
                 "opacity-0 group-hover:opacity-100 transition-opacity",
                 "bg-[hsl(172_63%_22%)] shadow-md",
-                isResizing && "opacity-100"
+                isResizing && "opacity-100",
               )}
             >
               <GripVertical className="h-4 w-4 text-white" />
@@ -706,9 +708,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                           </p>
                         </div>
                         <p className="text-xs text-[hsl(215_15%_50%)] leading-relaxed">
-                          Click the <BookOpen className="inline h-3 w-3 mx-0.5" /> button
-                          to enable academic paper search. When active, your queries will be
-                          augmented with relevant research from arXiv.
+                          Click the{" "}
+                          <BookOpen className="inline h-3 w-3 mx-0.5" /> button
+                          to enable academic paper search. When active, your
+                          queries will be augmented with relevant research from
+                          arXiv.
                         </p>
                       </div>
                     </div>

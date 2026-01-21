@@ -30,13 +30,13 @@ import {
   BatchMetricsData,
   GradientStatsData,
   LRUpdateData,
-} from '@/types/api';
+} from "@/types/api";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-const WS_BASE_URL = 'ws://localhost:8765';
+const WS_BASE_URL = "ws://localhost:8765";
 const RECONNECT_DELAY = 3000; // 3 seconds
 const MAX_RECONNECT_ATTEMPTS = 10;
 const PING_INTERVAL = 30000; // 30 seconds
@@ -122,25 +122,32 @@ export class TrainingProgressWebSocket {
    */
   connect(): void {
     if (this.ws && this.isConnected) {
-      console.warn('WebSocket already connected');
+      console.warn("WebSocket already connected");
       return;
     }
 
     // Connect to simple WebSocket server (no experiment path needed)
     // Backend sends all metrics to ws://localhost:8765
     const url = WS_BASE_URL;
-    console.log(`🔌 [WebSocket] Attempting connection to: ${url} for experiment: ${this.experimentId}`);
+    console.log(
+      `🔌 [WebSocket] Attempting connection to: ${url} for experiment: ${this.experimentId}`,
+    );
 
     try {
       this.ws = new WebSocket(url);
-      console.log(`🔌 [WebSocket] WebSocket object created, waiting for onopen...`);
+      console.log(
+        `🔌 [WebSocket] WebSocket object created, waiting for onopen...`,
+      );
 
       this.ws.onopen = this.handleOpen.bind(this);
       this.ws.onmessage = this.handleMessage.bind(this);
       this.ws.onerror = this.handleError.bind(this);
       this.ws.onclose = this.handleClose.bind(this);
     } catch (error) {
-      console.error('❌ [WebSocket] Failed to create WebSocket connection:', error);
+      console.error(
+        "❌ [WebSocket] Failed to create WebSocket connection:",
+        error,
+      );
       this.scheduleReconnect();
     }
   }
@@ -176,16 +183,18 @@ export class TrainingProgressWebSocket {
    * Handle WebSocket open event
    */
   private handleOpen(): void {
-    console.log(`✅ [WebSocket] Connected! Ready for metrics. Experiment: ${this.experimentId}`);
+    console.log(
+      `✅ [WebSocket] Connected! Ready for metrics. Experiment: ${this.experimentId}`,
+    );
     this.isConnected = true;
     this.reconnectAttempts = 0;
     this.startPing();
 
     // Emit connected event
-    this.emit('connected', { experiment_id: this.experimentId });
+    this.emit("connected", { experiment_id: this.experimentId });
 
     if (this.reconnectAttempts > 0) {
-      this.emit('reconnected', {});
+      this.emit("reconnected", {});
     }
   }
 
@@ -196,12 +205,20 @@ export class TrainingProgressWebSocket {
     try {
       const message: WebSocketMessage = JSON.parse(event.data);
 
-      console.log(`📨 [WebSocket] Message received [${message.type}]:`, message.data);
+      console.log(
+        `📨 [WebSocket] Message received [${message.type}]:`,
+        message.data,
+      );
 
       // Emit to appropriate listeners
       this.emit(message.type, message.data);
     } catch (error) {
-      console.error('❌ [WebSocket] Failed to parse message:', error, 'Raw data:', event.data);
+      console.error(
+        "❌ [WebSocket] Failed to parse message:",
+        error,
+        "Raw data:",
+        event.data,
+      );
     }
   }
 
@@ -209,17 +226,19 @@ export class TrainingProgressWebSocket {
    * Handle WebSocket error
    */
   private handleError(event: Event): void {
-    console.error('❌ [WebSocket] Error:', event);
+    console.error("❌ [WebSocket] Error:", event);
   }
 
   /**
    * Handle WebSocket close event
    */
   private handleClose(event: CloseEvent): void {
-    console.log(`⚠️  [WebSocket] Connection closed: ${event.code} - ${event.reason}`);
+    console.log(
+      `⚠️  [WebSocket] Connection closed: ${event.code} - ${event.reason}`,
+    );
     this.isConnected = false;
     this.stopPing();
-    this.emit('disconnected', {});
+    this.emit("disconnected", {});
 
     if (this.shouldReconnect) {
       this.scheduleReconnect();
@@ -231,19 +250,19 @@ export class TrainingProgressWebSocket {
    */
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.error('Max reconnection attempts reached. Giving up.');
+      console.error("Max reconnection attempts reached. Giving up.");
       return;
     }
 
     this.reconnectAttempts++;
     console.log(
-      `Scheduling reconnect attempt ${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_DELAY}ms`
+      `Scheduling reconnect attempt ${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_DELAY}ms`,
     );
 
-    this.emit('reconnecting', { attempt: this.reconnectAttempts });
+    this.emit("reconnecting", { attempt: this.reconnectAttempts });
 
     this.reconnectTimeout = window.setTimeout(() => {
-      console.log('Attempting to reconnect...');
+      console.log("Attempting to reconnect...");
       this.connect();
     }, RECONNECT_DELAY);
   }
@@ -256,7 +275,7 @@ export class TrainingProgressWebSocket {
 
     this.pingInterval = window.setInterval(() => {
       if (this.isConnectedState()) {
-        this.send({ type: 'ping' });
+        this.send({ type: "ping" });
       }
     }, PING_INTERVAL);
   }
@@ -278,19 +297,18 @@ export class TrainingProgressWebSocket {
     if (this.ws && this.isConnected) {
       this.ws.send(JSON.stringify(message));
     } else {
-      console.warn('Cannot send message: WebSocket not connected');
+      console.warn("Cannot send message: WebSocket not connected");
     }
   }
 
   /**
    * Emit event to listeners
    */
-  private emit<K extends keyof EventListeners>(
-    event: K,
-    data: any
-  ): void {
+  private emit<K extends keyof EventListeners>(event: K, data: any): void {
     const eventListeners = this.listeners[event];
-    console.log(`[WebSocket] Emitting event '${event}' to ${eventListeners?.length || 0} listeners`);
+    console.log(
+      `[WebSocket] Emitting event '${event}' to ${eventListeners?.length || 0} listeners`,
+    );
     if (eventListeners && eventListeners.length > 0) {
       eventListeners.forEach((listener) => {
         try {
@@ -309,7 +327,7 @@ export class TrainingProgressWebSocket {
    */
   on<K extends keyof EventListeners>(
     event: K,
-    listener: EventListeners[K][number]
+    listener: EventListeners[K][number],
   ): () => void {
     this.listeners[event].push(listener);
 
@@ -324,7 +342,7 @@ export class TrainingProgressWebSocket {
    */
   off<K extends keyof EventListeners>(
     event: K,
-    listener: EventListeners[K][number]
+    listener: EventListeners[K][number],
   ): void {
     const index = this.listeners[event].indexOf(listener);
     if (index > -1) {
@@ -355,7 +373,7 @@ export class TrainingProgressWebSocket {
  * Create a WebSocket connection for an experiment
  */
 export function createTrainingProgressWebSocket(
-  experimentId: string
+  experimentId: string,
 ): TrainingProgressWebSocket {
   return new TrainingProgressWebSocket(experimentId);
 }

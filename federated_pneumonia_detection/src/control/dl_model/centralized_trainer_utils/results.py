@@ -86,13 +86,9 @@ def collect_training_results(
         "total_epochs_trained": len(metrics_history),
     }
 
-    logger.info(
-        f"Training results collected: {len(metrics_history)} epochs tracked"
-    )
+    logger.info(f"Training results collected: {len(metrics_history)} epochs tracked")
 
-    logger.info(
-        "Saving metrics to: results/centralized/metrics_output/metrics.json"
-    )
+    logger.info("Saving metrics to: results/centralized/metrics_output/metrics.json")
 
     output_path = os.path.join(logs_dir, "metrics_output", "metrics.json")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

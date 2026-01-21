@@ -10,8 +10,8 @@
  * - @/types/api: Backend config types
  */
 
-import { ExperimentConfiguration } from '@/types/experiment';
-import { ConfigurationUpdateRequest } from '@/types/api';
+import { ExperimentConfiguration } from "@/types/experiment";
+import { ConfigurationUpdateRequest } from "@/types/api";
 
 // ============================================================================
 // Default Advanced Configuration
@@ -25,7 +25,7 @@ const ADVANCED_DEFAULTS = {
   dropout_rate: 0.3,
   freeze_backbone: true,
   num_classes: 1, // Binary classification
-  monitor_metric: 'val_loss' as const,
+  monitor_metric: "val_loss" as const,
 
   // Training parameters
   early_stopping_patience: 7,
@@ -34,11 +34,11 @@ const ADVANCED_DEFAULTS = {
   min_lr: 0.0000001,
 
   // System parameters
-  device: 'auto' as const,
+  device: "auto" as const,
   num_workers: 0, // Windows compatibility
 
   // Image processing
-  color_mode: 'RGB' as const,
+  color_mode: "RGB" as const,
   use_imagenet_norm: true,
   augmentation_strength: 1.0,
   use_custom_preprocessing: false,
@@ -58,9 +58,9 @@ const ADVANCED_DEFAULTS = {
 
   // System
   img_size: [256, 256] as [number, number],
-  image_extension: '.png',
+  image_extension: ".png",
   sample_fraction: 0.05,
-  validation_split: 0.20,
+  validation_split: 0.2,
   seed: 42,
 };
 
@@ -77,7 +77,7 @@ const ADVANCED_DEFAULTS = {
  */
 export function mapToBackendConfig(
   frontendConfig: ExperimentConfiguration,
-  overrides?: Partial<ConfigurationUpdateRequest>
+  overrides?: Partial<ConfigurationUpdateRequest>,
 ): ConfigurationUpdateRequest {
   // Smart default: adjust early_stopping_patience based on epochs
   // For small epoch counts, use a minimum of 5 to allow exploration
@@ -91,19 +91,26 @@ export function mapToBackendConfig(
     return Math.min(15, Math.floor(epochs / 2));
   };
 
-  const smartEarlyStoppingPatience = frontendConfig.earlyStoppingPatience !== undefined
-    ? frontendConfig.earlyStoppingPatience
-    : calculatePatience(frontendConfig.epochs);
+  const smartEarlyStoppingPatience =
+    frontendConfig.earlyStoppingPatience !== undefined
+      ? frontendConfig.earlyStoppingPatience
+      : calculatePatience(frontendConfig.epochs);
 
-  console.log(`[ConfigMapper] Smart early stopping: epochs=${frontendConfig.epochs}, patience=${smartEarlyStoppingPatience}`);
+  console.log(
+    `[ConfigMapper] Smart early stopping: epochs=${frontendConfig.epochs}, patience=${smartEarlyStoppingPatience}`,
+  );
 
   const backendConfig: ConfigurationUpdateRequest = {
     system: {
       img_size: overrides?.system?.img_size || ADVANCED_DEFAULTS.img_size,
-      image_extension: overrides?.system?.image_extension || ADVANCED_DEFAULTS.image_extension,
+      image_extension:
+        overrides?.system?.image_extension || ADVANCED_DEFAULTS.image_extension,
       batch_size: frontendConfig.batchSize,
-      sample_fraction: overrides?.system?.sample_fraction || ADVANCED_DEFAULTS.sample_fraction,
-      validation_split: overrides?.system?.validation_split || ADVANCED_DEFAULTS.validation_split,
+      sample_fraction:
+        overrides?.system?.sample_fraction || ADVANCED_DEFAULTS.sample_fraction,
+      validation_split:
+        overrides?.system?.validation_split ||
+        ADVANCED_DEFAULTS.validation_split,
       seed: overrides?.system?.seed || ADVANCED_DEFAULTS.seed,
     },
 
@@ -116,20 +123,29 @@ export function mapToBackendConfig(
       fine_tune_layers_count: frontendConfig.fineTuneLayers,
 
       // Advanced parameters - use frontend values if provided, otherwise defaults
-      dropout_rate: frontendConfig.dropoutRate ?? ADVANCED_DEFAULTS.dropout_rate,
-      freeze_backbone: frontendConfig.freezeBackbone ?? ADVANCED_DEFAULTS.freeze_backbone,
+      dropout_rate:
+        frontendConfig.dropoutRate ?? ADVANCED_DEFAULTS.dropout_rate,
+      freeze_backbone:
+        frontendConfig.freezeBackbone ?? ADVANCED_DEFAULTS.freeze_backbone,
       num_classes: ADVANCED_DEFAULTS.num_classes,
-      monitor_metric: frontendConfig.monitorMetric || ADVANCED_DEFAULTS.monitor_metric,
+      monitor_metric:
+        frontendConfig.monitorMetric || ADVANCED_DEFAULTS.monitor_metric,
 
       // Training parameters - use smart default for early stopping
       early_stopping_patience: smartEarlyStoppingPatience,
-      reduce_lr_patience: frontendConfig.reduceLrPatience ?? ADVANCED_DEFAULTS.reduce_lr_patience,
-      reduce_lr_factor: frontendConfig.reduceLrFactor ?? ADVANCED_DEFAULTS.reduce_lr_factor,
+      reduce_lr_patience:
+        frontendConfig.reduceLrPatience ?? ADVANCED_DEFAULTS.reduce_lr_patience,
+      reduce_lr_factor:
+        frontendConfig.reduceLrFactor ?? ADVANCED_DEFAULTS.reduce_lr_factor,
       min_lr: frontendConfig.minLr ?? ADVANCED_DEFAULTS.min_lr,
-      validation_split: overrides?.experiment?.validation_split ?? overrides?.system?.validation_split ?? ADVANCED_DEFAULTS.validation_split,
+      validation_split:
+        overrides?.experiment?.validation_split ??
+        overrides?.system?.validation_split ??
+        ADVANCED_DEFAULTS.validation_split,
 
       // Federated parameters (only if applicable)
-      ...(frontendConfig.trainingMode === 'federated' || frontendConfig.trainingMode === 'both'
+      ...(frontendConfig.trainingMode === "federated" ||
+      frontendConfig.trainingMode === "both"
         ? {
             num_clients: frontendConfig.clients,
             num_rounds: frontendConfig.federatedRounds,
@@ -144,9 +160,14 @@ export function mapToBackendConfig(
 
       // Image processing
       color_mode: frontendConfig.colorMode || ADVANCED_DEFAULTS.color_mode,
-      use_imagenet_norm: frontendConfig.useImagenetNorm ?? ADVANCED_DEFAULTS.use_imagenet_norm,
-      augmentation_strength: frontendConfig.augmentationStrength ?? ADVANCED_DEFAULTS.augmentation_strength,
-      use_custom_preprocessing: frontendConfig.useCustomPreprocessing ?? ADVANCED_DEFAULTS.use_custom_preprocessing,
+      use_imagenet_norm:
+        frontendConfig.useImagenetNorm ?? ADVANCED_DEFAULTS.use_imagenet_norm,
+      augmentation_strength:
+        frontendConfig.augmentationStrength ??
+        ADVANCED_DEFAULTS.augmentation_strength,
+      use_custom_preprocessing:
+        frontendConfig.useCustomPreprocessing ??
+        ADVANCED_DEFAULTS.use_custom_preprocessing,
       validate_images_on_init: ADVANCED_DEFAULTS.validate_images_on_init,
       pin_memory: ADVANCED_DEFAULTS.pin_memory,
       persistent_workers: ADVANCED_DEFAULTS.persistent_workers,
@@ -157,7 +178,8 @@ export function mapToBackendConfig(
         ? (frontendConfig.contrastStretch ?? ADVANCED_DEFAULTS.contrast_stretch)
         : ADVANCED_DEFAULTS.contrast_stretch,
       adaptive_histogram: frontendConfig.useCustomPreprocessing
-        ? (frontendConfig.adaptiveHistogram ?? ADVANCED_DEFAULTS.adaptive_histogram)
+        ? (frontendConfig.adaptiveHistogram ??
+          ADVANCED_DEFAULTS.adaptive_histogram)
         : ADVANCED_DEFAULTS.adaptive_histogram,
       edge_enhancement: frontendConfig.useCustomPreprocessing
         ? (frontendConfig.edgeEnhancement ?? ADVANCED_DEFAULTS.edge_enhancement)
@@ -183,16 +205,16 @@ export function mapToBackendConfig(
  * @returns Generated experiment name
  */
 export function generateExperimentName(
-  trainingMode: 'centralized' | 'federated' | 'both',
-  timestamp?: Date
+  trainingMode: "centralized" | "federated" | "both",
+  timestamp?: Date,
 ): string {
   const date = timestamp || new Date();
-  const dateStr = date.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const dateStr = date.toISOString().replace(/[:.]/g, "-").slice(0, 19);
 
   const modePrefix = {
-    centralized: 'cent',
-    federated: 'fed',
-    both: 'comp',
+    centralized: "cent",
+    federated: "fed",
+    both: "comp",
   }[trainingMode];
 
   return `pneumonia_${modePrefix}_${dateStr}`;
@@ -212,37 +234,45 @@ export function validateConfiguration(config: ExperimentConfiguration): {
 
   // Validate basic parameters
   if (config.learningRate <= 0 || config.learningRate > 1) {
-    errors.push('Learning rate must be between 0 and 1');
+    errors.push("Learning rate must be between 0 and 1");
   }
 
   if (config.epochs < 1 || config.epochs > 1000) {
-    errors.push('Epochs must be between 1 and 1000');
+    errors.push("Epochs must be between 1 and 1000");
   }
 
   if (config.batchSize < 1 || config.batchSize > 512) {
-    errors.push('Batch size must be between 1 and 512');
+    errors.push("Batch size must be between 1 and 512");
   }
 
   if (config.weightDecay < 0 || config.weightDecay > 1) {
-    errors.push('Weight decay must be between 0 and 1');
+    errors.push("Weight decay must be between 0 and 1");
   }
 
   if (config.fineTuneLayers < 0 || config.fineTuneLayers > 50) {
-    errors.push('Fine-tune layers must be between 0 and 50');
+    errors.push("Fine-tune layers must be between 0 and 50");
   }
 
   // Validate federated parameters if applicable
-  if (config.trainingMode === 'federated' || config.trainingMode === 'both') {
+  if (config.trainingMode === "federated" || config.trainingMode === "both") {
     if (!config.clients || config.clients < 2 || config.clients > 100) {
-      errors.push('Number of clients must be between 2 and 100');
+      errors.push("Number of clients must be between 2 and 100");
     }
 
-    if (!config.federatedRounds || config.federatedRounds < 1 || config.federatedRounds > 100) {
-      errors.push('Federated rounds must be between 1 and 100');
+    if (
+      !config.federatedRounds ||
+      config.federatedRounds < 1 ||
+      config.federatedRounds > 100
+    ) {
+      errors.push("Federated rounds must be between 1 and 100");
     }
 
-    if (!config.localEpochs || config.localEpochs < 1 || config.localEpochs > 50) {
-      errors.push('Local epochs must be between 1 and 50');
+    if (
+      !config.localEpochs ||
+      config.localEpochs < 1 ||
+      config.localEpochs > 50
+    ) {
+      errors.push("Local epochs must be between 1 and 50");
     }
   }
 
@@ -259,7 +289,7 @@ export function validateConfiguration(config: ExperimentConfiguration): {
  * @returns Recommended configuration
  */
 export function getRecommendedConfig(
-  trainingMode: 'centralized' | 'federated' | 'both'
+  trainingMode: "centralized" | "federated" | "both",
 ): ExperimentConfiguration {
   const baseConfig: ExperimentConfiguration = {
     trainingMode,
@@ -270,7 +300,7 @@ export function getRecommendedConfig(
     batchSize: 128,
   };
 
-  if (trainingMode === 'federated' || trainingMode === 'both') {
+  if (trainingMode === "federated" || trainingMode === "both") {
     return {
       ...baseConfig,
       clients: 3,

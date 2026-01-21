@@ -1,6 +1,7 @@
 """
 ServerEvaluation model - server-side evaluation metrics for federated learning.
 """
+
 from sqlalchemy import Column, Integer, Float, ForeignKey, TIMESTAMP, JSON
 from sqlalchemy.orm import relationship
 from .run import Base

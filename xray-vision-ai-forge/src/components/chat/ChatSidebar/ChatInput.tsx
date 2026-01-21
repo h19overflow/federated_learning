@@ -44,7 +44,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       inputRef.current.style.height = "auto";
       inputRef.current.style.height = `${Math.min(
         inputRef.current.scrollHeight,
-        200
+        200,
       )}px`;
     }
 
@@ -75,7 +75,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const canSend = !isLoading && input.trim().length > 0;
 
-  console.log("[ChatInput] Render - canSend:", canSend, "input:", input, "isLoading:", isLoading);
+  console.log(
+    "[ChatInput] Render - canSend:",
+    canSend,
+    "input:",
+    input,
+    "isLoading:",
+    isLoading,
+  );
 
   return (
     <div className="border-t border-[hsl(210_15%_92%)] bg-white">
@@ -90,15 +97,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               arxivEnabled
                 ? "Search with arXiv research..."
                 : selectedRun
-                ? `Ask about Run #${selectedRun.runId}...`
-                : "Type / to select a run..."
+                  ? `Ask about Run #${selectedRun.runId}...`
+                  : "Type / to select a run..."
             }
             disabled={isLoading}
             rows={1}
             className={cn(
               "flex-1 min-h-[44px] max-h-[200px] rounded-xl border-2 border-[hsl(210_15%_90%)] hover:border-[hsl(172_40%_80%)] focus:border-[hsl(172_63%_35%)] focus-visible:ring-0 transition-all duration-200 px-4 py-2.5 bg-[hsl(168_25%_99%)] placeholder:text-[hsl(215_15%_60%)] resize-none scrollbar-none",
               arxivEnabled &&
-                "ring-2 ring-[hsl(172_63%_35%)]/30 border-[hsl(172_63%_35%)]"
+                "ring-2 ring-[hsl(172_63%_35%)]/30 border-[hsl(172_63%_35%)]",
             )}
           />
           <Button
@@ -125,7 +132,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               arxivEnabled
                 ? "bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white border-0 shadow-md shadow-[hsl(172_63%_22%)]/20"
                 : "border-2 border-[hsl(210_15%_90%)] hover:border-[hsl(172_40%_80%)] hover:bg-[hsl(172_40%_94%)] text-[hsl(215_15%_45%)]",
-              !arxivAvailable && "opacity-50 cursor-not-allowed"
+              !arxivAvailable && "opacity-50 cursor-not-allowed",
             )}
           >
             <BookOpen className="h-4 w-4" />

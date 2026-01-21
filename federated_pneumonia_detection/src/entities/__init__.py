@@ -9,7 +9,4 @@ See federated_pneumonia_detection.config.config_manager for the new configuratio
 from .custom_image_dataset import CustomImageDataset
 from .resnet_with_custom_head import ResNetWithCustomHead
 
-__all__ = [
-    'CustomImageDataset',
-    'ResNetWithCustomHead'
-]
+__all__ = ["CustomImageDataset", "ResNetWithCustomHead"]

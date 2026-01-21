@@ -2,9 +2,9 @@
 Utility functions for chat endpoint context building and enhancement.
 """
 
-from typing import Optional
-import logging
 import json
+import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 # SSE FORMATTING HELPERS
 # ==============================================================================
+
 
 def sse_pack(data: dict) -> str:
     """
@@ -31,6 +32,7 @@ def sse_error(message: str, error_type: str = "error") -> str:
 # SESSION MANAGEMENT HELPERS
 # ==============================================================================
 
+
 def ensure_db_session(session_id: str, query: str) -> None:
     """
     Ensure a chat session exists in the database.
@@ -39,8 +41,8 @@ def ensure_db_session(session_id: str, query: str) -> None:
     The chat will still work, just without persistent session tracking.
     """
     from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
-        get_chat_session,
         create_chat_session,
+        get_chat_session,
     )
 
     try:
@@ -75,6 +77,7 @@ def prepare_enhanced_query(query: str, run_id: Optional[int]) -> str:
 # ==============================================================================
 # RUN CONTEXT BUILDING
 # ==============================================================================
+
 
 def build_run_context(
     db, run_id: int, run_crud, run_metric_crud, server_evaluation_crud
@@ -233,7 +236,6 @@ def _build_federated_details(
             if eval.num_samples:
                 details += f"  - Samples: {eval.num_samples}\n"
 
-
     return details
 
 
@@ -241,14 +243,24 @@ def _build_ai_instructions() -> str:
     """Build AI instructions section."""
     instructions = "\n" + "=" * 60 + "\n"
     instructions += "INSTRUCTIONS FOR AI:\n"
-    instructions += "Use the above detailed information to answer the user's question.\n"
-    instructions += "Never mention the status of the run, just answer based on the data provided.\n"
-    instructions += "Provide specific numbers, trends, and insights based on this data.\n"
-    instructions += "If the user asks about comparisons, note what data is available.\n\n"
+    instructions += (
+        "Use the above detailed information to answer the user's question.\n"
+    )
+    instructions += (
+        "Never mention the status of the run, just answer based on the data provided.\n"
+    )
+    instructions += (
+        "Provide specific numbers, trends, and insights based on this data.\n"
+    )
+    instructions += (
+        "If the user asks about comparisons, note what data is available.\n\n"
+    )
     instructions += "FORMAT YOUR RESPONSE USING MARKDOWN:\n"
     instructions += "- Use **bold** for key metrics and important values\n"
     instructions += "- Use bullet points or numbered lists for multiple items\n"
-    instructions += "- Use `code` formatting for percentages, numbers, and metric names\n"
+    instructions += (
+        "- Use `code` formatting for percentages, numbers, and metric names\n"
+    )
     instructions += "- Use tables when comparing metrics across rounds or clients\n"
     instructions += "- Use ### headings to organize sections in longer responses\n"
     instructions += "=" * 60 + "\n\n"

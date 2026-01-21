@@ -1,4 +1,3 @@
-
 export interface SavedExperiment {
   id: string;
   name: string;
@@ -22,7 +21,7 @@ export interface SavedExperiment {
 
 export interface ExperimentConfiguration {
   // Basic required fields
-  trainingMode: 'centralized' | 'federated' | 'both';
+  trainingMode: "centralized" | "federated" | "both";
   fineTuneLayers: number;
   learningRate: number;
   weightDecay: number;
@@ -37,7 +36,7 @@ export interface ExperimentConfiguration {
   // Advanced model parameters
   dropoutRate?: number;
   freezeBackbone?: boolean;
-  monitorMetric?: 'val_loss' | 'val_acc' | 'val_f1' | 'val_auroc';
+  monitorMetric?: "val_loss" | "val_acc" | "val_f1" | "val_auroc";
 
   // Advanced training parameters
   earlyStoppingPatience?: number;
@@ -46,11 +45,11 @@ export interface ExperimentConfiguration {
   minLr?: number;
 
   // System parameters
-  device?: 'auto' | 'cpu' | 'cuda';
+  device?: "auto" | "cpu" | "cuda";
   numWorkers?: number;
 
   // Image processing parameters
-  colorMode?: 'RGB' | 'L';
+  colorMode?: "RGB" | "L";
   useImagenetNorm?: boolean;
   augmentationStrength?: number;
 

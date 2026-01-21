@@ -99,7 +99,9 @@ def validate_image_files(filenames: np.ndarray, image_dir: Path) -> np.ndarray:
     return np.array(valid_indices)
 
 
-def validate_all_images(filenames: np.ndarray, image_dir: Path) -> Tuple[int, int, list]:
+def validate_all_images(
+    filenames: np.ndarray, image_dir: Path
+) -> Tuple[int, int, list]:
     """
     Validate all images in the dataset.
 

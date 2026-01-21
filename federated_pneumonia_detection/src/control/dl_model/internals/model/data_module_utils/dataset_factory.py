@@ -9,16 +9,20 @@ import pandas as pd
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.entities.custom_image_dataset import CustomImageDataset
-from federated_pneumonia_detection.src.internals.image_transforms import TransformBuilder
+from federated_pneumonia_detection.src.entities.custom_image_dataset import (
+    CustomImageDataset,
+)
+from federated_pneumonia_detection.src.internals.image_transforms import (
+    TransformBuilder,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def create_dataset(
     dataframe: pd.DataFrame,
-    image_dir: 'Path',
-    config: 'ConfigManager',
+    image_dir: "Path",
+    config: "ConfigManager",
     transforms,
     color_mode: str,
     validate_images: bool,
@@ -45,7 +49,7 @@ def create_dataset(
         config=config,
         transform=transforms,
         color_mode=color_mode,
-        validate_images=validate_images
+        validate_images=validate_images,
     )
 
     # Log dataset statistics
@@ -67,7 +71,7 @@ def create_dataset(
 
 def create_training_transforms(
     transform_builder: TransformBuilder,
-    custom_preprocessing_config: Optional[Dict[str, Any]] = None
+    custom_preprocessing_config: Optional[Dict[str, Any]] = None,
 ):
     """
     Create training transforms with augmentation.
@@ -81,14 +85,18 @@ def create_training_transforms(
     """
     return transform_builder.build_training_transforms(
         enable_augmentation=True,
-        augmentation_strength=getattr(transform_builder.config, 'augmentation_strength', 1.0),
-        custom_preprocessing=custom_preprocessing_config if custom_preprocessing_config else None
+        augmentation_strength=getattr(
+            transform_builder.config, "augmentation_strength", 1.0
+        ),
+        custom_preprocessing=custom_preprocessing_config
+        if custom_preprocessing_config
+        else None,
     )
 
 
 def create_validation_transforms(
     transform_builder: TransformBuilder,
-    custom_preprocessing_config: Optional[Dict[str, Any]] = None
+    custom_preprocessing_config: Optional[Dict[str, Any]] = None,
 ):
     """
     Create validation/test transforms without augmentation.
@@ -101,5 +109,7 @@ def create_validation_transforms(
         Transform pipeline for validation/test
     """
     return transform_builder.build_validation_transforms(
-        custom_preprocessing=custom_preprocessing_config if custom_preprocessing_config else None
+        custom_preprocessing=custom_preprocessing_config
+        if custom_preprocessing_config
+        else None
     )

@@ -153,7 +153,7 @@ const RunItem: React.FC<{ run: RunSummary }> = ({ run }) => (
         "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors",
         run.training_mode === "federated"
           ? "bg-[hsl(210_60%_92%)] text-[hsl(210_60%_40%)]"
-          : "bg-[hsl(152_50%_92%)] text-[hsl(152_60%_35%)]"
+          : "bg-[hsl(152_50%_92%)] text-[hsl(152_60%_35%)]",
       )}
     >
       <BarChart className="h-5 w-5" />

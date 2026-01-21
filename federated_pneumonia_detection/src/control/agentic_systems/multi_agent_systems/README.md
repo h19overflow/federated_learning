@@ -126,25 +126,31 @@ multi_agent_systems/
 ### Root-Level Components
 
 #### `BaseAgent` (base_agent.py)
+
 Abstract base class defining the contract for all agent implementations.
 
 **Methods:**
+
 - `stream(input: ChatInput, callback: Callable) -> AsyncGenerator[AgentEvent]`: Stream responses with SSE events
 - `query(input: ChatInput) -> str`: Execute a query and return complete response
 - `history(session_id: str) -> List[Dict]`: Retrieve conversation history
 - `clear_history(session_id: str) -> None`: Clear conversation history
 
 #### `AgentFactory` (factory.py)
+
 Factory pattern implementation for agent instantiation with lazy initialization.
 
 **Methods:**
+
 - `get_chat_agent() -> BaseAgent`: Returns singleton ResearchAgent instance
 - `reset() -> None`: Clear cached instances (useful for testing)
 
 #### `SessionManager` (session_manager.py)
+
 Facade for session persistence and management operations.
 
 **Methods:**
+
 - `list_sessions() -> List[Session]`: List all active sessions
 - `create_session(title: str) -> Session`: Create new conversation session
 - `ensure_session(session_id: str) -> Session`: Get or create session by ID
@@ -154,27 +160,34 @@ Facade for session persistence and management operations.
 ### Chat Submodule Components
 
 #### Query Router (chat/core/router.py)
+
 Intelligent query classifier using gemini-2.0-flash-exp to determine query complexity.
 
 **Classification Modes:**
+
 - **Basic Mode**: Simple conversational queries, no tools required
 - **Research Mode**: Complex queries requiring retrieval, tool execution, synthesis
 
 **Example Classification:**
+
 - "Hello, how are you?" → Basic Mode
 - "Compare recent research on pneumonia detection using CT vs. X-ray" → Research Mode
 
 #### Research Engine (chat/agents/research_engine.py)
+
 Main orchestrator `ArxivAugmentedEngine` that coordinates:
+
 - RAG retrieval from internal knowledge base
 - ArXiv search for academic papers
 - Conversation history integration
 - Tool execution via LangGraph
 
 #### Streaming Orchestrator (chat/agents/research_stream.py)
+
 Manages real-time response streaming via Server-Sent Events (SSE).
 
 **Stream Flow:**
+
 1. Classify query type
 2. Build appropriate tool set
 3. Construct message context
@@ -182,28 +195,35 @@ Manages real-time response streaming via Server-Sent Events (SSE).
 5. Emit SSE events (tokens, tool calls, status updates)
 
 #### Hybrid RAG (chat/providers/rag.py)
+
 Ensemble retrieval combining:
+
 - **BM25**: Keyword-based search (50% weight)
 - **PGVector**: Semantic search with all-MiniLM-L6-v2 embeddings (50% weight)
 
 **Features:**
+
 - Dense document chunks with metadata
 - Configurable top-k retrieval
 - Automatic query expansion
 
 #### MCP Integration (chat/providers/arxiv_mcp.py)
+
 Singleton `MCPManager` for ArXiv MCP server lifecycle management.
 
 **Capabilities:**
+
 - Server process management
 - Tool discovery and registration
 - Paper metadata retrieval
 - Abstract and citation extraction
 
 #### Conversation History (chat/history/postgres_history.py)
+
 PostgreSQL-backed chat history using LangChain's `PostgresChatMessageHistory`.
 
 **Features:**
+
 - Automatic title generation
 - Message deduplication
 - Timestamp tracking
@@ -213,15 +233,15 @@ PostgreSQL-backed chat history using LangChain's `PostgresChatMessageHistory`.
 
 ## Design Patterns
 
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| **Abstract Base Class** | `base_agent.py` | Defines common interface for all agent implementations |
-| **Factory Pattern** | `factory.py` | Centralizes agent creation and manages lifecycles |
-| **Singleton Pattern** | `factory.py`, `chat/providers/arxiv_mcp.py` | Ensures single instances of factory and MCP manager |
-| **Adapter Pattern** | `providers/research_agent.py` | Bridges `ArxivAugmentedEngine` to `BaseAgent` contract |
-| **Facade Pattern** | `session_manager.py` | Simplifies session operations over multiple repositories |
-| **DTO Pattern** | `contracts.py` | Data transfer objects for clean type boundaries |
-| **Strategy Pattern** | `chat/agents/stream_basic.py` vs `stream_research.py` | Interchangeable streaming strategies |
+| Pattern                 | Location                                              | Purpose                                                  |
+| ----------------------- | ----------------------------------------------------- | -------------------------------------------------------- |
+| **Abstract Base Class** | `base_agent.py`                                       | Defines common interface for all agent implementations   |
+| **Factory Pattern**     | `factory.py`                                          | Centralizes agent creation and manages lifecycles        |
+| **Singleton Pattern**   | `factory.py`, `chat/providers/arxiv_mcp.py`           | Ensures single instances of factory and MCP manager      |
+| **Adapter Pattern**     | `providers/research_agent.py`                         | Bridges `ArxivAugmentedEngine` to `BaseAgent` contract   |
+| **Facade Pattern**      | `session_manager.py`                                  | Simplifies session operations over multiple repositories |
+| **DTO Pattern**         | `contracts.py`                                        | Data transfer objects for clean type boundaries          |
+| **Strategy Pattern**    | `chat/agents/stream_basic.py` vs `stream_research.py` | Interchangeable streaming strategies                     |
 
 ---
 
@@ -230,6 +250,7 @@ PostgreSQL-backed chat history using LangChain's `PostgresChatMessageHistory`.
 ### Public API
 
 #### Factory Access
+
 ```python
 from multi_agent_systems import get_agent_factory
 
@@ -241,6 +262,7 @@ agent = factory.get_chat_agent()
 ```
 
 #### Agent Operations
+
 ```python
 from multi_agent_systems.contracts import ChatInput
 from multi_agent_systems import get_agent_factory
@@ -264,6 +286,7 @@ async for event in agent.stream(input_data, callback=print):
 ```
 
 #### Session Management
+
 ```python
 from multi_agent_systems import SessionManager
 
@@ -275,6 +298,7 @@ SessionManager.delete_session(session.id)
 ### Type Definitions
 
 #### `AgentEventType`
+
 ```python
 class AgentEventType(Enum):
     SESSION = "session"      # Session metadata
@@ -286,6 +310,7 @@ class AgentEventType(Enum):
 ```
 
 #### `ChatInput`
+
 ```python
 @dataclass
 class ChatInput:
@@ -297,6 +322,7 @@ class ChatInput:
 ```
 
 #### `AgentEvent`
+
 ```python
 class AgentEvent(TypedDict):
     type: AgentEventType    # Event type
@@ -312,6 +338,7 @@ class AgentEvent(TypedDict):
 ## Usage Examples
 
 ### Basic Query
+
 ```python
 from multi_agent_systems import get_agent_factory
 from multi_agent_systems.contracts import ChatInput
@@ -329,6 +356,7 @@ print(response)
 ```
 
 ### Research Query with Streaming
+
 ```python
 import asyncio
 
@@ -356,6 +384,7 @@ asyncio.run(stream_research_query())
 ```
 
 ### Session Management
+
 ```python
 from multi_agent_systems import SessionManager
 
@@ -377,6 +406,7 @@ SessionManager.delete_session(session.id)
 ```
 
 ### Integration with FastAPI
+
 ```python
 from fastapi import FastAPI
 from multi_agent_systems import get_agent_factory
@@ -401,11 +431,11 @@ async def chat_stream(input: ChatInput):
 
 ### Environment Variables
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | None | Yes |
-| `GEMINI_API_KEY` | Google Gemini API key | None | Yes |
-| `OPENAI_API_KEY` | OpenAI API key (for embeddings) | None | Yes |
+| Variable         | Description                     | Default | Required |
+| ---------------- | ------------------------------- | ------- | -------- |
+| `DATABASE_URL`   | PostgreSQL connection string    | None    | Yes      |
+| `GEMINI_API_KEY` | Google Gemini API key           | None    | Yes      |
+| `OPENAI_API_KEY` | OpenAI API key (for embeddings) | None    | Yes      |
 
 ### Database Setup
 
@@ -456,21 +486,21 @@ federated_pneumonia_detection/
 
 ### External Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `langchain` | ^0.3.0 | Orchestration framework |
-| `langchain-google-genai` | ^2.0.0 | Gemini LLM integration |
-| `langchain-openai` | ^0.2.0 | OpenAI embeddings |
-| `langchain-postgres` | ^0.0.12 | PostgreSQL history store |
-| `langgraph` | ^0.2.0 | Streaming and orchestration |
-| `langchain-community` | ^0.3.0 | Community tools (BM25) |
-| `pgvector` | ^0.3.0 | Vector similarity search |
-| `mcp` | ^0.9.0 | Model Context Protocol |
-| `arxiv-mcp-server` | ^0.1.0 | ArXiv MCP integration |
-| `sqlalchemy` | ^2.0.0 | Database ORM |
-| `pydantic` | ^2.0.0 | Data validation |
-| `fastapi` | ^0.115.0 | API framework (for endpoints) |
-| `sse-starlette` | ^2.1.0 | Server-Sent Events support |
+| Package                  | Version  | Purpose                       |
+| ------------------------ | -------- | ----------------------------- |
+| `langchain`              | ^0.3.0   | Orchestration framework       |
+| `langchain-google-genai` | ^2.0.0   | Gemini LLM integration        |
+| `langchain-openai`       | ^0.2.0   | OpenAI embeddings             |
+| `langchain-postgres`     | ^0.0.12  | PostgreSQL history store      |
+| `langgraph`              | ^0.2.0   | Streaming and orchestration   |
+| `langchain-community`    | ^0.3.0   | Community tools (BM25)        |
+| `pgvector`               | ^0.3.0   | Vector similarity search      |
+| `mcp`                    | ^0.9.0   | Model Context Protocol        |
+| `arxiv-mcp-server`       | ^0.1.0   | ArXiv MCP integration         |
+| `sqlalchemy`             | ^2.0.0   | Database ORM                  |
+| `pydantic`               | ^2.0.0   | Data validation               |
+| `fastapi`                | ^0.115.0 | API framework (for endpoints) |
+| `sse-starlette`          | ^2.1.0   | Server-Sent Events support    |
 
 ### Installation
 
@@ -509,6 +539,7 @@ Server-Sent Events follow this JSON structure:
 ### ArXiv Tool Integration
 
 The arXiv MCP server provides the following tools:
+
 - `arxiv_search`: Search papers by query
 - `arxiv_get`: Get paper details by ID
 - `arxiv_download`: Download paper PDF
@@ -524,14 +555,17 @@ The arXiv MCP server provides the following tools:
 ### Troubleshooting
 
 **Issue**: Query classification fails
+
 - **Cause**: Missing or invalid `GEMINI_API_KEY`
 - **Solution**: Verify API key and network connectivity
 
 **Issue**: No arXiv results
+
 - **Cause**: MCP server not running
 - **Solution**: Check MCPManager initialization logs
 
 **Issue**: History not persisting
+
 - **Cause**: Database connection issues
 - **Solution**: Verify `DATABASE_URL` and PostgreSQL extensions
 

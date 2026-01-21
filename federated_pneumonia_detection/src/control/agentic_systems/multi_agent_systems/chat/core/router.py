@@ -42,7 +42,7 @@ def _get_router_llm():
         base_model = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash-exp",
             temperature=0.0,  # Deterministic classification
-            max_tokens=50,    # Small response
+            max_tokens=50,  # Small response
         )
         # Use with_structured_output for simple classification (no agent needed)
         _router_llm = base_model.with_structured_output(QueryClassification)

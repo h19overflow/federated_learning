@@ -12,10 +12,10 @@ import {
   BatchInferenceResponse,
   HeatmapResponse,
   BatchHeatmapResponse,
-} from '@/types/inference';
+} from "@/types/inference";
 
 // Configuration
-const API_BASE_URL = 'http://127.0.0.1:8001';
+const API_BASE_URL = "http://127.0.0.1:8001";
 const API_TIMEOUT = 30000; // 30 seconds for inference
 
 // API Error class (matching api.ts pattern)
@@ -23,10 +23,10 @@ export class InferenceApiError extends Error {
   constructor(
     message: string,
     public statusCode?: number,
-    public response?: any
+    public response?: any,
   ) {
     super(message);
-    this.name = 'InferenceApiError';
+    this.name = "InferenceApiError";
   }
 }
 
@@ -62,12 +62,12 @@ async function handleResponse<T>(response: Response): Promise<T> {
 function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
-  timeout: number = API_TIMEOUT
+  timeout: number = API_TIMEOUT,
 ): Promise<Response> {
   return Promise.race([
     fetch(url, options),
     new Promise<Response>((_, reject) =>
-      setTimeout(() => reject(new Error('Request timeout')), timeout)
+      setTimeout(() => reject(new Error("Request timeout")), timeout),
     ),
   ]);
 }
@@ -79,7 +79,7 @@ export async function checkInferenceHealth(): Promise<HealthCheckResponse> {
   const response = await fetchWithTimeout(
     `${API_BASE_URL}/api/inference/health`,
     {},
-    5000 // Short timeout for health check
+    5000, // Short timeout for health check
   );
 
   return handleResponse<HealthCheckResponse>(response);
@@ -94,21 +94,24 @@ export async function checkInferenceHealth(): Promise<HealthCheckResponse> {
  */
 export async function predictImage(
   file: File,
-  includeClinicalInterpretation: boolean = true
+  includeClinicalInterpretation: boolean = true,
 ): Promise<InferenceResponse> {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
   const url = new URL(`${API_BASE_URL}/api/inference/predict`);
-  url.searchParams.append('include_clinical_interpretation', String(includeClinicalInterpretation));
+  url.searchParams.append(
+    "include_clinical_interpretation",
+    String(includeClinicalInterpretation),
+  );
 
   const response = await fetchWithTimeout(
     url.toString(),
     {
-      method: 'POST',
+      method: "POST",
       body: formData,
     },
-    API_TIMEOUT
+    API_TIMEOUT,
   );
 
   return handleResponse<InferenceResponse>(response);
@@ -123,17 +126,20 @@ export async function predictImage(
  */
 export async function batchPredictImages(
   files: File[],
-  includeClinicalInterpretation: boolean = false
+  includeClinicalInterpretation: boolean = false,
 ): Promise<BatchInferenceResponse> {
   const formData = new FormData();
 
   // Append all files with the same field name 'files'
   files.forEach((file) => {
-    formData.append('files', file);
+    formData.append("files", file);
   });
 
   const url = new URL(`${API_BASE_URL}/api/inference/predict-batch`);
-  url.searchParams.append('include_clinical_interpretation', String(includeClinicalInterpretation));
+  url.searchParams.append(
+    "include_clinical_interpretation",
+    String(includeClinicalInterpretation),
+  );
 
   // Longer timeout for batch processing (2 minutes)
   const batchTimeout = 120000;
@@ -141,10 +147,10 @@ export async function batchPredictImages(
   const response = await fetchWithTimeout(
     url.toString(),
     {
-      method: 'POST',
+      method: "POST",
       body: formData,
     },
-    batchTimeout
+    batchTimeout,
   );
 
   return handleResponse<BatchInferenceResponse>(response);
@@ -157,7 +163,7 @@ export async function batchPredictImages(
  * @returns PDF blob for download
  */
 export async function generateBatchPdfReport(
-  batchResult: BatchInferenceResponse
+  batchResult: BatchInferenceResponse,
 ): Promise<Blob> {
   const requestBody = {
     results: batchResult.results.map((r) => ({
@@ -182,19 +188,19 @@ export async function generateBatchPdfReport(
       avg_confidence: batchResult.summary.avg_confidence,
       high_risk_count: batchResult.summary.high_risk_count || 0,
     },
-    model_version: batchResult.model_version || 'unknown',
+    model_version: batchResult.model_version || "unknown",
   };
 
   const response = await fetchWithTimeout(
     `${API_BASE_URL}/api/reports/batch`,
     {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
     },
-    60000 // 60 seconds for PDF generation
+    60000, // 60 seconds for PDF generation
   );
 
   if (!response.ok) {
@@ -216,7 +222,7 @@ export async function generateBatchPdfReport(
  */
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);
@@ -235,23 +241,23 @@ export function downloadBlob(blob: Blob, filename: string): void {
  */
 export async function generateHeatmap(
   file: File,
-  colormap: string = 'jet',
-  alpha: number = 0.4
+  colormap: string = "jet",
+  alpha: number = 0.4,
 ): Promise<HeatmapResponse> {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
   const url = new URL(`${API_BASE_URL}/api/inference/heatmap`);
-  url.searchParams.append('colormap', colormap);
-  url.searchParams.append('alpha', String(alpha));
+  url.searchParams.append("colormap", colormap);
+  url.searchParams.append("alpha", String(alpha));
 
   const response = await fetchWithTimeout(
     url.toString(),
     {
-      method: 'POST',
+      method: "POST",
       body: formData,
     },
-    API_TIMEOUT
+    API_TIMEOUT,
   );
 
   return handleResponse<HeatmapResponse>(response);
@@ -267,18 +273,18 @@ export async function generateHeatmap(
  */
 export async function generateBatchHeatmaps(
   files: File[],
-  colormap: string = 'jet',
-  alpha: number = 0.4
+  colormap: string = "jet",
+  alpha: number = 0.4,
 ): Promise<BatchHeatmapResponse> {
   const formData = new FormData();
 
   files.forEach((file) => {
-    formData.append('files', file);
+    formData.append("files", file);
   });
 
   const url = new URL(`${API_BASE_URL}/api/inference/heatmap-batch`);
-  url.searchParams.append('colormap', colormap);
-  url.searchParams.append('alpha', String(alpha));
+  url.searchParams.append("colormap", colormap);
+  url.searchParams.append("alpha", String(alpha));
 
   // Longer timeout for batch heatmap generation (3 minutes)
   const batchTimeout = 180000;
@@ -286,10 +292,10 @@ export async function generateBatchHeatmaps(
   const response = await fetchWithTimeout(
     url.toString(),
     {
-      method: 'POST',
+      method: "POST",
       body: formData,
     },
-    batchTimeout
+    batchTimeout,
   );
 
   return handleResponse<BatchHeatmapResponse>(response);
@@ -306,7 +312,7 @@ export async function generateBatchHeatmaps(
 export async function generateBatchPdfReportWithHeatmaps(
   batchResult: BatchInferenceResponse,
   heatmaps: Map<string, string>,
-  originalImages: Map<string, string>
+  originalImages: Map<string, string>,
 ): Promise<Blob> {
   const requestBody = {
     results: batchResult.results.map((r) => ({
@@ -333,20 +339,20 @@ export async function generateBatchPdfReportWithHeatmaps(
       avg_confidence: batchResult.summary.avg_confidence,
       high_risk_count: batchResult.summary.high_risk_count || 0,
     },
-    model_version: batchResult.model_version || 'unknown',
+    model_version: batchResult.model_version || "unknown",
     include_heatmaps: true,
   };
 
   const response = await fetchWithTimeout(
     `${API_BASE_URL}/api/reports/batch-with-heatmaps`,
     {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
     },
-    120000 // 2 minutes for PDF generation with heatmaps
+    120000, // 2 minutes for PDF generation with heatmaps
   );
 
   if (!response.ok) {

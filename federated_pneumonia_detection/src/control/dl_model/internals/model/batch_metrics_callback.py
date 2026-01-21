@@ -6,7 +6,6 @@ Samples and sends batch metrics at configurable intervals.
 import logging
 from typing import Optional
 import pytorch_lightning as pl
-from datetime import datetime
 
 
 class BatchMetricsCallback(pl.Callback):
@@ -85,17 +84,35 @@ class BatchMetricsCallback(pl.Callback):
         recall = None
         f1 = None
 
-        acc_key = "train_acc_step" if "train_acc_step" in trainer.callback_metrics else "train_acc"
+        acc_key = (
+            "train_acc_step"
+            if "train_acc_step" in trainer.callback_metrics
+            else "train_acc"
+        )
         if acc_key in trainer.callback_metrics:
             acc_tensor = trainer.callback_metrics[acc_key]
-            accuracy = acc_tensor.item() if hasattr(acc_tensor, "item") else float(acc_tensor)
+            accuracy = (
+                acc_tensor.item() if hasattr(acc_tensor, "item") else float(acc_tensor)
+            )
 
-        recall_key = "train_recall_step" if "train_recall_step" in trainer.callback_metrics else "train_recall"
+        recall_key = (
+            "train_recall_step"
+            if "train_recall_step" in trainer.callback_metrics
+            else "train_recall"
+        )
         if recall_key in trainer.callback_metrics:
             recall_tensor = trainer.callback_metrics[recall_key]
-            recall = recall_tensor.item() if hasattr(recall_tensor, "item") else float(recall_tensor)
+            recall = (
+                recall_tensor.item()
+                if hasattr(recall_tensor, "item")
+                else float(recall_tensor)
+            )
 
-        f1_key = "train_f1_step" if "train_f1_step" in trainer.callback_metrics else "train_f1"
+        f1_key = (
+            "train_f1_step"
+            if "train_f1_step" in trainer.callback_metrics
+            else "train_f1"
+        )
         if f1_key in trainer.callback_metrics:
             f1_tensor = trainer.callback_metrics[f1_key]
             f1 = f1_tensor.item() if hasattr(f1_tensor, "item") else float(f1_tensor)

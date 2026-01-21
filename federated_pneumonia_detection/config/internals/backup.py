@@ -40,17 +40,13 @@ class ConfigBackup:
 
         if backup_path is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_path = config_path.with_suffix(
-                f".backup_{timestamp}.yaml"
-            )
+            backup_path = config_path.with_suffix(f".backup_{timestamp}.yaml")
 
         backup_path = Path(backup_path)
 
         try:
             with open(backup_path, "w", encoding="utf-8") as file:
-                yaml.safe_dump(
-                    config, file, default_flow_style=False, indent=2
-                )
+                yaml.safe_dump(config, file, default_flow_style=False, indent=2)
             self.logger.info(f"Created backup at {backup_path}")
             return str(backup_path)
         except IOError as e:

@@ -39,10 +39,7 @@ def validate_config(config: "ConfigManager", logger: logging.Logger) -> None:
 
 
 def setup_metrics(
-    num_classes: int,
-    train: bool = True,
-    validation: bool = True,
-    test: bool = True
+    num_classes: int, train: bool = True, validation: bool = True, test: bool = True
 ) -> Dict[str, torchmetrics.Metric]:
     """
     Initialize torchmetrics for tracking performance.
@@ -61,23 +58,49 @@ def setup_metrics(
     task_type = "binary" if num_classes == 1 else "multiclass"
 
     if train:
-        metrics["train_accuracy"] = torchmetrics.Accuracy(task=task_type, num_classes=num_classes_metric)
-        metrics["train_f1"] = torchmetrics.F1Score(task=task_type, num_classes=num_classes_metric)
+        metrics["train_accuracy"] = torchmetrics.Accuracy(
+            task=task_type, num_classes=num_classes_metric
+        )
+        metrics["train_f1"] = torchmetrics.F1Score(
+            task=task_type, num_classes=num_classes_metric
+        )
 
     if validation:
-        metrics["val_accuracy"] = torchmetrics.Accuracy(task=task_type, num_classes=num_classes_metric)
-        metrics["val_precision"] = torchmetrics.Precision(task=task_type, num_classes=num_classes_metric)
-        metrics["val_recall"] = torchmetrics.Recall(task=task_type, num_classes=num_classes_metric)
-        metrics["val_f1"] = torchmetrics.F1Score(task=task_type, num_classes=num_classes_metric)
-        metrics["val_auroc"] = torchmetrics.AUROC(task=task_type, num_classes=num_classes_metric)
-        metrics["val_confusion"] = torchmetrics.ConfusionMatrix(task=task_type, num_classes=num_classes_metric)
+        metrics["val_accuracy"] = torchmetrics.Accuracy(
+            task=task_type, num_classes=num_classes_metric
+        )
+        metrics["val_precision"] = torchmetrics.Precision(
+            task=task_type, num_classes=num_classes_metric
+        )
+        metrics["val_recall"] = torchmetrics.Recall(
+            task=task_type, num_classes=num_classes_metric
+        )
+        metrics["val_f1"] = torchmetrics.F1Score(
+            task=task_type, num_classes=num_classes_metric
+        )
+        metrics["val_auroc"] = torchmetrics.AUROC(
+            task=task_type, num_classes=num_classes_metric
+        )
+        metrics["val_confusion"] = torchmetrics.ConfusionMatrix(
+            task=task_type, num_classes=num_classes_metric
+        )
 
     if test:
-        metrics["test_accuracy"] = torchmetrics.Accuracy(task=task_type, num_classes=num_classes_metric)
-        metrics["test_precision"] = torchmetrics.Precision(task=task_type, num_classes=num_classes_metric)
-        metrics["test_recall"] = torchmetrics.Recall(task=task_type, num_classes=num_classes_metric)
-        metrics["test_f1"] = torchmetrics.F1Score(task=task_type, num_classes=num_classes_metric)
-        metrics["test_auroc"] = torchmetrics.AUROC(task=task_type, num_classes=num_classes_metric)
+        metrics["test_accuracy"] = torchmetrics.Accuracy(
+            task=task_type, num_classes=num_classes_metric
+        )
+        metrics["test_precision"] = torchmetrics.Precision(
+            task=task_type, num_classes=num_classes_metric
+        )
+        metrics["test_recall"] = torchmetrics.Recall(
+            task=task_type, num_classes=num_classes_metric
+        )
+        metrics["test_f1"] = torchmetrics.F1Score(
+            task=task_type, num_classes=num_classes_metric
+        )
+        metrics["test_auroc"] = torchmetrics.AUROC(
+            task=task_type, num_classes=num_classes_metric
+        )
 
     return metrics
 
@@ -88,7 +111,7 @@ def setup_loss_function(
     focal_gamma: float,
     label_smoothing: float,
     class_weights_tensor: Optional[torch.Tensor] = None,
-    logger: Optional[logging.Logger] = None
+    logger: Optional[logging.Logger] = None,
 ) -> nn.Module:
     """
     Setup loss function with enhanced options.
@@ -130,9 +153,7 @@ def setup_loss_function(
 
 
 def calculate_loss(
-    loss_fn: nn.Module,
-    logits: torch.Tensor,
-    targets: torch.Tensor
+    loss_fn: nn.Module, logits: torch.Tensor, targets: torch.Tensor
 ) -> torch.Tensor:
     """
     Calculate loss based on task type.
@@ -184,7 +205,7 @@ def get_model_summary(
     focal_alpha: float,
     focal_gamma: float,
     unfrozen_layers: int,
-    device: torch.device
+    device: torch.device,
 ) -> Dict[str, Any]:
     """
     Get comprehensive model summary.
@@ -204,17 +225,23 @@ def get_model_summary(
         Dictionary containing model summary information
     """
     model_info = model.get_model_info()
-    model_info.update({
-        "lightning_module": lightning_module_name,
-        "optimizer": "AdamW",
-        "learning_rate": config.get("experiment.learning_rate", 0),
-        "weight_decay": config.get("experiment.weight_decay", 0),
-        "scheduler": "CosineAnnealingWarmRestarts" if use_focal_loss else "ReduceLROnPlateau",
-        "loss_function": "FocalLossWithLabelSmoothing" if use_focal_loss else "BCEWithLogitsLoss",
-        "label_smoothing": label_smoothing,
-        "focal_alpha": focal_alpha if use_focal_loss else None,
-        "focal_gamma": focal_gamma if use_focal_loss else None,
-        "unfrozen_layers": unfrozen_layers,
-        "device": str(device)
-    })
+    model_info.update(
+        {
+            "lightning_module": lightning_module_name,
+            "optimizer": "AdamW",
+            "learning_rate": config.get("experiment.learning_rate", 0),
+            "weight_decay": config.get("experiment.weight_decay", 0),
+            "scheduler": "CosineAnnealingWarmRestarts"
+            if use_focal_loss
+            else "ReduceLROnPlateau",
+            "loss_function": "FocalLossWithLabelSmoothing"
+            if use_focal_loss
+            else "BCEWithLogitsLoss",
+            "label_smoothing": label_smoothing,
+            "focal_alpha": focal_alpha if use_focal_loss else None,
+            "focal_gamma": focal_gamma if use_focal_loss else None,
+            "unfrozen_layers": unfrozen_layers,
+            "device": str(device),
+        }
+    )
     return model_info

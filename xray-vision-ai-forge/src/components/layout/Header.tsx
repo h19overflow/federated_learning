@@ -1,12 +1,12 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Save, HelpCircle, Plus, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Save, HelpCircle, Plus, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuList,
-} from '@/components/ui/navigation-menu';
+} from "@/components/ui/navigation-menu";
 
 interface HeaderProps {
   onShowHelp?: () => void;
@@ -14,17 +14,29 @@ interface HeaderProps {
 
 const Header = ({ onShowHelp }: HeaderProps = {}) => {
   const location = useLocation();
-  const isExperimentPage = location.pathname === '/experiment';
+  const isExperimentPage = location.pathname === "/experiment";
 
   return (
     <header className="bg-white/80 backdrop-blur-xl border-b border-[hsl(210_15%_92%)] py-4 sticky top-0 z-50">
       <div className="container flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity group">
+          <Link
+            to="/"
+            className="flex items-center space-x-3 hover:opacity-80 transition-opacity group"
+          >
             {/* Custom medical cross logo */}
             <div className="relative w-10 h-10 rounded-xl bg-[hsl(172_63%_22%)] flex items-center justify-center shadow-md shadow-[hsl(172_63%_22%)]/20 group-hover:shadow-lg group-hover:shadow-[hsl(172_63%_22%)]/30 transition-shadow">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none">
-                <path d="M12 4v16M4 12h16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              <svg
+                className="w-5 h-5 text-white"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <path
+                  d="M12 4v16M4 12h16"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
               </svg>
             </div>
             <div className="flex flex-col">

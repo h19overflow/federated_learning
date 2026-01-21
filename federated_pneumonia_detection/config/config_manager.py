@@ -103,7 +103,9 @@ class ConfigManager:
 
     def backup(self, backup_path: str = None) -> str:
         """Create a backup of the current configuration."""
-        return self.backup_manager.create(self.config, str(self.config_path), backup_path)
+        return self.backup_manager.create(
+            self.config, str(self.config_path), backup_path
+        )
 
     def flatten_config(self, config_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -136,6 +138,7 @@ class ConfigManager:
     def __str__(self) -> str:
         """String representation of the configuration."""
         import yaml
+
         return yaml.safe_dump(self.config, default_flow_style=False, indent=2)
 
     def __repr__(self) -> str:

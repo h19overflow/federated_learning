@@ -33,7 +33,9 @@ class ProgressiveUnfreezeCallback(pl.Callback):
         self.layers_per_unfreeze = layers_per_unfreeze
         self.logger = logging.getLogger(__name__)
 
-    def on_train_epoch_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+    def on_train_epoch_start(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
         """Check if we should unfreeze layers at this epoch."""
         current_epoch = trainer.current_epoch
 

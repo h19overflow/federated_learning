@@ -13,9 +13,9 @@ from PIL import Image
 
 from federated_pneumonia_detection.src.api.deps import get_inference_service
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
-    HeatmapResponse,
     BatchHeatmapItem,
     BatchHeatmapResponse,
+    HeatmapResponse,
 )
 from federated_pneumonia_detection.src.control.model_inferance import InferenceService
 from federated_pneumonia_detection.src.control.model_inferance.gradcam import (
