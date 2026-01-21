@@ -79,7 +79,6 @@ class MCPManager:
                 }
 
                 self._client = MultiServerMCPClient(server_config)
-                # New API: use get_tools() directly instead of context manager
                 self._tools = await self._client.get_tools()
                 self._is_available = True
 
