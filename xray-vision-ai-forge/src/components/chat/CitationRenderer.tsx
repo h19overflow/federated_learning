@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, BookOpen, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp, BookOpen, FileText, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 export interface Citation {
   id: string;
@@ -20,7 +21,6 @@ export const parseCitations = (text: string): { cleanedContent: string; citation
   const citationMap = new Map<string, Citation>();
 
   // Multiple patterns to catch different citation formats
-  // Pattern 1: [Document N] Source: PATH Page: NUM Content: TEXT (with newlines)
   const patterns = [
     // Standard format with Content: marker
     /\[Document\s*(\d+)\]\s*Source:\s*(.*?)\s*Page:\s*(\d+)\s*Content:\s*([\s\S]*?)(?=\[Document\s*\d+\]|Based on|$)/gi,
@@ -33,15 +33,13 @@ export const parseCitations = (text: string): { cleanedContent: string; citation
   // Try each pattern
   for (const pattern of patterns) {
     cleanedContent = cleanedContent.replace(pattern, (match, id, source, page, content) => {
-      // Extract filename from source path (handle both Windows and Unix paths)
       const filename = source.trim().split(/[\\/]/).pop() || source.trim();
       
-      // Clean up content - remove "Content:" prefix if present, limit length
       let cleanContent = content.trim();
       if (cleanContent.toLowerCase().startsWith('content:')) {
         cleanContent = cleanContent.slice(8).trim();
       }
-      // Truncate very long content for storage (keep first 500 chars)
+      
       const truncatedContent = cleanContent.length > 500 
         ? cleanContent.slice(0, 500) + '...' 
         : cleanContent;
@@ -55,7 +53,7 @@ export const parseCitations = (text: string): { cleanedContent: string; citation
           content: truncatedContent
         });
       }
-      return ""; // Remove the block from the text
+      return "";
     });
   }
 
@@ -64,26 +62,67 @@ export const parseCitations = (text: string): { cleanedContent: string; citation
     .sort((a, b) => parseInt(a.id) - parseInt(b.id))
     .forEach(c => citations.push(c));
 
-  // Clean up any remaining citation markers and convert to superscript notation
-  // Replace [Document N] or (Document N) references in the main text
+  // Use markdown link notation for citations to make them interactive
   cleanedContent = cleanedContent.replace(/\[Document\s*(\d+)\]/gi, (match, id) => {
-    return `<sup>[${id}]</sup>`;
+    return `[${id}](citation:${id})`;
   });
 
-  // Clean up excessive whitespace and newlines left after removing citations
   cleanedContent = cleanedContent
-    .replace(/\n{3,}/g, '\n\n')  // Max 2 newlines
-    .replace(/^\s+/, '')         // Trim start
-    .replace(/\s+$/, '')         // Trim end
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\s+/, '')
+    .replace(/\s+$/, '')
     .trim();
 
   return { cleanedContent, citations };
 };
 
+export const CitationHoverCard: React.FC<{ citation: Citation; children: React.ReactNode }> = ({ citation, children }) => {
+  return (
+    <HoverCard openDelay={200} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        {children}
+      </HoverCardTrigger>
+      <HoverCardContent className="w-80 max-w-sm shadow-xl border-[hsl(210_15%_90%)] bg-white p-4 z-[100]">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded bg-[hsl(172_40%_94%)] flex items-center justify-center">
+              <FileText className="h-3.5 w-3.5 text-[hsl(172_63%_35%)]" />
+            </div>
+            <h4 className="text-sm font-semibold text-[hsl(172_63%_30%)] truncate flex-1">
+              {citation.source}
+            </h4>
+            <span className="text-[10px] font-medium text-[hsl(215_15%_55%)] bg-[hsl(210_15%_96%)] px-1.5 py-0.5 rounded">
+              p.{citation.page}
+            </span>
+          </div>
+          
+          <div className="relative">
+            <p className="text-sm text-[hsl(215_15%_40%)] leading-relaxed italic">
+              "{citation.content.slice(0, 150)}{citation.content.length > 150 ? '...' : ''}"
+            </p>
+          </div>
+          
+          <div className="flex items-center justify-end mt-1 pt-2 border-t border-[hsl(210_15%_96%)]">
+            <button 
+              className="flex items-center gap-1 text-[10px] font-bold text-[hsl(172_63%_35%)] hover:text-[hsl(172_63%_25%)] transition-colors group"
+              onClick={(e) => {
+                e.preventDefault();
+                console.log("Viewing full citation:", citation.id);
+              }}
+            >
+              View Full Source
+              <ExternalLink className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </button>
+          </div>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+};
+
 const CitationItem: React.FC<{ citation: Citation; index: number }> = ({ citation, index }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
-  // Create a short preview (first 80 chars)
   const preview = citation.content.length > 80 
     ? citation.content.slice(0, 80) + '...' 
     : citation.content;
@@ -91,27 +130,33 @@ const CitationItem: React.FC<{ citation: Citation; index: number }> = ({ citatio
   return (
     <div 
       className={cn(
-        "py-2 cursor-pointer transition-colors",
+        "py-2 transition-colors",
         index > 0 && "border-t border-[hsl(210_15%_94%)]"
       )}
-      onClick={() => setIsExpanded(!isExpanded)}
     >
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-bold text-[hsl(172_63%_35%)] bg-[hsl(172_40%_94%)] px-1.5 py-0.5 rounded">
-          {citation.id}
-        </span>
-        <FileText className="h-3 w-3 text-[hsl(172_63%_40%)]" />
-        <span className="text-xs font-medium text-[hsl(172_43%_20%)] truncate flex-1">
-          {citation.source}
-        </span>
-        <span className="text-[10px] text-[hsl(215_15%_55%)]">
-          p.{citation.page}
-        </span>
-        {isExpanded ? (
-          <ChevronUp className="h-3 w-3 text-[hsl(215_15%_55%)]" />
-        ) : (
-          <ChevronDown className="h-3 w-3 text-[hsl(215_15%_55%)]" />
-        )}
+        <CitationHoverCard citation={citation}>
+          <span className="text-[10px] font-bold text-[hsl(172_63%_35%)] bg-[hsl(172_40%_94%)] px-1.5 py-0.5 rounded cursor-help">
+            {citation.id}
+          </span>
+        </CitationHoverCard>
+        <div 
+          className="flex items-center gap-2 flex-1 cursor-pointer"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <FileText className="h-3 w-3 text-[hsl(172_63%_40%)]" />
+          <span className="text-xs font-medium text-[hsl(172_43%_20%)] truncate flex-1">
+            {citation.source}
+          </span>
+          <span className="text-[10px] text-[hsl(215_15%_55%)]">
+            p.{citation.page}
+          </span>
+          {isExpanded ? (
+            <ChevronUp className="h-3 w-3 text-[hsl(215_15%_55%)]" />
+          ) : (
+            <ChevronDown className="h-3 w-3 text-[hsl(215_15%_55%)]" />
+          )}
+        </div>
       </div>
       
       <AnimatePresence>
@@ -125,7 +170,7 @@ const CitationItem: React.FC<{ citation: Citation; index: number }> = ({ citatio
           >
             <div className="mt-2 ml-6 pl-3 border-l-2 border-[hsl(172_63%_80%)]">
               <p className="text-[11px] leading-relaxed text-[hsl(215_15%_40%)] italic">
-                "{preview}"
+                "{citation.content}"
               </p>
             </div>
           </motion.div>
@@ -178,3 +223,4 @@ export const CitationRenderer: React.FC<CitationRendererProps> = ({ citations })
     </div>
   );
 };
+

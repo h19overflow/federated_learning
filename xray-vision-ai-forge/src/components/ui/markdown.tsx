@@ -1,14 +1,17 @@
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import type { Components } from 'react-markdown';
+import { Citation, CitationHoverCard } from '@/components/chat/CitationRenderer';
 
 interface MarkdownProps {
   content: string;
   className?: string;
+  citations?: Citation[];
 }
 
-const components: Components = {
+const createComponents = (citations?: Citation[]): Components => ({
   // Headings
   h1: ({ children }) => (
     <h1 className="text-lg font-bold text-[hsl(172_43%_15%)] mt-4 mb-2 first:mt-0">
@@ -109,11 +112,23 @@ const components: Components = {
   a: ({ href, children }) => {
     if (href?.startsWith('citation:')) {
       const id = href.split(':')[1];
-      return (
-        <sup className="text-[10px] font-bold text-[hsl(172_63%_30%)] ml-0.5 px-0.5 cursor-help select-none">
+      const citation = citations?.find(c => c.id === id);
+      
+      const reference = (
+        <sup className="text-[10px] font-bold text-[hsl(172_63%_30%)] ml-0.5 px-0.5 cursor-help select-none hover:text-[hsl(172_63%_20%)] transition-colors">
           [{id}]
         </sup>
       );
+
+      if (citation) {
+        return (
+          <CitationHoverCard citation={citation}>
+            {reference}
+          </CitationHoverCard>
+        );
+      }
+      
+      return reference;
     }
     return (
       <a
@@ -128,18 +143,22 @@ const components: Components = {
   },
   // Horizontal rule
   hr: () => <hr className="border-t border-[hsl(210_15%_90%)] my-3" />,
-};
+});
 
-export const Markdown = ({ content, className }: MarkdownProps) => {
+export const Markdown = ({ content, className, citations }: MarkdownProps) => {
   if (!content) {
     return null;
   }
 
+  // Memoize components to avoid unnecessary re-renders when content changes but citations don't
+  const memoizedComponents = React.useMemo(() => createComponents(citations), [citations]);
+
   return (
     <div className={cn('prose prose-sm max-w-none', className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedComponents}>
         {content}
       </ReactMarkdown>
     </div>
   );
 };
+
