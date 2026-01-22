@@ -398,6 +398,41 @@ uv run flwr run federated_pneumonia_detection/src/control/federated_new_version
 ./federated_pneumonia_detection/src/rf.ps1
 ```
 
+---
+
+## Recent Updates (Latest Commits)
+
+### Configuration & Lifecycle Management (Commit 3a30414)
+- **Lifespan Hook**: Added `@app.lifespan()` to ServerApp for configuration verification
+- **Configuration Sync**: Moved config syncing to `federated_tasks.py` (before Flower starts)
+- **Logging**: Enhanced logging at server startup/shutdown with clear separation markers
+
+### Error Handling & Robustness (Commit 3a30414)
+- **Server App**: Added error handling to ensure status updates on failure
+- **Database Persistence**: Improved `_persist_server_evaluations()` for robust metric storage
+- **Client App**: Enhanced error handling during local training and evaluation
+
+### Testing & Quality (Commit c955e16)
+- **Comprehensive Test Suite**: 206+ tests for federated learning components
+  - Partitioner tests (270+ assertions)
+  - Server evaluation tests (275+ assertions)
+  - TOML adjustment tests (440+ assertions)
+  - Client app utilities tests (497+ assertions)
+- **CI/CD Infrastructure**: GitHub Actions workflow for Ruff linting and formatting
+- **Pre-commit Hooks**: Automated code quality checks before commits
+
+### Troubleshooting & Documentation (Commit 3a30414)
+- **TROUBLESHOOTING.md**: Added comprehensive guide for common failure modes
+  - Global model not updating (FedAvg aggregation issues)
+  - Root cause analysis of metric schema inconsistencies
+  - Verification checklist for framework integrations
+  - Quick reference for debugging federated learning issues
+
+### Code Quality Improvements (Commit 7099d42)
+- **README Formatting**: Improved markdown syntax and alignment
+- **Documentation**: Enhanced clarity and consistency across all module READMEs
+- **Code Refactoring**: Cleaned up imports and improved type hints
+
 ### Via REST API
 
 **POST /experiments/federated**:
@@ -435,6 +470,8 @@ uv run flwr run federated_pneumonia_detection/src/control/federated_new_version
 
 ## Related Documentation
 
+- **Architecture Diagrams**: [DIAGRAMS.md](DIAGRAMS.md) - Visual representations of component architecture, sequence flows, and data flows
+- **Troubleshooting Guide**: [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common failure modes, root cause analysis, and debugging strategies
 - **Control Layer Overview**: [../README.md](../README.md)
 - **Boundary Layer (Database)**: [../../boundary/README.md](../../boundary/README.md)
 - **Training Utilities**: [../../utils/README.md](../../utils/README.md)

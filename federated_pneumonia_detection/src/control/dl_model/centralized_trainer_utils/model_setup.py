@@ -32,7 +32,7 @@ def build_model_and_callbacks(
     is_federated: bool = False,
     client_id: Optional[int] = None,
     round_number: int = 0,
-) -> Tuple[pl.LightningModule, list, Any]:
+) -> Tuple[LitResNetEnhanced, list, Any]:
     """
     Build model and training callbacks.
 
