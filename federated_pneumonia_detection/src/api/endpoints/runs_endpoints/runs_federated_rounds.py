@@ -42,51 +42,51 @@ async def get_federated_rounds(run_id: int) -> FederatedRoundsResponse:
     db = get_session()
 
     try:
-         run = run_crud.get(db, run_id)
+        run = run_crud.get(db, run_id)
 
-         if not run:
-             raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+        if not run:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
 
-         is_federated = run.training_mode == "federated"
+        is_federated = run.training_mode == "federated"
 
-         if not is_federated:
-             return {
-                 "is_federated": False,
-                 "num_rounds": 0,
-                 "num_clients": 0,
-                 "rounds": [],
-             }
+        if not is_federated:
+            return {
+                "is_federated": False,
+                "num_rounds": 0,
+                "num_clients": 0,
+                "rounds": [],
+            }
 
-         server_evaluations = server_evaluation_crud.get_by_run(
-             db,
-             run_id,
-             order_by_round=True,
-         )
+        server_evaluations = server_evaluation_crud.get_by_run(
+            db,
+            run_id,
+            order_by_round=True,
+        )
 
-         logger.info(
-             f"[FederatedRounds] Run {run_id} - Found {len(server_evaluations)} server evaluations",
-         )
+        logger.info(
+            f"[FederatedRounds] Run {run_id} - Found {len(server_evaluations)} server evaluations",
+        )
 
-         num_clients = 0
-         if run.clients:
-             num_clients = len(run.clients)
+        num_clients = 0
+        if run.clients:
+            num_clients = len(run.clients)
 
-         rounds_list = []
-         for eval_record in server_evaluations:
-             metrics_dict = {
-                 "loss": eval_record.loss,
-             }
+        rounds_list = []
+        for eval_record in server_evaluations:
+            metrics_dict = {
+                "loss": eval_record.loss,
+            }
 
-             if eval_record.accuracy is not None:
-                 metrics_dict["accuracy"] = eval_record.accuracy
-             if eval_record.precision is not None:
-                 metrics_dict["precision"] = eval_record.precision
-             if eval_record.recall is not None:
-                 metrics_dict["recall"] = eval_record.recall
-             if eval_record.f1_score is not None:
-                 metrics_dict["f1"] = eval_record.f1_score
-             if eval_record.auroc is not None:
-                 metrics_dict["auroc"] = eval_record.auroc
+            if eval_record.accuracy is not None:
+                metrics_dict["accuracy"] = eval_record.accuracy
+            if eval_record.precision is not None:
+                metrics_dict["precision"] = eval_record.precision
+            if eval_record.recall is not None:
+                metrics_dict["recall"] = eval_record.recall
+            if eval_record.f1_score is not None:
+                metrics_dict["f1"] = eval_record.f1_score
+            if eval_record.auroc is not None:
+                metrics_dict["auroc"] = eval_record.auroc
 
             rounds_list.append(
                 {"round": eval_record.round_number, "metrics": metrics_dict},
@@ -102,7 +102,6 @@ async def get_federated_rounds(run_id: int) -> FederatedRoundsResponse:
             "num_clients": num_clients,
             "rounds": rounds_list,
         }
-
     except HTTPException:
         raise
     except Exception as e:

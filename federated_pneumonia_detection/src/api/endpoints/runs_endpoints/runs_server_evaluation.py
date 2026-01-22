@@ -60,23 +60,23 @@ async def get_server_evaluation(run_id: int) -> ServerEvaluationResponse:
     db = get_session()
 
     try:
-         run = run_crud.get(db, run_id)
+        run = run_crud.get(db, run_id)
 
-         if not run:
-             raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+        if not run:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
 
-         is_federated = run.training_mode == "federated"
+        is_federated = run.training_mode == "federated"
 
-         if not is_federated:
-             return {
-                 "run_id": run_id,
-                 "is_federated": False,
-                 "has_server_evaluation": False,
-                 "evaluations": [],
-                 "summary": {},
-             }
+        if not is_federated:
+            return {
+                "run_id": run_id,
+                "is_federated": False,
+                "has_server_evaluation": False,
+                "evaluations": [],
+                "summary": {},
+            }
 
-         evaluations = server_evaluation_crud.get_by_run(db, run_id, order_by_round=True)
+        evaluations = server_evaluation_crud.get_by_run(db, run_id, order_by_round=True)
 
         if not evaluations:
             logger.info(

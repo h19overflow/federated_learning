@@ -124,12 +124,12 @@ class ClinicalInterpreter:
         # Define risk mappings for each prediction class
         risk_mappings = {
             PredictionClass.PNEUMONIA: {
-                "high": ("HIGH", "LOW"),      # confidence >= 0.9
+                "high": ("HIGH", "LOW"),  # confidence >= 0.9
                 "moderate": ("MODERATE", "LOW"),  # confidence >= 0.7
                 "low": ("MODERATE", "MODERATE"),  # confidence < 0.7
             },
             PredictionClass.NORMAL: {
-                "high": ("LOW", "LOW"),       # confidence >= 0.9
+                "high": ("LOW", "LOW"),  # confidence >= 0.9
                 "moderate": ("LOW", "MODERATE"),  # confidence >= 0.7
                 "low": ("MODERATE", "HIGH"),  # confidence < 0.7
             },

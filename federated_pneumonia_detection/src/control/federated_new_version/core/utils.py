@@ -40,7 +40,7 @@ logger = setup_logger(__name__)
 
 def _initialize_database_run() -> Tuple[int | None, Any]:
     """Initialize federated training run in database.
-    
+
     Returns:
         Tuple of (run_id, db_session) or (None, None) on failure
     """
@@ -68,7 +68,7 @@ def _initialize_database_run() -> Tuple[int | None, Any]:
 
 def _setup_config_manager() -> Tuple[ConfigManager, str, str]:
     """Setup configuration manager with environment overrides.
-    
+
     Returns:
         Tuple of (config_manager, experiment_seed, analysis_run_id)
     """
@@ -102,13 +102,13 @@ def _build_training_configs(
     experiment_seed: int,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Build training and evaluation configs to send to clients.
-    
+
     Args:
         config_manager: Configuration manager instance
         num_clients: Number of clients (for num_partitions)
         run_id: Database run ID
         experiment_seed: Experiment seed value
-        
+
     Returns:
         Tuple of (train_config, eval_config)
     """
@@ -128,12 +128,14 @@ def _build_training_configs(
     return train_config, eval_config
 
 
-def _build_global_model(config_manager: ConfigManager) -> Tuple[LitResNetEnhanced, ArrayRecord]:
+def _build_global_model(
+    config_manager: ConfigManager,
+) -> Tuple[LitResNetEnhanced, ArrayRecord]:
     """Build and initialize global model for federated learning.
-    
+
     Args:
         config_manager: Configuration manager instance
-        
+
     Returns:
         Tuple of (model, arrays_record)
     """
@@ -161,11 +163,11 @@ def _initialize_websocket_sender(
     num_rounds: int,
 ) -> MetricsWebSocketSender:
     """Initialize WebSocket sender and broadcast training mode.
-    
+
     Args:
         num_clients: Number of clients
         num_rounds: Number of rounds
-        
+
     Returns:
         MetricsWebSocketSender instance
     """
@@ -191,13 +193,13 @@ def _initialize_strategy(
     num_rounds: int,
 ) -> ConfigurableFedAvg:
     """Initialize FedAvg strategy with configurations.
-    
+
     Args:
         train_config: Training configuration
         eval_config: Evaluation configuration
         run_id: Database run ID
         num_rounds: Number of rounds
-        
+
     Returns:
         Configured strategy instance
     """

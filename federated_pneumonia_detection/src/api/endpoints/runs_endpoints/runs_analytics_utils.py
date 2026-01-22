@@ -38,33 +38,33 @@ def generate_analytics_summary(
     """
     from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 
-     from .shared.services import RunRanker
+    from .shared.services import RunRanker
 
-     if days:
-         cutoff_date = datetime.now() - timedelta(days=days)
-         runs = [r for r in runs if r.start_time and r.start_time >= cutoff_date]
+    if days:
+        cutoff_date = datetime.now() - timedelta(days=days)
+        runs = [r for r in runs if r.start_time and r.start_time >= cutoff_date]
 
-     if not runs:
-         logger.warning(
-             f"No runs found with filters: status={status}, mode={training_mode}, days={days}",
-         )
-         return create_empty_response()
+    if not runs:
+        logger.warning(
+            f"No runs found with filters: status={status}, mode={training_mode}, days={days}",
+        )
+        return create_empty_response()
 
-     centralized_runs = [r for r in runs if r.training_mode == "centralized"]
-     federated_runs = [r for r in runs if r.training_mode == "federated"]
+    centralized_runs = [r for r in runs if r.training_mode == "centralized"]
+    federated_runs = [r for r in runs if r.training_mode == "federated"]
 
-     centralized_stats = RunAggregator.calculate_statistics(db, centralized_runs)
-     federated_stats = RunAggregator.calculate_statistics(db, federated_runs)
+    centralized_stats = RunAggregator.calculate_statistics(db, centralized_runs)
+    federated_stats = RunAggregator.calculate_statistics(db, federated_runs)
 
-     all_run_details = [extract_run_detail(db, r) for r in runs]
-     all_run_details = [d for d in all_run_details if d is not None]
-     top_runs = RunRanker.get_top_runs(all_run_details, metric="best_accuracy", limit=10)
+    all_run_details = [extract_run_detail(db, r) for r in runs]
+    all_run_details = [d for d in all_run_details if d is not None]
+    top_runs = RunRanker.get_top_runs(all_run_details, metric="best_accuracy", limit=10)
 
-     total_runs = len(runs)
-     all_status_runs = run_crud.get_by_status(db, status)
-     filtered_run_ratio = (
-         total_runs / len(all_status_runs) if len(all_status_runs) > 0 else 0.0
-     )
+    total_runs = len(runs)
+    all_status_runs = run_crud.get_by_status(db, status)
+    filtered_run_ratio = (
+        total_runs / len(all_status_runs) if len(all_status_runs) > 0 else 0.0
+    )
 
     logger.info(
         f"Analytics summary generated: {total_runs} runs "
@@ -72,13 +72,13 @@ def generate_analytics_summary(
         f"Filtering ratio: {filtered_run_ratio:.4f} ({total_runs}/{len(all_status_runs)} status-matching runs)",
     )
 
-     return AnalyticsSummaryResponse(
-         total_runs=total_runs,
-         success_rate=round(filtered_run_ratio, 4),
-         centralized=ModeMetrics(**centralized_stats),
-         federated=ModeMetrics(**federated_stats),
-         top_runs=top_runs,
-     )
+    return AnalyticsSummaryResponse(
+        total_runs=total_runs,
+        success_rate=round(filtered_run_ratio, 4),
+        centralized=ModeMetrics(**centralized_stats),
+        federated=ModeMetrics(**federated_stats),
+        top_runs=top_runs,
+    )
 
 
 def extract_run_detail(db: Session, run) -> Optional[dict]:

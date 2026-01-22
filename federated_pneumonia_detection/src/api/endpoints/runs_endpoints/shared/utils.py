@@ -22,26 +22,26 @@ def _calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
     fp = cm.get("false_positives", 0)
     fn = cm.get("false_negatives", 0)
 
-     if any(v < 0 for v in [tp, tn, fp, fn]):
-         raise ValueError("Confusion matrix values cannot be negative")
+    if any(v < 0 for v in [tp, tn, fp, fn]):
+        raise ValueError("Confusion matrix values cannot be negative")
 
-     total = tp + tn + fp + fn
-     if total == 0:
-         return {
-             "sensitivity": 0.0,
-             "specificity": 0.0,
-             "precision_cm": 0.0,
-             "accuracy_cm": 0.0,
-             "f1_cm": 0.0,
-         }
+    total = tp + tn + fp + fn
+    if total == 0:
+        return {
+            "sensitivity": 0.0,
+            "specificity": 0.0,
+            "precision_cm": 0.0,
+            "accuracy_cm": 0.0,
+            "f1_cm": 0.0,
+        }
 
-     sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
-     precision_cm = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-     accuracy_cm = (tp + tn) / total if total > 0 else 0.0
+    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+    precision_cm = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    accuracy_cm = (tp + tn) / total if total > 0 else 0.0
 
-     denom = precision_cm + sensitivity
-     f1_cm = 2 * (precision_cm * sensitivity) / denom if denom > 0 else 0.0
+    denom = precision_cm + sensitivity
+    f1_cm = 2 * (precision_cm * sensitivity) / denom if denom > 0 else 0.0
 
     return {
         "sensitivity": round(sensitivity, 4),
@@ -53,12 +53,12 @@ def _calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
 
 
 def _transform_run_to_results(run) -> Dict[str, Any]:
-     """Transform database Run object to ExperimentResults format."""
+    """Transform database Run object to ExperimentResults format."""
 
-     is_federated = run.training_mode == "federated"
-     metrics_by_epoch = defaultdict(dict)
+    is_federated = run.training_mode == "federated"
+    metrics_by_epoch = defaultdict(dict)
 
-     if is_federated:
+    if is_federated:
         # For federated runs, read from server_evaluations
         for eval in run.server_evaluations:
             round_num = eval.round_number

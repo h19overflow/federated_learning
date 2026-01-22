@@ -53,24 +53,24 @@ async def list_all_runs(
     """
     db = get_session()
 
-     try:
-         query = db.query(Run)
+    try:
+        query = db.query(Run)
 
-         if status:
-             query = query.filter(Run.status == status)
-         if training_mode:
-             query = query.filter(Run.training_mode == training_mode)
+        if status:
+            query = query.filter(Run.status == status)
+        if training_mode:
+            query = query.filter(Run.training_mode == training_mode)
 
-         sort_column = getattr(Run, sort_by, Run.start_time)
-         if sort_order == "desc":
-             query = query.order_by(sort_column.desc())
-         else:
-             query = query.order_by(sort_column.asc())
+        sort_column = getattr(Run, sort_by, Run.start_time)
+        if sort_order == "desc":
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
 
-         total_count = query.count()
+        total_count = query.count()
 
-         runs = query.limit(limit).offset(offset).all()
-         run_summaries = [RunSummaryBuilder.build(run, db) for run in runs]
+        runs = query.limit(limit).offset(offset).all()
+        run_summaries = [RunSummaryBuilder.build(run, db) for run in runs]
 
         return RunsListResponse(
             runs=[RunSummary(**summary) for summary in run_summaries],

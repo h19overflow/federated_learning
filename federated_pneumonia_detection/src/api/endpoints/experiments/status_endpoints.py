@@ -54,35 +54,35 @@ async def get_experiment_status(experiment_id: str) -> Dict[str, Any]:
     - `completed`: Training finished successfully
     - `failed`: Training encountered an error
     """
-     try:
-         log_file = find_experiment_log_file(experiment_id)
+    try:
+        log_file = find_experiment_log_file(experiment_id)
 
-         if not log_file:
-             raise HTTPException(
-                 status_code=404,
-                 detail=f"Experiment not found: {experiment_id}",
-             )
+        if not log_file:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Experiment not found: {experiment_id}",
+            )
 
-         with open(log_file, "r") as f:
-             log_data = json.load(f)
+        with open(log_file, "r") as f:
+            log_data = json.load(f)
 
-         metadata = log_data.get("metadata", {})
-         epochs = log_data.get("epochs", [])
-         current_epoch = log_data.get("current_epoch")
+        metadata = log_data.get("metadata", {})
+        epochs = log_data.get("epochs", [])
+        current_epoch = log_data.get("current_epoch")
 
-         progress = calculate_progress(log_data)
+        progress = calculate_progress(log_data)
 
-         latest_metrics = None
-         for event in reversed(epochs):
-             if event.get("type") == "epoch_end":
-                 latest_metrics = event.get("metrics", {})
-                 break
+        latest_metrics = None
+        for event in reversed(epochs):
+            if event.get("type") == "epoch_end":
+                latest_metrics = event.get("metrics", {})
+                break
 
-         total_epochs = None
-         for event in epochs:
-             if event.get("type") == "epoch_start" and "total_epochs" in event:
-                 total_epochs = event["total_epochs"]
-                 break
+        total_epochs = None
+        for event in epochs:
+            if event.get("type") == "epoch_start" and "total_epochs" in event:
+                total_epochs = event["total_epochs"]
+                break
 
         return {
             "experiment_id": experiment_id,

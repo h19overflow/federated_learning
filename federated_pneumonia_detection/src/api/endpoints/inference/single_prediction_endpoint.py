@@ -34,50 +34,50 @@ async def predict(
     Accepts PNG or JPEG images. Returns prediction with confidence scores
     and optional clinical interpretation from the AI agent.
     """
-     start_time = time.time()
+    start_time = time.time()
 
-     service.validator.validate_or_raise(file)
-     service.check_ready_or_raise()
+    service.validator.validate_or_raise(file)
+    service.check_ready_or_raise()
 
-     image = await service.processor.read_from_upload(file)
-     logger.info(
-         f"Processing image: {file.filename}, size: {image.size}, mode: {image.mode}",
-     )
+    image = await service.processor.read_from_upload(file)
+    logger.info(
+        f"Processing image: {file.filename}, size: {image.size}, mode: {image.mode}",
+    )
 
-     try:
-         predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(
-             image,
-         )
-         prediction = service.create_prediction(
-             predicted_class,
-             confidence,
-             pneumonia_prob,
-             normal_prob,
-         )
+    try:
+        predicted_class, confidence, pneumonia_prob, normal_prob = service.predict(
+            image,
+        )
+        prediction = service.create_prediction(
+            predicted_class,
+            confidence,
+            pneumonia_prob,
+            normal_prob,
+        )
 
-         clinical_interpretation = None
-         if include_clinical_interpretation:
-             clinical_interpretation = await service.interpreter.generate(
-                 predicted_class=predicted_class,
-                 confidence=confidence,
-                 pneumonia_prob=pneumonia_prob,
-                 normal_prob=normal_prob,
-                 prediction=prediction,
-                 image_info={"filename": file.filename, "size": image.size},
-             )
+        clinical_interpretation = None
+        if include_clinical_interpretation:
+            clinical_interpretation = await service.interpreter.generate(
+                predicted_class=predicted_class,
+                confidence=confidence,
+                pneumonia_prob=pneumonia_prob,
+                normal_prob=normal_prob,
+                prediction=prediction,
+                image_info={"filename": file.filename, "size": image.size},
+            )
 
-         processing_time_ms = (time.time() - start_time) * 1000
-         model_version = service.engine.model_version if service.engine else "unknown"
+        processing_time_ms = (time.time() - start_time) * 1000
+        model_version = service.engine.model_version if service.engine else "unknown"
 
-         service.logger.log_single(
-             predicted_class=predicted_class,
-             confidence=confidence,
-             pneumonia_prob=pneumonia_prob,
-             normal_prob=normal_prob,
-             processing_time_ms=processing_time_ms,
-             clinical_used=clinical_interpretation is not None,
-             model_version=model_version,
-         )
+        service.logger.log_single(
+            predicted_class=predicted_class,
+            confidence=confidence,
+            pneumonia_prob=pneumonia_prob,
+            normal_prob=normal_prob,
+            processing_time_ms=processing_time_ms,
+            clinical_used=clinical_interpretation is not None,
+            model_version=model_version,
+        )
 
         return InferenceResponse(
             success=True,

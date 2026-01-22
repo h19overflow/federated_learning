@@ -63,39 +63,39 @@ async def update_settings(
 
     logger = get_logger(__name__)
 
-     config_data = configuration.model_dump(exclude_none=True)
-     flattened = config.flatten_config(config_data)
+    config_data = configuration.model_dump(exclude_none=True)
+    flattened = config.flatten_config(config_data)
 
-     logger.info(
-         f"Updating {len(flattened)} configuration fields: {list(flattened.keys())}",
-     )
+    logger.info(
+        f"Updating {len(flattened)} configuration fields: {list(flattened.keys())}",
+    )
 
-     if "experiment.epochs" in flattened:
-         logger.info(f"Setting experiment.epochs = {flattened['experiment.epochs']}")
-     if "experiment.batch_size" in flattened:
-         logger.info(
-             f"Setting experiment.batch_size = {flattened['experiment.batch_size']}",
-         )
-     if "experiment.learning_rate" in flattened:
-         logger.info(
-             f"Setting experiment.learning_rate = {flattened['experiment.learning_rate']}",
-         )
+    if "experiment.epochs" in flattened:
+        logger.info(f"Setting experiment.epochs = {flattened['experiment.epochs']}")
+    if "experiment.batch_size" in flattened:
+        logger.info(
+            f"Setting experiment.batch_size = {flattened['experiment.batch_size']}",
+        )
+    if "experiment.learning_rate" in flattened:
+        logger.info(
+            f"Setting experiment.learning_rate = {flattened['experiment.learning_rate']}",
+        )
 
-     updated_count = 0
-     for key_path, value in flattened.items():
-         config.set(key_path, value)
-         updated_count += 1
+    updated_count = 0
+    for key_path, value in flattened.items():
+        config.set(key_path, value)
+        updated_count += 1
 
-     config.save()
-     from pathlib import Path
+    config.save()
+    from pathlib import Path
 
-     abs_path = Path(config.config_path).resolve()
-     logger.info(f"Configuration saved to {config.config_path} (absolute: {abs_path})")
+    abs_path = Path(config.config_path).resolve()
+    logger.info(f"Configuration saved to {config.config_path} (absolute: {abs_path})")
 
-     config.reload()
-     verification = {}
-     if "experiment.epochs" in flattened:
-         verification["epochs"] = config.get("experiment.epochs")
+    config.reload()
+    verification = {}
+    if "experiment.epochs" in flattened:
+        verification["epochs"] = config.get("experiment.epochs")
     if "experiment.batch_size" in flattened:
         verification["batch_size"] = config.get("experiment.batch_size")
     if "experiment.learning_rate" in flattened:

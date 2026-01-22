@@ -29,12 +29,12 @@ async def get_run_metrics(run_id: int) -> MetricsResponse:
     db = get_session()
 
     try:
-         run = run_crud.get_with_metrics(db, run_id)
+        run = run_crud.get_with_metrics(db, run_id)
 
-         if not run:
-             raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+        if not run:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
 
-         results = _transform_run_to_results(run)
+        results = _transform_run_to_results(run)
 
         return results
 

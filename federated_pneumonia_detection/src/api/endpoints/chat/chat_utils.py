@@ -8,44 +8,44 @@ logger = logging.getLogger(__name__)
 
 
 def sse_pack(data: dict) -> str:
-     """Pack a dictionary into Server-Sent Events format."""
-     return f"data: {json.dumps(data)}\n\n"
+    """Pack a dictionary into Server-Sent Events format."""
+    return f"data: {json.dumps(data)}\n\n"
 
 
 def sse_error(message: str, error_type: str = "error") -> str:
-     """Create a formatted SSE error message."""
-     return sse_pack({"type": error_type, "message": message})
+    """Create a formatted SSE error message."""
+    return sse_pack({"type": error_type, "message": message})
 
 
 def ensure_db_session(session_id: str, query: str) -> None:
-     """Ensure a chat session exists in the database."""
-     from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
-         create_chat_session,
-         get_chat_session,
-     )
+    """Ensure a chat session exists in the database."""
+    from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
+        create_chat_session,
+        get_chat_session,
+    )
 
-     try:
-         existing_session = get_chat_session(session_id)
-         if not existing_session:
-             logger.info(f"[Helper] Creating new DB session: {session_id}")
-             create_chat_session(title=query[:50] + "...", session_id=session_id)
-     except Exception as e:
-         logger.warning(f"[Helper] Failed to ensure DB session (non-fatal): {e}")
+    try:
+        existing_session = get_chat_session(session_id)
+        if not existing_session:
+            logger.info(f"[Helper] Creating new DB session: {session_id}")
+            create_chat_session(title=query[:50] + "...", session_id=session_id)
+    except Exception as e:
+        logger.warning(f"[Helper] Failed to ensure DB session (non-fatal): {e}")
 
 
 def prepare_enhanced_query(query: str, run_id: Optional[int]) -> str:
-     """Enhance a query with run context if a run_id is provided."""
-     if run_id is None:
-         return query
+    """Enhance a query with run context if a run_id is provided."""
+    if run_id is None:
+        return query
 
-     try:
-         logger.info(f"[Helper] Enhancing query with run context for run_id: {run_id}")
-         enhanced = enhance_query_with_run_context(query, run_id)
-         logger.info("[Helper] Query enhanced successfully")
-         return enhanced
-     except Exception as e:
-         logger.error(f"[Helper] Failed to enhance query (using original): {e}")
-         return query
+    try:
+        logger.info(f"[Helper] Enhancing query with run context for run_id: {run_id}")
+        enhanced = enhance_query_with_run_context(query, run_id)
+        logger.info("[Helper] Query enhanced successfully")
+        return enhanced
+    except Exception as e:
+        logger.error(f"[Helper] Failed to enhance query (using original): {e}")
+        return query
 
 
 def build_run_context(

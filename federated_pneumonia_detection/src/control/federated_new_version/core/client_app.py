@@ -132,7 +132,7 @@ def train(msg: Message, context: Context):
     centerlized_trainer.logger.info(
         f"[Client Train] Parameter change: "  # noqa: E501
         f"{(first_param_after - first_param_before).abs().mean().item():.6f}",
-)
+    )
     results = collect_training_results(
         trainer=trainer,
         model=model,

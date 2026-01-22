@@ -48,26 +48,26 @@ async def predict_batch(
             detail="Maximum 500 images allowed per batch request.",
         )
 
-     results = []
-     for file in files:
-         result = await service.process_single(
-             file=file,
-             include_clinical=include_clinical_interpretation,
-         )
-         results.append(result)
-         logger.info(f"Batch processing: {file.filename}, success: {result.success}")
+    results = []
+    for file in files:
+        result = await service.process_single(
+            file=file,
+            include_clinical=include_clinical_interpretation,
+        )
+        results.append(result)
+        logger.info(f"Batch processing: {file.filename}, success: {result.success}")
 
-     summary = service.batch_stats.calculate(results=results, total_images=len(files))
+    summary = service.batch_stats.calculate(results=results, total_images=len(files))
 
-     total_batch_time_ms = (time.time() - batch_start_time) * 1000
-     model_version = service.engine.model_version if service.engine else "unknown"
+    total_batch_time_ms = (time.time() - batch_start_time) * 1000
+    model_version = service.engine.model_version if service.engine else "unknown"
 
-     service.logger.log_batch(
-         summary=summary,
-         total_time_ms=total_batch_time_ms,
-         clinical_used=include_clinical_interpretation,
-         model_version=model_version,
-     )
+    service.logger.log_batch(
+        summary=summary,
+        total_time_ms=total_batch_time_ms,
+        clinical_used=include_clinical_interpretation,
+        model_version=model_version,
+    )
 
     return BatchInferenceResponse(
         success=True,
