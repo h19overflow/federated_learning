@@ -114,3 +114,8 @@ wandb/
 # Logs
 *.log
 docs/
+
+# Security review reports
+REVIEW_REPORT.md
+security_audit_*.md
+nul
