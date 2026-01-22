@@ -123,24 +123,8 @@ class GradCAM:
         # Forward pass
         output = self.model(input_tensor)
 
-        # For binary classification with single output
-        if output.shape[-1] == 1 or len(output.shape) == 1:
-            # Binary: use sigmoid probability
-            prob = torch.sigmoid(output)
-            if target_class is None:
-                # Use the predicted class direction
-                target_class = 1 if prob > 0.5 else 0
-
-            # Create scalar for backprop
-            if target_class == 1:
-                score = prob.squeeze()
-            else:
-                score = 1 - prob.squeeze()
-        else:
-            # Multi-class
-            if target_class is None:
-                target_class = output.argmax(dim=1).item()
-            score = output[0, target_class]
+        # Compute score for backprop based on output type
+        score = self._compute_target_score(output, target_class)
 
         # Backward pass
         self.model.zero_grad()
@@ -165,6 +149,77 @@ class GradCAM:
             cam = (cam - cam.min()) / (cam.max() - cam.min())
 
         return cam
+
+    def _compute_target_score(
+        self,
+        output: torch.Tensor,
+        target_class: Optional[int] = None,
+    ) -> torch.Tensor:
+        """Compute target score for backprop based on output shape.
+
+        Handles both binary (single output) and multi-class (multiple outputs)
+        classification using dictionary dispatch pattern.
+
+        Args:
+            output: Model output tensor
+            target_class: Target class index (None = use predicted class)
+
+        Returns:
+            Scalar tensor for backprop
+        """
+        # Determine output type and dispatch to handler
+        is_binary = output.shape[-1] == 1 or len(output.shape) == 1
+
+        handlers = {
+            True: self._handle_binary_output,
+            False: self._handle_multiclass_output,
+        }
+
+        handler = handlers[is_binary]
+        return handler(output, target_class)
+
+    def _handle_binary_output(
+        self,
+        output: torch.Tensor,
+        target_class: Optional[int] = None,
+    ) -> torch.Tensor:
+        """Handle binary classification output.
+
+        Args:
+            output: Binary output tensor (single value)
+            target_class: Target class (0 or 1, None = use predicted)
+
+        Returns:
+            Scalar tensor for backprop
+        """
+        prob = torch.sigmoid(output)
+
+        if target_class is None:
+            # Use predicted class direction
+            target_class = 1 if prob > 0.5 else 0
+
+        # Return probability or its complement based on target class
+        prob_squeezed = prob.squeeze()
+        return prob_squeezed if target_class == 1 else 1 - prob_squeezed
+
+    def _handle_multiclass_output(
+        self,
+        output: torch.Tensor,
+        target_class: Optional[int] = None,
+    ) -> torch.Tensor:
+        """Handle multi-class classification output.
+
+        Args:
+            output: Multi-class output tensor (multiple values)
+            target_class: Target class index (None = use predicted)
+
+        Returns:
+            Scalar tensor for backprop
+        """
+        if target_class is None:
+            target_class = output.argmax(dim=1).item()
+
+        return output[0, target_class]
 
     def __del__(self):
         """Cleanup hooks on deletion."""
