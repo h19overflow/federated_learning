@@ -90,54 +90,25 @@ def main(grid: Grid, context: Context) -> None:
             evaluate_fn=central_evaluate_fn,
         )
         logger.info("Federated learning completed.")
-
-        if run_id:
-            logger.info("Marking federated run as completed in database...")
-            db = get_session()
-            try:
-                run_crud.complete_run(db, run_id=run_id, status="completed")
-                db.commit()
-                logger.info(f"[OK] Run {run_id} marked as completed with end_time")
-            except Exception as e:
-                logger.error(f"[ERROR] Failed to update run completion: {e}")
-                db.rollback()
-            finally:
-                db.close()
+        _update_run_status(run_id, "completed")
 
     except Exception as e:
         logger.error(f"Federated learning failed: {str(e)}", exc_info=True)
-
-        if run_id:
-            logger.error(f"Marking run {run_id} as failed in database...")
-            db = get_session()
-            try:
-                run_crud.complete_run(db, run_id=run_id, status="failed")
-                db.commit()
-                logger.error(f"[OK] Run {run_id} marked as failed")
-            except Exception as db_error:
-                logger.error(f"[ERROR] Failed to mark run as failed: {db_error}")
-                db.rollback()
-            finally:
-                db.close()
-
+        _update_run_status(run_id, "failed")
         raise
 
-    all_results = {}
+    # Collect all available metrics using dictionary mapping pattern
+    metrics_mapping = {
+        "train_metrics_clientapp": result.train_metrics_clientapp,
+        "evaluate_metrics_clientapp": result.evaluate_metrics_clientapp,
+        "evaluate_metrics_serverapp": result.evaluate_metrics_serverapp,
+    }
 
-    if result.train_metrics_clientapp:
-        all_results["train_metrics_clientapp"] = _convert_metric_record_to_dict(
-            result.train_metrics_clientapp,
-        )
-
-    if result.evaluate_metrics_clientapp:
-        all_results["evaluate_metrics_clientapp"] = _convert_metric_record_to_dict(
-            result.evaluate_metrics_clientapp,
-        )
-
-    if result.evaluate_metrics_serverapp:
-        all_results["evaluate_metrics_serverapp"] = _convert_metric_record_to_dict(
-            result.evaluate_metrics_serverapp,
-        )
+    all_results = {
+        key: _convert_metric_record_to_dict(value)
+        for key, value in metrics_mapping.items()
+        if value
+    }
 
     result_file_id = analysis_run_id if analysis_run_id else run_id
     with open(f"results_{result_file_id}.json", "w") as f:
@@ -146,45 +117,15 @@ def main(grid: Grid, context: Context) -> None:
         json.dump(all_results, f, indent=2)
     logger.info(f"[OK] Results saved to results_{result_file_id}.json")
 
-    if result.evaluate_metrics_serverapp and run_id:
-        logger.info("Persisting server evaluation metrics to database...")
-        _persist_server_evaluations(run_id, result.evaluate_metrics_serverapp)
-    else:
-        logger.error(
-            f"[WARN] Skipping server evaluation persistence: "
-            f"evaluate_metrics_serverapp={bool(result.evaluate_metrics_serverapp)}, "
-            f"run_id={run_id}",
-        )
+    _persist_metrics_if_available(result, run_id)
 
     logger.info(
         "All federated rounds complete. Sending training_end event to frontend...",
     )
 
-    best_epoch = 1
-    best_val_recall = 0.0
-    if result.evaluate_metrics_serverapp:
-        server_metrics = _convert_metric_record_to_dict(
-            result.evaluate_metrics_serverapp,
-        )
-        if "loss" in server_metrics and "recall" in server_metrics:
-            recalls = server_metrics["recall"]
-            if recalls:
-                best_epoch = recalls.index(max(recalls)) + 1
-                best_val_recall = max(recalls)
+    best_epoch, best_val_recall = _extract_best_metrics(result)
 
-    training_duration = None
-    if run_id:
-        db = get_session()
-        try:
-            run = db.query(run_crud.model).filter(run_crud.model.id == run_id).first()
-            if run and run.start_time and run.end_time:
-                duration_seconds = (run.end_time - run.start_time).total_seconds()
-                duration_minutes = duration_seconds / 60
-                training_duration = f"{duration_minutes:.2f}m"
-        except Exception as e:
-            logger.warning(f"Failed to calculate training duration: {e}")
-        finally:
-            db.close()
+    training_duration = _calculate_training_duration(run_id)
 
     ws_sender.send_metrics(
         {
@@ -200,3 +141,108 @@ def main(grid: Grid, context: Context) -> None:
         "training_end",
     )
     logger.info(f"[OK] Training complete notification sent (run_id={run_id})")
+
+
+def _update_run_status(run_id: int | None, status: str) -> None:
+    """Update run status in database with proper error handling.
+
+    Args:
+        run_id: ID of the run to update
+        status: Status to set ("completed" or "failed")
+    """
+    if not run_id:
+        return
+
+    db = get_session()
+    try:
+        run_crud.complete_run(db, run_id=run_id, status=status)
+        db.commit()
+        logger.info(f"[OK] Run {run_id} marked as {status}")
+    except Exception as e:
+        logger.error(f"[ERROR] Failed to mark run as {status}: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+def _persist_metrics_if_available(result, run_id: int | None) -> None:
+    """Persist server evaluation metrics if available.
+
+    Args:
+        result: Strategy result containing metrics
+        run_id: ID of the run
+    """
+    if not result.evaluate_metrics_serverapp:
+        logger.error("[WARN] Skipping: No server evaluation metrics available")
+        return
+
+    if not run_id:
+        logger.error("[WARN] Skipping: No run_id available")
+        return
+
+    logger.info("Persisting server evaluation metrics to database...")
+    _persist_server_evaluations(run_id, result.evaluate_metrics_serverapp)
+
+
+def _extract_best_metrics(result) -> tuple[int, float]:
+    """Extract best epoch and recall from server metrics.
+
+    Args:
+        result: Strategy result containing metrics
+
+    Returns:
+        Tuple of (best_epoch, best_val_recall)
+    """
+    best_epoch = 1
+    best_val_recall = 0.0
+
+    if not result.evaluate_metrics_serverapp:
+        return best_epoch, best_val_recall
+
+    server_metrics = _convert_metric_record_to_dict(
+        result.evaluate_metrics_serverapp,
+    )
+
+    if "loss" not in server_metrics or "recall" not in server_metrics:
+        return best_epoch, best_val_recall
+
+    recalls = server_metrics["recall"]
+    if not recalls:
+        return best_epoch, best_val_recall
+
+    best_epoch = recalls.index(max(recalls)) + 1
+    best_val_recall = max(recalls)
+
+    return best_epoch, best_val_recall
+
+
+def _calculate_training_duration(run_id: int | None) -> str | None:
+    """Calculate training duration from run timestamps.
+
+    Args:
+        run_id: ID of the run
+
+    Returns:
+        Formatted duration string or None if unavailable
+    """
+    if not run_id:
+        return None
+
+    db = get_session()
+    try:
+        run = db.query(run_crud.model).filter(run_crud.model.id == run_id).first()
+
+        if not run or not run.start_time or not run.end_time:
+            return None
+
+        duration_seconds = (run.end_time - run.start_time).total_seconds()
+        duration_minutes = duration_seconds / 60
+
+        return f"{duration_minutes:.2f}m"
+
+    except Exception as e:
+        logger.warning(f"Failed to calculate training duration: {e}")
+        return None
+
+    finally:
+        db.close()
