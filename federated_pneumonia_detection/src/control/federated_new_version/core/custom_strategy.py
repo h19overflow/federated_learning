@@ -10,7 +10,7 @@ Follows Flower conventions for:
 from collections.abc import Iterable
 from typing import Any, Dict, Optional
 
-from flwr.app import ArrayRecord, ConfigRecord, Message
+from flwr.app import ArrayRecord, ConfigRecord, Message, MetricRecord
 from flwr.serverapp import Grid
 from flwr.serverapp.strategy import FedAvg
 
@@ -109,6 +109,65 @@ class ConfigurableFedAvg(FedAvg):
         config.update(filtered_eval_config)
         # Call parent class to configure evaluation with updated config
         return super().configure_evaluate(server_round, arrays, config, grid)
+
+    def aggregate_train(
+        self,
+        server_round: int,
+        replies: Iterable[Message],
+    ) -> tuple[ArrayRecord | None, MetricRecord | None]:
+        """Aggregate ArrayRecords and MetricRecords in train replies.
+
+        Flower FedAvg will skip aggregation if:
+        - the `weighted_by_key` (default: `num-examples`) is missing, or
+        - MetricRecord keys are inconsistent across clients.
+
+        This override adds visibility into those failure modes.
+        """
+
+        replies_list = list(replies)
+        print(
+            f"[Strategy] Round {server_round}: Aggregating TRAIN from {len(replies_list)} clients",
+        )
+
+        for i, reply in enumerate(replies_list):
+            if "metrics" not in reply.content:
+                print(
+                    f"[Strategy]   Client {i}: WARNING - No 'metrics' in reply.content",
+                )
+                continue
+
+            metrics = dict(reply.content["metrics"])
+            num_examples = metrics.get("num-examples", "NOT_FOUND")
+            print(
+                f"[Strategy]   Client {i}: num-examples={num_examples} (type={type(num_examples).__name__})",
+            )
+            print(f"[Strategy]   Client {i}: metric_keys={sorted(metrics.keys())}")
+
+        try:
+            arrays, metrics = super().aggregate_train(server_round, replies_list)
+            if arrays is None:
+                print(
+                    f"[Strategy] Round {server_round}: TRAIN aggregation returned arrays=None",
+                )
+            if metrics is None:
+                print(
+                    f"[Strategy] Round {server_round}: TRAIN aggregation returned metrics=None",
+                )
+            if metrics is not None:
+                print(
+                    f"[Strategy] Round {server_round}: TRAIN aggregated metric_keys={sorted(dict(metrics).keys())}",
+                )
+            return arrays, metrics
+        except Exception as e:
+            print(f"[Strategy] Round {server_round}: TRAIN AGGREGATION FAILED")
+            print(f"[Strategy]   Error type: {type(e).__name__}")
+            print(f"[Strategy]   Error message: {e}")
+            for i, reply in enumerate(replies_list):
+                if "metrics" in reply.content:
+                    print(
+                        f"[Strategy]   Client {i} metrics: {dict(reply.content['metrics'])}",
+                    )
+            raise
 
     def aggregate_evaluate(
         self,

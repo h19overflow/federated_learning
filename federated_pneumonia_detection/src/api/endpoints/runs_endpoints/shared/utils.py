@@ -74,8 +74,11 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
     Transform database Run object to ExperimentResults format.
 
     Database format:
-        RunMetric(metric_name='val_recall', metric_value=0.95, step=10, dataset_type='validation')
-        Note: step is 0-indexed (0-9 for 10 epochs)
+        Centralized: RunMetric(metric_name='val_recall', metric_value=0.95, step=10, dataset_type='validation')
+                    Note: step is 0-indexed (0-9 for 10 epochs)
+
+        Federated:  ServerEvaluation(round_number=1, accuracy=0.92, recall=0.95, ...)
+                    Note: round_number is 1-indexed (1-10 for 10 rounds)
 
     Frontend format:
         {
@@ -84,28 +87,63 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
           ...
         }
 
-    Important: Converts epochs from 0-indexed (database) to 1-indexed (display)
+    Important: Converts epochs from 0-indexed (database) to 1-indexed (display) for centralized runs.
+                Uses round_number directly as epoch for federated runs.
     """
+
+    # Check if this is a federated run
+    is_federated = run.training_mode == "federated"
 
     # Group metrics by epoch (step) - build complete structure first
     metrics_by_epoch = defaultdict(dict)
 
-    for metric in run.metrics:
-        epoch = metric.step
-        metric_name = metric.metric_name
-        value = metric.metric_value
+    if is_federated:
+        # For federated runs, read from server_evaluations
+        for eval in run.server_evaluations:
+            round_num = eval.round_number
+            # Map server evaluation fields to training history format
+            metrics_by_epoch[round_num] = {
+                "train_loss": 0.0,  # Not available in server evaluations
+                "val_loss": eval.loss,
+                "train_accuracy": 0.0,  # Not available
+                "train_acc": 0.0,  # Not available
+                "val_accuracy": eval.accuracy,
+                "val_acc": eval.accuracy,
+                "train_f1": 0.0,  # Not available
+                "val_precision": eval.precision,
+                "val_recall": eval.recall,
+                "val_f1": eval.f1_score,
+                "val_auroc": eval.auroc,
+                "val_auc": eval.auroc,  # Alternate name
+                # Confusion matrix values
+                "val_cm_tp": eval.true_positives,
+                "val_cm_tn": eval.true_negatives,
+                "val_cm_fp": eval.false_positives,
+                "val_cm_fn": eval.false_negatives,
+            }
+    else:
+        # For centralized runs, read from RunMetric table
+        for metric in run.metrics:
+            epoch = metric.step
+            metric_name = metric.metric_name
+            value = metric.metric_value
 
-        # Store in epoch-based structure
-        metrics_by_epoch[epoch][metric_name] = value
+            # Store in epoch-based structure
+            metrics_by_epoch[epoch][metric_name] = value
 
     # Build training history after metrics are fully populated
     training_history = []
     for epoch in sorted(metrics_by_epoch.keys()):
         epoch_data = metrics_by_epoch[epoch]
 
+        # Convert epoch to 1-indexed display format
+        # Centralized: step is 0-indexed (0-9) → add 1 for display (1-10)
+        # Federated: round_number is already 1-indexed → use as-is
+        display_epoch = epoch + 1 if not is_federated else epoch
+
         training_history.append(
             {
-                "epoch": epoch + 1,  # Convert from 0-indexed to 1-indexed for display
+                "epoch": display_epoch,
                 "train_loss": epoch_data.get("train_loss", 0.0),
                 "val_loss": epoch_data.get("val_loss", 0.0),
                 "train_acc": epoch_data.get(

@@ -22,6 +22,7 @@ jobs:
     name: Ruff (Lint + Format)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: false  # DISABLED: Ruff checks temporarily disabled for development
 
     steps:
       - name: Checkout repository

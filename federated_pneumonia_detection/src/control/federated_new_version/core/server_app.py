@@ -200,7 +200,7 @@ def main(grid: Grid, context: Context) -> None:
     # - fraction_train: fraction of available clients to use for training each round
     # - fraction_evaluate: fraction of available clients to use for evaluation each round
     # - train_config/eval_config: passed to clients via Message.content["config"]
-    # - FedAvg uses 'num_examples' key from client metrics for weighted aggregation
+    # - weighted_by_key: key in client metrics for weighted aggregation (defensive)
     # - evaluate_fn: server-side evaluation function (NEW in Flower 1.0+)
     logger.info("Initializing FedAvg strategy...")
     strategy = ConfigurableFedAvg(
@@ -208,6 +208,7 @@ def main(grid: Grid, context: Context) -> None:
         fraction_evaluate=1.0,  # Use all available clients for evaluation
         train_config=train_config,
         eval_config=eval_config,
+        weighted_by_key="num-examples",  # Defensive: explicitly specify weight key
         websocket_uri="ws://localhost:8765",
         run_id=run_id,  # Pass run_id for database persistence
     )
@@ -317,13 +318,46 @@ def main(grid: Grid, context: Context) -> None:
     logger.info(
         "All federated rounds complete. Sending training_end event to frontend...",
     )
+
+    # Calculate best metrics from server evaluations
+    best_epoch = 1
+    best_val_recall = 0.0
+    if result.evaluate_metrics_serverapp:
+        server_metrics = _convert_metric_record_to_dict(
+            result.evaluate_metrics_serverapp,
+        )
+        # Extract recall values by round
+        if "loss" in server_metrics and "recall" in server_metrics:
+            recalls = server_metrics["recall"]
+            if recalls:
+                best_epoch = recalls.index(max(recalls)) + 1  # 1-indexed
+                best_val_recall = max(recalls)
+
+    # Calculate training duration
+    training_duration = None
+    if run_id:
+        db = get_session()
+        try:
+            run = db.query(run_crud.model).filter(run_crud.model.id == run_id).first()
+            if run and run.start_time and run.end_time:
+                duration_seconds = (run.end_time - run.start_time).total_seconds()
+                duration_minutes = duration_seconds / 60
+                training_duration = f"{duration_minutes:.2f}m"
+        except Exception as e:
+            logger.warning(f"Failed to calculate training duration: {e}")
+        finally:
+            db.close()
+
     ws_sender.send_metrics(
         {
             "run_id": run_id,
             "status": "completed",
             "experiment_name": f"federated_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            "total_rounds": num_rounds,
+            "total_epochs": num_rounds,  # For federated, rounds == epochs from frontend perspective
             "training_mode": "federated",
+            "best_epoch": best_epoch,
+            "best_val_recall": best_val_recall,
+            "training_duration": training_duration,
         },
         "training_end",
     )

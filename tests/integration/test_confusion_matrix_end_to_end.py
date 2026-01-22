@@ -18,7 +18,7 @@ from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
-from federated_pneumonia_detection.src.boundary.engine import Run
+from federated_pneumonia_detection.src.boundary.models import Run
 
 
 @pytest.mark.integration

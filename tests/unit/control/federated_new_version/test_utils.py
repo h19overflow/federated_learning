@@ -23,7 +23,7 @@ class TestFilterListOfDicts:
     """Test suite for filter_list_of_dicts function."""
 
     def test_filter_single_field(self):
-        """Test filtering list with single field."""
+        """Test filtering list with single field from last epoch."""
         data = [{"epoch": 1, "train_loss": 0.5, "train_acc": 0.8}]
         fields = ["epoch"]
         result = filter_list_of_dicts(data, fields)
@@ -31,7 +31,7 @@ class TestFilterListOfDicts:
         assert result == {"epoch": 1}
 
     def test_filter_multiple_fields(self):
-        """Test filtering list with multiple fields."""
+        """Test filtering list with multiple fields from last epoch."""
         data = [
             {"epoch": 1, "train_loss": 0.5, "train_acc": 0.8},
             {"epoch": 2, "train_loss": 0.4, "train_acc": 0.85},
@@ -39,44 +39,63 @@ class TestFilterListOfDicts:
         fields = ["epoch", "train_loss"]
         result = filter_list_of_dicts(data, fields)
 
+        # Should return last epoch values
         assert result == {"epoch": 2, "train_loss": 0.4}
 
-    def test_filter_empty_list(self):
-        """Test filtering empty list."""
+    def test_filter_empty_list_returns_defaults(self):
+        """Test filtering empty list returns defaults (0.0) for all fields."""
         data = []
-        fields = ["epoch"]
+        fields = ["epoch", "train_loss", "train_acc"]
         result = filter_list_of_dicts(data, fields)
 
-        assert result == {}
+        # Should return defaults (0.0) for all requested fields
+        assert result == {"epoch": 0.0, "train_loss": 0.0, "train_acc": 0.0}
 
-    def test_filter_no_matching_fields(self):
-        """Test filtering when no fields match."""
+    def test_filter_missing_fields_return_defaults(self):
+        """Test that missing fields return default (0.0) values."""
         data = [{"epoch": 1, "train_loss": 0.5}]
-        fields = ["nonexistent"]
+        fields = ["epoch", "train_loss", "train_acc", "val_f1"]
         result = filter_list_of_dicts(data, fields)
 
-        assert result == {}
+        # train_acc and val_f1 should have default 0.0
+        assert result["epoch"] == 1
+        assert result["train_loss"] == 0.5
+        assert result["train_acc"] == 0.0  # Default
+        assert result["val_f1"] == 0.0  # Default
 
     def test_filter_all_fields(self):
-        """Test filtering all fields."""
+        """Test filtering all fields from last epoch."""
         data = [{"epoch": 1, "train_loss": 0.5, "train_acc": 0.8}]
         fields = ["epoch", "train_loss", "train_acc"]
         result = filter_list_of_dicts(data, fields)
 
         assert result == {"epoch": 1, "train_loss": 0.5, "train_acc": 0.8}
 
-    def test_filter_overwrites_with_last_value(self):
-        """Test that last value overwrites when fields exist in multiple dicts."""
+    def test_filter_uses_last_epoch_only(self):
+        """Test that only last epoch is used, not all epochs."""
         data = [
             {"epoch": 1, "train_loss": 0.5},
             {"epoch": 2, "train_loss": 0.4},
+            {"epoch": 3, "train_loss": 0.3},
         ]
         fields = ["epoch", "train_loss"]
         result = filter_list_of_dicts(data, fields)
 
-        # Should have last values
-        assert result["epoch"] == 2
-        assert result["train_loss"] == 0.4
+        # Should have last epoch values (epoch 3)
+        assert result["epoch"] == 3
+        assert result["train_loss"] == 0.3
+
+    def test_filter_preserves_zero_values(self):
+        """Test that legitimate zero values are preserved, not replaced with defaults."""
+        data = [{"epoch": 1, "train_loss": 0.0, "train_acc": 0.0}]
+        fields = ["epoch", "train_loss", "train_acc", "val_f1"]
+        result = filter_list_of_dicts(data, fields)
+
+        # Zero values should be preserved, val_f1 should be default 0.0
+        assert result["epoch"] == 1
+        assert result["train_loss"] == 0.0
+        assert result["train_acc"] == 0.0
+        assert result["val_f1"] == 0.0  # Default (not in data)
 
 
 class TestExtractMetricsFromResult:

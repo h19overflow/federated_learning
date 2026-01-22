@@ -27,20 +27,52 @@ logger = setup_logger(__name__)
 
 def filter_list_of_dicts(data: list[dict[str, Any]], fields: list[str]):
     """
-    Filters a list of dictionaries to include only specified keys.
+    Filters a list of dictionaries to include only specified keys from the last epoch only.
+    Enforces a fixed schema with numeric defaults (0.0) when keys are missing.
 
     Args:
-      data: A list of dictionaries.
-      fields: A list of keys to keep in each dictionary.
+      data: A list of dictionaries (typically metrics_history from multiple epochs).
+      fields: A list of keys to keep in the final output.
 
     Returns:
-      A new list of dictionaries with only the specified keys.
+      A dictionary with only the specified keys from the last epoch,
+      with defaults (0.0) for any missing keys.
     """
-    metrics = {}
-    for metric in data:
-        for k, v in metric.items():
-            if k in fields:
-                metrics.update({k: v})
+    DEFAULT_FLOAT = 0.0
+    DEFAULT_INT = 0
+
+    # If no data, return defaults for all fields
+    if not data:
+        out: dict[str, Any] = {}
+        for field in fields:
+            out[field] = DEFAULT_INT if field == "epoch" else DEFAULT_FLOAT
+        return out
+
+    # Get metrics from the last epoch only (deterministic)
+    last_epoch_metrics = data[-1]
+
+    # Build result with fixed schema - use value from last epoch or default
+    metrics: dict[str, Any] = {}
+    for field in fields:
+        val = last_epoch_metrics.get(field)
+        if field == "epoch":
+            if val is None:
+                metrics[field] = DEFAULT_INT
+            else:
+                try:
+                    metrics[field] = int(val)
+                except Exception:
+                    metrics[field] = DEFAULT_INT
+            continue
+
+        if val is None:
+            metrics[field] = DEFAULT_FLOAT
+            continue
+
+        try:
+            metrics[field] = float(val)
+        except Exception:
+            metrics[field] = DEFAULT_FLOAT
 
     return metrics
 

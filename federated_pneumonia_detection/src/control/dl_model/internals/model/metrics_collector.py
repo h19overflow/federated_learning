@@ -387,7 +387,7 @@ class MetricsCollectorCallback(pl.Callback):
         Returns:
             client_id: The database ID of the client entity
         """
-        from federated_pneumonia_detection.src.boundary.engine import Client
+        from federated_pneumonia_detection.src.boundary.models import Client
 
         client_identifier = f"client_{self.client_id}"
 

@@ -19,7 +19,7 @@ from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.utils import
     _transform_run_to_results,
 )
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.boundary.engine import Run
+from federated_pneumonia_detection.src.boundary.models import Run
 
 
 @pytest.mark.integration

@@ -150,8 +150,8 @@ def train(msg: Message, context: Context):
         trainer=trainer,
         model=model,
         metrics_collector=metrics_collector,
-        logs_dir=config.get("paths.logs"),
-        checkpoint_dir=config.get("paths.checkpoints"),
+        logs_dir=config.get("output.log_dir"),
+        checkpoint_dir=config.get("output.checkpoint_dir"),
         logger=centerlized_trainer.logger,
         run_id=run_id,
     )
@@ -161,7 +161,7 @@ def train(msg: Message, context: Context):
 
     # Filter and prepare metrics - IMPORTANT: num-examples at root level for aggregation
     metrics_history = filter_list_of_dicts(
-        results["metrics_history"],
+        results.get("metrics_history", []),
         [
             "epoch",
             "train_loss",
@@ -178,7 +178,7 @@ def train(msg: Message, context: Context):
 
     # Add num-examples at the root level for Flower's weighted aggregation
     # CRITICAL: Must be "num-examples" with HYPHEN, not underscore!
-    metrics_history["num-examples"] = num_examples
+    metrics_history["num-examples"] = int(num_examples)
 
     centerlized_trainer.logger.info(
         f"[Client Train] Completed training with {num_examples} examples",

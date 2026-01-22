@@ -22,8 +22,6 @@ from langchain_postgres import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import BaseModel, Field
 
-from federated_pneumonia_detection.src.boundary.engine import settings
-
 logger = logging.getLogger(__name__)
 
 
