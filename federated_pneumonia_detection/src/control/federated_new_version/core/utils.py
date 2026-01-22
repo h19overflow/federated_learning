@@ -1,11 +1,15 @@
+import os
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 import pandas as pd
-from flwr.app import Context
+import torch
+from flwr.app import ArrayRecord, Context
 from sklearn.model_selection import train_test_split
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
@@ -17,6 +21,15 @@ from federated_pneumonia_detection.src.control.dl_model.centralized_trainer_util
     build_model_and_callbacks,
     build_trainer,
 )
+from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (
+    MetricsWebSocketSender,
+)
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
+    LitResNetEnhanced,
+)
+from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
+    ConfigurableFedAvg,
+)
 from federated_pneumonia_detection.src.control.federated_new_version.partioner import (
     CustomPartitioner,
 )
@@ -25,33 +38,201 @@ from federated_pneumonia_detection.src.internals.loggers.logger import setup_log
 logger = setup_logger(__name__)
 
 
-def filter_list_of_dicts(data: list[dict[str, Any]], fields: list[str]):
-    """
-    Filters a list of dictionaries to include only specified keys from the last epoch only.
-    Enforces a fixed schema with numeric defaults (0.0) when keys are missing.
-
-    Args:
-      data: A list of dictionaries (typically metrics_history from multiple epochs).
-      fields: A list of keys to keep in the final output.
-
+def _initialize_database_run() -> Tuple[int | None, Any]:
+    """Initialize federated training run in database.
+    
     Returns:
-      A dictionary with only the specified keys from the last epoch,
-      with defaults (0.0) for any missing keys.
+        Tuple of (run_id, db_session) or (None, None) on failure
     """
+    logger.info("Creating federated training run in database...")
+    db = get_session()
+    try:
+        run_data = {
+            "training_mode": "federated",
+            "status": "in_progress",
+            "start_time": datetime.now(),
+            "wandb_id": f"federated_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            "source_path": "federated_training",
+        }
+        new_run = run_crud.create(db, **run_data)
+        db.commit()
+        run_id = new_run.id
+        logger.info(f"[OK] Successfully created run with id={run_id}")
+        return run_id, db
+    except Exception as e:
+        logger.error(f"[ERROR] Failed to create run in database: {e}", exc_info=True)
+        db.rollback()
+        db.close()
+        return None, None
+
+
+def _setup_config_manager() -> Tuple[ConfigManager, str, str]:
+    """Setup configuration manager with environment overrides.
+    
+    Returns:
+        Tuple of (config_manager, experiment_seed, analysis_run_id)
+    """
+    default_config_path = (
+        Path(__file__).parent.parent.parent.parent.parent
+        / "config"
+        / "default_config.yaml"
+    )
+    config_path = os.getenv("CONFIG_PATH", str(default_config_path))
+    config_manager = ConfigManager(config_path=str(config_path))
+
+    fl_seed = os.getenv("FL_SEED")
+    if fl_seed:
+        seed_value = int(fl_seed)
+        config_manager.set("experiment.seed", seed_value)
+        config_manager.set("system.seed", seed_value)
+        logger.info(f"[ENV OVERRIDE] Using seed from FL_SEED: {seed_value}")
+
+    experiment_seed = config_manager.get("experiment.seed", 42)
+    analysis_run_id = os.getenv("FL_RUN_ID")
+    if analysis_run_id:
+        logger.info(f"[ENV OVERRIDE] Using run_id from FL_RUN_ID: {analysis_run_id}")
+
+    return config_manager, experiment_seed, analysis_run_id
+
+
+def _build_training_configs(
+    config_manager: ConfigManager,
+    num_clients: int,
+    run_id: int | None,
+    experiment_seed: int,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Build training and evaluation configs to send to clients.
+    
+    Args:
+        config_manager: Configuration manager instance
+        num_clients: Number of clients (for num_partitions)
+        run_id: Database run ID
+        experiment_seed: Experiment seed value
+        
+    Returns:
+        Tuple of (train_config, eval_config)
+    """
+    train_config = {
+        "file_path": config_manager.get("experiment.file-path"),
+        "image_dir": config_manager.get("experiment.image-dir"),
+        "num_partitions": num_clients,
+        "run_id": run_id,
+        "seed": experiment_seed,
+    }
+
+    eval_config = {
+        "csv_path": config_manager.get("experiment.file-path"),
+        "image_dir": config_manager.get("experiment.image-dir"),
+    }
+
+    return train_config, eval_config
+
+
+def _build_global_model(config_manager: ConfigManager) -> Tuple[LitResNetEnhanced, ArrayRecord]:
+    """Build and initialize global model for federated learning.
+    
+    Args:
+        config_manager: Configuration manager instance
+        
+    Returns:
+        Tuple of (model, arrays_record)
+    """
+    num_classes = 2
+    class_weights = torch.ones(num_classes)
+
+    global_model = LitResNetEnhanced(
+        config=config_manager,
+        class_weights_tensor=class_weights,
+        use_focal_loss=True,
+        focal_alpha=0.6,
+        focal_gamma=1.5,
+        label_smoothing=0.05,
+        use_cosine_scheduler=True,
+        monitor_metric="val_recall",
+    )
+    logger.info("Initialized LitResNetEnhanced with balanced focal loss configuration")
+
+    arrays = ArrayRecord(global_model.state_dict())
+    return global_model, arrays
+
+
+def _initialize_websocket_sender(
+    num_clients: int,
+    num_rounds: int,
+) -> MetricsWebSocketSender:
+    """Initialize WebSocket sender and broadcast training mode.
+    
+    Args:
+        num_clients: Number of clients
+        num_rounds: Number of rounds
+        
+    Returns:
+        MetricsWebSocketSender instance
+    """
+    logger.info("Initializing WebSocket sender for real-time metrics...")
+    ws_sender = MetricsWebSocketSender("ws://localhost:8765")
+
+    logger.info(
+        f"Broadcasting training mode: {num_clients} clients, {num_rounds} rounds",
+    )
+    ws_sender.send_training_mode(
+        is_federated=True,
+        num_rounds=num_rounds,
+        num_clients=num_clients,
+    )
+
+    return ws_sender
+
+
+def _initialize_strategy(
+    train_config: Dict[str, Any],
+    eval_config: Dict[str, Any],
+    run_id: int | None,
+    num_rounds: int,
+) -> ConfigurableFedAvg:
+    """Initialize FedAvg strategy with configurations.
+    
+    Args:
+        train_config: Training configuration
+        eval_config: Evaluation configuration
+        run_id: Database run ID
+        num_rounds: Number of rounds
+        
+    Returns:
+        Configured strategy instance
+    """
+    logger.info("Initializing FedAvg strategy...")
+    strategy = ConfigurableFedAvg(
+        fraction_train=1.0,
+        fraction_evaluate=1.0,
+        train_config=train_config,
+        eval_config=eval_config,
+        weighted_by_key="num-examples",
+        websocket_uri="ws://localhost:8765",
+        run_id=run_id,
+    )
+
+    strategy.set_total_rounds(num_rounds)
+    logger.info(
+        "Strategy configured: FedAvg with weighted aggregation by num_examples + server evaluation",
+    )
+
+    return strategy
+
+
+def filter_list_of_dicts(data: list[dict[str, Any]], fields: list[str]):
+    """Filter list of dicts to include only specified keys from last epoch."""
     DEFAULT_FLOAT = 0.0
     DEFAULT_INT = 0
 
-    # If no data, return defaults for all fields
     if not data:
         out: dict[str, Any] = {}
         for field in fields:
             out[field] = DEFAULT_INT if field == "epoch" else DEFAULT_FLOAT
         return out
 
-    # Get metrics from the last epoch only (deterministic)
     last_epoch_metrics = data[-1]
 
-    # Build result with fixed schema - use value from last epoch or default
     metrics: dict[str, Any] = {}
     for field in fields:
         val = last_epoch_metrics.get(field)
@@ -98,17 +279,7 @@ def _prepare_partition_and_split(
     partion_df,
     seed: int = 42,
 ):
-    """Split partition into train and validation sets.
-
-    Args:
-        partioner: The data partitioner
-        partition_id: ID of the partition to split
-        partion_df: DataFrame for this partition
-        seed: Random seed for reproducible splits (default: 42)
-
-    Returns:
-        Tuple of (train_df, val_df)
-    """
+    """Split partition into train and validation sets."""
     train_df, val_df = train_test_split(partion_df, test_size=0.2, random_state=seed)
     return train_df, val_df
 
@@ -136,7 +307,7 @@ def _build_model_components(
         logs_dir=centerlized_trainer.logs_dir,
         logger=centerlized_trainer.logger,
         experiment_name="federated_pneumonia_detection",
-        run_id=run_id,  # Use passed run_id instead of context.run_id
+        run_id=run_id,
         is_federated=is_federated,
         client_id=client_id,
         round_number=round_number,
@@ -169,18 +340,13 @@ def _prepare_evaluation_dataframe(df):
 
 
 def _extract_metrics_from_result(result_dict: dict):
-    """Extract and map metrics from result dictionary.
-
-    Note: Uses 'is not None' check instead of 'or' to handle legitimate 0.0 values.
-    Handles both 'test_acc' and 'test_accuracy' naming conventions.
-    """
+    """Extract and map metrics from result dictionary."""
     loss = (
         result_dict.get("test_loss")
         if result_dict.get("test_loss") is not None
         else result_dict.get("loss", 0.0)
     )
 
-    # Handle both test_acc and test_accuracy
     accuracy = result_dict.get("test_accuracy")
     if accuracy is None:
         accuracy = result_dict.get("test_acc")
@@ -219,12 +385,7 @@ def _create_metric_record_dict(
     auroc,
     num_examples: int,
 ):
-    """Create metric record dictionary with all metrics.
-
-    Following Flower conventions:
-    - 'num-examples' key (with HYPHEN) is used for weighted aggregation
-    - This key must be present for FedAvg to properly weight client contributions
-    """
+    """Create metric record dictionary with all metrics."""
     return {
         "test_loss": loss,
         "test_accuracy": accuracy,
@@ -232,28 +393,12 @@ def _create_metric_record_dict(
         "test_recall": recall,
         "test_f1": f1,
         "test_auroc": auroc,
-        "num-examples": num_examples,  # CRITICAL: Must be "num-examples" with HYPHEN!
+        "num-examples": num_examples,
     }
 
 
 def read_configs_to_toml() -> dict:
-    """Read federated learning configs from default_config.yaml.
-
-    Prepare configuration for pyproject.toml. Extracts Flower-specific
-    configuration values from the YAML config and returns them in a format
-    suitable for updating pyproject.toml.
-
-    Returns:
-        dict: Configuration dictionary with keys: num_server_rounds, max_epochs,
-        num_supernodes
-
-    Note:
-        These configs correspond to:
-        - num_server_rounds -> [tool.flwr.app.config] num-server-rounds
-        - max_epochs -> [tool.flwr.app.config] max-epochs
-        - num_supernodes -> [tool.flwr.federations.local-simulation.options]
-          num-supernodes
-    """
+    """Read federated learning configs from default_config.yaml."""
     config_dir = (
         Path(__file__).parent.parent.parent.parent.parent
         / "config"
@@ -270,50 +415,45 @@ def read_configs_to_toml() -> dict:
 
     flwr_configs = {}
 
-    # Read num-server-rounds (number of federated learning rounds)
     if config_manager.has_key("experiment.num-server-rounds"):
         flwr_configs["num_server_rounds"] = config_manager.get(
             "experiment.num-server-rounds",
         )
-        print(  # noqa: E501
+        print(
             f"[Config Reader] [OK] num-server-rounds: "
             f"{flwr_configs['num_server_rounds']}",
         )
     else:
         print("[Config Reader] [WARN] experiment.num-server-rounds not found in config")
 
-    # Read max-epochs (local training epochs per round)
     if config_manager.has_key("experiment.max-epochs"):
         flwr_configs["max_epochs"] = config_manager.get("experiment.max-epochs")
         print(f"[Config Reader] [OK] max-epochs: {flwr_configs['max_epochs']}")
     elif config_manager.has_key("experiment.local_epochs"):
-        # Fallback to local_epochs if max-epochs not found
         flwr_configs["max_epochs"] = config_manager.get("experiment.local_epochs")
-        print(  # noqa: E501
+        print(
             f"[Config Reader] [OK] max-epochs (from local_epochs): "
             f"{flwr_configs['max_epochs']}",
         )
     else:
-        print(  # noqa: E501
+        print(
             "[Config Reader] [WARN] experiment.max-epochs or "
             "experiment.local_epochs not found",
         )
 
-    # Read num-supernodes (number of clients in simulation)
     if config_manager.has_key("experiment.options.num-supernodes"):
         flwr_configs["num_supernodes"] = config_manager.get(
             "experiment.options.num-supernodes",
         )
         print(f"[Config Reader] [OK] num-supernodes: {flwr_configs['num_supernodes']}")
     elif config_manager.has_key("experiment.num_clients"):
-        # Fallback to num_clients if num-supernodes not found
         flwr_configs["num_supernodes"] = config_manager.get("experiment.num_clients")
-        print(  # noqa: E501
+        print(
             f"[Config Reader] [OK] num-supernodes (from num_clients): "
             f"{flwr_configs['num_supernodes']}",
         )
     else:
-        print(  # noqa: E501
+        print(
             "[Config Reader] [WARN] experiment.options.num-supernodes or "
             "experiment.num_clients not found",
         )
@@ -335,20 +475,12 @@ def _convert_metric_record_to_dict(data):
 
 
 def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> None:
-    """
-    Persist server-side evaluation metrics to database.
-
-    Args:
-        run_id: Database run ID
-        server_metrics: Dictionary mapping round number to MetricRecord
-    """
-    # Verify database connection before attempting persistence
+    """Persist server-side evaluation metrics to database."""
     logger.info("=" * 80)
     logger.info("DATABASE PERSISTENCE - Server Evaluations")
     logger.info("=" * 80)
 
     try:
-        # Test database connection first
         from federated_pneumonia_detection.config.settings import Settings
 
         settings_obj = Settings()
@@ -369,16 +501,12 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
         logger.info(f"Processing {len(server_metrics)} server evaluation rounds...")
 
         for round_num_str, metric_record in server_metrics.items():
-            # Convert round number to int (Flower uses int keys, but may be
-            # converted to string)
             round_num = int(round_num_str)
             logger.info(f"  Processing round {round_num} (key={round_num_str})...")
 
-            # Convert MetricRecord to dict if needed
             if hasattr(metric_record, "__dict__"):
                 metrics_dict = dict(metric_record)
             elif isinstance(metric_record, str):
-                # If it's a string representation, parse it
                 import ast
 
                 try:
@@ -399,7 +527,6 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
                 f"    Metrics dict type: {type(metrics_dict)}, keys: {keys_str}",
             )
 
-            # Extract metrics with 'server_' prefix (from server_evaluation.py)
             extracted_metrics = {
                 "loss": metrics_dict.get("server_loss", 0.0),
                 "accuracy": metrics_dict.get("server_accuracy"),
@@ -411,7 +538,6 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
 
             logger.info(f"    Extracted metrics: {extracted_metrics}")
 
-            # Create server evaluation record
             server_evaluation_crud.create_evaluation(
                 db=db,
                 run_id=run_id,

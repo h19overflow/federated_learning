@@ -50,7 +50,7 @@ load_dotenv(dotenv_path=env_path)
 logger = logging.getLogger(__name__)
 logger.info(f"Loaded environment from: {env_path}")
 
-os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # or ':16:8'
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
 @asynccontextmanager
@@ -90,7 +90,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Security middleware for prompt injection detection
 app.add_middleware(MaliciousPromptMiddleware)
 
 

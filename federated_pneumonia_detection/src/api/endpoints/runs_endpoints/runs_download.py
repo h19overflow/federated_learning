@@ -1,9 +1,4 @@
-"""
-Download endpoints for exporting training run results.
-
-Provides endpoints to download run results in multiple formats (JSON, CSV, text).
-Uses shared exporter modules and download service following SOLID principles.
-"""
+"""Download endpoints for exporting training run results."""
 
 from fastapi import APIRouter, HTTPException
 

@@ -40,16 +40,14 @@ async def get_analytics_summary(
     """
     db = get_session()
 
-    try:
-        # Fetch runs with database-level filtering
-        runs = run_crud.get_by_status_and_mode(
-            db,
-            status=status,
-            training_mode=training_mode,
-        )
+     try:
+         runs = run_crud.get_by_status_and_mode(
+             db,
+             status=status,
+             training_mode=training_mode,
+         )
 
-        # Delegate business logic to utility function
-        return generate_analytics_summary(db, runs, status, training_mode, days)
+         return generate_analytics_summary(db, runs, status, training_mode, days)
 
     except Exception as e:
         logger.error(f"Error generating analytics summary: {e}", exc_info=True)

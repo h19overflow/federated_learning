@@ -1,8 +1,4 @@
-"""
-Centralized training task functions.
-
-Provides background task execution for centralized machine learning training.
-"""
+"""Centralized training task functions."""
 
 from typing import Any, Dict
 

@@ -1,9 +1,4 @@
-"""
-Metrics retrieval endpoints for training runs.
-
-Provides endpoint to fetch complete training results and metrics
-for a specific run from the database.
-"""
+"""Metrics retrieval endpoints for training runs."""
 
 from fastapi import APIRouter, HTTPException
 
@@ -34,13 +29,12 @@ async def get_run_metrics(run_id: int) -> MetricsResponse:
     db = get_session()
 
     try:
-        run = run_crud.get_with_metrics(db, run_id)
+         run = run_crud.get_with_metrics(db, run_id)
 
-        if not run:
-            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+         if not run:
+             raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
 
-        # Transform database data to frontend format
-        results = _transform_run_to_results(run)
+         results = _transform_run_to_results(run)
 
         return results
 

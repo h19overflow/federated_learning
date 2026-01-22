@@ -1,12 +1,4 @@
-"""
-Consolidated utility functions for run data transformation and analytics.
-
-Provides shared helpers for:
-- Transforming database Run objects to API response format
-- Calculating confusion matrix statistics
-- Safe dictionary navigation and averaging
-- Duration calculations with timezone awareness
-"""
+"""Consolidated utility functions for run data transformation and analytics."""
 
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
@@ -30,35 +22,26 @@ def _calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
     fp = cm.get("false_positives", 0)
     fn = cm.get("false_negatives", 0)
 
-    # Validate values
-    if any(v < 0 for v in [tp, tn, fp, fn]):
-        raise ValueError("Confusion matrix values cannot be negative")
+     if any(v < 0 for v in [tp, tn, fp, fn]):
+         raise ValueError("Confusion matrix values cannot be negative")
 
-    total = tp + tn + fp + fn
-    if total == 0:
-        return {
-            "sensitivity": 0.0,
-            "specificity": 0.0,
-            "precision_cm": 0.0,
-            "accuracy_cm": 0.0,
-            "f1_cm": 0.0,
-        }
+     total = tp + tn + fp + fn
+     if total == 0:
+         return {
+             "sensitivity": 0.0,
+             "specificity": 0.0,
+             "precision_cm": 0.0,
+             "accuracy_cm": 0.0,
+             "f1_cm": 0.0,
+         }
 
-    # Sensitivity (Recall for positive class) = TP / (TP + FN)
-    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+     sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+     precision_cm = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+     accuracy_cm = (tp + tn) / total if total > 0 else 0.0
 
-    # Specificity (Recall for negative class) = TN / (TN + FP)
-    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
-
-    # Precision = TP / (TP + FP)
-    precision_cm = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-
-    # Accuracy = (TP + TN) / Total
-    accuracy_cm = (tp + tn) / total if total > 0 else 0.0
-
-    # F1 Score = 2 * (Precision * Sensitivity) / (Precision + Sensitivity)
-    denom = precision_cm + sensitivity
-    f1_cm = 2 * (precision_cm * sensitivity) / denom if denom > 0 else 0.0
+     denom = precision_cm + sensitivity
+     f1_cm = 2 * (precision_cm * sensitivity) / denom if denom > 0 else 0.0
 
     return {
         "sensitivity": round(sensitivity, 4),
@@ -70,34 +53,12 @@ def _calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
 
 
 def _transform_run_to_results(run) -> Dict[str, Any]:
-    """
-    Transform database Run object to ExperimentResults format.
+     """Transform database Run object to ExperimentResults format."""
 
-    Database format:
-        Centralized: RunMetric(metric_name='val_recall', metric_value=0.95, step=10, dataset_type='validation')
-                    Note: step is 0-indexed (0-9 for 10 epochs)
+     is_federated = run.training_mode == "federated"
+     metrics_by_epoch = defaultdict(dict)
 
-        Federated:  ServerEvaluation(round_number=1, accuracy=0.92, recall=0.95, ...)
-                    Note: round_number is 1-indexed (1-10 for 10 rounds)
-
-    Frontend format:
-        {
-          final_metrics: {accuracy: 0.92, ...},
-          training_history: [{epoch: 1, train_loss: 0.5, ...}],  # epoch is 1-indexed (1-10)
-          ...
-        }
-
-    Important: Converts epochs from 0-indexed (database) to 1-indexed (display) for centralized runs.
-                Uses round_number directly as epoch for federated runs.
-    """
-
-    # Check if this is a federated run
-    is_federated = run.training_mode == "federated"
-
-    # Group metrics by epoch (step) - build complete structure first
-    metrics_by_epoch = defaultdict(dict)
-
-    if is_federated:
+     if is_federated:
         # For federated runs, read from server_evaluations
         for eval in run.server_evaluations:
             round_num = eval.round_number

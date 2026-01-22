@@ -1,9 +1,4 @@
-"""
-List endpoints for retrieving all training runs.
-
-Provides endpoints to list all runs with summary information and backfill operations.
-Uses shared modules for summary building and backfill services following SOLID principles.
-"""
+"""List endpoints for retrieving all training runs."""
 
 from typing import Optional
 
@@ -58,28 +53,24 @@ async def list_all_runs(
     """
     db = get_session()
 
-    try:
-        # Build filtered query
-        query = db.query(Run)
+     try:
+         query = db.query(Run)
 
-        if status:
-            query = query.filter(Run.status == status)
-        if training_mode:
-            query = query.filter(Run.training_mode == training_mode)
+         if status:
+             query = query.filter(Run.status == status)
+         if training_mode:
+             query = query.filter(Run.training_mode == training_mode)
 
-        # Apply sorting
-        sort_column = getattr(Run, sort_by, Run.start_time)
-        if sort_order == "desc":
-            query = query.order_by(sort_column.desc())
-        else:
-            query = query.order_by(sort_column.asc())
+         sort_column = getattr(Run, sort_by, Run.start_time)
+         if sort_order == "desc":
+             query = query.order_by(sort_column.desc())
+         else:
+             query = query.order_by(sort_column.asc())
 
-        # Get total count before pagination
-        total_count = query.count()
+         total_count = query.count()
 
-        # Apply pagination
-        runs = query.limit(limit).offset(offset).all()
-        run_summaries = [RunSummaryBuilder.build(run, db) for run in runs]
+         runs = query.limit(limit).offset(offset).all()
+         run_summaries = [RunSummaryBuilder.build(run, db) for run in runs]
 
         return RunsListResponse(
             runs=[RunSummary(**summary) for summary in run_summaries],

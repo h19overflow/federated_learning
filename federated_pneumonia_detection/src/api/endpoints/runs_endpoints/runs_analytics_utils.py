@@ -1,10 +1,4 @@
-"""
-Business logic utilities for runs analytics endpoints.
-
-Provides core logic for aggregating training run statistics, extracting metrics,
-and generating analytics responses. Separated from endpoint definitions to follow
-SOLID principles and maintain clean separation of concerns.
-"""
+"""Business logic utilities for runs analytics endpoints."""
 
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -44,40 +38,33 @@ def generate_analytics_summary(
     """
     from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 
-    from .shared.services import RunRanker
+     from .shared.services import RunRanker
 
-    # Apply time filter if specified
-    if days:
-        cutoff_date = datetime.now() - timedelta(days=days)
-        runs = [r for r in runs if r.start_time and r.start_time >= cutoff_date]
+     if days:
+         cutoff_date = datetime.now() - timedelta(days=days)
+         runs = [r for r in runs if r.start_time and r.start_time >= cutoff_date]
 
-    if not runs:
-        logger.warning(
-            f"No runs found with filters: status={status}, mode={training_mode}, days={days}",
-        )
-        return create_empty_response()
+     if not runs:
+         logger.warning(
+             f"No runs found with filters: status={status}, mode={training_mode}, days={days}",
+         )
+         return create_empty_response()
 
-    # Split runs by training mode
-    centralized_runs = [r for r in runs if r.training_mode == "centralized"]
-    federated_runs = [r for r in runs if r.training_mode == "federated"]
+     centralized_runs = [r for r in runs if r.training_mode == "centralized"]
+     federated_runs = [r for r in runs if r.training_mode == "federated"]
 
-    # Calculate aggregated statistics using shared aggregator
-    centralized_stats = RunAggregator.calculate_statistics(db, centralized_runs)
-    federated_stats = RunAggregator.calculate_statistics(db, federated_runs)
+     centralized_stats = RunAggregator.calculate_statistics(db, centralized_runs)
+     federated_stats = RunAggregator.calculate_statistics(db, federated_runs)
 
-    # Extract run details and rank
-    all_run_details = [extract_run_detail(db, r) for r in runs]
-    all_run_details = [d for d in all_run_details if d is not None]  # Filter None
-    top_runs = RunRanker.get_top_runs(all_run_details, metric="best_accuracy", limit=10)
+     all_run_details = [extract_run_detail(db, r) for r in runs]
+     all_run_details = [d for d in all_run_details if d is not None]
+     top_runs = RunRanker.get_top_runs(all_run_details, metric="best_accuracy", limit=10)
 
-    # Calculate filtered run ratio: proportion of filtered runs to all runs with same status
-    # This is NOT a success/completion rate - it's a filtering ratio showing what fraction
-    # of all status-matching runs passed through additional filters (training_mode, days, etc.)
-    total_runs = len(runs)
-    all_status_runs = run_crud.get_by_status(db, status)
-    filtered_run_ratio = (
-        total_runs / len(all_status_runs) if len(all_status_runs) > 0 else 0.0
-    )
+     total_runs = len(runs)
+     all_status_runs = run_crud.get_by_status(db, status)
+     filtered_run_ratio = (
+         total_runs / len(all_status_runs) if len(all_status_runs) > 0 else 0.0
+     )
 
     logger.info(
         f"Analytics summary generated: {total_runs} runs "
@@ -85,16 +72,13 @@ def generate_analytics_summary(
         f"Filtering ratio: {filtered_run_ratio:.4f} ({total_runs}/{len(all_status_runs)} status-matching runs)",
     )
 
-    return AnalyticsSummaryResponse(
-        total_runs=total_runs,
-        success_rate=round(
-            filtered_run_ratio,
-            4,
-        ),  # Proportion: filtered_count / all_status_count
-        centralized=ModeMetrics(**centralized_stats),
-        federated=ModeMetrics(**federated_stats),
-        top_runs=top_runs,
-    )
+     return AnalyticsSummaryResponse(
+         total_runs=total_runs,
+         success_rate=round(filtered_run_ratio, 4),
+         centralized=ModeMetrics(**centralized_stats),
+         federated=ModeMetrics(**federated_stats),
+         top_runs=top_runs,
+     )
 
 
 def extract_run_detail(db: Session, run) -> Optional[dict]:

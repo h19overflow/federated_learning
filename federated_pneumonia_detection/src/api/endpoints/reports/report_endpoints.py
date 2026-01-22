@@ -39,39 +39,35 @@ async def generate_single_report(request: SingleReportRequest) -> Response:
     Returns:
         PDF file as binary response
     """
-    try:
-        # Decode images if provided
-        original_image = None
-        if request.original_image_base64:
-            original_image = decode_base64_image(request.original_image_base64)
+     try:
+         original_image = None
+         if request.original_image_base64:
+             original_image = decode_base64_image(request.original_image_base64)
 
-        # Prepare clinical interpretation dict
-        clinical_interpretation = None
-        if request.clinical_interpretation:
-            clinical_interpretation = {
-                "summary": request.clinical_interpretation.summary,
-                "confidence_explanation": request.clinical_interpretation.confidence_explanation,
-                "risk_assessment": request.clinical_interpretation.risk_assessment,
-                "recommendations": request.clinical_interpretation.recommendations,
-            }
+         clinical_interpretation = None
+         if request.clinical_interpretation:
+             clinical_interpretation = {
+                 "summary": request.clinical_interpretation.summary,
+                 "confidence_explanation": request.clinical_interpretation.confidence_explanation,
+                 "risk_assessment": request.clinical_interpretation.risk_assessment,
+                 "recommendations": request.clinical_interpretation.recommendations,
+             }
 
-        # Generate PDF
-        pdf_bytes = generate_prediction_report(
-            prediction_class=request.prediction.predicted_class,
-            confidence=request.prediction.confidence,
-            pneumonia_probability=request.prediction.pneumonia_probability,
-            normal_probability=request.prediction.normal_probability,
-            original_image=original_image,
-            heatmap_base64=request.heatmap_base64,
-            clinical_interpretation=clinical_interpretation,
-            filename=request.filename,
-            model_version=request.model_version,
-            processing_time_ms=request.processing_time_ms,
-        )
+         pdf_bytes = generate_prediction_report(
+             prediction_class=request.prediction.predicted_class,
+             confidence=request.prediction.confidence,
+             pneumonia_probability=request.prediction.pneumonia_probability,
+             normal_probability=request.prediction.normal_probability,
+             original_image=original_image,
+             heatmap_base64=request.heatmap_base64,
+             clinical_interpretation=clinical_interpretation,
+             filename=request.filename,
+             model_version=request.model_version,
+             processing_time_ms=request.processing_time_ms,
+         )
 
-        # Generate filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"pneumonia_report_{timestamp}.pdf"
+         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+         filename = f"pneumonia_report_{timestamp}.pdf"
 
         return Response(
             content=pdf_bytes,

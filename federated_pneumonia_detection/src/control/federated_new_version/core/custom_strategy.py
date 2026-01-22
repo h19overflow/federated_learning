@@ -63,8 +63,6 @@ class ConfigurableFedAvg(FedAvg):
     ) -> Iterable[Message]:
         """Configure the next round of federated training with custom configs.
 
-
-
         Args:
             server_round: Current round of federated learning
             arrays: Current global ArrayRecord (model) to send to clients
@@ -74,13 +72,10 @@ class ConfigurableFedAvg(FedAvg):
         Returns:
             Iterable of messages to be sent to selected client nodes for training
         """
-        # Merge custom train config into the base config
-        # Filter out None values as Flower's ConfigRecord doesn't accept them
         filtered_train_config = {
             k: v for k, v in self.train_config.items() if v is not None
         }
         config.update(filtered_train_config)
-        # Call parent class to configure training with updated config
         return super().configure_train(server_round, arrays, config, grid)
 
     def configure_evaluate(
@@ -101,13 +96,10 @@ class ConfigurableFedAvg(FedAvg):
         Returns:
             Iterable of messages to be sent to selected client nodes for evaluation
         """
-        # Merge custom eval config into the base config
-        # Filter out None values as Flower's ConfigRecord doesn't accept them
         filtered_eval_config = {
             k: v for k, v in self.eval_config.items() if v is not None
         }
         config.update(filtered_eval_config)
-        # Call parent class to configure evaluation with updated config
         return super().configure_evaluate(server_round, arrays, config, grid)
 
     def aggregate_train(
@@ -115,15 +107,7 @@ class ConfigurableFedAvg(FedAvg):
         server_round: int,
         replies: Iterable[Message],
     ) -> tuple[ArrayRecord | None, MetricRecord | None]:
-        """Aggregate ArrayRecords and MetricRecords in train replies.
-
-        Flower FedAvg will skip aggregation if:
-        - the `weighted_by_key` (default: `num-examples`) is missing, or
-        - MetricRecord keys are inconsistent across clients.
-
-        This override adds visibility into those failure modes.
-        """
-
+        """Aggregate ArrayRecords and MetricRecords in train replies."""
         replies_list = list(replies)
         print(
             f"[Strategy] Round {server_round}: Aggregating TRAIN from {len(replies_list)} clients",
@@ -174,48 +158,29 @@ class ConfigurableFedAvg(FedAvg):
         server_round: int,
         replies: Iterable[Message],
     ) -> Optional[Dict[str, Any]]:
-        """
-        Aggregate evaluation metrics from multiple clients and broadcast to frontend.
+        """Aggregate evaluation metrics from multiple clients and broadcast to frontend.
 
         Following Flower conventions:
         - Parent class (FedAvg) performs weighted averaging using 'num_examples' key
         - Clients must include 'num_examples' in their MetricRecord for proper weighting
-        - The weighted average is computed as: sum(metric * num_examples) / sum(num_examples)
-
-        Args:
-            server_round: Current round number
-            replies: Iterable of reply messages from clients after evaluation
-
-        Returns:
-            Aggregated MetricRecord (dict-like) or None if aggregation failed
         """
-        # Convert to list for logging
         replies_list = list(replies)
 
-        # Log client responses for debugging
         print(f"[Strategy] Aggregating evaluation from {len(replies_list)} clients")
         for i, reply in enumerate(replies_list):
             if "metrics" in reply.content:
                 metrics = dict(reply.content["metrics"])
-                num_examples = metrics.get(
-                    "num-examples",
-                    "NOT_FOUND",
-                )  # Note: hyphen not underscore!
+                num_examples = metrics.get("num-examples", "NOT_FOUND")
                 print(f"[Strategy] Client {i}: num-examples={num_examples}")
 
-        # Call parent's aggregate_evaluate to get weighted aggregated metrics
-        # Parent class uses 'num_examples' key by default for weighted averaging
         aggregated_metrics = super().aggregate_evaluate(server_round, replies_list)
 
-        # Extract and broadcast metrics via WebSocket
         if aggregated_metrics:
             print(f"[Strategy] Aggregated metrics: {dict(aggregated_metrics)}")
             round_metrics = self._extract_round_metrics(aggregated_metrics)
 
-            # Get total rounds from config (set during strategy initialization or from context)
             total_rounds = getattr(self, "total_rounds", 0)
 
-            # Broadcast round metrics to frontend
             self.ws_sender.send_round_metrics(
                 round_num=server_round,
                 total_rounds=total_rounds,
@@ -230,23 +195,13 @@ class ConfigurableFedAvg(FedAvg):
         self,
         aggregated_metrics: Dict[str, Any],
     ) -> Dict[str, float]:
-        """
-        Extract standard metrics from aggregated metrics dictionary.
-
-        Args:
-            aggregated_metrics: Dictionary containing aggregated metrics from clients
-
-        Returns:
-            Dictionary with standardized metric names (loss, accuracy, precision, recall, f1, auroc)
-        """
+        """Extract standard metrics from aggregated metrics dictionary."""
         metrics = {}
 
-        # Map various possible metric names to standardized names
-        # Order matters: check most specific names first
         metric_mappings = {
             "loss": ["loss", "test_loss", "val_loss"],
             "accuracy": [
-                "test_acc",  # Check this BEFORE test_accuracy (model logs as test_acc)
+                "test_acc",
                 "test_accuracy",
                 "val_acc",
                 "val_accuracy",
@@ -258,7 +213,6 @@ class ConfigurableFedAvg(FedAvg):
             "auroc": ["test_auroc", "val_auroc", "auroc", "auc", "roc_auc"],
         }
 
-        # Extract each metric if available
         for standard_name, possible_names in metric_mappings.items():
             for name in possible_names:
                 if name in aggregated_metrics:
@@ -268,10 +222,5 @@ class ConfigurableFedAvg(FedAvg):
         return metrics
 
     def set_total_rounds(self, total_rounds: int) -> None:
-        """
-        Set the total number of rounds for progress tracking.
-
-        Args:
-            total_rounds: Total number of federated learning rounds
-        """
+        """Set the total number of rounds for progress tracking."""
         self.total_rounds = total_rounds

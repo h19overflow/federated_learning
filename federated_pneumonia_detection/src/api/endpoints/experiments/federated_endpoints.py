@@ -1,20 +1,4 @@
-"""
-Endpoints for running federated training experiments.
-
-This module provides HTTP endpoints to trigger federated machine learning training
-on the pneumonia dataset using the Flower (flwr) framework. The training is executed
-asynchronously in the background, allowing the endpoint to return immediately while
-training proceeds.
-
-The training process:
-1. Loads the dataset from the uploaded ZIP file
-2. Initializes Flower clients on available compute resources
-3. Trains the model using federated averaging strategy
-4. Coordinates training across multiple clients via the server
-5. Stores results and checkpoints in configured output directories
-
-Configuration should be set prior to invoking training via the configuration endpoints.
-"""
+"""Endpoints for running federated training experiments."""
 
 from typing import Any, Dict
 
@@ -72,19 +56,17 @@ async def start_federated_training(
     - `num_server_rounds`: Number of rounds that will be executed
     - `status`: "queued" indicating the task has been accepted
     """
-    _temp_dir = None
-    try:
-        # Extract uploaded ZIP file
-        source_path = await prepare_zip(data_zip, logger, experiment_name)
+     _temp_dir = None
+     try:
+         source_path = await prepare_zip(data_zip, logger, experiment_name)
 
-        # Queue background training task
-        background_tasks.add_task(
-            run_federated_training_task,
-            source_path=source_path,
-            experiment_name=experiment_name,
-            csv_filename=csv_filename,
-            num_server_rounds=num_server_rounds,
-        )
+         background_tasks.add_task(
+             run_federated_training_task,
+             source_path=source_path,
+             experiment_name=experiment_name,
+             csv_filename=csv_filename,
+             num_server_rounds=num_server_rounds,
+         )
 
         logger.info(
             f"Federated training queued: {experiment_name} (rounds={num_server_rounds})",

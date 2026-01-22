@@ -39,10 +39,8 @@ def train(msg: Message, context: Context):
     - Returns model updates (ArrayRecord) and metrics (MetricRecord)
     - Includes num_examples in metrics for proper weighted aggregation
     """
-    # Initialize trainer and config
     centerlized_trainer, config = _load_trainer_and_config()
 
-    # Extract client_id and round_number from Flower context for federated metrics
     client_id = context.node_id
     round_number = (
         context.state.current_round if hasattr(context.state, "current_round") else 0
@@ -52,7 +50,6 @@ def train(msg: Message, context: Context):
         f"round={round_number}",
     )
 
-    # Get configs from message (safely handle missing key with defaults)
     configs = msg.content.get(
         "config",
         {
@@ -65,15 +62,12 @@ def train(msg: Message, context: Context):
         },
     )
 
-    # Load and partition dataset
     _, partioner = _get_partition_data(configs)
     partition_id = context.node_id % configs["num_partitions"]
     partion_df = partioner.load_partition(partition_id)
 
-    # Get seed from server config for reproducible training
     seed = configs.get("seed", 42)
 
-    # Set global seeds for full reproducibility (data splits, augmentation, shuffling)
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -90,7 +84,6 @@ def train(msg: Message, context: Context):
         seed=seed,
     )
 
-    # Create data module
     data_module = XRayDataModule(
         train_df=train_df,
         val_df=val_df,
@@ -98,13 +91,11 @@ def train(msg: Message, context: Context):
         image_dir=configs["image_dir"],
     )
 
-    # Extract run_id from configs (sent by server)
     run_id = configs.get("run_id", None)
     centerlized_trainer.logger.info(
         f"[Federated Train] Using run_id={run_id} from server config",
     )
 
-    # Build model and trainer with client_id and round_number for federated context
     model, callbacks, metrics_collector = _build_model_components(
         centerlized_trainer,
         train_df,
@@ -112,14 +103,12 @@ def train(msg: Message, context: Context):
         is_federated=True,
         client_id=client_id,
         round_number=round_number,
-        run_id=run_id,  # Pass run_id from server config
+        run_id=run_id,
     )
 
-    # Load global model weights from server
     global_state_dict = msg.content["arrays"].to_torch_state_dict()
     model.load_state_dict(global_state_dict)
 
-    # Debug: Log model state before training
     first_param_name = list(model.state_dict().keys())[0]
     first_param_before = model.state_dict()[first_param_name].clone()
     centerlized_trainer.logger.info(
@@ -133,10 +122,8 @@ def train(msg: Message, context: Context):
         is_federated=True,
     )
 
-    # Train model and collect results
     trainer.fit(model, data_module)
 
-    # Debug: Log model state after training
     first_param_after = model.state_dict()[first_param_name]
     centerlized_trainer.logger.info(
         f"[Client Train] AFTER training - first param '{first_param_name}' "  # noqa: E501
@@ -156,10 +143,8 @@ def train(msg: Message, context: Context):
         run_id=run_id,
     )
 
-    # Number of training examples (CRITICAL for weighted aggregation)
     num_examples = len(train_df)
 
-    # Filter and prepare metrics - IMPORTANT: num-examples at root level for aggregation
     metrics_history = filter_list_of_dicts(
         results.get("metrics_history", []),
         [
@@ -176,21 +161,17 @@ def train(msg: Message, context: Context):
         ],
     )
 
-    # Add num-examples at the root level for Flower's weighted aggregation
-    # CRITICAL: Must be "num-examples" with HYPHEN, not underscore!
     metrics_history["num-examples"] = int(num_examples)
 
     centerlized_trainer.logger.info(
         f"[Client Train] Completed training with {num_examples} examples",
     )
 
-    # Create and return response following Flower conventions
-    # CRITICAL: Keys MUST be "arrays" and "metrics" for FedAvg to work
     model_record = ArrayRecord(model.state_dict())
     metric_record = MetricRecord(metrics_history)
     content = RecordDict(
         {
-            "arrays": model_record,  # MUST be "arrays" not "model"
+            "arrays": model_record,
             "metrics": metric_record,
         },
     )
@@ -207,13 +188,11 @@ def evaluate(msg: Message, context: Context):
     """
     centerlized_trainer, config = _load_trainer_and_config()
 
-    # Extract client_id for logging
     client_id = context.node_id
     centerlized_trainer.logger.info(
         f"[Federated Evaluate] Starting evaluation for client_id={client_id}",
     )
 
-    # Get configs from message (safely handle missing key with defaults)
     eval_configs = msg.content.get(
         "config",
         {
@@ -226,7 +205,6 @@ def evaluate(msg: Message, context: Context):
     )
 
     configs = eval_configs
-    # Prepare dataset (config from _load_trainer_and_config)
     train_df, val_df = prepare_dataset(
         csv_path=configs["csv_path"],
         image_dir=configs["image_dir"],
@@ -234,11 +212,9 @@ def evaluate(msg: Message, context: Context):
         logger=centerlized_trainer.logger,
     )
 
-    # Add filename column if needed
     train_df = _prepare_evaluation_dataframe(train_df)
     val_df = _prepare_evaluation_dataframe(val_df)
 
-    # Create data module and validator (config from _load_trainer_and_config)
     data_module = create_data_module(
         train_df=train_df,
         val_df=val_df,
@@ -249,7 +225,6 @@ def evaluate(msg: Message, context: Context):
     data_module.setup(stage="validate")
     val_loader = data_module.val_dataloader()
 
-    # Build model and trainer
     model, callbacks, metrics_collector = _build_model_components(
         centerlized_trainer,
         train_df,
@@ -257,11 +232,9 @@ def evaluate(msg: Message, context: Context):
         is_federated=False,
     )
 
-    # Load global model weights
     global_state_dict = msg.content["arrays"].to_torch_state_dict()
     model.load_state_dict(global_state_dict)
 
-    # Debug: Check model state to verify it's changing between rounds
     first_param_name = list(model.state_dict().keys())[0]
     first_param_value = model.state_dict()[first_param_name]
     centerlized_trainer.logger.info(
@@ -275,11 +248,9 @@ def evaluate(msg: Message, context: Context):
         is_federated=False,
     )
 
-    # Evaluate and extract metrics
     results = trainer.test(model, val_loader)
     result_dict = results[0] if results else {}
 
-    # Debug: Print what metrics are actually returned
     centerlized_trainer.logger.info(
         f"[Client Evaluate] Raw result_dict keys: {list(result_dict.keys())}",
     )
@@ -289,10 +260,8 @@ def evaluate(msg: Message, context: Context):
         result_dict,
     )
 
-    # Number of evaluation examples (CRITICAL for weighted aggregation)
     num_examples = len(val_df)
 
-    # Create metric record - IMPORTANT: num_examples for weighted averaging
     metric_dict = _create_metric_record_dict(
         loss,
         accuracy,

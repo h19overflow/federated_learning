@@ -1,9 +1,4 @@
-"""
-Federated training task functions.
-
-Provides background task execution for federated machine learning training
-using Flower (flwr) framework via rf.ps1 script.
-"""
+"""Federated training task functions."""
 
 import logging
 import os
@@ -38,39 +33,34 @@ def run_federated_training_task(
         Dictionary containing training status and tracking information
     """
 
-    try:
-        # Construct the full paths for training data
-        csv_path = os.path.join(source_path, csv_filename)
-        image_dir = os.path.join(source_path, "Images")
+     try:
+         csv_path = os.path.join(source_path, csv_filename)
+         image_dir = os.path.join(source_path, "Images")
 
-        # Verify paths exist
-        if not os.path.exists(csv_path):
-            raise FileNotFoundError(f"CSV file not found: {csv_path}")
-        if not os.path.exists(image_dir):
-            raise FileNotFoundError(f"Images directory not found: {image_dir}")
+         if not os.path.exists(csv_path):
+             raise FileNotFoundError(f"CSV file not found: {csv_path}")
+         if not os.path.exists(image_dir):
+             raise FileNotFoundError(f"Images directory not found: {image_dir}")
 
-        task_logger.info(f"  CSV Path: {csv_path}")
-        task_logger.info(f"  Image Dir: {image_dir}")
+         task_logger.info(f"  CSV Path: {csv_path}")
+         task_logger.info(f"  Image Dir: {image_dir}")
 
-        # Update configuration with uploaded data paths
-        task_logger.info("\nUpdating configuration...")
-        config_path = (
-            Path(__file__).parent.parent.parent.parent.parent.parent
-            / "config"
-            / "default_config.yaml"
-        )
-        config_manager = ConfigManager(config_path=str(config_path))
+         task_logger.info("\nUpdating configuration...")
+         config_path = (
+             Path(__file__).parent.parent.parent.parent.parent.parent
+             / "config"
+             / "default_config.yaml"
+         )
+         config_manager = ConfigManager(config_path=str(config_path))
 
-        # Store current config for logging
-        old_file_path = config_manager.get("experiment.file-path", "N/A")
-        old_image_dir = config_manager.get("experiment.image-dir", "N/A")
-        old_rounds = config_manager.get("experiment.num-server-rounds", "N/A")
+         old_file_path = config_manager.get("experiment.file-path", "N/A")
+         old_image_dir = config_manager.get("experiment.image-dir", "N/A")
+         old_rounds = config_manager.get("experiment.num-server-rounds", "N/A")
 
-        # Update paths and rounds
-        config_manager.set("experiment.file-path", csv_path)
-        config_manager.set("experiment.image-dir", image_dir)
-        config_manager.set("experiment.num-server-rounds", num_server_rounds)
-        config_manager.save()
+         config_manager.set("experiment.file-path", csv_path)
+         config_manager.set("experiment.image-dir", image_dir)
+         config_manager.set("experiment.num-server-rounds", num_server_rounds)
+         config_manager.save()
 
         task_logger.info(f"  Old file-path: {old_file_path}")
         task_logger.info(f"  New file-path: {csv_path}")

@@ -1,10 +1,4 @@
-"""
-SafeGuard Security Middleware for Prompt Injection Detection.
-
-This middleware intercepts POST requests to chat endpoints and scans
-query payloads for known prompt injection patterns using a "Defense in Depth"
-strategy combining regex pattern matching and heuristic analysis.
-"""
+"""SafeGuard Security Middleware for Prompt Injection Detection."""
 
 import json
 import logging
@@ -18,16 +12,8 @@ from starlette.responses import JSONResponse, Response
 
 logger = logging.getLogger(__name__)
 
-# ==============================================================================
-# PATTERN DEFINITIONS
-# ==============================================================================
-
-# Compiled regex patterns for different attack categories.
-# All patterns are case-insensitive.
-
 PATTERNS: dict[str, re.Pattern] = {
-    # Category 1: Direct Instruction Override / Jailbreak
-    "instruction_bypass": re.compile(
+     "instruction_bypass": re.compile(
         r"(?i)"
         r"(ignore\s+(all\s+)?(previous|prior|above|earlier|system)\b)"
         r"|(disregard\s+(all\s+)?(previous|prior|above|earlier|system)\b)"
@@ -35,16 +21,14 @@ PATTERNS: dict[str, re.Pattern] = {
         r"|(override\s+(previous|system|all)\b)"
         r"|(new\s+instructions?\s*:)"
         r"|(\bdo\s+not\s+follow\s+(your|the|any)\s+(instructions?|rules?|guidelines?))",
-    ),
-    # Category 2: System/Data Exfiltration Attempts
-    "data_exfiltration": re.compile(
+     ),
+     "data_exfiltration": re.compile(
         r"(?i)"
         r"((reveal|show|display|output|print|tell\s+me|give\s+me|what\s+is)\s+(the\s+|your\s+)?(system\s*prompt|initial\s*prompt|hidden\s*instruction|internal\s*instruction|secret\s*instruction|password|api\s*key|credentials?|confidential))"
         r"|(extract\s+(the\s+)?(system|hidden|secret)\s+(prompt|instruction|data))"
-        r"|(\bdump\s+(the\s+)?(memory|context|history))",
-    ),
-    # Category 3: Role/Identity Hijacking
-    "identity_hijack": re.compile(
+         r"|(\bdump\s+(the\s+)?(memory|context|history))",
+     ),
+     "identity_hijack": re.compile(
         r"(?i)"
         r"(you\s+are\s+now\s+(a\s+|an\s+|the\s+|my\s+)?)"
         r"|(\bact\s+as\s+(a\s+|an\s+|if\s+you\s+were\s+)?)"
@@ -55,17 +39,15 @@ PATTERNS: dict[str, re.Pattern] = {
         r"|(\benter\s+(developer|admin|debug|sudo|god)\s*(mode)?)"
         r"|(\byou\s+are\s+DAN\b)"
         r"|(\bdo\s+anything\s+now\b)"
-        r"|(\bjailbreak)",
-    ),
-    # Category 4: Delimiter/Separator Injection
-    "delimiter_injection": re.compile(
+         r"|(\bjailbreak)",
+     ),
+     "delimiter_injection": re.compile(
         r"(<\s*/?\s*(system|user|assistant|instruction|prompt)\s*>)"  # XML-like tags
         r"|(\[/?INST\])"  # Llama-style instruction markers
         r"|(###\s*(system|user|assistant|instruction))"  # Markdown-style headers
-        r"|(```\s*(system|user|assistant|instruction))",  # Code block injections
-    ),
-    # Category 5: Code Execution / Command Injection Probes
-    "code_injection": re.compile(
+         r"|(```\s*(system|user|assistant|instruction))",
+     ),
+     "code_injection": re.compile(
         r"(?i)"
         r"(\bexec\s*\()"
         r"|(\beval\s*\()"
@@ -73,19 +55,13 @@ PATTERNS: dict[str, re.Pattern] = {
         r"|(\bsubprocess\.\w+)"
         r"|(\bos\.system)"
         r"|(\b__import__)"
-        r"|(\bopen\s*\([^)]+,\s*['\"]w)",
-    ),
-}
+         r"|(\bopen\s*\([^)]+,\s*['\"]w)",
+     ),
+ }
 
-# Heuristic thresholds
-MAX_QUERY_LENGTH = 10000  # Characters
-MAX_REPETITION_RATIO = 0.7  # If >70% of query is the same char, suspicious
-BASE64_PATTERN = re.compile(r"^[A-Za-z0-9+/]{50,}={0,2}$")
-
-
-# ==============================================================================
-# DETECTION LOGIC
-# ==============================================================================
+ MAX_QUERY_LENGTH = 10000
+ MAX_REPETITION_RATIO = 0.7
+ BASE64_PATTERN = re.compile(r"^[A-Za-z0-9+/]{50,}={0,2}$")
 
 
 def detect_malicious_patterns(query: str) -> Tuple[bool, Optional[str]]:

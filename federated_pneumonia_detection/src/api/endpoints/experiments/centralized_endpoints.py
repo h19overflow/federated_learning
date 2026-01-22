@@ -1,18 +1,4 @@
-"""
-Endpoints for running centralized training experiments.
-
-This module provides HTTP endpoints to trigger centralized machine learning training
-on the pneumonia dataset. The training is executed asynchronously in the background,
-allowing the endpoint to return immediately while training proceeds.
-
-The training process:
-1. Loads the dataset from the configured Training directory
-2. Initializes a CentralizedTrainer with current configuration settings
-3. Trains the model using standard supervised learning approach
-4. Stores results and checkpoints in configured output directories
-
-Configuration should be set prior to invoking training via the configuration endpoints.
-"""
+"""Endpoints for running centralized training experiments."""
 
 import os
 import shutil
@@ -65,10 +51,9 @@ async def start_centralized_training(
     - Log files at `{logs_dir}/`
     - Checkpoint files at `{checkpoint_dir}/`
     """
-    temp_dir = None
-    try:
-        # Create temp directory for extraction
-        source_path = await prepare_zip(data_zip, logger, experiment_name)
+     temp_dir = None
+     try:
+         source_path = await prepare_zip(data_zip, logger, experiment_name)
         background_tasks.add_task(
             run_centralized_training_task,
             source_path=source_path,

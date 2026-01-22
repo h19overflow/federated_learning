@@ -38,38 +38,29 @@ def _generate_single_heatmap(
     """Generate heatmap for a single image."""
     start_time = time.time()
 
-    try:
-        engine = service.engine
-        if not engine or not engine.model:
-            return BatchHeatmapItem(
-                filename=filename,
-                success=False,
-                error="Model not loaded",
-                processing_time_ms=(time.time() - start_time) * 1000,
-            )
+     try:
+         engine = service.engine
+         if not engine or not engine.model:
+             return BatchHeatmapItem(
+                 filename=filename,
+                 success=False,
+                 error="Model not loaded",
+                 processing_time_ms=(time.time() - start_time) * 1000,
+             )
 
-        # Initialize GradCAM with the model
-        gradcam = GradCAM(engine.model)
+         gradcam = GradCAM(engine.model)
+         input_tensor = engine.preprocess(image)
+         heatmap = gradcam(input_tensor)
 
-        # Preprocess image for model
-        input_tensor = engine.preprocess(image)
+         heatmap_base64 = heatmap_to_base64(
+             heatmap=heatmap,
+             original_image=image,
+             colormap=colormap,
+             alpha=alpha,
+         )
 
-        # Generate heatmap
-        heatmap = gradcam(input_tensor)
-
-        # Generate heatmap overlay as base64
-        heatmap_base64 = heatmap_to_base64(
-            heatmap=heatmap,
-            original_image=image,
-            colormap=colormap,
-            alpha=alpha,
-        )
-
-        # Convert original image to base64
-        original_base64 = service.processor.to_base64(image)
-
-        # Clean up GradCAM hooks
-        gradcam.remove_hooks()
+         original_base64 = service.processor.to_base64(image)
+         gradcam.remove_hooks()
 
         processing_time_ms = (time.time() - start_time) * 1000
 
@@ -106,17 +97,14 @@ async def generate_heatmap(
     ),
     service: InferenceService = Depends(get_inference_service),
 ) -> HeatmapResponse:
-    """Generate GradCAM heatmap visualization for a chest X-ray."""
-    # Validate file type and service availability
-    service.validator.validate_or_raise(file)
-    service.check_ready_or_raise()
+     """Generate GradCAM heatmap visualization for a chest X-ray."""
+     service.validator.validate_or_raise(file)
+     service.check_ready_or_raise()
 
-    # Read and validate image
-    image = await service.processor.read_from_upload(file, convert_rgb=True)
-    logger.info(f"Generating heatmap for: {file.filename}, size: {image.size}")
+     image = await service.processor.read_from_upload(file, convert_rgb=True)
+     logger.info(f"Generating heatmap for: {file.filename}, size: {image.size}")
 
-    # Generate heatmap
-    result = _generate_single_heatmap(
+     result = _generate_single_heatmap(
         image=image,
         filename=file.filename or "unknown",
         service=service,
