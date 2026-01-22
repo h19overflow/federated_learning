@@ -3,9 +3,9 @@ Run model - represents a training session (centralized or federated).
 """
 
 from sqlalchemy import TIMESTAMP, Column, Integer, String
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import relationship
 
-Base = declarative_base()
+from .base import Base
 
 
 class Run(Base):

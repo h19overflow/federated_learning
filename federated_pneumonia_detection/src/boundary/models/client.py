@@ -5,7 +5,7 @@ Client model - represents a federated learning participant.
 from sqlalchemy import JSON, TIMESTAMP, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from .run import Base
+from .base import Base
 
 
 class Client(Base):

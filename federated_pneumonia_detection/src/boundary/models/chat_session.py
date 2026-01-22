@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy.sql import func
 
-from . import Base
+from .base import Base
 
 
 class ChatSession(Base):

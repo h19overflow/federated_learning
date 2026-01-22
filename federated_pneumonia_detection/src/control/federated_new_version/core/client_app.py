@@ -6,7 +6,12 @@ from datasets.utils.logging import disable_progress_bar
 from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict
 from flwr.clientapp import ClientApp
 
-from federated_pneumonia_detection.src.control.dl_model.internals.model.xray_data_module import (
+from federated_pneumonia_detection.src.control.dl_model.centralized_trainer_utils import (  # noqa: E501
+    collect_training_results,
+    create_data_module,
+    prepare_dataset,
+)
+from federated_pneumonia_detection.src.control.dl_model.internals.model.xray_data_module import (  # noqa: E501
     XRayDataModule,
 )
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
@@ -37,20 +42,24 @@ def train(msg: Message, context: Context):
     # Initialize trainer and config
     centerlized_trainer, config = _load_trainer_and_config()
 
-    # Extract client_id and round_number from Flower context for federated metrics tracking
+    # Extract client_id and round_number from Flower context for federated metrics
     client_id = context.node_id
     round_number = (
         context.state.current_round if hasattr(context.state, "current_round") else 0
     )
     centerlized_trainer.logger.info(
-        f"[Federated Train] Starting training for client_id={client_id}, round={round_number}",
+        f"[Federated Train] Starting training for client_id={client_id}, "
+        f"round={round_number}",
     )
 
     # Get configs from message (safely handle missing key with defaults)
     configs = msg.content.get(
         "config",
         {
-            "file_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
+            "file_path": (  # noqa: E501
+                r"C:\Users\User\Projects\FYP2\Training_Sample_5pct"
+                r"\stage2_train_metadata.csv"
+            ),
             "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
             "num_partitions": 2,
         },
@@ -114,7 +123,8 @@ def train(msg: Message, context: Context):
     first_param_name = list(model.state_dict().keys())[0]
     first_param_before = model.state_dict()[first_param_name].clone()
     centerlized_trainer.logger.info(
-        f"[Client Train] BEFORE training - first param '{first_param_name}' mean: {first_param_before.mean().item():.6f}",
+        f"[Client Train] BEFORE training - first param '{first_param_name}' "  # noqa: E501
+        f"mean: {first_param_before.mean().item():.6f}",
     )
 
     trainer = _build_trainer_component(
@@ -129,15 +139,21 @@ def train(msg: Message, context: Context):
     # Debug: Log model state after training
     first_param_after = model.state_dict()[first_param_name]
     centerlized_trainer.logger.info(
-        f"[Client Train] AFTER training - first param '{first_param_name}' mean: {first_param_after.mean().item():.6f}",
+        f"[Client Train] AFTER training - first param '{first_param_name}' "  # noqa: E501
+        f"mean: {first_param_after.mean().item():.6f}",
     )
     centerlized_trainer.logger.info(
-        f"[Client Train] Parameter change: {(first_param_after - first_param_before).abs().mean().item():.6f}",
+        f"[Client Train] Parameter change: "  # noqa: E501
+        f"{(first_param_after - first_param_before).abs().mean().item():.6f}",
     )
-    results = centerlized_trainer._collect_training_results(
+    results = collect_training_results(
         trainer=trainer,
         model=model,
         metrics_collector=metrics_collector,
+        logs_dir=config.get("paths.logs"),
+        checkpoint_dir=config.get("paths.checkpoints"),
+        logger=centerlized_trainer.logger,
+        run_id=run_id,
     )
 
     # Number of training examples (CRITICAL for weighted aggregation)
@@ -189,7 +205,7 @@ def evaluate(msg: Message, context: Context):
     - Returns evaluation metrics (MetricRecord)
     - Includes num_examples for proper weighted aggregation of metrics
     """
-    centerlized_trainer, _ = _load_trainer_and_config()
+    centerlized_trainer, config = _load_trainer_and_config()
 
     # Extract client_id for logging
     client_id = context.node_id
@@ -201,27 +217,34 @@ def evaluate(msg: Message, context: Context):
     eval_configs = msg.content.get(
         "config",
         {
-            "csv_path": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\stage2_train_metadata.csv",
+            "csv_path": (  # noqa: E501
+                r"C:\Users\User\Projects\FYP2\Training_Sample_5pct"
+                r"\stage2_train_metadata.csv"
+            ),
             "image_dir": r"C:\Users\User\Projects\FYP2\Training_Sample_5pct\Images",
         },
     )
 
     configs = eval_configs
-    # Prepare dataset
-    train_df, val_df = centerlized_trainer._prepare_dataset(
+    # Prepare dataset (config from _load_trainer_and_config)
+    train_df, val_df = prepare_dataset(
         csv_path=configs["csv_path"],
         image_dir=configs["image_dir"],
+        config=config,
+        logger=centerlized_trainer.logger,
     )
 
     # Add filename column if needed
     train_df = _prepare_evaluation_dataframe(train_df)
     val_df = _prepare_evaluation_dataframe(val_df)
 
-    # Create data module and validator
-    data_module = centerlized_trainer._create_data_module(
+    # Create data module and validator (config from _load_trainer_and_config)
+    data_module = create_data_module(
         train_df=train_df,
         val_df=val_df,
         image_dir=configs["image_dir"],
+        config=config,
+        logger=centerlized_trainer.logger,
     )
     data_module.setup(stage="validate")
     val_loader = data_module.val_dataloader()
@@ -242,7 +265,8 @@ def evaluate(msg: Message, context: Context):
     first_param_name = list(model.state_dict().keys())[0]
     first_param_value = model.state_dict()[first_param_name]
     centerlized_trainer.logger.info(
-        f"[Client Evaluate] Loaded model - first param '{first_param_name}' mean: {first_param_value.mean().item():.6f}",
+        f"[Client Evaluate] Loaded model - first param '{first_param_name}' "  # noqa: E501
+        f"mean: {first_param_value.mean().item():.6f}",
     )
 
     trainer = _build_trainer_component(
@@ -280,7 +304,9 @@ def evaluate(msg: Message, context: Context):
     )
 
     centerlized_trainer.logger.info(
-        f"[Client Evaluate] Extracted metrics: loss={loss}, acc={accuracy}, prec={precision}, rec={recall}, f1={f1}, auroc={auroc}, num_examples={num_examples}",
+        f"[Client Evaluate] Extracted metrics: loss={loss}, acc={accuracy}, "  # noqa: E501
+        f"prec={precision}, rec={recall}, f1={f1}, auroc={auroc}, "
+        f"num_examples={num_examples}",
     )
 
     metric_record = MetricRecord(metric_dict)

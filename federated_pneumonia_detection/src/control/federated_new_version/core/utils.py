@@ -13,6 +13,10 @@ from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import (
     CentralizedTrainer,
 )
+from federated_pneumonia_detection.src.control.dl_model.centralized_trainer_utils.model_setup import (  # noqa: E501
+    build_model_and_callbacks,
+    build_trainer,
+)
 from federated_pneumonia_detection.src.control.federated_new_version.partioner import (
     CustomPartitioner,
 )
@@ -89,18 +93,21 @@ def _build_model_components(
     """Build model, callbacks, and metrics collector with federated context."""
     if is_federated and client_id is not None:
         centerlized_trainer.logger.info(
-            f"[Utils] Building components for federated client_id={client_id}, round={round_number}, run_id={run_id}",
+            f"[Utils] Building components for federated client_id={client_id}, "  # noqa: E501
+            f"round={round_number}, run_id={run_id}",
         )
 
-    model, callbacks, metrics_collector = (
-        centerlized_trainer._build_model_and_callbacks(
-            train_df=train_df,
-            experiment_name="federated_pneumonia_detection",
-            run_id=run_id,  # Use passed run_id instead of context.run_id
-            is_federated=is_federated,
-            client_id=client_id,
-            round_number=round_number,
-        )
+    model, callbacks, metrics_collector = build_model_and_callbacks(
+        train_df=train_df,
+        config=centerlized_trainer.config,
+        checkpoint_dir=centerlized_trainer.checkpoint_dir,
+        logs_dir=centerlized_trainer.logs_dir,
+        logger=centerlized_trainer.logger,
+        experiment_name="federated_pneumonia_detection",
+        run_id=run_id,  # Use passed run_id instead of context.run_id
+        is_federated=is_federated,
+        client_id=client_id,
+        round_number=round_number,
     )
     return model, callbacks, metrics_collector
 
@@ -111,9 +118,12 @@ def _build_trainer_component(
     is_federated: bool,
 ):
     """Build trainer with callbacks."""
-    trainer = centerlized_trainer._build_trainer(
+    trainer = build_trainer(
+        config=centerlized_trainer.config,
         callbacks=callbacks,
+        logs_dir=centerlized_trainer.logs_dir,
         experiment_name="federated_pneumonia_detection",
+        logger=centerlized_trainer.logger,
         is_federated=is_federated,
     )
     return trainer
@@ -195,19 +205,22 @@ def _create_metric_record_dict(
 
 
 def read_configs_to_toml() -> dict:
-    """Read federated learning configs from default_config.yaml and prepare for pyproject.toml.
+    """Read federated learning configs from default_config.yaml.
 
-    This function extracts Flower-specific configuration values from the YAML config
-    and returns them in a format suitable for updating pyproject.toml.
+    Prepare configuration for pyproject.toml. Extracts Flower-specific
+    configuration values from the YAML config and returns them in a format
+    suitable for updating pyproject.toml.
 
     Returns:
-        dict: Configuration dictionary with keys: num_server_rounds, max_epochs, num_supernodes
+        dict: Configuration dictionary with keys: num_server_rounds, max_epochs,
+        num_supernodes
 
     Note:
         These configs correspond to:
         - num_server_rounds -> [tool.flwr.app.config] num-server-rounds
         - max_epochs -> [tool.flwr.app.config] max-epochs
-        - num_supernodes -> [tool.flwr.federations.local-simulation.options] num-supernodes
+        - num_supernodes -> [tool.flwr.federations.local-simulation.options]
+          num-supernodes
     """
     config_dir = (
         Path(__file__).parent.parent.parent.parent.parent
@@ -230,8 +243,9 @@ def read_configs_to_toml() -> dict:
         flwr_configs["num_server_rounds"] = config_manager.get(
             "experiment.num-server-rounds",
         )
-        print(
-            f"[Config Reader] [OK] num-server-rounds: {flwr_configs['num_server_rounds']}",
+        print(  # noqa: E501
+            f"[Config Reader] [OK] num-server-rounds: "
+            f"{flwr_configs['num_server_rounds']}",
         )
     else:
         print("[Config Reader] [WARN] experiment.num-server-rounds not found in config")
@@ -243,12 +257,14 @@ def read_configs_to_toml() -> dict:
     elif config_manager.has_key("experiment.local_epochs"):
         # Fallback to local_epochs if max-epochs not found
         flwr_configs["max_epochs"] = config_manager.get("experiment.local_epochs")
-        print(
-            f"[Config Reader] [OK] max-epochs (from local_epochs): {flwr_configs['max_epochs']}",
+        print(  # noqa: E501
+            f"[Config Reader] [OK] max-epochs (from local_epochs): "
+            f"{flwr_configs['max_epochs']}",
         )
     else:
-        print(
-            "[Config Reader] [WARN] experiment.max-epochs or experiment.local_epochs not found",
+        print(  # noqa: E501
+            "[Config Reader] [WARN] experiment.max-epochs or "
+            "experiment.local_epochs not found",
         )
 
     # Read num-supernodes (number of clients in simulation)
@@ -260,12 +276,14 @@ def read_configs_to_toml() -> dict:
     elif config_manager.has_key("experiment.num_clients"):
         # Fallback to num_clients if num-supernodes not found
         flwr_configs["num_supernodes"] = config_manager.get("experiment.num_clients")
-        print(
-            f"[Config Reader] [OK] num-supernodes (from num_clients): {flwr_configs['num_supernodes']}",
+        print(  # noqa: E501
+            f"[Config Reader] [OK] num-supernodes (from num_clients): "
+            f"{flwr_configs['num_supernodes']}",
         )
     else:
-        print(
-            "[Config Reader] [WARN] experiment.options.num-supernodes or experiment.num_clients not found",
+        print(  # noqa: E501
+            "[Config Reader] [WARN] experiment.options.num-supernodes or "
+            "experiment.num_clients not found",
         )
 
     print(f"[Config Reader] Final configs to write to pyproject.toml: {flwr_configs}")
@@ -319,7 +337,8 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
         logger.info(f"Processing {len(server_metrics)} server evaluation rounds...")
 
         for round_num_str, metric_record in server_metrics.items():
-            # Convert round number to int (Flower uses int keys, but may be converted to string)
+            # Convert round number to int (Flower uses int keys, but may be
+            # converted to string)
             round_num = int(round_num_str)
             logger.info(f"  Processing round {round_num} (key={round_num_str})...")
 
@@ -341,8 +360,11 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
             else:
                 metrics_dict = metric_record
 
+            keys_str = (
+                list(metrics_dict.keys()) if isinstance(metrics_dict, dict) else "N/A"
+            )
             logger.info(
-                f"    Metrics dict type: {type(metrics_dict)}, keys: {list(metrics_dict.keys()) if isinstance(metrics_dict, dict) else 'N/A'}",
+                f"    Metrics dict type: {type(metrics_dict)}, keys: {keys_str}",
             )
 
             # Extract metrics with 'server_' prefix (from server_evaluation.py)
