@@ -51,9 +51,9 @@ async def start_centralized_training(
     - Log files at `{logs_dir}/`
     - Checkpoint files at `{checkpoint_dir}/`
     """
-     temp_dir = None
-     try:
-         source_path = await prepare_zip(data_zip, logger, experiment_name)
+    temp_dir = None
+    try:
+        source_path = await prepare_zip(data_zip, logger, experiment_name)
         background_tasks.add_task(
             run_centralized_training_task,
             source_path=source_path,
