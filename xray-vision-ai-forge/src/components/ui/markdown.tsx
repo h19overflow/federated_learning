@@ -1,6 +1,7 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 import { cn } from "@/lib/utils";
 import type { Components } from "react-markdown";
 import {
@@ -159,6 +160,7 @@ export const Markdown = ({ content, className, citations }: MarkdownProps) => {
     <div className={cn("prose prose-sm max-w-none", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeSanitize]}
         components={memoizedComponents}
       >
         {content}

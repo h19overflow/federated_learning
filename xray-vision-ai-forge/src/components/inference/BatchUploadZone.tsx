@@ -8,6 +8,7 @@
 import React, { useCallback, useState } from "react";
 import { Upload, Image as ImageIcon, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { validateImageFile } from "@/utils/validation";
 
 interface BatchUploadZoneProps {
   onImagesSelect: (files: File[]) => void;
@@ -39,14 +40,11 @@ export const BatchUploadZone: React.FC<BatchUploadZoneProps> = ({
     const valid: File[] = [];
 
     files.forEach((file) => {
-      if (!ACCEPTED_TYPES.includes(file.type)) {
-        errors.push(
-          `${file.name}: Invalid file type. Please upload PNG or JPEG.`,
-        );
-      } else if (file.size > MAX_FILE_SIZE) {
-        errors.push(`${file.name}: File too large. Max 10MB.`);
-      } else {
+      const result = validateImageFile(file);
+      if (result.valid) {
         valid.push(file);
+      } else {
+        errors.push(`${file.name}: ${result.error}`);
       }
     });
 
@@ -79,8 +77,14 @@ export const BatchUploadZone: React.FC<BatchUploadZoneProps> = ({
       valid.forEach((file) => {
         const reader = new FileReader();
         reader.onload = (e) => {
-          newPreviews.set(file.name, e.target?.result as string);
-          setPreviewUrls(new Map(newPreviews));
+          const result = e.target?.result as string;
+          // Validate it's actually an image data URL
+          if (result && result.startsWith('data:image/')) {
+            newPreviews.set(file.name, result);
+            setPreviewUrls(new Map(newPreviews));
+          } else {
+            setError(`Invalid image file: ${file.name}`);
+          }
         };
         reader.readAsDataURL(file);
       });

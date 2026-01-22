@@ -74,28 +74,38 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
-  })
-  .join("\n")}
-}
-`,
-          )
-          .join("\n"),
-      }}
-    />
-  );
+  // Generate CSS styles safely without dangerouslySetInnerHTML
+  const styleElement = React.useMemo(() => {
+    const styleEl = document.createElement("style");
+    styleEl.setAttribute("data-chart-style", id);
+
+    // Safe CSS variable generation - only allows CSS color values
+    const cssRules = Object.entries(THEMES).map(([theme, prefix]) => {
+      const colorVars = colorConfig
+        .map(([key, itemConfig]) => {
+          const color =
+            itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+            itemConfig.color;
+          return color ? `  --color-${key}: ${color};` : null;
+        })
+        .filter(Boolean)
+        .join("\n");
+
+      return `${prefix} [data-chart="${id}"] {\n${colorVars}\n}`;
+    });
+
+    styleEl.textContent = cssRules.join("\n");
+    return styleEl;
+  }, [id, colorConfig]);
+
+  React.useEffect(() => {
+    document.head.appendChild(styleElement);
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, [styleElement]);
+
+  return null;
 };
 
 const ChartTooltip = RechartsPrimitive.Tooltip;

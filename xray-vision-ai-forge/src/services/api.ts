@@ -24,13 +24,16 @@ import {
   ExperimentListResponse,
   ComparisonResults,
 } from "@/types/api";
+import { getEnv } from "@/utils/env";
+import { sanitizeFilename } from "@/utils/validation";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-const API_BASE_URL = "http://127.0.0.1:8001";
-const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 300000; // 5 minutes default
+const env = getEnv();
+const API_BASE_URL = env.VITE_API_BASE_URL;
+const API_TIMEOUT = env.VITE_API_TIMEOUT;
 
 // ============================================================================
 // Error Handling
@@ -40,7 +43,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public statusCode?: number,
-    public response?: any,
+    public response?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -53,10 +56,10 @@ export class ApiError extends Error {
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let errorMessage = `API Error: ${response.status} ${response.statusText}`;
-    let errorData: any;
+    let errorData: { detail?: string; message?: string } | undefined;
 
     try {
-      errorData = await response.json();
+      errorData = await response.json() as { detail?: string; message?: string };
       errorMessage = errorData.detail || errorData.message || errorMessage;
     } catch {
       // If parsing JSON fails, use status text
@@ -489,7 +492,7 @@ export const resultsApi = {
 
     // Let the backend set the filename via Content-Disposition header
     // But provide a fallback
-    a.download = `run_${runId}_${format}`;
+    a.download = sanitizeFilename(`run_${runId}_${format}`);
 
     document.body.appendChild(a);
     a.click();

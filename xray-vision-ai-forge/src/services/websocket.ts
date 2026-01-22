@@ -28,15 +28,15 @@ import {
   ClientCompleteData,
   EarlyStoppingData,
   BatchMetricsData,
-  GradientStatsData,
-  LRUpdateData,
 } from "@/types/api";
+import { getEnv } from "@/utils/env";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-const WS_BASE_URL = "ws://localhost:8765";
+const env = getEnv();
+const WS_BASE_URL = env.VITE_WS_BASE_URL;
 const RECONNECT_DELAY = 3000; // 3 seconds
 const MAX_RECONNECT_ATTEMPTS = 10;
 const PING_INTERVAL = 30000; // 30 seconds
@@ -45,7 +45,7 @@ const PING_INTERVAL = 30000; // 30 seconds
 // Event Listener Types
 // ============================================================================
 
-type EventListener<T = any> = (data: T) => void;
+type EventListener<T = unknown> = (data: T) => void;
 
 interface EventListeners {
   connected: EventListener<{ experiment_id: string }>[];
@@ -64,14 +64,12 @@ interface EventListeners {
   status: EventListener<StatusData>[];
   error: EventListener<ErrorData>[];
   early_stopping: EventListener<EarlyStoppingData>[];
-  pong: EventListener<{}>[];
-  disconnected: EventListener<{}>[];
+  pong: EventListener<Record<string, never>>[];
+  disconnected: EventListener<Record<string, never>>[];
   reconnecting: EventListener<{ attempt: number }>[];
-  reconnected: EventListener<{}>[];
+  reconnected: EventListener<Record<string, never>>[];
   // Training observability events
   batch_metrics: EventListener<BatchMetricsData>[];
-  gradient_stats: EventListener<GradientStatsData>[];
-  lr_update: EventListener<LRUpdateData>[];
 }
 
 // ============================================================================
@@ -104,8 +102,6 @@ export class TrainingProgressWebSocket {
     reconnected: [],
     // Training observability events
     batch_metrics: [],
-    gradient_stats: [],
-    lr_update: [],
   };
   private reconnectAttempts = 0;
   private reconnectTimeout: number | null = null;
@@ -293,7 +289,7 @@ export class TrainingProgressWebSocket {
   /**
    * Send message to server
    */
-  private send(message: any): void {
+  private send(message: { type: string }): void {
     if (this.ws && this.isConnected) {
       this.ws.send(JSON.stringify(message));
     } else {
@@ -304,7 +300,7 @@ export class TrainingProgressWebSocket {
   /**
    * Emit event to listeners
    */
-  private emit<K extends keyof EventListeners>(event: K, data: any): void {
+  private emit<K extends keyof EventListeners>(event: K, data: unknown): void {
     const eventListeners = this.listeners[event];
     console.log(
       `[WebSocket] Emitting event '${event}' to ${eventListeners?.length || 0} listeners`,
@@ -355,11 +351,11 @@ export class TrainingProgressWebSocket {
    */
   removeAllListeners(event?: keyof EventListeners): void {
     if (event) {
-      this.listeners[event] = [] as any;
+      this.listeners[event] = [];
     } else {
       // Reset all listeners
       Object.keys(this.listeners).forEach((key) => {
-        this.listeners[key as keyof EventListeners] = [] as any;
+        this.listeners[key as keyof EventListeners] = [];
       });
     }
   }

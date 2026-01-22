@@ -63,6 +63,7 @@ const Inference = () => {
   );
   const [singleHeatmapLoading, setSingleHeatmapLoading] = useState(false);
   const [showSingleHeatmap, setShowSingleHeatmap] = useState(false);
+  const singleImageUrlRef = useRef<string | null>(null);
 
   // Batch mode state
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -87,6 +88,15 @@ const Inference = () => {
     setResult(null);
     setSingleHeatmap(null);
     setShowSingleHeatmap(false);
+    // Cleanup single image blob URL
+    if (singleImageUrlRef.current) {
+      try {
+        URL.revokeObjectURL(singleImageUrlRef.current);
+      } catch (e) {
+        console.error('Failed to revoke single image URL:', e);
+      }
+      singleImageUrlRef.current = null;
+    }
   };
 
   const handlePredict = async () => {
@@ -138,6 +148,10 @@ const Inference = () => {
       const response = await generateHeatmap(selectedImage);
       setSingleHeatmap(response);
       setShowSingleHeatmap(true);
+      // Create and store blob URL for the single image
+      if (!singleImageUrlRef.current) {
+        singleImageUrlRef.current = URL.createObjectURL(selectedImage);
+      }
       toast({
         title: "Heatmap Generated",
         description: `GradCAM visualization ready (${response.processing_time_ms.toFixed(0)}ms)`,
@@ -156,6 +170,14 @@ const Inference = () => {
   // Batch mode handlers
   const handleImagesSelect = (files: File[]) => {
     setSelectedImages(files);
+    // Cleanup old URLs
+    imageUrls.forEach((url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error('Failed to revoke URL:', e);
+      }
+    });
     const newUrls = new Map<string, string>();
     const newFiles = new Map<string, File>();
     files.forEach((file) => {
@@ -170,7 +192,14 @@ const Inference = () => {
   const handleBatchClear = () => {
     setSelectedImages([]);
     setBatchResult(null);
-    imageUrls.forEach((url) => URL.revokeObjectURL(url));
+    // Properly revoke all URLs
+    imageUrls.forEach((url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error('Failed to revoke URL:', e);
+      }
+    });
     setImageUrls(new Map());
     setImageFiles(new Map());
   };
@@ -226,11 +255,33 @@ const Inference = () => {
   };
 
   // Cleanup blob URLs on unmount
+  const imageUrlsRef = useRef<Map<string, string>>(new Map());
+
+  // Update ref whenever imageUrls changes
+  useEffect(() => {
+    imageUrlsRef.current = imageUrls;
+  }, [imageUrls]);
+
   useEffect(() => {
     return () => {
-      imageUrls.forEach((url) => URL.revokeObjectURL(url));
+      // Cleanup batch image URLs
+      imageUrlsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error('Failed to revoke URL:', e);
+        }
+      });
+      // Cleanup single image URL
+      if (singleImageUrlRef.current) {
+        try {
+          URL.revokeObjectURL(singleImageUrlRef.current);
+        } catch (e) {
+          console.error('Failed to revoke single image URL:', e);
+        }
+      }
     };
-  }, [imageUrls]);
+  }, []);
 
   // GSAP entrance animations
   useEffect(() => {
@@ -512,15 +563,15 @@ const Inference = () => {
                                   Hide Heatmap
                                 </Button>
                               </div>
-                              <HeatmapComparisonView
-                                originalImageUrl={URL.createObjectURL(
-                                  selectedImage,
-                                )}
-                                heatmapBase64={singleHeatmap.heatmap_base64}
-                                predictionClass={
-                                  result.prediction.predicted_class
-                                }
-                              />
+                              {singleImageUrlRef.current && (
+                                <HeatmapComparisonView
+                                  originalImageUrl={singleImageUrlRef.current}
+                                  heatmapBase64={singleHeatmap.heatmap_base64}
+                                  predictionClass={
+                                    result.prediction.predicted_class
+                                  }
+                                />
+                              )}
                             </div>
                           ) : (
                             <div className="p-6 rounded-2xl bg-white/80 border border-[hsl(172_30%_88%)]">

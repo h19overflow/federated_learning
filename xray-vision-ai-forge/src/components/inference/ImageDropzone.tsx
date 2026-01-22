@@ -8,6 +8,7 @@
 import React, { useCallback, useState } from "react";
 import { Upload, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { validateImageFile } from "@/utils/validation";
 
 interface ImageDropzoneProps {
   onImageSelect: (file: File) => void;
@@ -16,7 +17,6 @@ interface ImageDropzoneProps {
   disabled?: boolean;
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/jpg"];
 
 export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
@@ -30,13 +30,8 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const validateFile = (file: File): string | null => {
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      return "Please upload a PNG or JPEG image file.";
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      return "File size must be less than 10MB.";
-    }
-    return null;
+    const result = validateImageFile(file);
+    return result.valid ? null : result.error || 'Invalid file';
   };
 
   const handleFile = useCallback(
@@ -53,7 +48,13 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
       // Create preview URL
       const reader = new FileReader();
       reader.onload = (e) => {
-        setPreviewUrl(e.target?.result as string);
+        const result = e.target?.result as string;
+        // Validate it's actually an image data URL
+        if (result && result.startsWith('data:image/')) {
+          setPreviewUrl(result);
+        } else {
+          setError('Invalid image file');
+        }
       };
       reader.readAsDataURL(file);
     },

@@ -13,17 +13,20 @@ import {
   HeatmapResponse,
   BatchHeatmapResponse,
 } from "@/types/inference";
+import { getEnv } from "@/utils/env";
+import { sanitizeFilename } from "@/utils/validation";
 
 // Configuration
-const API_BASE_URL = "http://127.0.0.1:8001";
-const API_TIMEOUT = 30000; // 30 seconds for inference
+const env = getEnv();
+const API_BASE_URL = env.VITE_API_BASE_URL;
+const API_TIMEOUT = env.VITE_API_TIMEOUT; // 30 seconds default for inference
 
 // API Error class (matching api.ts pattern)
 export class InferenceApiError extends Error {
   constructor(
     message: string,
     public statusCode?: number,
-    public response?: any,
+    public response?: unknown,
   ) {
     super(message);
     this.name = "InferenceApiError";
@@ -36,10 +39,10 @@ export class InferenceApiError extends Error {
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let errorMessage = `API Error: ${response.status} ${response.statusText}`;
-    let errorData: any;
+    let errorData: { detail?: string; message?: string } | undefined;
 
     try {
-      errorData = await response.json();
+      errorData = await response.json() as { detail?: string; message?: string };
       errorMessage = errorData.detail || errorData.message || errorMessage;
     } catch {
       // If parsing JSON fails, use status text
@@ -224,7 +227,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename;
+  a.download = sanitizeFilename(filename);
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

@@ -105,7 +105,7 @@ export interface ConfigurationUpdateRequest {
 // API Response Types
 // ============================================================================
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   message?: string;
   data?: T;
   error?: string;
@@ -352,7 +352,7 @@ export type WebSocketMessageType =
   | "error"
   | "pong";
 
-export interface WebSocketMessage<T = any> {
+export interface WebSocketMessage<T = unknown> {
   type: WebSocketMessageType;
   data: T;
   timestamp: string;
@@ -423,7 +423,7 @@ export interface ClientProgressData {
     epoch_progress?: string;
     overall_progress_percent?: number;
     total_batches?: number;
-    [key: string]: any;
+    [key: string]: number | string | undefined;
   };
   timestamp?: string;
   status?: string;
@@ -529,7 +529,7 @@ export interface LogEntry {
   timestamp: string;
   level: string;
   message: string;
-  context?: Record<string, any>;
+  context?: Record<string, string | number | boolean | null | undefined>;
 }
 
 export interface ExperimentLogs {

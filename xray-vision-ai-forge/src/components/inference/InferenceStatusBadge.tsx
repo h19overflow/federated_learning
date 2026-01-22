@@ -5,7 +5,7 @@
  * Green pulsing dot when healthy, red when unavailable.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Activity, AlertCircle } from "lucide-react";
 import { checkInferenceHealth } from "@/services/inferenceApi";
 import { HealthCheckResponse } from "@/types/inference";
@@ -14,6 +14,7 @@ export const InferenceStatusBadge: React.FC = () => {
   const [health, setHealth] = useState<HealthCheckResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -33,9 +34,14 @@ export const InferenceStatusBadge: React.FC = () => {
     checkHealth();
 
     // Check health every 30 seconds
-    const interval = setInterval(checkHealth, 30000);
+    intervalRef.current = window.setInterval(checkHealth, 30000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, []);
 
   const isHealthy = health?.status === "healthy" && health?.model_loaded;
