@@ -303,7 +303,8 @@ async def enhance_query_with_run_context(query: str, run_id: int) -> str:
             )
             return context_info
         finally:
-            db.close()
+            if db:
+                db.close()
 
     # Run blocking DB operation in thread pool to avoid blocking event loop
     loop = asyncio.get_event_loop()

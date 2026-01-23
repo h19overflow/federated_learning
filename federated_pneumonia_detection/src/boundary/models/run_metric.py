@@ -2,7 +2,7 @@
 RunMetric model - stores training metrics per epoch/round.
 """
 
-from sqlalchemy import Column, Float, ForeignKey, Integer, String
+from sqlalchemy import Column, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -30,10 +30,10 @@ class RunMetric(Base):
     __tablename__ = "run_metrics"
 
     id = Column(Integer, primary_key=True)
-    run_id = Column(Integer, ForeignKey("runs.id"), nullable=False)
+    run_id = Column(Integer, ForeignKey("runs.id"), nullable=False, index=True)
 
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=True)
-    round_id = Column(Integer, ForeignKey("rounds.id"), nullable=True)
+    round_id = Column(Integer, ForeignKey("rounds.id"), nullable=True, index=True)
 
     metric_name = Column(String(255), nullable=False)
     metric_value = Column(Float, nullable=False)
@@ -41,6 +41,8 @@ class RunMetric(Base):
     dataset_type = Column(String(50), nullable=True)
 
     context = Column(String(50), nullable=True)
+
+    __table_args__ = (Index("ix_metric_run_round", "run_id", "round_id"),)
 
     run = relationship("Run", back_populates="metrics")
     client = relationship("Client")

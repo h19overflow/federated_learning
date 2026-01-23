@@ -27,9 +27,9 @@ class Run(Base):
 
     id = Column(Integer, primary_key=True)
     run_description = Column(String(1024), nullable=True)
-    training_mode = Column(String(50), nullable=False)
-    status = Column(String(50), nullable=False)
-    start_time = Column(TIMESTAMP, nullable=False)
+    training_mode = Column(String(50), nullable=False, index=True)
+    status = Column(String(50), nullable=False, index=True)
+    start_time = Column(TIMESTAMP, nullable=False, index=True)
     end_time = Column(TIMESTAMP, nullable=True)
     wandb_id = Column(String(255), nullable=True)
     source_path = Column(String(1024), nullable=True)

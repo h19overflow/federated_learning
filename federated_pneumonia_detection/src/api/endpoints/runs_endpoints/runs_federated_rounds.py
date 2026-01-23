@@ -1,12 +1,13 @@
 """Federated rounds metrics endpoint."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
+from federated_pneumonia_detection.src.api.deps import get_db
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 from ..schema.runs_schemas import FederatedRoundsResponse
@@ -16,7 +17,10 @@ logger = get_logger(__name__)
 
 
 @router.get("/{run_id}/federated-rounds", response_model=FederatedRoundsResponse)
-async def get_federated_rounds(run_id: int) -> FederatedRoundsResponse:
+async def get_federated_rounds(
+    run_id: int,
+    db: Session = Depends(get_db),
+) -> FederatedRoundsResponse:
     """
     Get federated round metrics for visualization.
 
@@ -39,8 +43,6 @@ async def get_federated_rounds(run_id: int) -> FederatedRoundsResponse:
             ]
         }
     """
-    db = get_session()
-
     try:
         run = run_crud.get(db, run_id)
 
@@ -116,5 +118,3 @@ async def get_federated_rounds(run_id: int) -> FederatedRoundsResponse:
             status_code=500,
             detail=f"Failed to fetch federated rounds: {str(e)}",
         )
-    finally:
-        db.close()

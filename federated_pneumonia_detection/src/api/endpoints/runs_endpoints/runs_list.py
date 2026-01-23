@@ -2,10 +2,11 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
+from federated_pneumonia_detection.src.api.deps import get_db
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 from ..schema.runs_schemas import BackfillResponse, RunsListResponse, RunSummary
@@ -35,6 +36,7 @@ async def list_all_runs(
     ),
     sort_by: str = Query("start_time", description="Field to sort by"),
     sort_order: str = Query("desc", description="Sort order: 'asc' or 'desc'"),
+    db: Session = Depends(get_db),
 ) -> RunsListResponse:
     """
     List training runs with pagination and filtering.
@@ -50,8 +52,6 @@ async def list_all_runs(
     Returns:
         RunsListResponse with filtered, paginated run summaries and total count
     """
-    db = get_session()
-
     try:
         # Use CRUD method for filtered list with pagination
         runs, total_count = run_crud.list_with_filters(
@@ -101,12 +101,13 @@ async def list_all_runs(
     except Exception as e:
         logger.error(f"Error listing runs: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
 
 
 @router.post("/backfill/{run_id}/server-evaluations", response_model=BackfillResponse)
-async def backfill_server_evaluations(run_id: int) -> BackfillResponse:
+async def backfill_server_evaluations(
+    run_id: int,
+    db: Session = Depends(get_db),
+) -> BackfillResponse:
     """
     Backfill server evaluations from results JSON file.
 
@@ -116,8 +117,6 @@ async def backfill_server_evaluations(run_id: int) -> BackfillResponse:
     Returns:
         BackfillResponse with operation status
     """
-    db = get_session()
-
     try:
         # Validate run exists
         run = run_crud.get(db, run_id)
@@ -140,5 +139,3 @@ async def backfill_server_evaluations(run_id: int) -> BackfillResponse:
         logger.error(f"[Backfill] Error for run {run_id}: {e}", exc_info=True)
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()

@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import List, Optional
 
+from sqlalchemy.exc import IntegrityError
+
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.models import Client, Round
 
@@ -12,11 +14,9 @@ class RoundCRUD:
         round_number: int,
         round_metadata: Optional[dict] = None,
     ):
-        """Create a new round for a specific client"""
-        if self.get_round_by_client_and_number(client_id, round_number):
-            return self.get_round_by_client_and_number(client_id, round_number)
-        else:
-            with get_session() as session:
+        """Create a new round for a specific client (thread-safe via database unique constraint)"""
+        with get_session() as session:
+            try:
                 new_round = Round(
                     client_id=client_id,
                     round_number=round_number,
@@ -27,6 +27,10 @@ class RoundCRUD:
                 session.flush()
                 session.commit()
                 return self.get_round_by_id(new_round.id)
+            except IntegrityError:
+                # Unique constraint violation - round already exists
+                session.rollback()
+                return self.get_round_by_client_and_number(client_id, round_number)
 
     def get_round_by_id(self, round_id: int) -> Optional[Round]:
         """Get a specific round by ID"""

@@ -2,7 +2,16 @@
 Client model - represents a federated learning participant.
 """
 
-from sqlalchemy import JSON, TIMESTAMP, Column, ForeignKey, Integer, String
+from sqlalchemy import (
+    JSON,
+    TIMESTAMP,
+    Column,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -23,11 +32,16 @@ class Client(Base):
     __tablename__ = "clients"
 
     id = Column(Integer, primary_key=True)
-    run_id = Column(Integer, ForeignKey("runs.id"), nullable=False)
+    run_id = Column(Integer, ForeignKey("runs.id"), nullable=False, index=True)
     client_identifier = Column(String(255), nullable=False)
     created_at = Column(TIMESTAMP, nullable=False)
 
     client_config = Column(JSON, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "client_identifier", name="uq_run_client"),
+        Index("ix_client_run_identifier", "run_id", "client_identifier"),
+    )
 
     run = relationship("Run", back_populates="clients")
     rounds = relationship(

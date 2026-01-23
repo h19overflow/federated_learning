@@ -210,6 +210,8 @@ class MetricsCollectorCallback(pl.Callback):
                 epoch=trainer.current_epoch,
                 phase="val",
                 metrics=val_metrics,
+                client_id=self.client_id if self.federated_mode else None,
+                round_num=self.current_round if self.federated_mode else None,
             )
 
     def on_fit_end(self, trainer, pl_module):

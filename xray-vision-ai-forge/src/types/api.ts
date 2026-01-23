@@ -367,6 +367,7 @@ export interface EpochEndData {
   epoch: number;
   phase: "train" | "val" | "test";
   metrics: EpochMetrics;
+  client_id?: string;
 }
 
 export interface RoundStartData {

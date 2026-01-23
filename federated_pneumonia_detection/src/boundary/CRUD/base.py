@@ -21,7 +21,6 @@ class BaseCRUD(Generic[ModelType]):
         session = get_session()
         try:
             yield session
-            session.commit()
         except SQLAlchemyError as e:
             session.rollback()
             raise e

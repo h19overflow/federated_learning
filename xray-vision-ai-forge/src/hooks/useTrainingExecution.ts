@@ -382,9 +382,11 @@ export const useTrainingExecution = (
         .map(([k, v]) => `${k}: ${(v as number).toFixed(4)}`)
         .join(", ");
 
+      // Add client ID prefix for federated training
+      const prefix = data.client_id ? `[Client ${data.client_id}] ` : "";
       addStatusMessage(
         "progress",
-        `Epoch ${data.epoch} [${data.phase}] - ${metricsStr}`,
+        `${prefix}Epoch ${data.epoch} [${data.phase}] - ${metricsStr}`,
         metrics.accuracy ? metrics.accuracy * 100 : undefined,
       );
 

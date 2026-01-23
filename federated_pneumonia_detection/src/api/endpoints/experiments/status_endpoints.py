@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+import aiofiles
 from fastapi import APIRouter, HTTPException
 
 from federated_pneumonia_detection.src.api.endpoints.experiments.utils import (
@@ -63,8 +64,9 @@ async def get_experiment_status(experiment_id: str) -> Dict[str, Any]:
                 detail=f"Experiment not found: {experiment_id}",
             )
 
-        with open(log_file, "r") as f:
-            log_data = json.load(f)
+        async with aiofiles.open(log_file, "r") as f:
+            content = await f.read()
+            log_data = json.loads(content)
 
         metadata = log_data.get("metadata", {})
         epochs = log_data.get("epochs", [])
@@ -143,8 +145,9 @@ async def list_experiments() -> Dict[str, Any]:
         experiments = []
         for log_file in LOGS_DIR.glob("*.json"):
             try:
-                with open(log_file, "r") as f:
-                    log_data = json.load(f)
+                async with aiofiles.open(log_file, "r") as f:
+                    content = await f.read()
+                    log_data = json.loads(content)
 
                 metadata = log_data.get("metadata", {})
                 progress = calculate_progress(log_data)

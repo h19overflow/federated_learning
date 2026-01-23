@@ -8,10 +8,11 @@ runs_analytics_utils following SOLID principles.
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
+from federated_pneumonia_detection.src.api.deps import get_db
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 from ..schema.runs_schemas import AnalyticsSummaryResponse
@@ -26,6 +27,7 @@ async def get_analytics_summary(
     status: Optional[str] = Query("completed", description="Filter by run status"),
     training_mode: Optional[str] = Query(None, description="Filter by training mode"),
     days: Optional[int] = Query(None, description="Filter by last N days"),
+    db: Session = Depends(get_db),
 ) -> AnalyticsSummaryResponse:
     """
     Get aggregated statistics for centralized vs federated training comparison.
@@ -38,8 +40,6 @@ async def get_analytics_summary(
     Returns:
         AnalyticsSummaryResponse with aggregated statistics and top runs
     """
-    db = get_session()
-
     try:
         runs = run_crud.get_by_status_and_mode(
             db,
@@ -52,5 +52,3 @@ async def get_analytics_summary(
     except Exception as e:
         logger.error(f"Error generating analytics summary: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()

@@ -1,9 +1,10 @@
 """Download endpoints for exporting training run results."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
+from federated_pneumonia_detection.src.api.deps import get_db
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 from .shared.exporters import CSVExporter, DownloadService
@@ -14,7 +15,10 @@ logger = get_logger(__name__)
 
 
 @router.get("/{run_id}/download/csv")
-async def download_metrics_csv(run_id: int):
+async def download_metrics_csv(
+    run_id: int,
+    db: Session = Depends(get_db),
+):
     """
     Download training history metrics as CSV file.
 
@@ -24,8 +28,6 @@ async def download_metrics_csv(run_id: int):
     Returns:
         Streaming CSV file download
     """
-    db = get_session()
-
     try:
         run = run_crud.get_with_metrics(db, run_id)
 
@@ -49,5 +51,3 @@ async def download_metrics_csv(run_id: int):
     except Exception as e:
         logger.error(f"Error downloading CSV for run {run_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to generate CSV: {str(e)}")
-    finally:
-        db.close()

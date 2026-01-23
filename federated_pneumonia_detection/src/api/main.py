@@ -1,12 +1,14 @@
 # >   uvicorn federated_pneumonia_detection.src.api.main:app --reload --host 127.0.0.1 --port 8001
 import logging
 import os
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from federated_pneumonia_detection.src.api.endpoints.chat import (
     chat_router,
@@ -60,6 +62,25 @@ settings = get_settings()
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """Middleware to generate and track unique request IDs for distributed tracing."""
+
+    async def dispatch(self, request, call_next):
+        # Generate or use existing request ID
+        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+
+        # Store in request state for access in endpoints
+        request.state.request_id = request_id
+
+        # Process request
+        response = await call_next(request)
+
+        # Add to response headers
+        response.headers["X-Request-ID"] = request_id
+
+        return response
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -91,6 +112,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(RequestIDMiddleware)
 app.add_middleware(MaliciousPromptMiddleware)
 
 # Register global exception handlers for structured error responses

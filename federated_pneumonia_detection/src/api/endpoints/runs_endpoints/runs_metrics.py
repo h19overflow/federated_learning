@@ -2,11 +2,12 @@
 
 from typing import Dict, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import desc
+from sqlalchemy.orm import Session
 
+from federated_pneumonia_detection.src.api.deps import get_db
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.models import (
     RunMetric,
     ServerEvaluation,
@@ -21,7 +22,10 @@ logger = get_logger(__name__)
 
 
 @router.get("/{run_id}/metrics", response_model=MetricsResponse)
-async def get_run_metrics(run_id: int) -> MetricsResponse:
+async def get_run_metrics(
+    run_id: int,
+    db: Session = Depends(get_db),
+) -> MetricsResponse:
     """
     Get complete training results for a specific run.
 
@@ -34,8 +38,6 @@ async def get_run_metrics(run_id: int) -> MetricsResponse:
     Returns:
         ExperimentResults matching frontend TypeScript interface
     """
-    db = get_session()
-
     try:
         run = run_crud.get_with_metrics(db, run_id)
 
@@ -100,5 +102,3 @@ async def get_run_metrics(run_id: int) -> MetricsResponse:
             status_code=500,
             detail=f"Failed to fetch run results: {str(e)}",
         )
-    finally:
-        db.close()

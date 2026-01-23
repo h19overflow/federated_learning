@@ -24,30 +24,80 @@ class RunCRUD(BaseCRUD[Run]):
     def get_by_experiment(self, db: Session, experiment_id: int) -> List[Run]:
         """Get all runs for a specific experiment."""
         return (
-            db.query(self.model).filter(self.model.experiment_id == experiment_id).all()
+            db.query(self.model)
+            .options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients),
+                selectinload(Run.server_evaluations),
+            )
+            .filter(self.model.experiment_id == experiment_id)
+            .all()
         )
 
     def get_by_status(self, db: Session, status: str) -> List[Run]:
         """Get runs by status."""
-        return db.query(self.model).filter(self.model.status == status).all()
+        return (
+            db.query(self.model)
+            .options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients),
+                selectinload(Run.server_evaluations),
+            )
+            .filter(self.model.status == status)
+            .all()
+        )
 
     def get_by_training_mode(self, db: Session, training_mode: str) -> List[Run]:
         """Get runs by training mode."""
         return (
-            db.query(self.model).filter(self.model.training_mode == training_mode).all()
+            db.query(self.model)
+            .options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients),
+                selectinload(Run.server_evaluations),
+            )
+            .filter(self.model.training_mode == training_mode)
+            .all()
         )
 
     def get_with_config(self, db: Session, id: int) -> Optional[Run]:
         """Get run with its configuration."""
-        return db.query(self.model).filter(self.model.id == id).first()
+        return (
+            db.query(self.model)
+            .options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients),
+                selectinload(Run.server_evaluations),
+            )
+            .filter(self.model.id == id)
+            .first()
+        )
 
     def get_with_metrics(self, db: Session, id: int) -> Optional[Run]:
         """Get run with all its metrics."""
-        return db.query(self.model).filter(self.model.id == id).first()
+        return (
+            db.query(self.model)
+            .options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients),
+                selectinload(Run.server_evaluations),
+            )
+            .filter(self.model.id == id)
+            .first()
+        )
 
     def get_with_artifacts(self, db: Session, id: int) -> Optional[Run]:
         """Get run with all its artifacts."""
-        return db.query(self.model).filter(self.model.id == id).first()
+        return (
+            db.query(self.model)
+            .options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients),
+                selectinload(Run.server_evaluations),
+            )
+            .filter(self.model.id == id)
+            .first()
+        )
 
     def update_status(self, db: Session, id: int, status: str) -> Optional[Run]:
         """Update run status."""
@@ -114,7 +164,15 @@ class RunCRUD(BaseCRUD[Run]):
         Returns:
             List of Run objects matching criteria
         """
-        query = db.query(self.model).filter(self.model.status == status)
+        query = (
+            db.query(self.model)
+            .options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients),
+                selectinload(Run.server_evaluations),
+            )
+            .filter(self.model.status == status)
+        )
 
         if training_mode:
             query = query.filter(self.model.training_mode == training_mode)
@@ -123,7 +181,16 @@ class RunCRUD(BaseCRUD[Run]):
 
     def get_by_wandb_id(self, db: Session, wandb_id: str) -> Optional[Run]:
         """Get run by W&B ID."""
-        return db.query(self.model).filter(self.model.wandb_id == wandb_id).first()
+        return (
+            db.query(self.model)
+            .options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients),
+                selectinload(Run.server_evaluations),
+            )
+            .filter(self.model.wandb_id == wandb_id)
+            .first()
+        )
 
     def get_completed_runs(
         self,
@@ -131,7 +198,15 @@ class RunCRUD(BaseCRUD[Run]):
         experiment_id: Optional[int] = None,
     ) -> List[Run]:
         """Get all completed runs, optionally filtered by experiment."""
-        query = db.query(self.model).filter(self.model.status == "completed")
+        query = (
+            db.query(self.model)
+            .options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients),
+                selectinload(Run.server_evaluations),
+            )
+            .filter(self.model.status == "completed")
+        )
         if experiment_id:
             query = query.filter(self.model.experiment_id == experiment_id)
         return query.order_by(self.model.end_time.desc()).all()
@@ -142,7 +217,15 @@ class RunCRUD(BaseCRUD[Run]):
         experiment_id: Optional[int] = None,
     ) -> List[Run]:
         """Get all failed runs, optionally filtered by experiment."""
-        query = db.query(self.model).filter(self.model.status == "failed")
+        query = (
+            db.query(self.model)
+            .options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients),
+                selectinload(Run.server_evaluations),
+            )
+            .filter(self.model.status == "failed")
+        )
         if experiment_id:
             query = query.filter(self.model.experiment_id == experiment_id)
         return query.order_by(self.model.end_time.desc()).all()

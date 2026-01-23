@@ -30,7 +30,7 @@ serverapp = "federated_pneumonia_detection.src.control.federated_new_version.cor
 clientapp = "federated_pneumonia_detection.src.control.federated_new_version.core.client_app:app"
 
 [tool.flwr.app.config]
-num-server-rounds = 2
+num-server-rounds = 1
 max-epochs = 2
 
 [tool.flwr.federations]
