@@ -11,6 +11,12 @@ from .chat_schemas import (
     ChatSessionSchema,
     CreateSessionRequest,
 )
+from .error_schemas import (
+    APIErrorResponse,
+    ErrorCode,
+    ErrorDetail,
+    ValidationErrorDetail,
+)
 from .inference_schemas import (
     BatchInferenceResponse,
     BatchSummaryStats,
@@ -72,4 +78,8 @@ __all__ = [
     "BatchResultItem",
     "ReportBatchSummaryStats",
     "BatchReportRequest",
+    "APIErrorResponse",
+    "ErrorCode",
+    "ErrorDetail",
+    "ValidationErrorDetail",
 ]

@@ -10,9 +10,11 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_postgres import PostgresChatMessageHistory
 from psycopg_pool import ConnectionPool
 
-from federated_pneumonia_detection.src.boundary.engine import settings
+from federated_pneumonia_detection.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
+
+settings = get_settings()
 
 
 class ChatHistoryManager:

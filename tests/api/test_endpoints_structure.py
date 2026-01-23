@@ -317,24 +317,44 @@ class TestAPISettings:
     """Test API settings configuration."""
 
     def test_settings_has_required_fields(self):
-        """Settings should have BASE_URL, API_VERSION, and API_PREFIX."""
-        from federated_pneumonia_detection.src.api.settings import Settings
+        """Settings should have API_BASE_URL, API_VERSION, and API_PREFIX."""
+        from federated_pneumonia_detection.config.settings import get_settings
 
-        settings = Settings()
+        settings = get_settings()
 
-        assert hasattr(settings, "BASE_URL")
+        assert hasattr(settings, "API_BASE_URL")
         assert hasattr(settings, "API_VERSION")
         assert hasattr(settings, "API_PREFIX")
 
     def test_settings_defaults_are_reasonable(self):
         """Settings defaults should be reasonable values."""
-        from federated_pneumonia_detection.src.api.settings import Settings
+        from federated_pneumonia_detection.config.settings import get_settings
 
-        settings = Settings()
+        settings = get_settings()
 
-        assert settings.BASE_URL == "http://localhost:8000"
+        assert settings.API_BASE_URL == "http://localhost"
         assert settings.API_VERSION == "v1"
         assert settings.API_PREFIX == "/api"
+
+    def test_settings_has_websocket_config(self):
+        """Settings should have WebSocket configuration."""
+        from federated_pneumonia_detection.config.settings import get_settings
+
+        settings = get_settings()
+
+        assert hasattr(settings, "WEBSOCKET_HOST")
+        assert hasattr(settings, "WEBSOCKET_PORT")
+        assert settings.WEBSOCKET_HOST == "localhost"
+        assert settings.WEBSOCKET_PORT == 8765
+
+    def test_settings_has_cors_config(self):
+        """Settings should have CORS configuration."""
+        from federated_pneumonia_detection.config.settings import get_settings
+
+        settings = get_settings()
+
+        assert hasattr(settings, "CORS_ORIGINS")
+        assert len(settings.CORS_ORIGINS) > 0
 
 
 class TestErrorHandling:

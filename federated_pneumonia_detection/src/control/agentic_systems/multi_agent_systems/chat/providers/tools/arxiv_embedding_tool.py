@@ -22,6 +22,8 @@ from langchain_postgres import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import BaseModel, Field
 
+from federated_pneumonia_detection.config.settings import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,6 +43,7 @@ def _get_vectorstore() -> PGVector:
     """Get or create the PGVector instance."""
     global _vectorstore
     if _vectorstore is None:
+        settings = get_settings()
         embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         _vectorstore = PGVector(
             connection=settings.get_postgres_db_uri(),

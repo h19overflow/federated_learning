@@ -37,6 +37,9 @@ from federated_pneumonia_detection.src.api.endpoints.reports import (
 from federated_pneumonia_detection.src.api.endpoints.runs_endpoints import (
     router as runs_endpoints_router,
 )
+from federated_pneumonia_detection.src.api.middleware import (
+    register_exception_handlers,
+)
 from federated_pneumonia_detection.src.api.middleware.security import (
     MaliciousPromptMiddleware,
 )
@@ -44,11 +47,15 @@ from federated_pneumonia_detection.src.api.services.startup import (
     initialize_services,
     shutdown_services,
 )
+from federated_pneumonia_detection.config.settings import get_settings
 
 env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 logger = logging.getLogger(__name__)
 logger.info(f"Loaded environment from: {env_path}")
+
+# Get settings (singleton)
+settings = get_settings()
 
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
@@ -78,20 +85,16 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-        "http://localhost:8081",
-        "http://127.0.0.1:8081",
-        "http://localhost:5173",  # Vite default dev port
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
 app.add_middleware(MaliciousPromptMiddleware)
+
+# Register global exception handlers for structured error responses
+register_exception_handlers(app)
 
 
 @app.get("/")

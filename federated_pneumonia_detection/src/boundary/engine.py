@@ -29,12 +29,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from federated_pneumonia_detection.config.settings import Settings
+from federated_pneumonia_detection.config.settings import get_settings
 
 from .models import Base
 
 # Initialize settings and logger
-settings = Settings()
+settings = get_settings()
 logger = logging.getLogger(__name__)
 
 # Global engine instance - created once at module import

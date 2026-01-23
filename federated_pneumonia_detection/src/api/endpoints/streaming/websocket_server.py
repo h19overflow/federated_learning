@@ -17,10 +17,10 @@ import logging
 import threading
 from typing import Set
 
-logger = logging.getLogger(__name__)
+from federated_pneumonia_detection.config.settings import get_settings
 
-WEBSOCKET_HOST = "localhost"
-WEBSOCKET_PORT = 8765
+logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 def start_websocket_server_thread() -> threading.Thread:
@@ -120,10 +120,14 @@ def _run_websocket_server() -> None:
         async def run_server() -> None:
             """Run the WebSocket server."""
             logger.info(
-                f"Starting WebSocket server on ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}",
+                f"Starting WebSocket server on {settings.websocket_uri}",
             )
 
-            async with websockets.serve(handler, WEBSOCKET_HOST, WEBSOCKET_PORT):
+            async with websockets.serve(
+                handler,
+                settings.WEBSOCKET_HOST,
+                settings.WEBSOCKET_PORT,
+            ):
                 logger.info("[OK] WebSocket metrics server is running")
                 await asyncio.Future()  # Run forever
 
