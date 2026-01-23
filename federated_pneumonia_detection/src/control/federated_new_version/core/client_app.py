@@ -256,8 +256,10 @@ def evaluate(msg: Message, context: Context):
     )
     centerlized_trainer.logger.info(f"[Client Evaluate] Raw result_dict: {result_dict}")
 
-    loss, accuracy, precision, recall, f1, auroc = _extract_metrics_from_result(
-        result_dict,
+    loss, accuracy, precision, recall, f1, auroc, cm_tp, cm_tn, cm_fp, cm_fn = (
+        _extract_metrics_from_result(
+            result_dict,
+        )
     )
 
     num_examples = len(val_df)
@@ -270,11 +272,16 @@ def evaluate(msg: Message, context: Context):
         f1,
         auroc,
         num_examples,
+        cm_tp,
+        cm_tn,
+        cm_fp,
+        cm_fn,
     )
 
     centerlized_trainer.logger.info(
         f"[Client Evaluate] Extracted metrics: loss={loss}, acc={accuracy}, "  # noqa: E501
         f"prec={precision}, rec={recall}, f1={f1}, auroc={auroc}, "
+        f"cm_tp={cm_tp}, cm_tn={cm_tn}, cm_fp={cm_fp}, cm_fn={cm_fn}, "
         f"num_examples={num_examples}",
     )
 

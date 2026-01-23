@@ -186,6 +186,9 @@ class ConfigurableFedAvg(FedAvg):
                 total_rounds=total_rounds,
                 metrics=round_metrics,
             )
+
+            # Persist client-aggregated metrics to database
+            self._persist_aggregated_metrics(server_round, round_metrics)
         else:
             print(f"[Strategy] Warning: No aggregated metrics for round {server_round}")
 
@@ -211,6 +214,10 @@ class ConfigurableFedAvg(FedAvg):
             "recall": ["test_recall", "val_recall", "recall"],
             "f1": ["test_f1", "val_f1", "f1_score", "f1"],
             "auroc": ["test_auroc", "val_auroc", "auroc", "auc", "roc_auc"],
+            "cm_tp": ["test_cm_tp", "val_cm_tp", "cm_tp"],
+            "cm_tn": ["test_cm_tn", "val_cm_tn", "cm_tn"],
+            "cm_fp": ["test_cm_fp", "val_cm_fp", "cm_fp"],
+            "cm_fn": ["test_cm_fn", "val_cm_fn", "cm_fn"],
         }
 
         for standard_name, possible_names in metric_mappings.items():
@@ -220,6 +227,72 @@ class ConfigurableFedAvg(FedAvg):
                     break
 
         return metrics
+
+    def _persist_aggregated_metrics(
+        self,
+        server_round: int,
+        round_metrics: Dict[str, float],
+    ) -> None:
+        """Persist client-aggregated metrics to RunMetric table for audit/comparison.
+
+        Args:
+            server_round: Current federated learning round number
+            round_metrics: Aggregated metrics from all clients
+        """
+        if not hasattr(self, "run_id") or self.run_id is None:
+            print(
+                f"[Strategy] Warning: No run_id set, skipping aggregated metrics persistence"
+            )
+            return
+
+        try:
+            from federated_pneumonia_detection.src.boundary.engine import get_session
+            from federated_pneumonia_detection.src.boundary.CRUD.run_metric import (
+                run_metric_crud,
+            )
+
+            db = get_session()
+
+            # Map strategy metric keys to API-compatible RunMetric names
+            metric_mapping = {
+                "loss": "val_loss",
+                "accuracy": "val_accuracy",
+                "precision": "val_precision",
+                "recall": "val_recall",
+                "f1": "val_f1",
+                "auroc": "val_auroc",
+                "cm_tp": "val_cm_tp",
+                "cm_tn": "val_cm_tn",
+                "cm_fp": "val_cm_fp",
+                "cm_fn": "val_cm_fn",
+            }
+
+            # Build list of RunMetric entries
+            metrics_to_persist = []
+            for strategy_key, api_key in metric_mapping.items():
+                if strategy_key in round_metrics:
+                    metrics_to_persist.append(
+                        {
+                            "run_id": self.run_id,
+                            "step": server_round,
+                            "context": "aggregated",
+                            "metric_name": api_key,
+                            "metric_value": float(round_metrics[strategy_key]),
+                        }
+                    )
+
+            if metrics_to_persist:
+                run_metric_crud.bulk_create(db, metrics_to_persist)
+                db.commit()
+                print(
+                    f"[Strategy] Persisted {len(metrics_to_persist)} aggregated metrics for round {server_round}"
+                )
+
+            db.close()
+
+        except Exception as e:
+            print(f"[Strategy] Error persisting aggregated metrics: {e}")
+            # Don't raise - persistence failure shouldn't break training
 
     def set_total_rounds(self, total_rounds: int) -> None:
         """Set the total number of rounds for progress tracking."""

@@ -375,7 +375,30 @@ def _extract_metrics_from_result(result_dict: dict):
         if result_dict.get("test_auroc") is not None
         else result_dict.get("auroc", 0.0)
     )
-    return loss, accuracy, precision, recall, f1, auroc
+
+    # Extract confusion matrix components
+    cm_tp = (
+        result_dict.get("test_cm_tp")
+        if result_dict.get("test_cm_tp") is not None
+        else 0.0
+    )
+    cm_tn = (
+        result_dict.get("test_cm_tn")
+        if result_dict.get("test_cm_tn") is not None
+        else 0.0
+    )
+    cm_fp = (
+        result_dict.get("test_cm_fp")
+        if result_dict.get("test_cm_fp") is not None
+        else 0.0
+    )
+    cm_fn = (
+        result_dict.get("test_cm_fn")
+        if result_dict.get("test_cm_fn") is not None
+        else 0.0
+    )
+
+    return loss, accuracy, precision, recall, f1, auroc, cm_tp, cm_tn, cm_fp, cm_fn
 
 
 def _create_metric_record_dict(
@@ -386,8 +409,12 @@ def _create_metric_record_dict(
     f1,
     auroc,
     num_examples: int,
+    cm_tp=0.0,
+    cm_tn=0.0,
+    cm_fp=0.0,
+    cm_fn=0.0,
 ):
-    """Create metric record dictionary with all metrics."""
+    """Create metric record dictionary with all metrics including confusion matrix."""
     return {
         "test_loss": loss,
         "test_accuracy": accuracy,
@@ -395,6 +422,10 @@ def _create_metric_record_dict(
         "test_recall": recall,
         "test_f1": f1,
         "test_auroc": auroc,
+        "test_cm_tp": cm_tp,
+        "test_cm_tn": cm_tn,
+        "test_cm_fp": cm_fp,
+        "test_cm_fn": cm_fn,
         "num-examples": num_examples,
     }
 
@@ -536,6 +567,10 @@ def _persist_server_evaluations(run_id: int, server_metrics: Dict[int, Any]) -> 
                 "recall": metrics_dict.get("server_recall"),
                 "f1_score": metrics_dict.get("server_f1"),
                 "auroc": metrics_dict.get("server_auroc"),
+                "server_cm_tp": metrics_dict.get("server_cm_tp", 0.0),
+                "server_cm_tn": metrics_dict.get("server_cm_tn", 0.0),
+                "server_cm_fp": metrics_dict.get("server_cm_fp", 0.0),
+                "server_cm_fn": metrics_dict.get("server_cm_fn", 0.0),
             }
 
             logger.info(f"    Extracted metrics: {extracted_metrics}")
