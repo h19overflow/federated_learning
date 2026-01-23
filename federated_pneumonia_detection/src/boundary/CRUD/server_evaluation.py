@@ -309,6 +309,54 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
         logger.info(f"Deleted {count} server evaluations for run_id={run_id}")
         return count
 
+    def update_final_epoch_stats(
+        self,
+        db: Session,
+        run_id: int,
+        stats_dict: Dict[str, float],
+    ) -> Optional[ServerEvaluation]:
+        """
+        Update last ServerEvaluation record with final epoch stats in additional_metrics.
+
+        Args:
+            db: Database session
+            run_id: Run ID
+            stats_dict: Dict with keys: sensitivity, specificity, precision_cm, accuracy_cm, f1_cm
+
+        Returns:
+            Updated ServerEvaluation or None if not found
+        """
+        # Get latest ServerEvaluation record
+        latest_evaluation = self.get_latest(db, run_id)
+
+        if not latest_evaluation:
+            logger.warning(
+                f"No ServerEvaluation found for run_id={run_id}, "
+                f"cannot update final epoch stats"
+            )
+            return None
+
+        # Prepare final epoch stats payload
+        final_epoch_stats = {
+            "final_epoch_stats": stats_dict,
+            "schema_version": 1,
+        }
+
+        # Merge with existing additional_metrics (don't overwrite)
+        existing_metrics = latest_evaluation.additional_metrics or {}
+        merged_metrics = {**existing_metrics, **final_epoch_stats}
+
+        # Update the record
+        latest_evaluation.additional_metrics = merged_metrics
+        db.flush()
+
+        logger.info(
+            f"Updated final epoch stats for run_id={run_id} in "
+            f"ServerEvaluation id={latest_evaluation.id}, round={latest_evaluation.round_number}"
+        )
+
+        return latest_evaluation
+
 
 # Create a singleton instance
 server_evaluation_crud = ServerEvaluationCRUD()

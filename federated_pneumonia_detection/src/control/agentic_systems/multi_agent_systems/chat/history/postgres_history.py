@@ -37,6 +37,7 @@ class ChatHistoryManager:
         """
         self.table_name = table_name
         self.max_history = max_history
+        self._tables_created = False
 
     def _get_postgres_history(self, session_id: str) -> PostgresChatMessageHistory:
         """
@@ -67,8 +68,10 @@ class ChatHistoryManager:
             clean_session_id,
             sync_connection=sync_connection,
         )
-        # Ensure tables exist
-        history.create_tables(sync_connection, self.table_name)
+        # Ensure tables exist (only on first use)
+        if not self._tables_created:
+            history.create_tables(sync_connection, self.table_name)
+            self._tables_created = True
         return history
 
     def add_to_history(
@@ -142,15 +145,22 @@ class ChatHistoryManager:
             formatted += f"User: {user_msg}\nAssistant: {ai_msg}\n\n"
         return formatted.strip()
 
-    def get_messages(self, session_id: str) -> list:
+    def get_messages(self, session_id: str, limit: int | None = None) -> list:
         """
         Get raw LangChain messages for a session.
 
         Args:
             session_id: Session identifier
+            limit: Maximum number of messages to return (most recent first)
 
         Returns:
             List of LangChain message objects
         """
         history = self._get_postgres_history(session_id)
-        return history.messages
+        messages = history.messages
+
+        # Enforce limit: keep only most recent N messages
+        if limit and len(messages) > limit:
+            messages = messages[-limit:]
+
+        return messages

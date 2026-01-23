@@ -17,6 +17,19 @@ export interface SavedExperiment {
     recall: number;
     f1Score: number;
   };
+  final_epoch_stats?: FinalEpochStats | null;
+}
+
+/**
+ * Final epoch confusion matrix statistics.
+ * Pre-computed at training completion for instant rendering.
+ */
+export interface FinalEpochStats {
+  sensitivity: number;    // TP / (TP + FN) - Recall
+  specificity: number;    // TN / (TN + FP)
+  precision_cm: number;   // TP / (TP + FP)
+  accuracy_cm: number;    // (TP + TN) / Total
+  f1_cm: number;          // 2 * (P * R) / (P + R)
 }
 
 export interface ExperimentConfiguration {

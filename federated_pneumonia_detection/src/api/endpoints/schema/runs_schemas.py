@@ -10,6 +10,16 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
+class FinalEpochStats(BaseModel):
+    """Final epoch confusion matrix statistics."""
+
+    sensitivity: float = Field(ge=0, le=1, description="TP / (TP + FN) - Recall")
+    specificity: float = Field(ge=0, le=1, description="TN / (TN + FP)")
+    precision_cm: float = Field(ge=0, le=1, description="TP / (TP + FP)")
+    accuracy_cm: float = Field(ge=0, le=1, description="(TP + TN) / Total")
+    f1_cm: float = Field(ge=0, le=1, description="2 * (P * R) / (P + R)")
+
+
 class ModeMetrics(BaseModel):
     """Aggregated metrics for a training mode.
 
@@ -144,6 +154,9 @@ class RunSummary(BaseModel):
     federated_info: Optional[FederatedInfo] = Field(
         None,
         description="Federated-specific info",
+    )
+    final_epoch_stats: Optional[FinalEpochStats] = Field(
+        None, description="Pre-computed final epoch statistics"
     )
 
 

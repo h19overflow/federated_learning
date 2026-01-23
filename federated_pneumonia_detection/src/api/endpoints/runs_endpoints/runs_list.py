@@ -6,12 +6,11 @@ from fastapi import APIRouter, HTTPException, Query
 
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.boundary.models import Run
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 from ..schema.runs_schemas import BackfillResponse, RunsListResponse, RunSummary
 from .shared.services import BackfillService
-from .shared.summary_builder import RunSummaryBuilder
+from .shared.summary_builder import FederatedRunSummarizer, RunSummaryBuilder
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -54,23 +53,45 @@ async def list_all_runs(
     db = get_session()
 
     try:
-        query = db.query(Run)
+        # Use CRUD method for filtered list with pagination
+        runs, total_count = run_crud.list_with_filters(
+            db,
+            status=status,
+            training_mode=training_mode,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            limit=limit,
+            offset=offset,
+        )
 
-        if status:
-            query = query.filter(Run.status == status)
-        if training_mode:
-            query = query.filter(Run.training_mode == training_mode)
+        # Batch fetch final epoch stats for all runs
+        run_ids = [r.id for r in runs]
+        final_stats_map = {}
 
-        sort_column = getattr(Run, sort_by, Run.start_time)
-        if sort_order == "desc":
-            query = query.order_by(sort_column.desc())
-        else:
-            query = query.order_by(sort_column.asc())
+        # Batch fetch for centralized runs
+        centralized_ids = [r.id for r in runs if r.training_mode == "centralized"]
+        if centralized_ids:
+            final_stats_map.update(
+                run_crud.batch_get_final_metrics(db, centralized_ids)
+            )
 
-        total_count = query.count()
+        # Batch fetch for federated runs
+        federated_ids = [r.id for r in runs if r.training_mode == "federated"]
+        if federated_ids:
+            final_stats_map.update(
+                run_crud.batch_get_federated_final_stats(db, federated_ids)
+            )
 
-        runs = query.limit(limit).offset(offset).all()
-        run_summaries = [RunSummaryBuilder.build(run, db) for run in runs]
+        # Build summaries with attached stats
+        run_summaries = []
+        for run in runs:
+            summary = RunSummaryBuilder._build_base_summary(run)
+            if run.training_mode == "federated":
+                summary["federated_info"] = FederatedRunSummarizer.summarize(run, db)
+            else:
+                summary["federated_info"] = None
+            summary["final_epoch_stats"] = final_stats_map.get(run.id)
+            run_summaries.append(summary)
 
         return RunsListResponse(
             runs=[RunSummary(**summary) for summary in run_summaries],

@@ -41,6 +41,9 @@ model_enhancement_results/
 checkpoints/
 lightning_logs/
 
+# Backfill scripts (one-time use)
+scripts/backfill_final_epoch_stats.py
+
 # IDE files
 .idea/
 .vscode/
@@ -96,6 +99,7 @@ AGENTS.md*
 
 # Planning and documentation artifacts (temporary/generated)
 .planning/*.md
+planning/final-epoch-stats-fix/
 
 # Generated data files (results, analysis, plots)
 *.pdf

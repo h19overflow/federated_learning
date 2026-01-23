@@ -1,11 +1,17 @@
 """Shared run summary construction logic for centralized and federated modes."""
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+from sqlalchemy import desc
 
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
-from federated_pneumonia_detection.src.boundary.models import Run
+from federated_pneumonia_detection.src.boundary.models import (
+    Run,
+    RunMetric,
+    ServerEvaluation,
+)
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,6 +28,7 @@ class RunSummaryBuilder:
             summary["federated_info"] = FederatedRunSummarizer.summarize(run, db)
         else:
             summary["federated_info"] = None
+        summary["final_epoch_stats"] = RunSummaryBuilder._get_final_epoch_stats(run, db)
         return summary
 
     @staticmethod
@@ -52,6 +59,48 @@ class RunSummaryBuilder:
             "metrics_count": len(run.metrics) if hasattr(run, "metrics") else 0,
             "run_description": run.run_description,
         }
+
+    @staticmethod
+    def _get_final_epoch_stats(run: Run, db) -> Optional[Dict[str, float]]:
+        """Retrieve persisted final epoch stats for a run."""
+        if run.training_mode == "centralized":
+            # Query RunMetric for 'final_*' metrics
+            final_metrics = (
+                db.query(RunMetric)
+                .filter(
+                    RunMetric.run_id == run.id,
+                    RunMetric.metric_name.in_(
+                        [
+                            "final_sensitivity",
+                            "final_specificity",
+                            "final_precision_cm",
+                            "final_accuracy_cm",
+                            "final_f1_cm",
+                        ]
+                    ),
+                )
+                .all()
+            )
+
+            if len(final_metrics) == 5:
+                return {
+                    m.metric_name.replace("final_", ""): m.metric_value
+                    for m in final_metrics
+                }
+
+        elif run.training_mode == "federated":
+            # Query last ServerEvaluation.additional_metrics
+            last_eval = (
+                db.query(ServerEvaluation)
+                .filter(ServerEvaluation.run_id == run.id)
+                .order_by(desc(ServerEvaluation.round_number))
+                .first()
+            )
+
+            if last_eval and last_eval.additional_metrics:
+                return last_eval.additional_metrics.get("final_epoch_stats")
+
+        return None
 
 
 class FederatedRunSummarizer:

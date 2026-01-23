@@ -1,0 +1,39 @@
+"""Constants package for metric names and other configuration values."""
+
+from .metric_names import (
+    BALANCED_ACCURACY,
+    CONFUSION_MATRIX,
+    F1_SCORE,
+    FALSE_NEGATIVES,
+    FALSE_POSITIVES,
+    FINAL_EPOCH_STATS,
+    FINAL_PREFIX,
+    PRECISION,
+    SENSITIVITY,
+    SPECIFICITY,
+    TRAIN_ACCURACY,
+    TRAIN_LOSS,
+    TRUE_NEGATIVES,
+    TRUE_POSITIVES,
+    VAL_ACCURACY,
+    VAL_LOSS,
+)
+
+__all__ = [
+    "FINAL_PREFIX",
+    "VAL_LOSS",
+    "VAL_ACCURACY",
+    "TRAIN_LOSS",
+    "TRAIN_ACCURACY",
+    "CONFUSION_MATRIX",
+    "TRUE_POSITIVES",
+    "TRUE_NEGATIVES",
+    "FALSE_POSITIVES",
+    "FALSE_NEGATIVES",
+    "FINAL_EPOCH_STATS",
+    "SENSITIVITY",
+    "SPECIFICITY",
+    "PRECISION",
+    "F1_SCORE",
+    "BALANCED_ACCURACY",
+]

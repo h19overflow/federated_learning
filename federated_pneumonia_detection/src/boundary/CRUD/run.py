@@ -1,12 +1,17 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import Session, selectinload
 
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
-from federated_pneumonia_detection.src.boundary.models import Run
+from federated_pneumonia_detection.src.boundary.models import (
+    Run,
+    RunMetric,
+    ServerEvaluation,
+)
 
 
 class RunCRUD(BaseCRUD[Run]):
@@ -243,6 +248,152 @@ class RunCRUD(BaseCRUD[Run]):
             self.logger.error(f"Failed to persist metrics to database: {e}")
             db.rollback()
             raise
+
+    def list_with_filters(
+        self,
+        db: Session,
+        status: Optional[str] = None,
+        training_mode: Optional[str] = None,
+        sort_by: str = "start_time",
+        sort_order: str = "desc",
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Tuple[List[Run], int]:
+        """
+        List runs with filters, sorting, and pagination.
+
+        Args:
+            db: Database session
+            status: Filter by run status (optional)
+            training_mode: Filter by training mode (optional)
+            sort_by: Field to sort by (default: "start_time")
+            sort_order: Sort direction "asc" or "desc" (default: "desc")
+            limit: Maximum number of runs to return (default: 100)
+            offset: Number of runs to skip (default: 0)
+
+        Returns:
+            Tuple of (list of Run objects, total count)
+        """
+        query = db.query(self.model)
+
+        if status:
+            query = query.filter(self.model.status == status)
+        if training_mode:
+            query = query.filter(self.model.training_mode == training_mode)
+
+        total_count = query.count()
+
+        sort_column = getattr(self.model, sort_by, self.model.start_time)
+        if sort_order == "desc":
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+
+        # Eager load metrics and clients to prevent N+1 queries
+        runs = (
+            query.options(selectinload(Run.metrics), selectinload(Run.clients))
+            .limit(limit)
+            .offset(offset)
+            .all()
+        )
+        return runs, total_count
+
+    def batch_get_final_metrics(
+        self,
+        db: Session,
+        run_ids: List[int],
+    ) -> Dict[int, Dict[str, float]]:
+        """
+        Batch fetch final metrics for centralized runs.
+
+        Retrieves all metrics with names starting with "final_" for the given run IDs.
+
+        Args:
+            db: Database session
+            run_ids: List of run IDs to fetch metrics for
+
+        Returns:
+            Dictionary mapping run_id to dict of metric_name -> metric_value
+        """
+        if not run_ids:
+            return {}
+
+        final_stats_map: Dict[int, Dict[str, float]] = {}
+
+        final_metrics = (
+            db.query(RunMetric)
+            .filter(
+                RunMetric.run_id.in_(run_ids),
+                RunMetric.metric_name.like("final_%"),
+            )
+            .all()
+        )
+
+        # Group by run_id and strip "final_" prefix from metric names
+        for metric in final_metrics:
+            if metric.run_id not in final_stats_map:
+                final_stats_map[metric.run_id] = {}
+            stat_name = metric.metric_name.replace("final_", "")
+            final_stats_map[metric.run_id][stat_name] = metric.metric_value
+
+        return final_stats_map
+
+    def batch_get_federated_final_stats(
+        self,
+        db: Session,
+        run_ids: List[int],
+    ) -> Dict[int, Dict[str, float]]:
+        """
+        Batch fetch final stats for federated runs from server evaluations.
+
+        Retrieves the latest server evaluation for each run and extracts
+        "final_epoch_stats" from additional_metrics.
+
+        Args:
+            db: Database session
+            run_ids: List of run IDs to fetch stats for
+
+        Returns:
+            Dictionary mapping run_id to final_epoch_stats dict
+        """
+        if not run_ids:
+            return {}
+
+        final_stats_map: Dict[int, Dict[str, float]] = {}
+
+        # Subquery for max round per run
+        max_rounds = (
+            db.query(
+                ServerEvaluation.run_id,
+                func.max(ServerEvaluation.round_number).label("max_round"),
+            )
+            .filter(ServerEvaluation.run_id.in_(run_ids))
+            .group_by(ServerEvaluation.run_id)
+            .subquery()
+        )
+
+        # Get last evaluation for each run
+        last_evals = (
+            db.query(ServerEvaluation)
+            .join(
+                max_rounds,
+                (ServerEvaluation.run_id == max_rounds.c.run_id)
+                & (ServerEvaluation.round_number == max_rounds.c.max_round),
+            )
+            .all()
+        )
+
+        # Extract final_epoch_stats from additional_metrics
+        for eval in last_evals:
+            if (
+                eval.additional_metrics
+                and "final_epoch_stats" in eval.additional_metrics
+            ):
+                final_stats_map[eval.run_id] = eval.additional_metrics[
+                    "final_epoch_stats"
+                ]
+
+        return final_stats_map
 
 
 run_crud = RunCRUD()

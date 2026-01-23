@@ -189,6 +189,10 @@ class ConfigurableFedAvg(FedAvg):
 
             # Persist client-aggregated metrics to database
             self._persist_aggregated_metrics(server_round, round_metrics)
+
+            # Persist final epoch stats on last round
+            if server_round == self.total_rounds and self.run_id:
+                self._persist_final_epoch_stats(round_metrics)
         else:
             print(f"[Strategy] Warning: No aggregated metrics for round {server_round}")
 
@@ -241,15 +245,15 @@ class ConfigurableFedAvg(FedAvg):
         """
         if not hasattr(self, "run_id") or self.run_id is None:
             print(
-                f"[Strategy] Warning: No run_id set, skipping aggregated metrics persistence"
+                "[Strategy] Warning: No run_id set, skipping aggregated metrics persistence"
             )
             return
 
         try:
-            from federated_pneumonia_detection.src.boundary.engine import get_session
             from federated_pneumonia_detection.src.boundary.CRUD.run_metric import (
                 run_metric_crud,
             )
+            from federated_pneumonia_detection.src.boundary.engine import get_session
 
             db = get_session()
 
@@ -293,6 +297,47 @@ class ConfigurableFedAvg(FedAvg):
         except Exception as e:
             print(f"[Strategy] Error persisting aggregated metrics: {e}")
             # Don't raise - persistence failure shouldn't break training
+
+    def _persist_final_epoch_stats(self, round_metrics: Dict[str, float]) -> None:
+        """Persist final epoch confusion matrix statistics for federated run.
+
+        Args:
+            round_metrics: Aggregated metrics from final round
+        """
+        # Check if all CM values present
+        cm_keys = ["cm_tp", "cm_tn", "cm_fp", "cm_fn"]
+        if not all(k in round_metrics for k in cm_keys):
+            print("[Strategy] Warning: Missing CM values, skipping final epoch stats")
+            return
+
+        try:
+            # Lazy import to avoid import-time DB connection
+            from federated_pneumonia_detection.src.internals.services.final_epoch_stats_service import (
+                FinalEpochStatsService,
+            )
+            from federated_pneumonia_detection.src.boundary.engine import get_session
+
+            cm_dict = {
+                "true_positives": int(round_metrics["cm_tp"]),
+                "true_negatives": int(round_metrics["cm_tn"]),
+                "false_positives": int(round_metrics["cm_fp"]),
+                "false_negatives": int(round_metrics["cm_fn"]),
+            }
+
+            db = get_session()
+            try:
+                FinalEpochStatsService.calculate_and_persist_federated(
+                    db=db,
+                    run_id=self.run_id,
+                    round_metrics=round_metrics,
+                )
+
+                print(f"[Strategy] Persisted final epoch stats for run {self.run_id}")
+            finally:
+                db.close()
+
+        except Exception as e:
+            print(f"[Strategy] Error persisting final epoch stats: {e}")
 
     def set_total_rounds(self, total_rounds: int) -> None:
         """Set the total number of rounds for progress tracking."""

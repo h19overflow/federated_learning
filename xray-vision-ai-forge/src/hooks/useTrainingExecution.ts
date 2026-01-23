@@ -414,66 +414,83 @@ export const useTrainingExecution = (
     });
 
     ws.on("training_end", (data: TrainingEndData) => {
-      // Flush any remaining buffered messages before showing completion
-      flushMessageBuffer();
+       // Validate experiment_name matches current training session
+       // This prevents premature completion from other experiments
+       // For federated training, accept backend's federated_* naming convention
+       const isFrontendFederated = expId.includes('_fed_');
+       const isBackendFederated = data.experiment_name?.startsWith('federated_');
+       
+       if (data.experiment_name && data.experiment_name !== expId) {
+         // Allow federated experiments to match by mode (frontend and backend use different naming)
+         if (!(isFrontendFederated && isBackendFederated)) {
+           console.warn(
+             `[TrainingExecution] Ignoring training_end for different experiment: ` +
+             `expected="${expId}", got="${data.experiment_name}"`,
+           );
+           return; // Ignore this event - it's for a different experiment
+         }
+       }
 
-      if (data.status === "completed") {
-        addStatusMessage(
-          "success",
-          `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-          undefined,
-          { immediate: true },
-        );
-        addStatusMessage(
-          "success",
-          `✅ Training completed! Run ID: ${data.run_id}`,
-          undefined,
-          { immediate: true },
-        );
-        addStatusMessage(
-          "info",
-          `Best epoch: ${data.best_epoch}, Best recall: ${data.best_val_recall?.toFixed(4) || "N/A"}`,
-          undefined,
-          { immediate: true },
-        );
-        addStatusMessage(
-          "info",
-          `Total epochs: ${data.total_epochs}, Duration: ${data.training_duration || "N/A"}`,
-          undefined,
-          { immediate: true },
-        );
-        addStatusMessage(
-          "success",
-          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`,
-          undefined,
-          { immediate: true },
-        );
-        setProgress(100);
-        setIsRunning(false);
-        setOverallStatus("completed");
-        toast.success("Training completed successfully!");
+       // Flush any remaining buffered messages before showing completion
+       flushMessageBuffer();
 
-        // Trigger navigation to results view
-        if (data.run_id) {
-          onComplete(data.run_id);
-        }
-      } else {
-        addStatusMessage(
-          "error",
-          `Training failed for run ${data.run_id}`,
-          undefined,
-          { immediate: true },
-        );
-        setIsRunning(false);
-        setOverallStatus("error");
-        toast.error("Training failed!");
-      }
+       if (data.status === "completed") {
+         addStatusMessage(
+           "success",
+           `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+           undefined,
+           { immediate: true },
+         );
+         addStatusMessage(
+           "success",
+           `✅ Training completed! Run ID: ${data.run_id}`,
+           undefined,
+           { immediate: true },
+         );
+         addStatusMessage(
+           "info",
+           `Best epoch: ${data.best_epoch}, Best recall: ${data.best_val_recall?.toFixed(4) || "N/A"}`,
+           undefined,
+           { immediate: true },
+         );
+         addStatusMessage(
+           "info",
+           `Total epochs: ${data.total_epochs}, Duration: ${data.training_duration || "N/A"}`,
+           undefined,
+           { immediate: true },
+         );
+         addStatusMessage(
+           "success",
+           `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`,
+           undefined,
+           { immediate: true },
+         );
+         setProgress(100);
+         setIsRunning(false);
+         setOverallStatus("completed");
+         toast.success("Training completed successfully!");
 
-      if (wsRef.current) {
-        wsRef.current.disconnect();
-        wsRef.current = null;
-      }
-    });
+         // Trigger navigation to results view
+         if (data.run_id) {
+           onComplete(data.run_id);
+         }
+       } else {
+         addStatusMessage(
+           "error",
+           `Training failed for run ${data.run_id}`,
+           undefined,
+           { immediate: true },
+         );
+         setIsRunning(false);
+         setOverallStatus("error");
+         toast.error("Training failed!");
+       }
+
+       if (wsRef.current) {
+         wsRef.current.disconnect();
+         wsRef.current = null;
+       }
+     });
 
     ws.on("early_stopping", (data: EarlyStoppingData) => {
       console.log("[TrainingExecution] early_stopping handler called:", data);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, Footer, WelcomeGuide } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -18,59 +18,15 @@ import {
 import { toast } from "sonner";
 import api from "@/services/api";
 import { AnalyticsTab } from "@/components/analytics";
+import { RunSummary } from "@/types/runs";
 
-interface FederatedInfo {
-  num_rounds: number;
-  num_clients: number;
-  has_server_evaluation: boolean;
-  best_accuracy?: number;
-  best_recall?: number;
-  latest_round?: number;
-  latest_accuracy?: number;
-}
-
-interface RunSummary {
-  id: number;
-  training_mode: string;
-  status: string;
-  start_time: string | null;
-  end_time: string | null;
-  best_val_recall: number;
-  best_val_accuracy: number;
-  metrics_count: number;
-  run_description: string | null;
-  federated_info: FederatedInfo | null;
-}
-
-interface ConfusionMatrixSummary {
-  sensitivity: number;
-  specificity: number;
-  precision_cm: number;
-  accuracy_cm: number;
-  f1_cm: number;
-}
-
-const SavedExperiments = () => {
+const SavedExperiments = memo(() => {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [summaryStats, setSummaryStats] = useState<
-    Record<number, ConfusionMatrixSummary | null>
-  >({});
-  const [loadingStats, setLoadingStats] = useState<Record<number, boolean>>({});
   const [activeTab, setActiveTab] = useState("experiments");
   const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
   const navigate = useNavigate();
-
-  // Fetch summary stats when card is viewed
-  const handleCardHover = async (runId: number) => {
-    if (loadingStats[runId] || summaryStats.hasOwnProperty(runId)) {
-      return; // Already loading or loaded
-    }
-    setLoadingStats((prev) => ({ ...prev, [runId]: true }));
-    await fetchSummaryStatistics(runId);
-    setLoadingStats((prev) => ({ ...prev, [runId]: false }));
-  };
 
   useEffect(() => {
     const fetchRuns = async () => {
@@ -78,9 +34,13 @@ const SavedExperiments = () => {
         setLoading(true);
         const response = await api.results.listRuns();
         setRuns(response.runs);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Error fetching runs:", err);
-        setError(err.message || "Failed to load saved experiments");
+        if (err instanceof Error) {
+          setError(err.message || "Failed to load saved experiments");
+        } else {
+          setError("Failed to load saved experiments");
+        }
         toast.error("Failed to load experiments");
       } finally {
         setLoading(false);
@@ -90,103 +50,98 @@ const SavedExperiments = () => {
     fetchRuns();
   }, []);
 
-  const viewRunResults = (runId: number) => {
-    navigate("/experiment", {
-      state: {
-        viewRunId: runId,
-        goToStep: 4,
-      },
-    });
-  };
+   const viewRunResults = useCallback((runId: number) => {
+     navigate("/experiment", {
+       state: {
+         viewRunId: runId,
+         goToStep: 4,
+       },
+     });
+   }, [navigate]);
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Unknown date";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return dateString;
-    }
-  };
+   const formatDate = useCallback((dateString: string | null) => {
+     if (!dateString) return "Unknown date";
+     try {
+       const date = new Date(dateString);
+       return date.toLocaleDateString("en-US", {
+         month: "short",
+         day: "numeric",
+         year: "numeric",
+         hour: "2-digit",
+         minute: "2-digit",
+       });
+     } catch {
+       return dateString;
+     }
+   }, []);
 
-  const fetchSummaryStatistics = async (runId: number) => {
-    // Return early if already cached
-    if (summaryStats.hasOwnProperty(runId)) {
-      return summaryStats[runId];
-    }
+    // Helper function: Check if centralized metrics should be displayed
+    const shouldShowCentralizedMetrics = (run: RunSummary): boolean => {
+      return run.best_val_recall > 0 || run.best_val_accuracy > 0;
+    };
 
-    try {
-      const results = await api.results.getRunMetrics(runId);
-      if (results.confusion_matrix) {
-        const stats: ConfusionMatrixSummary = {
-          sensitivity: results.confusion_matrix.sensitivity,
-          specificity: results.confusion_matrix.specificity,
-          precision_cm: results.confusion_matrix.precision_cm,
-          accuracy_cm: results.confusion_matrix.accuracy_cm,
-          f1_cm: results.confusion_matrix.f1_cm,
-        };
-        setSummaryStats((prev) => ({ ...prev, [runId]: stats }));
-        return stats;
-      }
-    } catch (err) {
-      console.error(
-        `Failed to fetch summary statistics for run ${runId}:`,
-        err,
-      );
-      setSummaryStats((prev) => ({ ...prev, [runId]: null }));
-    }
-    return null;
-  };
+    // Helper function: Check if federated evaluation metrics should be displayed
+    const shouldShowFederatedEvalMetrics = (federatedInfo?: RunSummary['federated_info']): boolean => {
+      if (!federatedInfo?.has_server_evaluation) return false;
+      return federatedInfo.best_accuracy !== null || federatedInfo.best_recall !== null;
+    };
 
-  const SummaryStatisticsPreview = ({
-    stats,
-    loading = false,
-  }: {
-    stats?: ConfusionMatrixSummary | null;
-    loading?: boolean;
-  }) => {
-    if (!stats) return null;
+    // Helper function: Check if accuracy metric is valid
+    const hasValidAccuracy = (value: number | null | undefined): boolean => {
+      return value !== null && value !== undefined;
+    };
 
-    return (
-      <div className="pt-3 border-t border-[hsl(168_20%_92%)]">
-        <p className="text-xs text-[hsl(215_15%_55%)] mb-2 uppercase tracking-wide">
-          Final Epoch Statistics
-        </p>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
-            <p className="text-[9px] text-[hsl(215_15%_50%)]">Recall</p>
-            <p className="font-semibold text-[hsl(172_63%_28%)]">
-              {(stats.sensitivity * 100).toFixed(0)}%
-            </p>
-          </div>
-          <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
-            <p className="text-[9px] text-[hsl(215_15%_50%)]">Specificity</p>
-            <p className="font-semibold text-[hsl(172_63%_28%)]">
-              {(stats.specificity * 100).toFixed(0)}%
-            </p>
-          </div>
-          <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
-            <p className="text-[9px] text-[hsl(215_15%_50%)]">Precision</p>
-            <p className="font-semibold text-[hsl(172_63%_28%)]">
-              {(stats.precision_cm * 100).toFixed(0)}%
-            </p>
-          </div>
-          <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
-            <p className="text-[9px] text-[hsl(215_15%_50%)]">F1 Score</p>
-            <p className="font-semibold text-[hsl(172_63%_28%)]">
-              {(stats.f1_cm * 100).toFixed(0)}%
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  };
+    // Helper function: Check if recall metric is valid
+    const hasValidRecall = (value: number | null | undefined): boolean => {
+      return value !== null && value !== undefined;
+    };
+
+    // Helper function: Check if no metrics are available
+    const hasNoMetrics = (run: RunSummary): boolean => {
+      return run.best_val_recall === 0 && run.best_val_accuracy === 0;
+    };
+
+    const SummaryStatisticsPreview = memo(({
+      stats,
+    }: {
+      stats?: RunSummary['final_epoch_stats'];
+    }) => {
+      if (!stats) return null;
+
+      return (
+        <div className="pt-3 border-t border-[hsl(168_20%_92%)]">
+          <p className="text-xs text-[hsl(215_15%_55%)] mb-2 uppercase tracking-wide">
+            Final Epoch Statistics
+          </p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
+              <p className="text-[9px] text-[hsl(215_15%_50%)]">Recall</p>
+              <p className="font-semibold text-[hsl(172_63%_28%)]">
+                {(stats.sensitivity * 100).toFixed(0)}%
+              </p>
+            </div>
+            <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
+              <p className="text-[9px] text-[hsl(215_15%_50%)]">Specificity</p>
+              <p className="font-semibold text-[hsl(172_63%_28%)]">
+                {(stats.specificity * 100).toFixed(0)}%
+             </p>
+           </div>
+           <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
+             <p className="text-[9px] text-[hsl(215_15%_50%)]">Precision</p>
+             <p className="font-semibold text-[hsl(172_63%_28%)]">
+               {(stats.precision_cm * 100).toFixed(0)}%
+             </p>
+           </div>
+           <div className="bg-white rounded border border-[hsl(210_15%_92%)] p-1.5 text-center">
+             <p className="text-[9px] text-[hsl(215_15%_50%)]">F1 Score</p>
+             <p className="font-semibold text-[hsl(172_63%_28%)]">
+               {(stats.f1_cm * 100).toFixed(0)}%
+             </p>
+           </div>
+         </div>
+       </div>
+     );
+   });
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -301,7 +256,6 @@ const SavedExperiments = () => {
                       <div
                         key={run.id}
                         className="group relative bg-white rounded-[1.5rem] border border-[hsl(210_15%_92%)] p-6 hover:shadow-xl hover:shadow-[hsl(172_40%_85%)]/25 transition-all duration-500 hover:-translate-y-1 flex flex-col h-full"
-                        onMouseEnter={() => handleCardHover(run.id)}
                         style={{
                           animation: "fadeIn 0.4s ease-out forwards",
                           animationDelay: `${index * 0.05}s`,
@@ -345,122 +299,100 @@ const SavedExperiments = () => {
                         </div>
 
                         {/* Metrics Section - flex-grow to push footer down */}
-                        <div className="bg-[hsl(168_25%_98%)] rounded-xl p-4 mb-4 border border-[hsl(168_20%_94%)] flex-grow">
-                          {/* Centralized Metrics */}
-                          {!isFederated &&
-                            (run.best_val_recall > 0 ||
-                              run.best_val_accuracy > 0) && (
-                              <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
-                                    <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
-                                      Best Val Accuracy
-                                    </p>
-                                    <p className="text-xl font-semibold text-[hsl(172_43%_20%)]">
-                                      {(run.best_val_accuracy * 100).toFixed(1)}
-                                      %
-                                    </p>
-                                  </div>
-                                  <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
-                                    <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
-                                      Best Val Recall
-                                    </p>
-                                    <p className="text-xl font-semibold text-[hsl(172_63%_28%)]">
-                                      {(run.best_val_recall * 100).toFixed(1)}%
-                                    </p>
-                                  </div>
-                                </div>
-                                <SummaryStatisticsPreview
-                                  stats={summaryStats[run.id]}
-                                />
-                              </div>
-                            )}
+                         <div className="bg-[hsl(168_25%_98%)] rounded-xl p-4 mb-4 border border-[hsl(168_20%_94%)] flex-grow">
+                           {/* Centralized Metrics */}
+                           {!isFederated && shouldShowCentralizedMetrics(run) && (
+                             <div className="space-y-3">
+                               <div className="grid grid-cols-2 gap-3">
+                                 <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
+                                   <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
+                                     Best Val Accuracy
+                                   </p>
+                                   <p className="text-xl font-semibold text-[hsl(172_43%_20%)]">
+                                     {(run.best_val_accuracy * 100).toFixed(1)}%
+                                   </p>
+                                 </div>
+                                 <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
+                                   <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
+                                     Best Val Recall
+                                   </p>
+                                   <p className="text-xl font-semibold text-[hsl(172_63%_28%)]">
+                                     {(run.best_val_recall * 100).toFixed(1)}%
+                                   </p>
+                                 </div>
+                               </div>
+                               <SummaryStatisticsPreview stats={run.final_epoch_stats} />
+                             </div>
+                           )}
 
-                          {/* Federated Metrics */}
-                          {isFederated && federatedInfo && (
-                            <div className="space-y-3">
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
-                                  <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
-                                    Rounds
-                                  </p>
-                                  <p className="text-lg font-semibold text-[hsl(172_43%_20%)]">
-                                    {federatedInfo.num_rounds}
-                                  </p>
-                                </div>
-                                <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
-                                  <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
-                                    Clients
-                                  </p>
-                                  <p className="text-lg font-semibold text-[hsl(172_43%_20%)]">
-                                    {federatedInfo.num_clients}
-                                  </p>
-                                </div>
-                              </div>
+                           {/* Federated Metrics */}
+                           {isFederated && federatedInfo && (
+                             <div className="space-y-3">
+                               <div className="grid grid-cols-2 gap-3">
+                                 <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
+                                   <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
+                                     Rounds
+                                   </p>
+                                   <p className="text-lg font-semibold text-[hsl(172_43%_20%)]">
+                                     {federatedInfo.num_rounds}
+                                   </p>
+                                 </div>
+                                 <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
+                                   <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
+                                     Clients
+                                   </p>
+                                   <p className="text-lg font-semibold text-[hsl(172_43%_20%)]">
+                                     {federatedInfo.num_clients}
+                                   </p>
+                                 </div>
+                               </div>
 
-                              {federatedInfo.has_server_evaluation &&
-                                (federatedInfo.best_accuracy !== null ||
-                                  federatedInfo.best_recall !== null) && (
-                                  <div className="pt-2 border-t border-[hsl(168_20%_92%)]">
-                                    <div className="grid grid-cols-2 gap-3">
-                                      {federatedInfo.best_accuracy !== null &&
-                                        federatedInfo.best_accuracy !==
-                                          undefined && (
-                                          <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
-                                            <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
-                                              Best Val Accuracy
-                                            </p>
-                                            <p className="text-xl font-semibold text-[hsl(172_43%_20%)]">
-                                              {(
-                                                federatedInfo.best_accuracy *
-                                                100
-                                              ).toFixed(1)}
-                                              %
-                                            </p>
-                                          </div>
-                                        )}
-                                      {federatedInfo.best_recall !== null &&
-                                        federatedInfo.best_recall !==
-                                          undefined && (
-                                          <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
-                                            <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
-                                              Best Val Recall
-                                            </p>
-                                            <p className="text-xl font-semibold text-[hsl(172_63%_28%)]">
-                                              {(
-                                                federatedInfo.best_recall * 100
-                                              ).toFixed(1)}
-                                              %
-                                            </p>
-                                          </div>
-                                        )}
-                                    </div>
-                                  </div>
-                                )}
+                               {shouldShowFederatedEvalMetrics(federatedInfo) && (
+                                 <div className="pt-2 border-t border-[hsl(168_20%_92%)]">
+                                   <div className="grid grid-cols-2 gap-3">
+                                     {hasValidAccuracy(federatedInfo.best_accuracy) && (
+                                       <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
+                                         <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
+                                           Best Val Accuracy
+                                         </p>
+                                         <p className="text-xl font-semibold text-[hsl(172_43%_20%)]">
+                                           {((federatedInfo.best_accuracy ?? 0) * 100).toFixed(1)}%
+                                         </p>
+                                       </div>
+                                     )}
+                                     {hasValidRecall(federatedInfo.best_recall) && (
+                                       <div className="bg-white rounded-lg p-2.5 border border-[hsl(210_15%_92%)]">
+                                         <p className="text-[10px] uppercase tracking-wide text-[hsl(215_15%_55%)] mb-0.5">
+                                           Best Val Recall
+                                         </p>
+                                         <p className="text-xl font-semibold text-[hsl(172_63%_28%)]">
+                                           {((federatedInfo.best_recall ?? 0) * 100).toFixed(1)}%
+                                         </p>
+                                       </div>
+                                     )}
+                                   </div>
+                                 </div>
+                               )}
 
-                              {!federatedInfo.has_server_evaluation && (
-                                <div className="flex items-center gap-2 pt-2 border-t border-[hsl(168_20%_92%)]">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-[hsl(35_70%_50%)]" />
-                                  <p className="text-xs text-[hsl(35_70%_45%)]">
-                                    No server evaluation data
-                                  </p>
-                                </div>
-                              )}
-                              <SummaryStatisticsPreview
-                                stats={summaryStats[run.id]}
-                              />
-                            </div>
-                          )}
+                               {!federatedInfo.has_server_evaluation && (
+                                 <div className="flex items-center gap-2 pt-2 border-t border-[hsl(168_20%_92%)]">
+                                   <div className="w-1.5 h-1.5 rounded-full bg-[hsl(35_70%_50%)]" />
+                                   <p className="text-xs text-[hsl(35_70%_45%)]">
+                                     No server evaluation data
+                                   </p>
+                                 </div>
+                               )}
+                               <SummaryStatisticsPreview stats={run.final_epoch_stats} />
+                             </div>
+                           )}
 
-                          {/* No metrics fallback */}
-                          {!isFederated &&
-                            run.best_val_recall === 0 &&
-                            run.best_val_accuracy === 0 && (
-                              <div className="text-center py-2">
-                                <p className="text-sm text-[hsl(215_15%_55%)]">
-                                  No metrics available
-                                </p>
-                              </div>
+                           {/* No metrics fallback */}
+                           {!isFederated && hasNoMetrics(run) && (
+                             <div className="text-center py-2">
+                               <p className="text-sm text-[hsl(215_15%_55%)]">
+                                 No metrics available
+                               </p>
+                             </div>
                             )}
                         </div>
 
@@ -546,6 +478,6 @@ const SavedExperiments = () => {
       <Footer />
     </div>
   );
-};
+});
 
 export default SavedExperiments;

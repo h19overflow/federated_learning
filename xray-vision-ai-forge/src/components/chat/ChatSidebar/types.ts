@@ -1,3 +1,5 @@
+import { RunSummary } from "@/types/runs";
+
 export interface Message {
   role: "user" | "assistant";
   content: string;
@@ -19,18 +21,8 @@ export interface ChatSession {
   updated_at: string;
 }
 
-export interface RunSummary {
-  id: number;
-  training_mode: string;
-  status: string;
-  start_time: string | null;
-  end_time: string | null;
-  best_val_recall: number;
-  metrics_count: number;
-  run_description: string | null;
-  federated_info: any;
-}
-
 export interface ChatSidebarProps {
   apiUrl?: string;
 }
+
+export { RunSummary };

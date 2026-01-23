@@ -1,9 +1,12 @@
+import logging
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 from federated_pneumonia_detection.src.boundary.models import RunMetric
+
+logger = logging.getLogger(__name__)
 
 
 # TODO: run metrics are still not being recordede for the federated training mode
@@ -126,6 +129,59 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
             .order_by(self.model.step)
             .all()
         )
+
+    def create_final_epoch_stats(
+        self,
+        db: Session,
+        run_id: int,
+        stats_dict: Dict[str, float],
+        final_epoch: int,
+    ) -> List[RunMetric]:
+        """
+        Persist final epoch confusion matrix statistics as RunMetric rows.
+
+        Args:
+            db: Database session
+            run_id: Run ID
+            stats_dict: Dict with keys: sensitivity, specificity, precision_cm, accuracy_cm, f1_cm
+            final_epoch: Final epoch number (step value)
+
+        Returns:
+            List of created RunMetric instances
+        """
+        # Map stat keys to metric names
+        metric_mapping = {
+            "sensitivity": "final_sensitivity",
+            "specificity": "final_specificity",
+            "precision_cm": "final_precision_cm",
+            "accuracy_cm": "final_accuracy_cm",
+            "f1_cm": "final_f1_cm",
+        }
+
+        # Prepare bulk create data
+        metrics_data = []
+        for stat_key, metric_name in metric_mapping.items():
+            if stat_key in stats_dict:
+                metrics_data.append(
+                    {
+                        "run_id": run_id,
+                        "metric_name": metric_name,
+                        "metric_value": stats_dict[stat_key],
+                        "step": final_epoch,
+                        "dataset_type": "validation",
+                        "context": "final_epoch",
+                    }
+                )
+
+        # Create metrics using bulk create for efficiency
+        created_metrics = self.bulk_create(db, metrics_data)
+
+        logger.info(
+            f"Created {len(created_metrics)} final epoch stats for run_id={run_id}, "
+            f"final_epoch={final_epoch}"
+        )
+
+        return created_metrics
 
 
 run_metric_crud = RunMetricCRUD()

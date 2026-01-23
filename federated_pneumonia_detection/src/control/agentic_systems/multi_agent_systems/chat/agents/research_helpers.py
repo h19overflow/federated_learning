@@ -56,6 +56,10 @@ def build_messages(
     messages: List[SystemMessage | HumanMessage | AIMessage] = []
     if include_system:
         messages.append(SystemMessage(content=system_prompt))
-    messages.extend(history_manager.get_messages(session_id))
+
+    # Get messages with max_history limit enforced
+    limit = getattr(history_manager, "max_history", None)
+    messages.extend(history_manager.get_messages(session_id, limit=limit))
+
     messages.append(HumanMessage(content=query))
     return messages

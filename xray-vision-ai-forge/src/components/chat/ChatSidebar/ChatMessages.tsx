@@ -56,43 +56,48 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                 )}
               >
                 {/* Message Toolbar */}
-                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm p-0.5 rounded-lg border border-[hsl(210_15%_90%)] shadow-sm z-10">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onCopy(message.content, index)}
-                    className="h-6 w-6 p-1 rounded-md hover:bg-[hsl(172_40%_94%)] text-[hsl(215_15%_45%)]"
-                    title="Copy message"
-                    aria-label="Copy message"
-                  >
-                    {copiedIndex === index ? (
-                      <Check className="h-3.5 w-3.5 text-green-500" />
-                    ) : (
-                      <Copy className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onQuote(message.content)}
-                    className="h-6 w-6 p-1 rounded-md hover:bg-[hsl(172_40%_94%)] text-[hsl(215_15%_45%)]"
-                    title="Quote message"
-                    aria-label="Quote message"
-                  >
-                    <MessageSquareQuote className="h-3.5 w-3.5" />
-                  </Button>
-                  {message.role === "assistant" && (
+                {message.role === "user" && (
+                  <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm p-0.5 rounded-lg border border-[hsl(210_15%_90%)] shadow-sm z-10">
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => onCopy(message.content, index)}
                       className="h-6 w-6 p-1 rounded-md hover:bg-[hsl(172_40%_94%)] text-[hsl(215_15%_45%)]"
-                      title="Regenerate (Not implemented)"
-                      aria-label="Regenerate response"
+                      title="Copy message"
+                      aria-label="Copy message"
                     >
-                      <RotateCcw className="h-3.5 w-3.5" />
+                      {copiedIndex === index ? (
+                        <Check className="h-3.5 w-3.5 text-green-500" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
                     </Button>
-                  )}
-                </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onQuote(message.content)}
+                      className="h-6 w-6 p-1 rounded-md hover:bg-[hsl(172_40%_94%)] text-[hsl(215_15%_45%)]"
+                      title="Quote message"
+                      aria-label="Quote message"
+                    >
+                      <MessageSquareQuote className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+                {message.role === "assistant" && (
+                  <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm p-0.5 rounded-lg border border-[hsl(210_15%_90%)] shadow-sm z-10">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onQuote(message.content)}
+                      className="h-6 w-6 p-1 rounded-md hover:bg-[hsl(172_40%_94%)] text-[hsl(215_15%_45%)]"
+                      title="Quote message"
+                      aria-label="Quote message"
+                    >
+                      <MessageSquareQuote className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
 
                 {message.role === "assistant" ? (
                   (() => {

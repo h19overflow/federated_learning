@@ -52,8 +52,15 @@ def _calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
     }
 
 
-def _transform_run_to_results(run) -> Dict[str, Any]:
-    """Transform database Run object to ExperimentResults format."""
+def _transform_run_to_results(
+    run, persisted_stats: Optional[Dict[str, float]] = None
+) -> Dict[str, Any]:
+    """Transform database Run object to ExperimentResults format.
+
+    Args:
+        run: Database Run object with related metrics
+        persisted_stats: Optional pre-computed final epoch stats to use instead of calculating
+    """
 
     is_federated = run.training_mode == "federated"
     metrics_by_epoch = defaultdict(dict)
@@ -143,8 +150,12 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
     loss = last_epoch_data.get("val_loss") or 0.0
 
     # Extract confusion matrix values from last epoch
+    # Use persisted stats if available, otherwise calculate on-the-fly
     confusion_matrix_obj = None
-    if last_epoch_data:
+    if persisted_stats:
+        # Use pre-computed stats - only include the stats, not raw CM values
+        confusion_matrix_obj = persisted_stats.copy()
+    elif last_epoch_data:
         tp = last_epoch_data.get("val_cm_tp")
         tn = last_epoch_data.get("val_cm_tn")
         fp = last_epoch_data.get("val_cm_fp")

@@ -6,6 +6,9 @@ from typing import Optional
 
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.engine import get_session
+from federated_pneumonia_detection.src.internals.services.final_epoch_stats_service import (
+    FinalEpochStatsService,
+)
 
 
 def create_training_run(
@@ -47,6 +50,19 @@ def create_training_run(
         db.close()
 
 
+def _get_final_epoch_cm(db, run_id: int):
+    """
+    Get confusion matrix values from final epoch for centralized run.
+
+    Delegates to FinalEpochStatsService.get_cm_centralized().
+
+    Returns:
+        Dict with keys: true_positives, true_negatives, false_positives, false_negatives, epoch
+        or None if incomplete data
+    """
+    return FinalEpochStatsService.get_cm_centralized(db, run_id)
+
+
 def complete_training_run(run_id: int, logger: logging.Logger) -> None:
     """
     Mark a training run as completed in the database.
@@ -59,6 +75,10 @@ def complete_training_run(run_id: int, logger: logging.Logger) -> None:
     db = get_session()
     try:
         run_crud.complete_run(db, run_id=run_id, status="completed")
+
+        # Compute and persist final epoch stats using service
+        FinalEpochStatsService.calculate_and_persist_centralized(db, run_id, logger)
+
         db.commit()
         logger.info(f"Run {run_id} marked as completed")
     except Exception as e:

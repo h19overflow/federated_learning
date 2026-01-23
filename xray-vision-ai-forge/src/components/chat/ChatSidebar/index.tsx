@@ -276,6 +276,12 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (showRunPicker && availableRuns.length === 0) {
+      fetchAvailableRuns();
+    }
+  }, [showRunPicker, availableRuns.length]);
+
   const loadHistory = async (sid: string) => {
     try {
       const response = await fetch(`${apiUrl}/chat/history/${sid}`);
