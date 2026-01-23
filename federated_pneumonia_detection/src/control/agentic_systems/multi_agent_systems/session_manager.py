@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import List, Optional
 
 from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
@@ -23,10 +24,32 @@ logger = logging.getLogger(__name__)
 
 
 class SessionManager:
-    """Coordinates chat session persistence and history cleanup."""
+    """Coordinates chat session persistence and history cleanup (Singleton)."""
+
+    _instance = None
+    _lock = threading.Lock()
+
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._initialized = False
+        return cls._instance
 
     def __init__(self) -> None:
+        # Only initialize once
+        if self._initialized:
+            return
         self._history_manager = ChatHistoryManager()
+        self._initialized = True
+
+    @classmethod
+    def get_instance(cls) -> "SessionManager":
+        """Get the singleton instance."""
+        if cls._instance is None:
+            cls()
+        return cls._instance
 
     def list_sessions(self) -> List[ChatSession]:
         """Return all chat sessions ordered by last update."""

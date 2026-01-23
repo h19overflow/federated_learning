@@ -6,9 +6,9 @@ import logging
 import uuid
 from typing import List, Tuple
 
-import psycopg
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_postgres import PostgresChatMessageHistory
+from psycopg_pool import ConnectionPool
 
 from federated_pneumonia_detection.src.boundary.engine import settings
 
@@ -29,19 +29,31 @@ class ChatHistoryManager:
         max_history: int = 10,
     ) -> None:
         """
-        Initialize the history manager.
+        Initialize the history manager with connection pooling.
 
         Args:
             table_name: PostgreSQL table name for message storage
-            max_history: Maximum conversation turns to keep (not currently enforced)
+            max_history: Maximum conversation turns to keep
         """
         self.table_name = table_name
         self.max_history = max_history
         self._tables_created = False
 
+        # Initialize connection pool (reuse connections instead of creating new ones)
+        conn_info = settings.get_postgres_db_uri()
+        self._pool = ConnectionPool(
+            conninfo=conn_info,
+            min_size=2,  # Keep 2 connections ready
+            max_size=10,  # Allow up to 10 connections
+            timeout=30,  # Wait 30s for available connection
+            max_idle=300,  # Close idle connections after 5 minutes
+            max_lifetime=3600,  # Recycle connections after 1 hour
+        )
+        logger.info("[HistoryManager] Initialized connection pool (min=2, max=10)")
+
     def _get_postgres_history(self, session_id: str) -> PostgresChatMessageHistory:
         """
-        Initialize PostgresChatMessageHistory for a session.
+        Initialize PostgresChatMessageHistory for a session using pooled connection.
 
         Args:
             session_id: Session identifier (can be any string)
@@ -49,8 +61,8 @@ class ChatHistoryManager:
         Returns:
             PostgresChatMessageHistory instance for the session
         """
-        conn_info = settings.get_postgres_db_uri()
-        sync_connection = psycopg.connect(conn_info)
+        # Get connection from pool (reuses existing connections)
+        sync_connection = self._pool.getconn()
 
         # Validate or convert session_id to UUID
         try:
@@ -68,11 +80,25 @@ class ChatHistoryManager:
             clean_session_id,
             sync_connection=sync_connection,
         )
+
         # Ensure tables exist (only on first use)
         if not self._tables_created:
             history.create_tables(sync_connection, self.table_name)
             self._tables_created = True
+
         return history
+
+    def _return_connection(self, connection) -> None:
+        """
+        Return a connection back to the pool.
+
+        Args:
+            connection: psycopg connection to return
+        """
+        try:
+            self._pool.putconn(connection)
+        except Exception as e:
+            logger.warning(f"[HistoryManager] Failed to return connection to pool: {e}")
 
     def add_to_history(
         self,
@@ -89,9 +115,13 @@ class ChatHistoryManager:
             ai_response: AI's response
         """
         history = self._get_postgres_history(session_id)
-        history.add_messages(
-            [HumanMessage(content=user_message), AIMessage(content=ai_response)],
-        )
+        try:
+            history.add_messages(
+                [HumanMessage(content=user_message), AIMessage(content=ai_response)],
+            )
+        finally:
+            # Always return connection to pool
+            self._return_connection(history._connection)
 
     def get_history(self, session_id: str) -> List[Tuple[str, str]]:
         """
@@ -104,17 +134,23 @@ class ChatHistoryManager:
             List of (user_message, ai_response) tuples
         """
         history = self._get_postgres_history(session_id)
-        messages = history.messages
+        try:
+            messages = history.messages
 
-        # Convert to Tuple[str, str] pairs
-        formatted_history = []
-        for i in range(0, len(messages) - 1, 2):
-            if isinstance(messages[i], HumanMessage) and isinstance(
-                messages[i + 1],
-                AIMessage,
-            ):
-                formatted_history.append((messages[i].content, messages[i + 1].content))
-        return formatted_history
+            # Convert to Tuple[str, str] pairs
+            formatted_history = []
+            for i in range(0, len(messages) - 1, 2):
+                if isinstance(messages[i], HumanMessage) and isinstance(
+                    messages[i + 1],
+                    AIMessage,
+                ):
+                    formatted_history.append(
+                        (messages[i].content, messages[i + 1].content)
+                    )
+            return formatted_history
+        finally:
+            # Always return connection to pool
+            self._return_connection(history._connection)
 
     def clear_history(self, session_id: str) -> None:
         """
@@ -124,7 +160,11 @@ class ChatHistoryManager:
             session_id: Session identifier
         """
         history = self._get_postgres_history(session_id)
-        history.clear()
+        try:
+            history.clear()
+        finally:
+            # Always return connection to pool
+            self._return_connection(history._connection)
 
     def format_for_context(self, session_id: str) -> str:
         """
@@ -157,10 +197,23 @@ class ChatHistoryManager:
             List of LangChain message objects
         """
         history = self._get_postgres_history(session_id)
-        messages = history.messages
+        try:
+            messages = history.messages
 
-        # Enforce limit: keep only most recent N messages
-        if limit and len(messages) > limit:
-            messages = messages[-limit:]
+            # Enforce limit: keep only most recent N messages
+            if limit and len(messages) > limit:
+                messages = messages[-limit:]
 
-        return messages
+            return messages
+        finally:
+            # Always return connection to pool
+            self._return_connection(history._connection)
+
+    def close(self) -> None:
+        """
+        Close the connection pool and release all resources.
+        Call this during application shutdown.
+        """
+        if hasattr(self, "_pool"):
+            self._pool.close()
+            logger.info("[HistoryManager] Connection pool closed")

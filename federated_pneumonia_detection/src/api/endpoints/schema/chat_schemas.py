@@ -47,10 +47,16 @@ class ChatHistoryResponse(BaseModel):
     Attributes:
         history: List of conversation turns (user message, assistant message).
         session_id: Session identifier for this conversation.
+        total_count: Total number of conversation turns.
+        limit: Number of items returned.
+        offset: Number of items skipped.
     """
 
     history: List[Dict[str, str]]
     session_id: str
+    total_count: int = 0
+    limit: int = 50
+    offset: int = 0
 
 
 class ChatSessionSchema(BaseModel):

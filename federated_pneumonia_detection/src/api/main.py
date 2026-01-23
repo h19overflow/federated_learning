@@ -62,11 +62,12 @@ async def lifespan(app: FastAPI):
     - Database tables
     - WebSocket metrics server
     - MCP Manager (arxiv integration)
+    - Chat services (ArxivEngine, QueryEngine with app.state singletons)
     - W&B inference tracker
     """
-    await initialize_services()
+    await initialize_services(app)
     yield
-    await shutdown_services()
+    await shutdown_services(app)
 
 
 app = FastAPI(

@@ -24,7 +24,22 @@ class ResearchAgent(BaseAgent):
     """Adapter exposing ArxivAugmentedEngine via the BaseAgent contract."""
 
     def __init__(self, engine: Optional[ArxivAugmentedEngine] = None) -> None:
-        self._engine = engine or ArxivAugmentedEngine()
+        """
+        Initialize the research agent.
+
+        Args:
+            engine: Pre-initialized ArxivAugmentedEngine instance.
+                    If None, creates a new instance (lazy initialization).
+        """
+        self._engine = engine
+        if self._engine is None:
+            try:
+                self._engine = ArxivAugmentedEngine()
+            except Exception as e:
+                logger.error(
+                    f"[ResearchAgent] Failed to initialize ArxivAugmentedEngine: {e}"
+                )
+                raise
 
     async def stream(self, chat_input: ChatInput) -> AsyncGenerator[AgentEvent, None]:
         """Stream agent events for the given chat input."""

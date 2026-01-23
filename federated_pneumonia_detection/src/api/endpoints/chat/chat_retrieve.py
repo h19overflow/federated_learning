@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from federated_pneumonia_detection.src.api.deps import get_query_engine
 from federated_pneumonia_detection.src.api.endpoints.schema import ChatMessage
@@ -15,9 +15,21 @@ router = APIRouter()
 
 
 @router.post("/retrieve")
-async def retrieve_documents(message: ChatMessage) -> Dict[str, Any]:
-    """Retrieve documents based on a query without generating an answer."""
-    query_engine = get_query_engine()
+async def retrieve_documents(
+    message: ChatMessage,
+    request: Request = None,
+) -> Dict[str, Any]:
+    """
+    Retrieve documents based on a query without generating an answer.
+
+    Args:
+        message: Chat message with query
+        request: FastAPI request object for accessing app.state
+
+    Returns:
+        Dictionary with retrieved documents
+    """
+    query_engine = get_query_engine(app_state=request.app.state if request else None)
     if query_engine is None:
         raise HTTPException(
             status_code=500,
@@ -47,11 +59,13 @@ async def retrieve_documents(message: ChatMessage) -> Dict[str, Any]:
 @router.get("/knowledge-base")
 async def list_knowledge_base_documents() -> Dict[str, Any]:
     """List all documents in the knowledge base."""
+    import asyncio
     from sqlalchemy import text
 
     from federated_pneumonia_detection.src.boundary.engine import get_engine
 
-    try:
+    def _fetch_documents_sync():
+        """Synchronous DB operation to run in executor."""
         engine = get_engine()
         with engine.connect() as conn:
             result = conn.execute(
@@ -60,7 +74,17 @@ async def list_knowledge_base_documents() -> Dict[str, Any]:
                 SELECT DISTINCT
                     cmetadata->>'source' as source,
                     cmetadata->>'paper_id' as paper_id,
-                    COUNT(*) as chunk_count
+                    COUNT(*) as chunk_count,
+                    CASE 
+                        WHEN cmetadata->>'source' LIKE 'arxiv:%' THEN 'arxiv'
+                        ELSE 'uploaded'
+                    END as doc_type,
+                    CASE 
+                        WHEN cmetadata->>'source' LIKE 'arxiv:%' THEN cmetadata->>'source'
+                        WHEN cmetadata->>'source' LIKE '%/%' THEN 
+                            SUBSTRING(cmetadata->>'source' FROM '[^/]*$')
+                        ELSE cmetadata->>'source'
+                    END as display_name
                 FROM langchain_pg_embedding
                 WHERE collection_id = (
                     SELECT uuid FROM langchain_pg_collection WHERE name = 'research_papers'
@@ -76,13 +100,8 @@ async def list_knowledge_base_documents() -> Dict[str, Any]:
                 source = row[0] or "Unknown"
                 paper_id = row[1]
                 chunk_count = row[2]
-
-                if source.startswith("arxiv:"):
-                    doc_type = "arxiv"
-                    display_name = source
-                else:
-                    doc_type = "uploaded"
-                    display_name = source.split("/")[-1] if "/" in source else source
+                doc_type = row[3]
+                display_name = row[4]
 
                 documents.append(
                     {
@@ -93,6 +112,13 @@ async def list_knowledge_base_documents() -> Dict[str, Any]:
                         "chunk_count": chunk_count,
                     },
                 )
+
+            return documents
+
+    try:
+        # Run blocking DB operation in thread pool to avoid blocking event loop
+        loop = asyncio.get_event_loop()
+        documents = await loop.run_in_executor(None, _fetch_documents_sync)
 
         return {"documents": documents, "total_count": len(documents)}
 

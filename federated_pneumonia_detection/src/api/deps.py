@@ -67,11 +67,27 @@ _query_engine = None
 _mcp_manager = None
 
 
-def get_query_engine() -> Optional["QueryEngine"]:
-    """Get or create QueryEngine singleton.
-
-    Returns None if PostgreSQL database is unavailable (graceful degradation).
+def get_query_engine(app_state=None) -> Optional["QueryEngine"]:
     """
+    Get QueryEngine instance from app.state or create singleton.
+
+    Priority:
+    1. app.state.query_engine (if provided and initialized at startup)
+    2. Module-level singleton _query_engine (lazy initialization)
+    3. None if initialization fails (graceful degradation)
+
+    Args:
+        app_state: FastAPI app.state for accessing pre-initialized QueryEngine
+
+    Returns:
+        QueryEngine instance or None if unavailable
+    """
+    # Try app.state first (fast path - initialized at startup)
+    if app_state is not None and hasattr(app_state, "query_engine"):
+        if app_state.query_engine is not None:
+            return app_state.query_engine
+
+    # Fall back to lazy initialization (backward compatibility)
     global _query_engine
     if _query_engine is None:
         try:
@@ -80,7 +96,7 @@ def get_query_engine() -> Optional["QueryEngine"]:
             )
 
             _query_engine = QueryEngine()
-            logger.info("QueryEngine initialized successfully")
+            logger.info("QueryEngine initialized successfully (lazy init)")
         except Exception as e:
             logger.warning(
                 f"QueryEngine initialization failed (database unavailable): {e}",

@@ -4,6 +4,8 @@ import json
 import logging
 from typing import Optional
 
+from sqlalchemy import func
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,14 +35,14 @@ def ensure_db_session(session_id: str, query: str) -> None:
         logger.warning(f"[Helper] Failed to ensure DB session (non-fatal): {e}")
 
 
-def prepare_enhanced_query(query: str, run_id: Optional[int]) -> str:
-    """Enhance a query with run context if a run_id is provided."""
+async def prepare_enhanced_query(query: str, run_id: Optional[int]) -> str:
+    """Enhance a query with run context if a run_id is provided (async)."""
     if run_id is None:
         return query
 
     try:
         logger.info(f"[Helper] Enhancing query with run context for run_id: {run_id}")
-        enhanced = enhance_query_with_run_context(query, run_id)
+        enhanced = await enhance_query_with_run_context(query, run_id)
         logger.info("[Helper] Query enhanced successfully")
         return enhanced
     except Exception as e:
@@ -85,21 +87,31 @@ def build_run_context(
         # Add basic run information
         context_info += _build_basic_run_info(run_data)
 
-        # Get and add metrics information
-        all_metrics = (
-            db.query(run_metric_crud.model)
+        # Get aggregated metrics information (avoid loading all into memory)
+        metrics_summary = (
+            db.query(
+                run_metric_crud.model.dataset_type,
+                run_metric_crud.model.metric_name,
+                func.count(run_metric_crud.model.id).label("count"),
+                func.max(run_metric_crud.model.metric_value).label("best"),
+                func.min(run_metric_crud.model.metric_value).label("worst"),
+                func.avg(run_metric_crud.model.metric_value).label("average"),
+            )
             .filter(run_metric_crud.model.run_id == run_id)
+            .group_by(
+                run_metric_crud.model.dataset_type,
+                run_metric_crud.model.metric_name,
+            )
             .all()
         )
 
-        if all_metrics:
-            context_info += _build_metrics_summary(all_metrics)
+        if metrics_summary:
+            context_info += _build_metrics_summary_from_aggregation(metrics_summary)
 
         # Add federated-specific information if applicable
         if run_data.training_mode == "federated":
             context_info += _build_federated_details(
                 run_data,
-                all_metrics,
                 server_evaluation_crud,
                 db,
                 run_id,
@@ -175,9 +187,24 @@ def _build_metrics_summary(all_metrics) -> str:
     return summary
 
 
+def _build_metrics_summary_from_aggregation(metrics_summary) -> str:
+    """Build metrics summary from SQL aggregation results."""
+    summary = f"METRICS SUMMARY ({sum(m.count for m in metrics_summary)} total metrics recorded):\n"
+    summary += "-" * 60 + "\n"
+
+    for metric in metrics_summary:
+        metric_key = f"{metric.dataset_type}_{metric.metric_name}"
+        summary += f"\n{metric_key}:\n"
+        summary += f"  - Count: {metric.count}\n"
+        summary += f"  - Best: {metric.best:.4f}\n"
+        summary += f"  - Worst: {metric.worst:.4f}\n"
+        summary += f"  - Average: {metric.average:.4f}\n"
+
+    return summary
+
+
 def _build_federated_details(
     run_data,
-    all_metrics,
     server_evaluation_crud,
     db,
     run_id: int,
@@ -190,10 +217,6 @@ def _build_federated_details(
     # Client information
     if run_data.clients:
         details += f"Number of Clients: {len(run_data.clients)}\n"
-        for idx, client in enumerate(run_data.clients, 1):
-            client_metrics = [m for m in all_metrics if m.client_id == client.id]
-            if client_metrics:
-                details += f"  - Metrics Recorded: {len(client_metrics)}\n"
 
     # Server evaluations
     server_evals = server_evaluation_crud.get_by_run(db, run_id)
@@ -248,9 +271,9 @@ def _build_ai_instructions() -> str:
     return instructions
 
 
-def enhance_query_with_run_context(query: str, run_id: int) -> str:
+async def enhance_query_with_run_context(query: str, run_id: int) -> str:
     """
-    Enhance a query with training run context.
+    Enhance a query with training run context (async).
 
     Args:
         query: Original user query
@@ -259,6 +282,7 @@ def enhance_query_with_run_context(query: str, run_id: int) -> str:
     Returns:
         Enhanced query string with context appended
     """
+    import asyncio
     from federated_pneumonia_detection.src.boundary.CRUD import (
         run_crud,
         run_metric_crud,
@@ -266,23 +290,29 @@ def enhance_query_with_run_context(query: str, run_id: int) -> str:
     )
     from federated_pneumonia_detection.src.boundary.engine import get_session
 
-    db = get_session()
-    try:
-        context_info = build_run_context(
-            db,
-            run_id,
-            run_crud,
-            run_metric_crud,
-            server_evaluation_crud,
-        )
-
-        if context_info:
-            return query + context_info
-        else:
-            logger.warning(
-                f"No context built for run_id={run_id}, using original query",
+    def _build_context_sync():
+        """Synchronous DB operation to run in executor."""
+        db = get_session()
+        try:
+            context_info = build_run_context(
+                db,
+                run_id,
+                run_crud,
+                run_metric_crud,
+                server_evaluation_crud,
             )
-            return query
+            return context_info
+        finally:
+            db.close()
 
-    finally:
-        db.close()
+    # Run blocking DB operation in thread pool to avoid blocking event loop
+    loop = asyncio.get_event_loop()
+    context_info = await loop.run_in_executor(None, _build_context_sync)
+
+    if context_info:
+        return query + context_info
+    else:
+        logger.warning(
+            f"No context built for run_id={run_id}, using original query",
+        )
+        return query

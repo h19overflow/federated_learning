@@ -16,7 +16,9 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 )
 
 router = APIRouter()
-session_manager = SessionManager()
+
+# Singleton pattern ensures consistent history management across all endpoints
+session_manager = SessionManager.get_instance()
 
 
 @router.get("/sessions", response_model=List[ChatSessionSchema])

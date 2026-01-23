@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from federated_pneumonia_detection.src.api.endpoints.chat.chat_utils import (
@@ -25,11 +25,13 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-session_manager = SessionManager()
+
+# Singleton pattern ensures consistent history management across all endpoints
+session_manager = SessionManager.get_instance()
 
 
 @router.post("/query/stream")
-async def query_chat_stream(message: ChatMessage):
+async def query_chat_stream(message: ChatMessage, request: Request):
     """Stream chat response token by token using SSE."""
     logger.info(
         "[STREAM] Query: '%s...', Session: %s, Run: %s, Arxiv: %s",
@@ -44,7 +46,7 @@ async def query_chat_stream(message: ChatMessage):
         yield sse_pack({"type": AgentEventType.SESSION.value, "session_id": session_id})
 
         session_manager.ensure_session(session_id, message.query)
-        enhanced_query = prepare_enhanced_query(message.query, message.run_id)
+        enhanced_query = await prepare_enhanced_query(message.query, message.run_id)
 
         chat_input = ChatInput(
             query=enhanced_query,
@@ -55,7 +57,9 @@ async def query_chat_stream(message: ChatMessage):
         )
 
         try:
-            agent = get_agent_factory().get_chat_agent()
+            # Get factory with app.state to use pre-initialized engines
+            agent_factory = get_agent_factory(app_state=request.app.state)
+            agent = agent_factory.get_chat_agent()
         except Exception as exc:
             logger.error("[STREAM] Failed to initialize chat agent: %s", exc)
             yield sse_error(f"Failed to initialize engine: {exc}")
