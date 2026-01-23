@@ -77,16 +77,19 @@ async def get_federated_rounds(run_id: int) -> FederatedRoundsResponse:
                 "loss": eval_record.loss,
             }
 
-            if eval_record.accuracy is not None:
-                metrics_dict["accuracy"] = eval_record.accuracy
-            if eval_record.precision is not None:
-                metrics_dict["precision"] = eval_record.precision
-            if eval_record.recall is not None:
-                metrics_dict["recall"] = eval_record.recall
-            if eval_record.f1_score is not None:
-                metrics_dict["f1"] = eval_record.f1_score
-            if eval_record.auroc is not None:
-                metrics_dict["auroc"] = eval_record.auroc
+            # Map attribute names to response key names
+            metric_fields = {
+                "accuracy": eval_record.accuracy,
+                "precision": eval_record.precision,
+                "recall": eval_record.recall,
+                "f1": eval_record.f1_score,
+                "auroc": eval_record.auroc,
+            }
+
+            # Add non-None metrics to dict
+            for key, value in metric_fields.items():
+                if value is not None:
+                    metrics_dict[key] = value
 
             rounds_list.append(
                 {"round": eval_record.round_number, "metrics": metrics_dict},

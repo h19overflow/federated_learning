@@ -63,19 +63,22 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
         for eval in run.server_evaluations:
             round_num = eval.round_number
             # Map server evaluation fields to training history format
+            # Use 0.0 default for nullable metrics to prevent None comparison errors
             metrics_by_epoch[round_num] = {
                 "train_loss": 0.0,  # Not available in server evaluations
-                "val_loss": eval.loss,
+                "val_loss": eval.loss if eval.loss is not None else 0.0,
                 "train_accuracy": 0.0,  # Not available
                 "train_acc": 0.0,  # Not available
-                "val_accuracy": eval.accuracy,
-                "val_acc": eval.accuracy,
+                "val_accuracy": eval.accuracy if eval.accuracy is not None else 0.0,
+                "val_acc": eval.accuracy if eval.accuracy is not None else 0.0,
                 "train_f1": 0.0,  # Not available
-                "val_precision": eval.precision,
-                "val_recall": eval.recall,
-                "val_f1": eval.f1_score,
-                "val_auroc": eval.auroc,
-                "val_auc": eval.auroc,  # Alternate name
+                "val_precision": eval.precision if eval.precision is not None else 0.0,
+                "val_recall": eval.recall if eval.recall is not None else 0.0,
+                "val_f1": eval.f1_score if eval.f1_score is not None else 0.0,
+                "val_auroc": eval.auroc if eval.auroc is not None else 0.0,
+                "val_auc": eval.auroc
+                if eval.auroc is not None
+                else 0.0,  # Alternate name
                 # Confusion matrix values
                 "val_cm_tp": eval.true_positives,
                 "val_cm_tn": eval.true_negatives,
@@ -105,24 +108,21 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
         training_history.append(
             {
                 "epoch": display_epoch,
-                "train_loss": epoch_data.get("train_loss", 0.0),
-                "val_loss": epoch_data.get("val_loss", 0.0),
-                "train_acc": epoch_data.get(
-                    "train_accuracy",
-                    epoch_data.get("train_acc", 0.0),
-                ),
-                "val_acc": epoch_data.get(
-                    "val_accuracy",
-                    epoch_data.get("val_acc", 0.0),
-                ),
-                "train_f1": epoch_data.get("train_f1", 0.0),
-                "val_precision": epoch_data.get("val_precision", 0.0),
-                "val_recall": epoch_data.get("val_recall", 0.0),
-                "val_f1": epoch_data.get("val_f1", 0.0),
-                "val_auroc": epoch_data.get(
-                    "val_auroc",
-                    epoch_data.get("val_auc", 0.0),
-                ),
+                "train_loss": epoch_data.get("train_loss") or 0.0,
+                "val_loss": epoch_data.get("val_loss") or 0.0,
+                "train_acc": epoch_data.get("train_accuracy")
+                or epoch_data.get("train_acc")
+                or 0.0,
+                "val_acc": epoch_data.get("val_accuracy")
+                or epoch_data.get("val_acc")
+                or 0.0,
+                "train_f1": epoch_data.get("train_f1") or 0.0,
+                "val_precision": epoch_data.get("val_precision") or 0.0,
+                "val_recall": epoch_data.get("val_recall") or 0.0,
+                "val_f1": epoch_data.get("val_f1") or 0.0,
+                "val_auroc": epoch_data.get("val_auroc")
+                or epoch_data.get("val_auc")
+                or 0.0,
             },
         )
 
@@ -132,13 +132,15 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
         metrics_by_epoch[max(metrics_by_epoch.keys())] if metrics_by_epoch else {}
     )
 
-    # Calculate final metrics from last epoch data
-    accuracy = last_epoch_data.get("val_accuracy", last_epoch_data.get("val_acc", 0.0))
-    precision = last_epoch_data.get("val_precision", 0.0)
-    recall = last_epoch_data.get("val_recall", 0.0)
-    f1 = last_epoch_data.get("val_f1", 0.0)
-    auc = last_epoch_data.get("val_auroc", last_epoch_data.get("val_auc", 0.0))
-    loss = last_epoch_data.get("val_loss", 0.0)
+    # Calculate final metrics from last epoch data (with None handling)
+    accuracy = (
+        last_epoch_data.get("val_accuracy") or last_epoch_data.get("val_acc") or 0.0
+    )
+    precision = last_epoch_data.get("val_precision") or 0.0
+    recall = last_epoch_data.get("val_recall") or 0.0
+    f1 = last_epoch_data.get("val_f1") or 0.0
+    auc = last_epoch_data.get("val_auroc") or last_epoch_data.get("val_auc") or 0.0
+    loss = last_epoch_data.get("val_loss") or 0.0
 
     # Extract confusion matrix values from last epoch
     confusion_matrix_obj = None
@@ -183,27 +185,27 @@ def _transform_run_to_results(run) -> Dict[str, Any]:
             "total_epochs": len(training_history),
             "best_epoch": _find_best_epoch(training_history),
             "best_val_accuracy": max(
-                [h.get("val_acc", 0) for h in training_history],
+                [(h.get("val_acc") or 0.0) for h in training_history],
                 default=0.0,
             ),
             "best_val_precision": max(
-                [h.get("val_precision", 0) for h in training_history],
+                [(h.get("val_precision") or 0.0) for h in training_history],
                 default=0.0,
             ),
             "best_val_recall": max(
-                [h.get("val_recall", 0) for h in training_history],
+                [(h.get("val_recall") or 0.0) for h in training_history],
                 default=0.0,
             ),
             "best_val_loss": min(
-                [h.get("val_loss", float("inf")) for h in training_history],
+                [(h.get("val_loss") or 0.0) for h in training_history],
                 default=0.0,
             ),
             "best_val_f1": max(
-                [h.get("val_f1", 0) for h in training_history],
+                [(h.get("val_f1") or 0.0) for h in training_history],
                 default=0.0,
             ),
             "best_val_auroc": max(
-                [h.get("val_auroc", 0) for h in training_history],
+                [(h.get("val_auroc") or 0.0) for h in training_history],
                 default=0.0,
             ),
             # Include all final metrics in metadata for display
@@ -234,8 +236,9 @@ def _find_best_epoch(training_history: List[Dict]) -> int:
     best_acc = 0.0
 
     for entry in training_history:
-        if entry.get("val_acc", 0) > best_acc:
-            best_acc = entry["val_acc"]
+        val_acc = entry.get("val_acc") or 0.0
+        if val_acc > best_acc:
+            best_acc = val_acc
             best_epoch = entry["epoch"]  # This is already 1-indexed from transformation
 
     return best_epoch

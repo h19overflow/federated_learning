@@ -150,6 +150,14 @@ class MaliciousPromptMiddleware(BaseHTTPMiddleware):
         """
         Intercept requests and apply security checks.
         """
+        # Skip WebSocket upgrade requests (Upgrade header indicates WebSocket handshake)
+        if request.headers.get("upgrade", "").lower() == "websocket":
+            return await call_next(request)
+
+        # Skip WebSocket connections to /ws paths
+        if request.url.path.startswith("/ws"):
+            return await call_next(request)
+
         # Only check POST requests to protected endpoints
         if request.method != "POST":
             return await call_next(request)
