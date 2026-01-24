@@ -20,13 +20,11 @@ from .error_schemas import (
 from .inference_schemas import (
     BatchInferenceResponse,
     BatchSummaryStats,
-    ClinicalInterpretation,
     HealthCheckResponse,
     InferenceError,
     InferencePrediction,
     InferenceResponse,
     PredictionClass,
-    RiskAssessment,
     SingleImageResult,
 )
 from .report_schemas import (
@@ -64,8 +62,6 @@ __all__ = [
     "BackfillResponse",
     "PredictionClass",
     "InferencePrediction",
-    "RiskAssessment",
-    "ClinicalInterpretation",
     "InferenceResponse",
     "InferenceError",
     "SingleImageResult",

@@ -6,7 +6,7 @@ Provides singleton instances and database sessions for endpoint use.
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from fastapi import Request
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.config.config_manager import (
@@ -68,6 +68,7 @@ def get_run_metric_crud() -> RunMetricCRUD:
 
 _query_engine = None
 _mcp_manager = None
+_gradcam_service_instance = None
 
 
 def get_query_engine(app_state=None) -> Optional["QueryEngine"]:
@@ -145,19 +146,6 @@ def get_inference_engine() -> Optional["InferenceEngine"]:
     return _get_engine()
 
 
-def get_clinical_agent():
-    """Get the
-    singleton.
-
-    Returns None if the agent cannot be initialized.
-    """
-    from federated_pneumonia_detection.src.control.model_inferance import (
-        get_clinical_agent as _get_agent,
-    )
-
-    return _get_agent()
-
-
 def get_analytics(request: Request) -> Optional[AnalyticsFacade]:
     """
     Get AnalyticsFacade from app state.
@@ -173,3 +161,25 @@ def get_analytics(request: Request) -> Optional[AnalyticsFacade]:
         AnalyticsFacade instance or None if not initialized
     """
     return getattr(request.app.state, "analytics", None)
+
+
+def get_gradcam_service(
+    service: "InferenceService" = Depends(get_inference_service),
+) -> "GradCAMService":
+    """Get GradCAMService singleton for dependency injection.
+
+    Args:
+        service: InferenceService instance for model access
+
+    Returns:
+        GradCAMService singleton instance
+    """
+    global _gradcam_service_instance
+    if _gradcam_service_instance is None:
+        from federated_pneumonia_detection.src.control.model_inferance import (
+            GradCAMService,
+        )
+
+        _gradcam_service_instance = GradCAMService(service)
+        logger.info("GradCAMService initialized successfully")
+    return _gradcam_service_instance

@@ -18,7 +18,6 @@ from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas im
 )
 from federated_pneumonia_detection.src.control.model_inferance.internals import (
     BatchStatistics,
-    ClinicalInterpreter,
     ImageProcessor,
     ImageValidator,
     InferenceEngine,
@@ -37,16 +36,13 @@ class InferenceService:
     def __init__(
         self,
         engine: Optional[InferenceEngine] = None,
-        clinical_agent=None,
     ):
         """Initialize with optional dependencies (lazy loading if None)."""
         self._engine = engine
-        self._clinical_agent = clinical_agent
 
         # Compose components
         self.validator = ImageValidator()
         self.processor = ImageProcessor()
-        self.interpreter = ClinicalInterpreter(clinical_agent)
         self.batch_stats = BatchStatistics()
         self.logger = ObservabilityLogger()
 
@@ -56,14 +52,6 @@ class InferenceService:
         if self._engine is None:
             self._engine = _get_engine_singleton()
         return self._engine
-
-    @property
-    def clinical_agent(self):
-        """Get clinical agent (lazy loading)."""
-        if self._clinical_agent is None:
-            self._clinical_agent = _get_clinical_agent_singleton()
-            self.interpreter.set_agent(self._clinical_agent)
-        return self._clinical_agent
 
     def is_ready(self) -> bool:
         """Check if service is ready for inference."""
@@ -101,7 +89,6 @@ class InferenceService:
     async def process_single(
         self,
         file: UploadFile,
-        include_clinical: bool = False,
     ) -> SingleImageResult:
         """Process a single image file end-to-end."""
         start_time = time.time()
@@ -131,23 +118,10 @@ class InferenceService:
                 normal_prob,
             )
 
-            # Clinical interpretation
-            clinical = None
-            if include_clinical:
-                clinical = await self.interpreter.generate(
-                    predicted_class=predicted_class,
-                    confidence=confidence,
-                    pneumonia_prob=pneumonia_prob,
-                    normal_prob=normal_prob,
-                    prediction=prediction,
-                    image_info={"filename": file.filename, "size": image.size},
-                )
-
             return SingleImageResult(
                 filename=file.filename or "unknown",
                 success=True,
                 prediction=prediction,
-                clinical_interpretation=clinical,
                 processing_time_ms=(time.time() - start_time) * 1000,
             )
 
@@ -158,6 +132,127 @@ class InferenceService:
                 error=str(e),
                 processing_time_ms=(time.time() - start_time) * 1000,
             )
+
+    async def predict_single(
+        self,
+        file: UploadFile,
+    ) -> tuple:
+        """Run inference on a single image.
+
+        Handles validation, image reading, and prediction. Returns timing and response data.
+
+        Args:
+            file: Uploaded image file
+
+        Returns:
+            Tuple of (response_dict, processing_time_ms, model_version)
+        """
+        start_time = time.time()
+
+        self.validator.validate_or_raise(file)
+        self.check_ready_or_raise()
+
+        image = await self.processor.read_from_upload(file)
+        logger.info(
+            f"Processing image: {file.filename}, size: {image.size}, mode: {image.mode}",
+        )
+
+        try:
+            predicted_class, confidence, pneumonia_prob, normal_prob = self.predict(
+                image,
+            )
+            prediction = self.create_prediction(
+                predicted_class,
+                confidence,
+                pneumonia_prob,
+                normal_prob,
+            )
+
+            processing_time_ms = (time.time() - start_time) * 1000
+            model_version = self.engine.model_version if self.engine else "unknown"
+
+            self.logger.log_single(
+                predicted_class=predicted_class,
+                confidence=confidence,
+                pneumonia_prob=pneumonia_prob,
+                normal_prob=normal_prob,
+                processing_time_ms=processing_time_ms,
+                clinical_used=False,
+                model_version=model_version,
+            )
+
+            return (
+                {
+                    "success": True,
+                    "prediction": prediction,
+                    "clinical_interpretation": None,
+                    "model_version": model_version,
+                    "processing_time_ms": processing_time_ms,
+                },
+                processing_time_ms,
+                model_version,
+            )
+
+        except Exception as e:
+            logger.error(f"Inference failed: {e}", exc_info=True)
+            self.logger.log_error("inference", str(e))
+            raise
+
+    async def predict_batch(
+        self,
+        files: list,
+    ) -> tuple:
+        """Run inference on multiple images with aggregated results.
+
+        Processes images sequentially and returns aggregated results with
+        summary statistics.
+
+        Args:
+            files: List of uploaded image files
+
+        Returns:
+            Tuple of (response_dict, total_processing_time_ms, model_version)
+        """
+        batch_start_time = time.time()
+
+        self.check_ready_or_raise()
+
+        max_batch_size = 500
+        if len(files) > max_batch_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Maximum {max_batch_size} images allowed per batch request.",
+            )
+
+        results = []
+        for file in files:
+            result = await self.process_single(file=file)
+            results.append(result)
+            logger.info(f"Batch processing: {file.filename}, success: {result.success}")
+
+        summary = self.batch_stats.calculate(results=results, total_images=len(files))
+
+        total_batch_time_ms = (time.time() - batch_start_time) * 1000
+        model_version = self.engine.model_version if self.engine else "unknown"
+
+        self.logger.log_batch(
+            summary=summary,
+            total_time_ms=total_batch_time_ms,
+            clinical_used=False,
+            model_version=model_version,
+        )
+
+        return (
+            {
+                "success": True,
+                "results": results,
+                "summary": summary,
+                "model_version": model_version,
+                "total_processing_time_ms": total_batch_time_ms,
+            },
+            total_batch_time_ms,
+            model_version,
+        )
 
     def get_info(self) -> dict:
         """Get service health info."""
@@ -182,7 +277,6 @@ class InferenceService:
 # =============================================================================
 
 _engine_instance: Optional[InferenceEngine] = None
-_clinical_agent_instance = None
 _service_instance: Optional[InferenceService] = None
 
 
@@ -199,23 +293,6 @@ def _get_engine_singleton() -> Optional[InferenceEngine]:
     return _engine_instance
 
 
-def _get_clinical_agent_singleton():
-    """Get or create ClinicalInterpretationAgent singleton."""
-    global _clinical_agent_instance
-    if _clinical_agent_instance is None:
-        try:
-            from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.clinical import (
-                ClinicalInterpretationAgent,
-            )
-
-            _clinical_agent_instance = ClinicalInterpretationAgent()
-            logger.info("ClinicalInterpretationAgent initialized successfully")
-        except Exception as e:
-            logger.warning(f"ClinicalInterpretationAgent unavailable: {e}")
-            return None
-    return _clinical_agent_instance
-
-
 def get_inference_service() -> InferenceService:
     """Get InferenceService singleton for dependency injection."""
     global _service_instance
@@ -227,8 +304,3 @@ def get_inference_service() -> InferenceService:
 def get_inference_engine() -> Optional[InferenceEngine]:
     """Get InferenceEngine singleton."""
     return _get_engine_singleton()
-
-
-def get_clinical_agent():
-    """Get ClinicalInterpretationAgent singleton."""
-    return _get_clinical_agent_singleton()

@@ -13,7 +13,6 @@ Structure:
         - inference_engine.py: Core model loading and prediction
         - image_validator.py: File validation
         - image_processor.py: Image I/O
-        - clinical_interpreter.py: Clinical interpretation generation
         - batch_statistics.py: Batch metrics calculation
         - observability_logger.py: W&B logging
     - inference_service.py: Main service facade
@@ -21,16 +20,15 @@ Structure:
 
 # Re-export from components
 # Main service and singleton getters
+from .gradcam_service import GradCAMService
 from .inference_service import (
     InferenceService,
-    get_clinical_agent,
     get_inference_engine,
     get_inference_service,
 )
 from .internals import (
     DEFAULT_CHECKPOINT_PATH,
     BatchStatistics,
-    ClinicalInterpreter,
     ImageProcessor,
     ImageValidator,
     InferenceEngine,
@@ -44,13 +42,12 @@ __all__ = [
     # Components
     "ImageValidator",
     "ImageProcessor",
-    "ClinicalInterpreter",
     "BatchStatistics",
     "ObservabilityLogger",
     # Main service
     "InferenceService",
+    "GradCAMService",
     # Singleton getters
     "get_inference_service",
     "get_inference_engine",
-    "get_clinical_agent",
 ]

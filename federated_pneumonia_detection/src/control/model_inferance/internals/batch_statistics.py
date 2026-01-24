@@ -38,14 +38,6 @@ class BatchStatistics:
         total_time = sum(r.processing_time_ms for r in results)
         avg_time = total_time / len(results) if results else 0.0
 
-        high_risk_count = sum(
-            1
-            for r in results
-            if r.clinical_interpretation
-            and r.clinical_interpretation.risk_assessment.risk_level
-            in ["HIGH", "CRITICAL"]
-        )
-
         return BatchSummaryStats(
             total_images=total_images,
             successful=successful_count,
@@ -54,5 +46,5 @@ class BatchStatistics:
             pneumonia_count=pneumonia_count,
             avg_confidence=avg_confidence,
             avg_processing_time_ms=avg_time,
-            high_risk_count=high_risk_count,
+            high_risk_count=0,
         )

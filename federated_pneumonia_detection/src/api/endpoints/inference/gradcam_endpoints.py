@@ -4,82 +4,23 @@ Provides endpoints for generating GradCAM visualizations that highlight
 the regions of chest X-rays that contributed most to the model's predictions.
 """
 
-import logging
 import time
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from PIL import Image
 
-from federated_pneumonia_detection.src.api.deps import get_inference_service
+from federated_pneumonia_detection.src.api.deps import (
+    get_inference_service,
+    get_gradcam_service,
+)
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
-    BatchHeatmapItem,
     BatchHeatmapResponse,
     HeatmapResponse,
 )
 from federated_pneumonia_detection.src.control.model_inferance import InferenceService
-from federated_pneumonia_detection.src.control.model_inferance.gradcam import (
-    GradCAM,
-    heatmap_to_base64,
-)
-
-logger = logging.getLogger(__name__)
+from federated_pneumonia_detection.src.control.model_inferance import GradCAMService
 
 router = APIRouter(prefix="/api/inference", tags=["gradcam"])
-
-
-def _generate_single_heatmap(
-    image: Image.Image,
-    filename: str,
-    service: InferenceService,
-    colormap: str = "jet",
-    alpha: float = 0.4,
-) -> BatchHeatmapItem:
-    """Generate heatmap for a single image."""
-    start_time = time.time()
-
-    try:
-        engine = service.engine
-        if not engine or not engine.model:
-            return BatchHeatmapItem(
-                filename=filename,
-                success=False,
-                error="Model not loaded",
-                processing_time_ms=(time.time() - start_time) * 1000,
-            )
-
-        gradcam = GradCAM(engine.model)
-        input_tensor = engine.preprocess(image)
-        heatmap = gradcam(input_tensor)
-
-        heatmap_base64 = heatmap_to_base64(
-            heatmap=heatmap,
-            original_image=image,
-            colormap=colormap,
-            alpha=alpha,
-        )
-
-        original_base64 = service.processor.to_base64(image)
-        gradcam.remove_hooks()
-
-        processing_time_ms = (time.time() - start_time) * 1000
-
-        return BatchHeatmapItem(
-            filename=filename,
-            success=True,
-            heatmap_base64=heatmap_base64,
-            original_image_base64=original_base64,
-            processing_time_ms=processing_time_ms,
-        )
-
-    except Exception as e:
-        logger.error(f"Heatmap generation failed for {filename}: {e}", exc_info=True)
-        return BatchHeatmapItem(
-            filename=filename,
-            success=False,
-            error=str(e),
-            processing_time_ms=(time.time() - start_time) * 1000,
-        )
 
 
 @router.post("/heatmap", response_model=HeatmapResponse)
@@ -96,27 +37,22 @@ async def generate_heatmap(
         description="Heatmap overlay transparency (0.1-0.9)",
     ),
     service: InferenceService = Depends(get_inference_service),
+    gradcam_service: GradCAMService = Depends(get_gradcam_service),
 ) -> HeatmapResponse:
     """Generate GradCAM heatmap visualization for a chest X-ray."""
-    service.validator.validate_or_raise(file)
     service.check_ready_or_raise()
-
+    service.validator.validate_or_raise(file)
     image = await service.processor.read_from_upload(file, convert_rgb=True)
-    logger.info(f"Generating heatmap for: {file.filename}, size: {image.size}")
 
-    result = _generate_single_heatmap(
+    result = await gradcam_service.generate_single_heatmap(
         image=image,
         filename=file.filename or "unknown",
-        service=service,
         colormap=colormap,
         alpha=alpha,
     )
 
     if not result.success:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Heatmap generation failed: {result.error}",
-        )
+        raise HTTPException(status_code=500, detail=result.error)
 
     return HeatmapResponse(
         success=True,
@@ -144,54 +80,28 @@ async def generate_heatmaps_batch(
         description="Heatmap overlay transparency (0.1-0.9)",
     ),
     service: InferenceService = Depends(get_inference_service),
+    gradcam_service: GradCAMService = Depends(get_gradcam_service),
 ) -> BatchHeatmapResponse:
     """Generate GradCAM heatmaps for multiple chest X-rays."""
     batch_start_time = time.time()
 
-    max_batch_size = 500
-    if len(files) > max_batch_size:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Maximum {max_batch_size} images per batch for heatmap generation.",
-        )
-
     service.check_ready_or_raise()
 
-    results = []
-
+    # Read and validate all images
+    images = []
     for file in files:
         try:
             service.validator.validate_or_raise(file)
             image = await service.processor.read_from_upload(file, convert_rgb=True)
-
-            result = _generate_single_heatmap(
-                image=image,
-                filename=file.filename or "unknown",
-                service=service,
-                colormap=colormap,
-                alpha=alpha,
-            )
-            results.append(result)
-
+            images.append((image, file.filename or "unknown"))
         except HTTPException as e:
-            results.append(
-                BatchHeatmapItem(
-                    filename=file.filename or "unknown",
-                    success=False,
-                    error=e.detail,
-                    processing_time_ms=0.0,
-                ),
-            )
-        except Exception as e:
-            logger.error(f"Failed to process {file.filename}: {e}")
-            results.append(
-                BatchHeatmapItem(
-                    filename=file.filename or "unknown",
-                    success=False,
-                    error=str(e),
-                    processing_time_ms=0.0,
-                ),
-            )
+            images.append((None, file.filename or "unknown"))
+
+    results = await gradcam_service.generate_batch_heatmaps(
+        images=images,
+        colormap=colormap,
+        alpha=alpha,
+    )
 
     total_processing_time_ms = (time.time() - batch_start_time) * 1000
 
