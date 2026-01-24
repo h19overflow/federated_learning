@@ -104,7 +104,7 @@ class XRayDataModule(pl.LightningDataModule):
         self.custom_preprocessing_config = custom_preprocessing_config or {}
 
         self.logger = logging.getLogger(__name__)
-        self.transform_builder = TransformBuilder(config=self.config)
+        self.transform_builder = TransformBuilder.from_config(self.config)
 
         self.train_dataset = None
         self.val_dataset = None

@@ -85,11 +85,7 @@ def create_training_transforms(
     """
     return transform_builder.build_training_transforms(
         enable_augmentation=True,
-        augmentation_strength=getattr(
-            transform_builder.config,
-            "augmentation_strength",
-            1.0,
-        ),
+        augmentation_strength=transform_builder.augmentation_strength,
         custom_preprocessing=custom_preprocessing_config
         if custom_preprocessing_config
         else None,

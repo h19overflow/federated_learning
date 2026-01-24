@@ -418,7 +418,7 @@ class TestImageTransforms:
 
     def test_create_custom_transform_variants(self, sample_config):
         """Test all branches of create_custom_transform."""
-        builder = TransformBuilder(sample_config)
+        builder = TransformBuilder.from_config(sample_config)
 
         # Test zero_one normalization (no additional transform)
         t = builder.create_custom_transform(normalization="zero_one")
@@ -464,17 +464,16 @@ class TestImageTransforms:
         res = fn(img)
         assert res == img
 
-    def test_transform_builder_init_no_config(self):
-        """Test TransformBuilder initialization without config."""
-        with patch(
-            "federated_pneumonia_detection.config.config_manager.ConfigManager",
-        ) as _MockConfig:
-            builder = TransformBuilder()
-            assert builder.config is not None
+    def test_transform_builder_init_defaults(self):
+        """Test TransformBuilder initialization with defaults."""
+        builder = TransformBuilder()
+        assert builder.img_size == (224, 224)
+        assert builder.use_imagenet_norm is True
+        assert builder.augmentation_strength == 1.0
 
     def test_build_training_transforms(self, sample_config):
         """Test building training transform pipeline."""
-        builder = TransformBuilder(sample_config)
+        builder = TransformBuilder.from_config(sample_config)
 
         # With augmentation
         t1 = builder.build_training_transforms(enable_augmentation=True)
@@ -492,7 +491,7 @@ class TestImageTransforms:
 
     def test_build_validation_transforms(self, sample_config):
         """Test building validation/test transform pipeline."""
-        builder = TransformBuilder(sample_config)
+        builder = TransformBuilder.from_config(sample_config)
         t = builder.build_validation_transforms(
             custom_preprocessing={"edge_enhance": True},
         )
@@ -500,33 +499,33 @@ class TestImageTransforms:
 
     def test_build_test_time_augmentation_transforms(self, sample_config):
         """Test building TTA transform pipelines."""
-        builder = TransformBuilder(sample_config)
+        builder = TransformBuilder.from_config(sample_config)
         ttas = builder.build_test_time_augmentation_transforms(num_augmentations=3)
         assert len(ttas) == 3
 
     def test_get_normalization_transforms(self, sample_config):
         """Test normalization transform selection."""
-        builder = TransformBuilder(sample_config)
 
         # ImageNet
         sample_config.set("system.use_imagenet_norm", True)
-        n1 = builder._get_normalization_transforms()
+        builder1 = TransformBuilder.from_config(sample_config)
+        n1 = builder1._get_normalization_transforms()
         assert n1[0].mean == [0.485, 0.456, 0.406]
 
         # Simple [-1, 1]
         sample_config.set("system.use_imagenet_norm", False)
-        n2 = builder._get_normalization_transforms()
+        builder2 = TransformBuilder.from_config(sample_config)
+        n2 = builder2._get_normalization_transforms()
         assert n2[0].mean == [0.5, 0.5, 0.5]
 
-        # Missing key (default to True)
-        # We can't easily delete from ConfigManager internal dict, but we can mock it
-        with patch.object(sample_config, "get", return_value=True):
-            n3 = builder._get_normalization_transforms()
-            assert n3[0].mean == [0.485, 0.456, 0.406]
+        # Test default behavior (True)
+        builder3 = TransformBuilder(use_imagenet_norm=True)
+        n3 = builder3._get_normalization_transforms()
+        assert n3[0].mean == [0.485, 0.456, 0.406]
 
     def test_create_custom_transform(self, sample_config):
         """Test creation of fully custom transform pipeline."""
-        builder = TransformBuilder(sample_config)
+        builder = TransformBuilder.from_config(sample_config)
 
         # Different strategies and options
         t1 = builder.create_custom_transform(

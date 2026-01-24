@@ -11,8 +11,8 @@ Created comprehensive documentation with professional Mermaid diagrams showing t
 
 ### Key Implementation Files
 - `src/boundary/engine.py:1` - Database connection and session factory
-- `src/boundary/models/base.py:1` - SQLAlchemy declarative base
-- `src/boundary/CRUD/base.py:1` - Generic CRUD base class
+- `src/boundary/models/` - SQLAlchemy ORM definitions ([README](models/README.md))
+- `src/boundary/CRUD/` - Data access operations ([README](CRUD/README.md))
 - `src/boundary/vdb_query_engine.py:1` - Vector database query engine for RAG
 
 ### System Connections
