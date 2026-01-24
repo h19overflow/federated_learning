@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Dict, List, Tuple
+from typing import Any, AsyncGenerator, AsyncIterator, Dict, List, Tuple
 
 from .contracts import AgentEvent, ChatInput
 
@@ -12,7 +12,7 @@ class BaseAgent(ABC):
     """Abstract interface for streaming chat agents."""
 
     @abstractmethod
-    async def stream(self, chat_input: ChatInput) -> AsyncGenerator[AgentEvent, None]:
+    def stream(self, chat_input: ChatInput) -> AsyncIterator[AgentEvent]:
         """Stream a response for the provided chat input."""
 
     @abstractmethod

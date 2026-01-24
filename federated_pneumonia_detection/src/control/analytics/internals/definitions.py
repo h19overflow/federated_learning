@@ -169,8 +169,8 @@ class ExportService(Protocol):
         ...
 
 
-class BackfillService(Protocol):
-    """Service for backfilling run data from external sources."""
+class BackfillServiceProtocol(Protocol):
+    """Protocol for backfilling run data from external sources."""
 
     def backfill_from_json(
         self, db: Session, run_id: int, payload: dict[str, Any]

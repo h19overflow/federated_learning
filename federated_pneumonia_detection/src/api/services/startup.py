@@ -277,7 +277,7 @@ async def _initialize_chat_services(app):
 
         # Create a temporary app.state object to pass arxiv_engine
         class TempState:
-            pass
+            arxiv_engine: ArxivAugmentedEngine | None = None
 
         temp_state = TempState()
         temp_state.arxiv_engine = arxiv_engine

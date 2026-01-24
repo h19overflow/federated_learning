@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
+from typing import Any, AsyncGenerator, AsyncIterator, Dict, List, Optional, Tuple, cast
 
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -171,7 +171,7 @@ class ArxivAugmentedEngine(BaseAgent):
             arxiv_enabled=chat_input.arxiv_enabled,
             original_query=chat_input.original_query,
         ):
-            yield event
+            yield cast(AgentEvent, event)
 
     async def query(self, chat_input: ChatInput) -> Dict[str, Any]:
         """Run a non-streaming query (BaseAgent contract)."""
