@@ -1,16 +1,4 @@
-"""
-Query Router - Classifies queries as basic conversation or tool-augmented research.
-
-Lightweight classification using Gemini 2.0 Flash with structured output to determine
-whether a query requires tools (RAG, arxiv, MCP) or can be answered conversationally.
-
-Usage:
-    mode = classify_query("What papers discuss federated learning?")
-    # Returns: "research"
-
-    mode = classify_query("Thanks for the explanation!")
-    # Returns: "basic"
-"""
+"""Query Router - Classifies queries as basic conversation or tool-augmented research."""
 
 import logging
 from typing import Literal
@@ -42,10 +30,9 @@ def _get_router_llm():
     if _router_llm is None:
         base_model = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash-exp",
-            temperature=0.0,  # Deterministic classification
-            max_tokens=50,  # Small response
+            temperature=0.0,
+            max_tokens=50,
         )
-        # Use with_structured_output for simple classification (no agent needed)
         _router_llm = base_model.with_structured_output(QueryClassification)
     return _router_llm
 
@@ -55,15 +42,11 @@ ROUTER_CLASSIFICATION_PROMPT = """Classify this query as either "research" or "b
 RESEARCH queries need tools (search, retrieval, analysis):
 - Questions about papers, research topics, technical details
 - Requests for comparisons, citations, specific studies
-- Questions requiring external knowledge or sources
-- Examples: "What papers discuss federated learning?", "Compare ResNet and VGG", "Find papers by Andrew Ng"
 
 BASIC queries can be answered conversationally:
 - Greetings, thanks, acknowledgments
 - Clarifications of previous responses
 - Simple explanations without requiring sources
-- Follow-up questions about already-retrieved information
-- Examples: "Hello", "Thanks!", "Can you explain that more?", "What did you mean by recall?"
 
 Query: {query}
 

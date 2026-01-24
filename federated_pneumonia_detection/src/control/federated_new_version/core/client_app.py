@@ -11,7 +11,7 @@ from federated_pneumonia_detection.src.control.dl_model.centralized_trainer_util
     create_data_module,
     prepare_dataset,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.model.xray_data_module import (  # noqa: E501
+from federated_pneumonia_detection.src.control.dl_model.internals.data.xray_data_module import (  # noqa: E501
     XRayDataModule,
 )
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (

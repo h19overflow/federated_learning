@@ -6,7 +6,7 @@ from typing import Tuple
 import pandas as pd
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.control.dl_model.internals.model.xray_data_module import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.xray_data_module import (
     XRayDataModule,
 )
 from federated_pneumonia_detection.src.internals.data_processing import (

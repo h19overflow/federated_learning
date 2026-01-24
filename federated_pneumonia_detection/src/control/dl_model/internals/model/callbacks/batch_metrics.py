@@ -79,28 +79,44 @@ class BatchMetricsCallback(pl.Callback):
         # Convert tensor to float
         loss_value = loss.item() if hasattr(loss, "item") else float(loss)
 
-        # Extract metrics if available from logged metrics
+         # Extract metrics if available from logged metrics
+         # Check both _step and epoch-only keys for backwards compatibility
         accuracy = None
         recall = None
         f1 = None
 
-        if "train_acc" in trainer.callback_metrics:
-            acc_tensor = trainer.callback_metrics["train_acc"]
-            accuracy = (
-                acc_tensor.item() if hasattr(acc_tensor, "item") else float(acc_tensor)
-            )
+        acc_key = (
+             "train_acc_step"
+             if "train_acc_step" in trainer.callback_metrics
+             else "train_acc"
+         )
+        if acc_key in trainer.callback_metrics:
+             acc_tensor = trainer.callback_metrics[acc_key]
+             accuracy = (
+                 acc_tensor.item() if hasattr(acc_tensor, "item") else float(acc_tensor)
+             )
 
-        if "train_recall" in trainer.callback_metrics:
-            recall_tensor = trainer.callback_metrics["train_recall"]
-            recall = (
-                recall_tensor.item()
-                if hasattr(recall_tensor, "item")
-                else float(recall_tensor)
-            )
+        recall_key = (
+             "train_recall_step"
+             if "train_recall_step" in trainer.callback_metrics
+             else "train_recall"
+         )
+        if recall_key in trainer.callback_metrics:
+             recall_tensor = trainer.callback_metrics[recall_key]
+             recall = (
+                 recall_tensor.item()
+                 if hasattr(recall_tensor, "item")
+                 else float(recall_tensor)
+             )
 
-        if "train_f1" in trainer.callback_metrics:
-            f1_tensor = trainer.callback_metrics["train_f1"]
-            f1 = f1_tensor.item() if hasattr(f1_tensor, "item") else float(f1_tensor)
+        f1_key = (
+             "train_f1_step"
+             if "train_f1_step" in trainer.callback_metrics
+             else "train_f1"
+         )
+        if f1_key in trainer.callback_metrics:
+             f1_tensor = trainer.callback_metrics[f1_key]
+             f1 = f1_tensor.item() if hasattr(f1_tensor, "item") else float(f1_tensor)
 
         # Send batch metrics via WebSocket
         if self.websocket_sender:

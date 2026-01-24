@@ -15,10 +15,10 @@ from flwr.app import ArrayRecord, MetricRecord
 from torchmetrics import AUROC, ConfusionMatrix, F1Score, Precision, Recall
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet import (
-    LitResNet,
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
+    LitResNetEnhanced,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.model.xray_data_module import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.xray_data_module import (
     XRayDataModule,
 )
 
@@ -95,7 +95,7 @@ def create_central_evaluate_fn(
 def _load_and_prepare_model(
     config_manager: ConfigManager,
     arrays: ArrayRecord,
-) -> Tuple[LitResNet, torch.device]:
+) -> Tuple[LitResNetEnhanced, torch.device]:
     """Load model from aggregated weights and prepare for evaluation.
 
     Args:
@@ -105,7 +105,9 @@ def _load_and_prepare_model(
     Returns:
         Tuple of (model, device)
     """
-    model = LitResNet(config=config_manager)
+    model = LitResNetEnhanced(
+        config=config_manager, use_focal_loss=False, use_cosine_scheduler=False
+    )
     model.load_state_dict(arrays.to_torch_state_dict())
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -168,7 +170,7 @@ def _create_dataloader(
 
 
 def _run_inference_loop(
-    model: LitResNet,
+    model: LitResNetEnhanced,
     test_loader: torch.utils.data.DataLoader,
     device: torch.device,
 ) -> Tuple[float, float, np.ndarray, np.ndarray]:

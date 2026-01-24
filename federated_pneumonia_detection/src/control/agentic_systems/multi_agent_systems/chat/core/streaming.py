@@ -42,13 +42,6 @@ def create_sse_event(
 
     Returns:
         Dict with type and relevant fields based on event type
-
-    Examples:
-        >>> create_sse_event(SSEEventType.TOKEN, content="Hello")
-        {"type": "token", "content": "Hello"}
-
-        >>> create_sse_event(SSEEventType.ERROR, message="Failed")
-        {"type": "error", "message": "Failed"}
     """
     event: Dict[str, Any] = {"type": event_type.value}
 

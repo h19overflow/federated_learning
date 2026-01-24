@@ -31,13 +31,16 @@ from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metri
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.factory import (
+    AgentFactory,
+)
 
 logger = logging.getLogger(__name__)
 
 # Module-level singleton references (types imported lazily)
 _mcp_manager = None
-_arxiv_engine = None
 _query_engine = None
+_agent_factory = None
 
 
 async def initialize_services(app=None) -> None:
@@ -55,7 +58,7 @@ async def initialize_services(app=None) -> None:
     Args:
         app: FastAPI app instance for storing services in app.state
     """
-    global _mcp_manager, _arxiv_engine, _query_engine
+    global _mcp_manager, _query_engine, _agent_factory
 
     # 1. Database (critical)
     _initialize_database()
@@ -67,7 +70,7 @@ async def initialize_services(app=None) -> None:
     _mcp_manager = await _initialize_mcp_manager()
 
     # 4. Chat services (optional - for performance optimization)
-    _arxiv_engine, _query_engine = await _initialize_chat_services(app)
+    _query_engine, _agent_factory = await _initialize_chat_services(app)
 
     # 5. Analytics services (optional - for performance optimization)
     _initialize_analytics_services(app)
@@ -89,7 +92,7 @@ async def shutdown_services(app=None) -> None:
     Args:
         app: FastAPI app instance for accessing app.state
     """
-    global _mcp_manager, _arxiv_engine, _query_engine
+    global _mcp_manager, _query_engine, _agent_factory
 
     # 1. Database
     _shutdown_database()
@@ -221,19 +224,19 @@ def _shutdown_wandb_tracker() -> None:
 
 async def _initialize_chat_services(app):
     """
-    Initialize chat services (ArxivEngine and QueryEngine) at startup.
+    Initialize chat services (ArxivEngine, QueryEngine, and AgentFactory) at startup.
 
     These services are heavy to initialize (LLMs, vector stores, BM25),
     so initializing them once at startup significantly reduces first-message latency.
 
-    Both services are optional - if initialization fails, endpoints will fall back
+    All services are optional - if initialization fails, endpoints will fall back
     to lazy initialization or graceful degradation.
 
     Args:
         app: FastAPI app instance for storing services in app.state
 
     Returns:
-        Tuple of (arxiv_engine, query_engine) - either initialized instances or None
+        Tuple of (query_engine, agent_factory) - either initialized instances or None
     """
     from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (
         ArxivAugmentedEngine,
@@ -244,6 +247,7 @@ async def _initialize_chat_services(app):
 
     arxiv_engine = None
     query_engine = None
+    agent_factory = None
 
     # Initialize QueryEngine first (needed by ArxivEngine)
     try:
@@ -267,13 +271,32 @@ async def _initialize_chat_services(app):
             "(arxiv features unavailable, will fall back to lazy init)",
         )
 
+    # Initialize AgentFactory (uses pre-initialized arxiv_engine for performance)
+    try:
+        logger.info("[Startup] Initializing AgentFactory...")
+
+        # Create a temporary app.state object to pass arxiv_engine
+        class TempState:
+            pass
+
+        temp_state = TempState()
+        temp_state.arxiv_engine = arxiv_engine
+
+        agent_factory = AgentFactory(app_state=temp_state)
+        logger.info("[Startup] AgentFactory initialized successfully")
+    except Exception as e:
+        logger.warning(
+            f"[Startup] AgentFactory initialization failed: {e} "
+            "(chat endpoints will create factory on-demand)",
+        )
+
     # Store in app.state if available
     if app is not None:
-        app.state.arxiv_engine = arxiv_engine
         app.state.query_engine = query_engine
+        app.state.agent_factory = agent_factory
         logger.info("[Startup] Chat services stored in app.state")
 
-    return arxiv_engine, query_engine
+    return query_engine, agent_factory
 
 
 def _initialize_analytics_services(app) -> AnalyticsFacade | None:
@@ -439,17 +462,22 @@ def _shutdown_chat_services(app) -> None:
     if app is None:
         return
 
-    # Cleanup ArxivEngine (includes HistoryManager)
-    if hasattr(app.state, "arxiv_engine") and app.state.arxiv_engine is not None:
+    # Cleanup ArxivEngine (via agent_factory)
+    if hasattr(app.state, "agent_factory") and app.state.agent_factory is not None:
         try:
-            # Access the history manager and close its connection pool
-            if hasattr(app.state.arxiv_engine, "_history_manager"):
-                app.state.arxiv_engine._history_manager.close()
-                logger.info(
-                    "[Shutdown] ArxivEngine HistoryManager connection pool closed"
-                )
+            # Access the engine through the factory's cached agent
+            if (
+                hasattr(app.state.agent_factory, "_research_agent")
+                and app.state.agent_factory._research_agent is not None
+            ):
+                engine = app.state.agent_factory._research_agent
+                if hasattr(engine, "_history_manager"):
+                    engine._history_manager.close()
+                    logger.info(
+                        "[Shutdown] ArxivEngine HistoryManager connection pool closed"
+                    )
         except Exception as e:
-            logger.warning(f"[Shutdown] Error closing ArxivEngine: {e}")
+            logger.warning(f"[Shutdown] Error closing ArxivEngine via factory: {e}")
 
     # Cleanup QueryEngine (includes HistoryManager)
     if hasattr(app.state, "query_engine") and app.state.query_engine is not None:

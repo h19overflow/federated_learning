@@ -7,14 +7,14 @@ from typing import Any, Dict, Optional
 
 import pytorch_lightning as pl
 
-from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet import (
-    LitResNet,
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
+    LitResNetEnhanced,
 )
 
 
 def collect_training_results(
     trainer: pl.Trainer,
-    model: LitResNet,
+    model: LitResNetEnhanced,
     metrics_collector: Any,
     logs_dir: str,
     checkpoint_dir: str,
@@ -35,6 +35,45 @@ def collect_training_results(
 
     Returns:
         Dictionary with training results
+    """
+    best_model_path, best_model_score = _extract_checkpoint_info(trainer)
+    state_value = _extract_trainer_state(trainer)
+    metrics_history, metrics_metadata = _collect_metrics_data(metrics_collector)
+
+    results = {
+        "run_id": run_id,
+        "best_model_path": best_model_path,
+        "best_model_score": best_model_score,
+        "current_epoch": trainer.current_epoch,
+        "global_step": trainer.global_step,
+        "state": state_value,
+        "model_summary": model.get_model_summary(),
+        "checkpoint_dir": checkpoint_dir,
+        "logs_dir": logs_dir,
+        "metrics_history": metrics_history,
+        "metrics_metadata": metrics_metadata,
+        "total_epochs_trained": len(metrics_history),
+    }
+
+    logger.info(f"Training results collected: {len(metrics_history)} epochs tracked")
+    logger.info("Saving metrics to: results/centralized/metrics_output/metrics.json")
+
+    _save_results_to_file(results, logs_dir, logger)
+
+    return results
+
+
+def _extract_checkpoint_info(
+    trainer: pl.Trainer,
+) -> tuple[Optional[str], Optional[float]]:
+    """
+    Extract checkpoint information from trainer callbacks.
+
+    Args:
+        trainer: PyTorch Lightning trainer instance
+
+    Returns:
+        Tuple of (best_model_path, best_model_score)
     """
     checkpoint_callback = None
     for callback in trainer.callbacks:
@@ -58,6 +97,19 @@ def collect_training_results(
                 else float(checkpoint_callback.best_model_score)
             )
 
+    return best_model_path, best_model_score
+
+
+def _extract_trainer_state(trainer: pl.Trainer) -> Optional[str]:
+    """
+    Extract trainer state information.
+
+    Args:
+        trainer: PyTorch Lightning trainer instance
+
+    Returns:
+        State string value or None
+    """
     state_value = None
     if trainer.state and hasattr(trainer.state, "stage") and trainer.state.stage:
         state_value = (
@@ -65,34 +117,38 @@ def collect_training_results(
             if hasattr(trainer.state.stage, "value")
             else str(trainer.state.stage)
         )
+    return state_value
 
+
+def _collect_metrics_data(metrics_collector: Any) -> tuple[list, dict]:
+    """
+    Collect metrics history and metadata from metrics collector.
+
+    Args:
+        metrics_collector: MetricsCollectorCallback instance or None
+
+    Returns:
+        Tuple of (metrics_history, metrics_metadata)
+    """
     metrics_history = (
         metrics_collector.get_metrics_history() if metrics_collector else []
     )
     metrics_metadata = metrics_collector.get_metadata() if metrics_collector else {}
+    return metrics_history, metrics_metadata
 
-    results = {
-        "run_id": run_id,
-        "best_model_path": best_model_path,
-        "best_model_score": best_model_score,
-        "current_epoch": trainer.current_epoch,
-        "global_step": trainer.global_step,
-        "state": state_value,
-        "model_summary": model.get_model_summary(),
-        "checkpoint_dir": checkpoint_dir,
-        "logs_dir": logs_dir,
-        "metrics_history": metrics_history,
-        "metrics_metadata": metrics_metadata,
-        "total_epochs_trained": len(metrics_history),
-    }
 
-    logger.info(f"Training results collected: {len(metrics_history)} epochs tracked")
+def _save_results_to_file(
+    results: Dict[str, Any], logs_dir: str, logger: logging.Logger
+) -> None:
+    """
+    Save training results to JSON file.
 
-    logger.info("Saving metrics to: results/centralized/metrics_output/metrics.json")
-
+    Args:
+        results: Dictionary of training results
+        logs_dir: Directory for training logs
+        logger: Logger instance
+    """
     output_path = os.path.join(logs_dir, "metrics_output", "metrics.json")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(results, f)
-
-    return results

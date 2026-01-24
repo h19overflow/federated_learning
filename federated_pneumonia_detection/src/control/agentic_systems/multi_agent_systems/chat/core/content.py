@@ -13,28 +13,15 @@ logger = logging.getLogger(__name__)
 
 def normalize_content(content: Union[str, List[Any], None]) -> str:
     """
-    Normalize LLM response content to a string.
+    Normalize Gemini LLM response content to a string.
 
-    Gemini models may return content as:
-    - A string (direct text)
-    - A list of parts (each can be str or dict with 'text' key)
-    - None
+    Handles string, list of parts (str or dict with 'text' key), or None.
 
     Args:
-        content: Raw content from LLM response
+        content: Raw LLM response content
 
     Returns:
-        Normalized string content
-
-    Examples:
-        >>> normalize_content("Hello world")
-        "Hello world"
-
-        >>> normalize_content([{"text": "Hello"}, " world"])
-        "Hello world"
-
-        >>> normalize_content(None)
-        ""
+        Normalized string content (empty string for None)
     """
     if content is None:
         logger.debug("[Content] normalize_content received None")
@@ -77,19 +64,12 @@ def chunk_content(content: str, chunk_size: int = 50) -> Generator[str, None, No
     """
     Split content into chunks for simulated streaming.
 
-    Used when we have a complete response but want to simulate
-    token-by-token streaming for better UX.
-
     Args:
         content: Complete content string to chunk
         chunk_size: Maximum characters per chunk (default: 50)
 
     Yields:
         String chunks of at most chunk_size characters
-
-    Examples:
-        >>> list(chunk_content("Hello World", chunk_size=5))
-        ["Hello", " Worl", "d"]
     """
     for i in range(0, len(content), chunk_size):
         yield content[i : i + chunk_size]

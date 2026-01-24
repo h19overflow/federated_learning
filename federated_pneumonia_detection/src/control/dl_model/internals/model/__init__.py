@@ -10,16 +10,14 @@ for centralized and federated training.
 from . import callbacks, collectors, optimizers
 
 # Focal Loss
-from .focal_loss import FocalLoss, FocalLossWithLabelSmoothing
-from .lit_resnet import LitResNet
+from .losses import FocalLoss, FocalLossWithLabelSmoothing
 from .lit_resnet_enhanced import LitResNetEnhanced
 
 # Data Module
-from .xray_data_module import XRayDataModule
+from ..data.xray_data_module import XRayDataModule
 
 __all__ = [
     # Lightning Modules
-    "LitResNet",
     "LitResNetEnhanced",
     # Data
     "XRayDataModule",

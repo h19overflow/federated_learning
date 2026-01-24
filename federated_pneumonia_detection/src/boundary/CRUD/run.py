@@ -247,73 +247,19 @@ class RunCRUD(BaseCRUD[Run]):
             federated_context: Optional dict with 'client_id' and 'round_number' for federated mode
         """
         try:
+            client_id, round_id = self._resolve_federated_context(db, federated_context)
+
             metrics_to_persist = []
-
-            # Extract federated context if provided
-            client_id = None
-            round_id = None
-            if federated_context:
-                client_id = federated_context.get("client_id")
-                round_number = federated_context.get("round_number", 0)
-
-                # If in federated mode, create/get round for this client
-                if client_id is not None:
-                    from federated_pneumonia_detection.src.boundary.CRUD.round import (
-                        round_crud,
-                    )
-
-                    round_id = round_crud.get_or_create_round(
-                        db,
-                        client_id,
-                        round_number,
-                    )
-                    self.logger.info(
-                        f"[persist_metrics] Federated context: "
-                        f"client_id={client_id}, round_id={round_id}",
-                    )
-
             for epoch_data in epoch_metrics:
-                epoch = epoch_data.get("epoch", 0)
+                metrics_to_persist.extend(
+                    self._transform_epoch_to_metrics(
+                        epoch_data,
+                        run_id,
+                        client_id,
+                        round_id,
+                    )
+                )
 
-                # Extract and persist each metric type
-                for key, value in epoch_data.items():
-                    if key in ["epoch", "timestamp", "global_step"]:
-                        continue
-
-                    if not isinstance(value, (int, float)):
-                        continue
-
-                    # Determine dataset type from metric name
-                    if key.startswith("train_"):
-                        dataset_type = "train"
-                        metric_name = key
-                    elif key.startswith("val_"):
-                        dataset_type = "validation"
-                        metric_name = key
-                    elif key.startswith("test_"):
-                        dataset_type = "test"
-                        metric_name = key
-                    else:
-                        dataset_type = "other"
-                        metric_name = key
-
-                    metric_dict = {
-                        "run_id": run_id,
-                        "metric_name": metric_name,
-                        "metric_value": float(value),
-                        "step": epoch,
-                        "dataset_type": dataset_type,
-                    }
-
-                    # Add federated context if applicable
-                    if client_id is not None:
-                        metric_dict["client_id"] = client_id
-                    if round_id is not None:
-                        metric_dict["round_id"] = round_id
-
-                    metrics_to_persist.append(metric_dict)
-
-            # Bulk create metrics for efficiency
             if metrics_to_persist:
                 run_metric_crud.bulk_create(db, metrics_to_persist)
                 db.commit()
@@ -477,6 +423,112 @@ class RunCRUD(BaseCRUD[Run]):
                 ]
 
         return final_stats_map
+
+    def _resolve_federated_context(
+        self,
+        db: Session,
+        federated_context: Optional[Dict[str, Any]],
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """
+        Resolve federated context to client_id and round_id.
+
+        Args:
+            db: Database session
+            federated_context: Optional dict with 'client_id' and 'round_number'
+
+        Returns:
+            Tuple of (client_id, round_id) or (None, None) if not federated
+        """
+        client_id = None
+        round_id = None
+
+        if federated_context:
+            client_id = federated_context.get("client_id")
+            round_number = federated_context.get("round_number", 0)
+
+            if client_id is not None:
+                from federated_pneumonia_detection.src.boundary.CRUD.round import (
+                    round_crud,
+                )
+
+                round_id = round_crud.get_or_create_round(
+                    db,
+                    client_id,
+                    round_number,
+                )
+                self.logger.info(
+                    f"[persist_metrics] Federated context: "
+                    f"client_id={client_id}, round_id={round_id}",
+                )
+
+        return client_id, round_id
+
+    def _determine_dataset_type(self, metric_name: str) -> str:
+        """
+        Determine dataset type from metric name prefix.
+
+        Args:
+            metric_name: Name of the metric
+
+        Returns:
+            Dataset type: "train", "validation", "test", or "other"
+        """
+        if metric_name.startswith("train_"):
+            return "train"
+        elif metric_name.startswith("val_"):
+            return "validation"
+        elif metric_name.startswith("test_"):
+            return "test"
+        else:
+            return "other"
+
+    def _transform_epoch_to_metrics(
+        self,
+        epoch_data: Dict[str, Any],
+        run_id: int,
+        client_id: Optional[int],
+        round_id: Optional[int],
+    ) -> List[Dict[str, Any]]:
+        """
+        Transform epoch data into metric dictionaries for persistence.
+
+        Args:
+            epoch_data: Dictionary containing epoch metrics
+            run_id: Run ID to associate with metrics
+            client_id: Optional client ID for federated runs
+            round_id: Optional round ID for federated runs
+
+        Returns:
+            List of metric dictionaries ready for persistence
+        """
+        metrics_list = []
+        epoch = epoch_data.get("epoch", 0)
+
+        for key, value in epoch_data.items():
+            if key in ["epoch", "timestamp", "global_step"]:
+                continue
+
+            if not isinstance(value, (int, float)):
+                continue
+
+            dataset_type = self._determine_dataset_type(key)
+
+            metric_dict = {
+                "run_id": run_id,
+                "metric_name": key,
+                "metric_value": float(value),
+                "step": epoch,
+                "dataset_type": dataset_type,
+            }
+
+            if client_id is not None:
+                metric_dict["client_id"] = client_id
+            if round_id is not None:
+                metric_dict["round_id"] = round_id
+
+            metrics_list.append(metric_dict)
+
+        return metrics_list
 
 
 run_crud = RunCRUD()

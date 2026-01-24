@@ -43,10 +43,17 @@ async def get_chat_history(
         )
 
     try:
-        # Get factory with app.state to use pre-initialized engines
-        agent_factory = get_agent_factory(
-            app_state=request.app.state if request else None
+        # Use pre-initialized factory from app.state (fallback to on-demand creation)
+        agent_factory = (
+            getattr(request.app.state, "agent_factory", None) if request else None
         )
+        if agent_factory is None:
+            logger.warning(
+                "[HISTORY] No cached factory in app.state, creating on-demand"
+            )
+            agent_factory = get_agent_factory(
+                app_state=request.app.state if request else None
+            )
         agent = agent_factory.get_chat_agent()
 
         # Get full history

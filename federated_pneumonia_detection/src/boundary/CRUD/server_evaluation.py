@@ -39,66 +39,12 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
             Created ServerEvaluation instance
         """
         try:
-            # Extract core metrics
-            eval_data = {
-                "run_id": run_id,
-                "round_number": round_number,
-                "loss": metrics.get("loss", 0.0),
-                "accuracy": metrics.get("accuracy"),
-                "precision": metrics.get("precision"),
-                "recall": metrics.get("recall"),
-                "f1_score": metrics.get("f1_score") or metrics.get("f1"),
-                "auroc": metrics.get("auroc") or metrics.get("auc"),
-                "num_samples": num_samples,
-                "evaluation_time": datetime.now(),
-            }
+            eval_data = self._extract_core_metrics(
+                metrics, run_id, round_number, num_samples
+            )
+            eval_data.update(self._extract_confusion_matrix(metrics))
 
-            # Extract confusion matrix if available (supports multiple formats)
-            if "confusion_matrix" in metrics:
-                # Nested dict format: {"confusion_matrix": {tp: ..., tn: ..., ...}}
-                cm = metrics["confusion_matrix"]
-                eval_data.update(
-                    {
-                        "true_positives": cm.get("true_positives") or cm.get("tp"),
-                        "true_negatives": cm.get("true_negatives") or cm.get("tn"),
-                        "false_positives": cm.get("false_positives") or cm.get("fp"),
-                        "false_negatives": cm.get("false_negatives") or cm.get("fn"),
-                    },
-                )
-            elif "server_cm_tp" in metrics:
-                # Flat format: {"server_cm_tp": ..., "server_cm_tn": ..., ...}
-                eval_data.update(
-                    {
-                        "true_positives": metrics.get("server_cm_tp"),
-                        "true_negatives": metrics.get("server_cm_tn"),
-                        "false_positives": metrics.get("server_cm_fp"),
-                        "false_negatives": metrics.get("server_cm_fn"),
-                    },
-                )
-
-            # Store any additional metrics
-            excluded_keys = {
-                "loss",
-                "accuracy",
-                "precision",
-                "recall",
-                "f1_score",
-                "f1",
-                "auroc",
-                "auc",
-                "confusion_matrix",
-                "server_cm_tp",
-                "server_cm_tn",
-                "server_cm_fp",
-                "server_cm_fn",
-                "server_loss",
-                "server_accuracy",
-                "server_precision",
-                "server_recall",
-                "server_f1",
-                "server_auroc",
-            }
-            additional = {k: v for k, v in metrics.items() if k not in excluded_keys}
+            additional = self._extract_additional_metrics(metrics)
             if additional:
                 eval_data["additional_metrics"] = additional
 
@@ -356,6 +302,112 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
         )
 
         return latest_evaluation
+
+    def _extract_core_metrics(
+        self,
+        metrics: Dict[str, Any],
+        run_id: int,
+        round_number: int,
+        num_samples: Optional[int],
+    ) -> Dict[str, Any]:
+        """
+        Extract core evaluation metrics from metrics dictionary.
+
+        Args:
+            metrics: Dictionary containing evaluation metrics
+            run_id: ID of the run
+            round_number: Round number (1-indexed)
+            num_samples: Number of samples evaluated
+
+        Returns:
+            Dictionary with core eval_data fields
+        """
+        return {
+            "run_id": run_id,
+            "round_number": round_number,
+            "loss": metrics.get("loss", 0.0),
+            "accuracy": metrics.get("accuracy"),
+            "precision": metrics.get("precision"),
+            "recall": metrics.get("recall"),
+            "f1_score": metrics.get("f1_score") or metrics.get("f1"),
+            "auroc": metrics.get("auroc") or metrics.get("auc"),
+            "num_samples": num_samples,
+            "evaluation_time": datetime.now(),
+        }
+
+    def _extract_confusion_matrix(
+        self,
+        metrics: Dict[str, Any],
+    ) -> Dict[str, Optional[int]]:
+        """
+        Extract confusion matrix from metrics dictionary.
+
+        Supports both nested dict format and flat format.
+
+        Args:
+            metrics: Dictionary containing evaluation metrics
+
+        Returns:
+            Dictionary with tp, tn, fp, fn keys or empty dict if not found
+        """
+        cm_data = {}
+
+        if "confusion_matrix" in metrics:
+            # Nested dict format: {"confusion_matrix": {tp: ..., tn: ..., ...}}
+            cm = metrics["confusion_matrix"]
+            cm_data = {
+                "true_positives": cm.get("true_positives") or cm.get("tp"),
+                "true_negatives": cm.get("true_negatives") or cm.get("tn"),
+                "false_positives": cm.get("false_positives") or cm.get("fp"),
+                "false_negatives": cm.get("false_negatives") or cm.get("fn"),
+            }
+        elif "server_cm_tp" in metrics:
+            # Flat format: {"server_cm_tp": ..., "server_cm_tn": ..., ...}
+            cm_data = {
+                "true_positives": metrics.get("server_cm_tp"),
+                "true_negatives": metrics.get("server_cm_tn"),
+                "false_positives": metrics.get("server_cm_fp"),
+                "false_negatives": metrics.get("server_cm_fn"),
+            }
+
+        return cm_data
+
+    def _extract_additional_metrics(
+        self,
+        metrics: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Extract additional metrics excluding core and confusion matrix fields.
+
+        Args:
+            metrics: Dictionary containing evaluation metrics
+
+        Returns:
+            Dictionary of additional metrics or None if empty
+        """
+        excluded_keys = {
+            "loss",
+            "accuracy",
+            "precision",
+            "recall",
+            "f1_score",
+            "f1",
+            "auroc",
+            "auc",
+            "confusion_matrix",
+            "server_cm_tp",
+            "server_cm_tn",
+            "server_cm_fp",
+            "server_cm_fn",
+            "server_loss",
+            "server_accuracy",
+            "server_precision",
+            "server_recall",
+            "server_f1",
+            "server_auroc",
+        }
+        additional = {k: v for k, v in metrics.items() if k not in excluded_keys}
+        return additional if additional else None
 
 
 # Create a singleton instance

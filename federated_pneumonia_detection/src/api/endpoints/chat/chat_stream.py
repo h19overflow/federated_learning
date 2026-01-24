@@ -57,8 +57,14 @@ async def query_chat_stream(message: ChatMessage, request: Request):
         )
 
         try:
-            # Get factory with app.state to use pre-initialized engines
-            agent_factory = get_agent_factory(app_state=request.app.state)
+            # Use pre-initialized factory from app.state (fallback to on-demand creation)
+            agent_factory = getattr(request.app.state, "agent_factory", None)
+            if agent_factory is None:
+                logger.warning(
+                    "[STREAM] No cached factory in app.state, creating on-demand"
+                )
+                agent_factory = get_agent_factory(app_state=request.app.state)
+
             agent = agent_factory.get_chat_agent()
         except Exception as exc:
             logger.error("[STREAM] Failed to initialize chat agent: %s", exc)

@@ -115,34 +115,20 @@ def prepare_trainer_and_callbacks_pl(
     Returns:
         Dictionary containing callbacks and trainer configuration
     """
-    if config is None:
-        from federated_pneumonia_detection.config.config_manager import ConfigManager
-
-        config = ConfigManager()
-
     logger = logging.getLogger(__name__)
 
     # Create checkpoint directory
     os.makedirs(checkpoint_dir, exist_ok=True)
 
-    # Create default WebSocket sender if not provided
-    if websocket_sender is None:
-        websocket_sender = MetricsWebSocketSender(websocket_uri="ws://localhost:8765")
-        logger.info("[Training Callbacks] Created default WebSocket sender")
-
-    # Setup default values from config
-    patience = config.get("experiment.early_stopping_patience", 7)
-    min_delta = config.get("experiment.early_stopping_min_delta", 0.001)
-    max_epochs = (
-        config.get("experiment.max-epochs", 50)
-        if is_federated
-        else config.get("experiment.epochs", 50)
+    # Setup config and defaults
+    config, max_epochs, patience, min_delta, training_mode = _setup_config_and_defaults(
+        config, is_federated, logger
     )
-    training_mode = "federated" if is_federated else "centralized"
 
-    logger.info(
-        f"[Trainer Setup] max_epochs={max_epochs}, early_stopping_patience={patience}, min_delta={min_delta}",
-    )
+    # Ensure WebSocket sender exists
+    websocket_sender = _setup_websocket_sender(websocket_sender, logger)
+
+    # Log federated context if applicable
     if is_federated and client_id is not None:
         logger.info(
             f"[Trainer Setup] Federated mode with client_id={client_id}, round={round_number}",
@@ -151,108 +137,42 @@ def prepare_trainer_and_callbacks_pl(
     # Compute class weights
     class_weights = compute_class_weights_for_pl(train_df_for_weights, class_column)
 
-    # ModelCheckpoint callback - save best model based on validation recall
-    checkpoint_callback = ModelCheckpoint(
-        dirpath=checkpoint_dir,
-        filename=f"{model_filename}_{{epoch:02d}}_{{val_recall:.3f}}",
-        monitor="val_recall",
-        mode="max",
-        save_top_k=3,
-        save_last=True,
-        auto_insert_metric_name=False,
-        verbose=True,
-    )
-    # EarlyStopping callback - stop training when validation recall stops improving
-    early_stop_callback = EarlyStopping(
-        monitor="val_recall",
-        mode="max",
-        patience=patience,
-        min_delta=min_delta,
-        verbose=True,
-        strict=True,
-        log_rank_zero_only=True,
-    )
-
-    logger.info(
-        f"[EarlyStopping] Monitoring 'val_recall' with patience={patience}, min_delta={min_delta}",
-    )
-
-    # Learning rate monitor
-    lr_monitor = LearningRateMonitor(
-        logging_interval="epoch",
-        log_momentum=True,
-    )
-
-    # Custom highest recall tracker
-    highest_recall_callback = HighestValRecallCallback()
-
-    # Metrics collector - save all training metrics
+    # Set metrics directory default
     if metrics_dir is None:
         metrics_dir = os.path.join(checkpoint_dir, "metrics")
-    metrics_collector = MetricsCollectorCallback(
-        save_dir=metrics_dir,
-        experiment_name=experiment_name,
-        run_id=run_id,
-        training_mode=training_mode,
-        enable_db_persistence=True,
-        websocket_uri="ws://localhost:8765",
-        client_id=client_id,
-        round_number=round_number,
-    )
 
-    # Early stopping signal callback - notify frontend when early stopping occurs
-    early_stopping_signal = EarlyStoppingSignalCallback(
-        websocket_sender=websocket_sender,
-    )
-
-    # Batch metrics callback - send batch-level metrics for real-time observability
+    # Determine batch and gradient intervals
     batch_interval = batch_sample_interval or config.get(
         "experiment.batch_sample_interval",
         10,
     )
-    batch_metrics_callback = BatchMetricsCallback(
-        websocket_sender=websocket_sender,
-        sample_interval=batch_interval,
-        client_id=client_id,
-        round_num=round_number,
-    )
-
-    # Gradient monitor callback - track gradient norms and learning rate
     gradient_interval = gradient_sample_interval or config.get(
         "experiment.gradient_sample_interval",
         20,
     )
-    gradient_monitor_callback = GradientMonitorCallback(
+
+    # Create all callbacks
+    callbacks = _create_pytorch_callbacks(
+        checkpoint_dir=checkpoint_dir,
+        model_filename=model_filename,
+        patience=patience,
+        min_delta=min_delta,
+        metrics_dir=metrics_dir,
+        experiment_name=experiment_name,
+        run_id=run_id,
+        training_mode=training_mode,
         websocket_sender=websocket_sender,
-        sample_interval=gradient_interval,
+        client_id=client_id,
+        round_number=round_number,
+        batch_interval=batch_interval,
+        gradient_interval=gradient_interval,
+        logger=logger,
     )
 
-    # Compile callbacks list
-    callbacks = [
-        checkpoint_callback,
-        early_stop_callback,
-        early_stopping_signal,  # Must come after early_stop_callback
-        lr_monitor,
-        highest_recall_callback,
-        metrics_collector,
-        batch_metrics_callback,
-        gradient_monitor_callback,
-    ]
+    # Build trainer configuration
+    trainer_config = _build_trainer_config(callbacks, max_epochs, config)
 
-    # Trainer configuration
-    trainer_config = {
-        "callbacks": callbacks,
-        "max_epochs": max_epochs,
-        "accelerator": "gpu" if torch.cuda.is_available() else "cpu",
-        "devices": 1 if torch.cuda.is_available() else "auto",
-        "precision": "16-mixed" if torch.cuda.is_available() else 32,
-        "log_every_n_steps": 50,
-        "enable_checkpointing": True,
-        "enable_progress_bar": True,
-        "enable_model_summary": True,
-        "deterministic": True if config.get("system.seed") is not None else False,
-    }
-
+    # Log summary
     logger.info(f"Prepared trainer with {len(callbacks)} callbacks")
     logger.info(f"Checkpoint directory: {checkpoint_dir}")
     logger.info(f"Early stopping patience: {patience}")
@@ -263,8 +183,10 @@ def prepare_trainer_and_callbacks_pl(
         "trainer_config": trainer_config,
         "class_weights": class_weights,
         "checkpoint_dir": checkpoint_dir,
-        "metrics_collector": metrics_collector,
-        "early_stopping_signal": early_stopping_signal,
+        "metrics_collector": callbacks[5],  # MetricsCollectorCallback is at index 5
+        "early_stopping_signal": callbacks[
+            2
+        ],  # EarlyStoppingSignalCallback is at index 2
     }
 
 
@@ -319,3 +241,218 @@ def create_trainer_from_config(
 
     logging.getLogger(__name__).info(f"Trainer created with {len(callbacks)} callbacks")
     return trainer
+
+
+# ============================================================================
+# Helper functions for prepare_trainer_and_callbacks_pl (extracted for clarity)
+# ============================================================================
+
+
+def _setup_config_and_defaults(
+    config: Optional["ConfigManager"],
+    is_federated: bool,
+    logger: logging.Logger,
+) -> tuple[Any, int, int, float, str]:
+    """
+    Initialize ConfigManager and extract default training parameters.
+
+    Args:
+        config: ConfigManager instance or None
+        is_federated: Whether training is federated
+        logger: Logger instance
+
+    Returns:
+        Tuple of (config, max_epochs, patience, min_delta, training_mode)
+    """
+    if config is None:
+        from federated_pneumonia_detection.config.config_manager import ConfigManager
+
+        config = ConfigManager()
+
+    patience = config.get("experiment.early_stopping_patience", 7)
+    min_delta = config.get("experiment.early_stopping_min_delta", 0.001)
+    max_epochs = (
+        config.get("experiment.max-epochs", 50)
+        if is_federated
+        else config.get("experiment.epochs", 50)
+    )
+    training_mode = "federated" if is_federated else "centralized"
+
+    logger.info(
+        f"[Trainer Setup] max_epochs={max_epochs}, early_stopping_patience={patience}, min_delta={min_delta}",
+    )
+
+    return config, max_epochs, patience, min_delta, training_mode
+
+
+def _setup_websocket_sender(
+    websocket_sender: Optional[MetricsWebSocketSender],
+    logger: logging.Logger,
+) -> MetricsWebSocketSender:
+    """
+    Ensure WebSocket sender exists, creating default if needed.
+
+    Args:
+        websocket_sender: Existing sender or None
+        logger: Logger instance
+
+    Returns:
+        MetricsWebSocketSender instance
+    """
+    if websocket_sender is None:
+        websocket_sender = MetricsWebSocketSender(websocket_uri="ws://localhost:8765")
+        logger.info("[Training Callbacks] Created default WebSocket sender")
+
+    return websocket_sender
+
+
+def _create_pytorch_callbacks(
+    checkpoint_dir: str,
+    model_filename: str,
+    patience: int,
+    min_delta: float,
+    metrics_dir: str,
+    experiment_name: str,
+    run_id: Optional[int],
+    training_mode: str,
+    websocket_sender: MetricsWebSocketSender,
+    client_id: Optional[int],
+    round_number: int,
+    batch_interval: int,
+    gradient_interval: int,
+    logger: logging.Logger,
+) -> list[pl.Callback]:
+    """
+    Create and configure all PyTorch Lightning callbacks.
+
+    Args:
+        checkpoint_dir: Directory for model checkpoints
+        model_filename: Base filename for saved models
+        patience: Early stopping patience
+        min_delta: Early stopping minimum delta
+        metrics_dir: Directory to save metrics
+        experiment_name: Name of the experiment
+        run_id: Optional database run ID
+        training_mode: "federated" or "centralized"
+        websocket_sender: WebSocket sender for metrics
+        client_id: Optional federated client ID
+        round_number: Federated round number
+        batch_interval: Batch sampling interval
+        gradient_interval: Gradient sampling interval
+        logger: Logger instance
+
+    Returns:
+        List of configured callbacks
+    """
+    # ModelCheckpoint callback - save best model based on validation recall
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=checkpoint_dir,
+        filename=f"{model_filename}_{{epoch:02d}}_{{val_recall:.3f}}",
+        monitor="val_recall",
+        mode="max",
+        save_top_k=3,
+        save_last=True,
+        auto_insert_metric_name=False,
+        verbose=True,
+    )
+
+    # EarlyStopping callback - stop training when validation recall stops improving
+    early_stop_callback = EarlyStopping(
+        monitor="val_recall",
+        mode="max",
+        patience=patience,
+        min_delta=min_delta,
+        verbose=True,
+        strict=True,
+        log_rank_zero_only=True,
+    )
+
+    logger.info(
+        f"[EarlyStopping] Monitoring 'val_recall' with patience={patience}, min_delta={min_delta}",
+    )
+
+    # Learning rate monitor
+    lr_monitor = LearningRateMonitor(
+        logging_interval="epoch",
+        log_momentum=True,
+    )
+
+    # Custom highest recall tracker
+    highest_recall_callback = HighestValRecallCallback()
+
+    # Metrics collector - save all training metrics
+    metrics_collector = MetricsCollectorCallback(
+        save_dir=metrics_dir,
+        experiment_name=experiment_name,
+        run_id=run_id,
+        training_mode=training_mode,
+        enable_db_persistence=True,
+        websocket_uri="ws://localhost:8765",
+        client_id=client_id,
+        round_number=round_number,
+    )
+
+    # Early stopping signal callback - notify frontend when early stopping occurs
+    early_stopping_signal = EarlyStoppingSignalCallback(
+        websocket_sender=websocket_sender,
+    )
+
+    # Batch metrics callback - send batch-level metrics for real-time observability
+    batch_metrics_callback = BatchMetricsCallback(
+        websocket_sender=websocket_sender,
+        sample_interval=batch_interval,
+        client_id=client_id,
+        round_num=round_number,
+    )
+
+    # Gradient monitor callback - track gradient norms and learning rate
+    gradient_monitor_callback = GradientMonitorCallback(
+        websocket_sender=websocket_sender,
+        sample_interval=gradient_interval,
+    )
+
+    # Compile callbacks list (order matters - early_stopping_signal must come after early_stop_callback)
+    callbacks = [
+        checkpoint_callback,
+        early_stop_callback,
+        early_stopping_signal,
+        lr_monitor,
+        highest_recall_callback,
+        metrics_collector,
+        batch_metrics_callback,
+        gradient_monitor_callback,
+    ]
+
+    return callbacks
+
+
+def _build_trainer_config(
+    callbacks: list[pl.Callback],
+    max_epochs: int,
+    config: "ConfigManager",
+) -> dict[str, Any]:
+    """
+    Build trainer configuration dictionary.
+
+    Args:
+        callbacks: List of callbacks to use
+        max_epochs: Maximum number of epochs
+        config: ConfigManager instance
+
+    Returns:
+        Dictionary with trainer configuration
+    """
+    trainer_config = {
+        "callbacks": callbacks,
+        "max_epochs": max_epochs,
+        "accelerator": "gpu" if torch.cuda.is_available() else "cpu",
+        "devices": 1 if torch.cuda.is_available() else "auto",
+        "precision": "16-mixed" if torch.cuda.is_available() else 32,
+        "log_every_n_steps": 50,
+        "enable_checkpointing": True,
+        "enable_progress_bar": True,
+        "enable_model_summary": True,
+        "deterministic": True if config.get("system.seed") is not None else False,
+    }
+
+    return trainer_config

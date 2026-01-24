@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.base_agent import (
+    BaseAgent,
+)
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_stream import (
     stream_query,
+)
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.contracts import (
+    AgentEvent,
+    ChatInput,
 )
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history import (
     ChatHistoryManager,
@@ -25,7 +32,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-class ArxivAugmentedEngine:
+class ArxivAugmentedEngine(BaseAgent):
     """Research agent combining local RAG and arxiv search capabilities."""
 
     def __init__(self, max_history: int = 10) -> None:
@@ -77,7 +84,7 @@ class ArxivAugmentedEngine:
         """Add a conversation turn to session history."""
         self._history_manager.add_to_history(session_id, user_message, ai_response)
 
-    def get_history(self, session_id: str) -> List[tuple]:
+    def get_history(self, session_id: str) -> List[Tuple[str, str]]:
         """Get conversation history for a session."""
         return self._history_manager.get_history(session_id)
 
@@ -110,9 +117,9 @@ class ArxivAugmentedEngine:
             yield event
 
     # =========================================================================
-    # Non-streaming query
+    # Non-streaming query (internal method)
     # =========================================================================
-    async def query(
+    async def _query_internal(
         self,
         query: str,
         session_id: str,
@@ -152,3 +159,29 @@ class ArxivAugmentedEngine:
             "session_id": session_id,
             "tools_used": tool_calls,
         }
+
+    # =========================================================================
+    # BaseAgent contract methods
+    # =========================================================================
+    async def stream(self, chat_input: ChatInput) -> AsyncGenerator[AgentEvent, None]:
+        """Stream agent events for the given chat input (BaseAgent contract)."""
+        async for event in self.query_stream(
+            chat_input.query,
+            chat_input.session_id,
+            arxiv_enabled=chat_input.arxiv_enabled,
+            original_query=chat_input.original_query,
+        ):
+            yield event
+
+    async def query(self, chat_input: ChatInput) -> Dict[str, Any]:
+        """Run a non-streaming query (BaseAgent contract)."""
+        return await self._query_internal(
+            chat_input.query,
+            chat_input.session_id,
+            arxiv_enabled=chat_input.arxiv_enabled,
+            original_query=chat_input.original_query,
+        )
+
+    def history(self, session_id: str) -> List[Tuple[str, str]]:
+        """Return conversation history (BaseAgent contract)."""
+        return self.get_history(session_id)

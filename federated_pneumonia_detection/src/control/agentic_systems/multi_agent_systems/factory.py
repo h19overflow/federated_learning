@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Optional
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.base_agent import (
     BaseAgent,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.providers.research_agent import (
-    ResearchAgent,
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (
+    ArxivAugmentedEngine,
 )
 
 if TYPE_CHECKING:
@@ -41,7 +41,9 @@ class AgentFactory:
             if self._app_state is not None and hasattr(self._app_state, "arxiv_engine"):
                 arxiv_engine = self._app_state.arxiv_engine
 
-            self._research_agent = ResearchAgent(engine=arxiv_engine)
+            self._research_agent = (
+                arxiv_engine if arxiv_engine is not None else ArxivAugmentedEngine()
+            )
         return self._research_agent
 
 

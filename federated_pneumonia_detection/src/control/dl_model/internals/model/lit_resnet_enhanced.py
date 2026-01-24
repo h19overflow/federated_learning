@@ -16,7 +16,7 @@ from torchvision.models import ResNet50_Weights
 if TYPE_CHECKING:
     from federated_pneumonia_detection.config.config_manager import ConfigManager
 
-from federated_pneumonia_detection.src.control.dl_model.internals.model.focal_loss import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.losses import (
     FocalLoss,
     FocalLossWithLabelSmoothing,
 )

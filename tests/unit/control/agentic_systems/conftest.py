@@ -362,30 +362,31 @@ def mock_base_agent():
 
 
 @pytest.fixture
-def mock_research_agent():
-    """Create mock ResearchAgent."""
-    agent = MagicMock()
+def mock_arxiv_engine():
+    """Create mock ArxivAugmentedEngine."""
+    engine = MagicMock()
 
     async def mock_stream(chat_input: ChatInput) -> AsyncGenerator[AgentEvent, None]:
-        yield AgentEvent(type="session", session_id=chat_input.session_id)
+        session_id = chat_input.session_id if chat_input else "test_session"
+        yield AgentEvent(type="session", session_id=session_id)
         yield AgentEvent(type="status", content="Searching...")
         yield AgentEvent(type="token", content="Research ")
         yield AgentEvent(type="token", content="results")
-        yield AgentEvent(type="done", session_id=chat_input.session_id)
+        yield AgentEvent(type="done", session_id=session_id)
 
-    agent.stream = AsyncMock(side_effect=mock_stream)
-    agent.query = AsyncMock(
+    engine.stream = AsyncMock(side_effect=mock_stream)
+    engine.query = AsyncMock(
         return_value={
             "answer": "Research findings...",
-            "session_id": chat_input.session_id if chat_input else "test",
+            "session_id": "test_session",
             "tools_used": [],
         },
     )
-    agent.add_to_history = Mock()
-    agent.get_history = Mock(return_value=[])
-    agent.clear_history = Mock()
+    engine.add_to_history = Mock()
+    engine.get_history = Mock(return_value=[])
+    engine.clear_history = Mock()
 
-    return agent
+    return engine
 
 
 # =============================================================================
