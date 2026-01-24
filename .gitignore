@@ -44,6 +44,15 @@ lightning_logs/
 # Backfill scripts (one-time use)
 scripts/backfill_final_epoch_stats.py
 
+# Testing and coverage artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Build artifacts
+.ruff_cache/
+requirements-all.txt
+
 # IDE files
 .idea/
 .vscode/
