@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any, AsyncGenerator, Dict, Optional
 
+from langchain_core.messages import HumanMessage, SystemMessage
+
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_helpers import (
     build_messages,
     build_tools,
@@ -57,25 +59,53 @@ async def stream_query(
 
     state = StreamState()
     if query_mode == "basic":
-        messages = build_messages(
-            history_manager,
-            query,
-            session_id,
-            include_system=True,
-            system_prompt=BASIC_MODE_SYSTEM_PROMPT,
-        )
+        try:
+            # Get formatted conversation history
+            history_context = history_manager.format_for_context(session_id)
+
+            # Inject history into basic mode system prompt
+            if history_context:
+                enriched_prompt = f"{BASIC_MODE_SYSTEM_PROMPT}\n\nCONVERSATION HISTORY:\n{history_context}"
+            else:
+                enriched_prompt = BASIC_MODE_SYSTEM_PROMPT
+
+            messages = build_messages(
+                history_manager,
+                query,
+                session_id,
+                include_system=True,
+                system_prompt=enriched_prompt,
+            )
+        except Exception as e:
+            logger.error(
+                "[ArxivEngine] Failed to build messages (basic): %s", e, exc_info=True
+            )
+            # Fallback: create messages without history
+            messages = [
+                SystemMessage(content=BASIC_MODE_SYSTEM_PROMPT),
+                HumanMessage(content=query),
+            ]
         async for event in stream_basic(llm, messages, state):
             yield event
     else:
         yield create_sse_event(SSEEventType.STATUS, content="Analyzing your query...")
         agent = create_research_agent(llm, tools, RESEARCH_MODE_SYSTEM_PROMPT)
-        messages = build_messages(
-            history_manager,
-            query,
-            session_id,
-            include_system=False,
-            system_prompt=RESEARCH_MODE_SYSTEM_PROMPT,
-        )
+        try:
+            messages = build_messages(
+                history_manager,
+                query,
+                session_id,
+                include_system=False,
+                system_prompt=RESEARCH_MODE_SYSTEM_PROMPT,
+            )
+        except Exception as e:
+            logger.error(
+                "[ArxivEngine] Failed to build messages (research): %s",
+                e,
+                exc_info=True,
+            )
+            # Fallback: create messages without history
+            messages = [HumanMessage(content=query)]
         async for event in stream_research(agent, messages, state):
             yield event
 
