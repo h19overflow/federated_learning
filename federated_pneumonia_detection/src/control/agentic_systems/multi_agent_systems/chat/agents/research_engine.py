@@ -163,7 +163,7 @@ class ArxivAugmentedEngine(BaseAgent):
     # =========================================================================
     # BaseAgent contract methods
     # =========================================================================
-    async def stream(self, chat_input: ChatInput) -> AsyncGenerator[AgentEvent, None]:
+    async def stream(self, chat_input: ChatInput) -> AsyncIterator[AgentEvent]:
         """Stream agent events for the given chat input (BaseAgent contract)."""
         async for event in self.query_stream(
             chat_input.query,
