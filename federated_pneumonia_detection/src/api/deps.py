@@ -6,6 +6,7 @@ Provides singleton instances and database sessions for endpoint use.
 import logging
 from typing import TYPE_CHECKING, Optional
 
+from fastapi import Request
 from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.config.config_manager import (
@@ -15,6 +16,8 @@ from federated_pneumonia_detection.config.config_manager import (
 from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD
 from federated_pneumonia_detection.src.boundary.engine import get_session
+
+from federated_pneumonia_detection.src.control.analytics import AnalyticsFacade
 
 if TYPE_CHECKING:
     from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
@@ -153,3 +156,20 @@ def get_clinical_agent():
     )
 
     return _get_agent()
+
+
+def get_analytics(request: Request) -> Optional[AnalyticsFacade]:
+    """
+    Get AnalyticsFacade from app state.
+
+    Provides cached analytics services initialized at startup for performance.
+    If not available (initialization failed), returns None and endpoints should
+    gracefully degrade.
+
+    Args:
+        request: FastAPI request object for accessing app.state
+
+    Returns:
+        AnalyticsFacade instance or None if not initialized
+    """
+    return getattr(request.app.state, "analytics", None)

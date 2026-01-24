@@ -1,12 +1,17 @@
-"""Consolidated utility functions for run data transformation and analytics."""
+"""Transformation utilities for converting run data to analytics format.
+
+This module contains functions for:
+- Transforming database Run objects to ExperimentResults format
+- Calculating summary statistics from confusion matrices
+- Finding best epochs from training history
+"""
 
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 
-def _calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
-    """
-    Calculate derived metrics from confusion matrix values.
+def calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
+    """Calculate derived metrics from confusion matrix values.
 
     Args:
         cm: Dict with keys: true_positives, true_negatives, false_positives, false_negatives
@@ -52,7 +57,7 @@ def _calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
     }
 
 
-def _transform_run_to_results(
+def transform_run_to_results(
     run, persisted_stats: Optional[Dict[str, float]] = None
 ) -> Dict[str, Any]:
     """Transform database Run object to ExperimentResults format.
@@ -60,8 +65,11 @@ def _transform_run_to_results(
     Args:
         run: Database Run object with related metrics
         persisted_stats: Optional pre-computed final epoch stats to use instead of calculating
-    """
 
+    Returns:
+        Dictionary containing transformed run data with training history, final metrics,
+        and confusion matrix information.
+    """
     is_federated = run.training_mode == "federated"
     metrics_by_epoch = defaultdict(dict)
 
@@ -161,18 +169,27 @@ def _transform_run_to_results(
         fp = last_epoch_data.get("val_cm_fp")
         fn = last_epoch_data.get("val_cm_fn")
 
-        # Only build CM object if all values exist
+        # Only build CM object if all values exist and are not None
         if all(v is not None for v in [tp, tn, fp, fn]):
             try:
-                cm_dict = {
-                    "true_positives": int(tp),
-                    "true_negatives": int(tn),
-                    "false_positives": int(fp),
-                    "false_negatives": int(fn),
-                }
-                # Calculate summary statistics
-                summary_stats = _calculate_summary_statistics(cm_dict)
-                confusion_matrix_obj = {**cm_dict, **summary_stats}
+                # Type guards: ensure values are not None before int() conversion
+                if (
+                    tp is not None
+                    and tn is not None
+                    and fp is not None
+                    and fn is not None
+                ):
+                    cm_dict = {
+                        "true_positives": int(tp),
+                        "true_negatives": int(tn),
+                        "false_positives": int(fp),
+                        "false_negatives": int(fn),
+                    }
+                    # Calculate summary statistics
+                    summary_stats = calculate_summary_statistics(cm_dict)
+                    confusion_matrix_obj = {**cm_dict, **summary_stats}
+                else:
+                    confusion_matrix_obj = None
             except (ValueError, TypeError):
                 confusion_matrix_obj = None
 
@@ -194,7 +211,7 @@ def _transform_run_to_results(
             "start_time": run.start_time.isoformat() if run.start_time else "",
             "end_time": run.end_time.isoformat() if run.end_time else "",
             "total_epochs": len(training_history),
-            "best_epoch": _find_best_epoch(training_history),
+            "best_epoch": find_best_epoch(training_history),
             "best_val_accuracy": max(
                 [(h.get("val_acc") or 0.0) for h in training_history],
                 default=0.0,
@@ -233,12 +250,17 @@ def _transform_run_to_results(
     return result
 
 
-def _find_best_epoch(training_history: List[Dict]) -> int:
-    """
-    Find epoch with best validation accuracy.
+def find_best_epoch(training_history: List[Dict]) -> int:
+    """Find epoch with best validation accuracy.
 
     Note: Expects training_history with 1-indexed epochs (already transformed).
     Returns 1 as minimum since epochs are now displayed as 1-10 instead of 0-9.
+
+    Args:
+        training_history: List of epoch dictionaries with validation metrics
+
+    Returns:
+        Epoch number (1-indexed) with best validation accuracy
     """
     if not training_history:
         return 1  # Return 1 instead of 0 since epochs are now 1-indexed
@@ -253,60 +275,3 @@ def _find_best_epoch(training_history: List[Dict]) -> int:
             best_epoch = entry["epoch"]  # This is already 1-indexed from transformation
 
     return best_epoch
-
-
-def calculate_duration_minutes(run) -> Optional[float]:
-    """
-    Calculate training duration in minutes from run start and end times.
-
-    Args:
-        run: Run object with start_time and end_time attributes
-
-    Returns:
-        Duration in minutes rounded to 2 decimal places, or None if times missing
-    """
-    if run.start_time and run.end_time:
-        duration = (run.end_time - run.start_time).total_seconds() / 60
-        return round(duration, 2)
-    return None
-
-
-def safe_average(values: List[float]) -> Optional[float]:
-    """
-    Calculate average of a list, handling empty lists gracefully.
-
-    Args:
-        values: List of numeric values
-
-    Returns:
-        Average rounded to 4 decimals or None if list is empty
-    """
-    if not values:
-        return None
-    return round(sum(values) / len(values), 4)
-
-
-def safe_get_nested(data: Dict[str, Any], path: str, default: Any = None) -> Any:
-    """
-    Safely navigate nested dictionaries using dot notation.
-
-    Args:
-        data: Dictionary to navigate
-        path: Dot-separated path (e.g., 'best_accuracy.value')
-        default: Default value if path not found
-
-    Returns:
-        Value at path or default if not found
-    """
-    keys = path.split(".")
-    current = data
-
-    for key in keys:
-        if isinstance(current, dict):
-            current = current.get(key)
-            if current is None:
-                return default
-        else:
-            return default
-
-    return current

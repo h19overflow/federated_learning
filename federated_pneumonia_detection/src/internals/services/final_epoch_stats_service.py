@@ -12,8 +12,8 @@ from typing import Any, Dict, Optional
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.api.endpoints.runs_endpoints.shared.utils import (
-    _calculate_summary_statistics,
+from federated_pneumonia_detection.src.control.analytics.internals.transformers import (
+    calculate_summary_statistics,
 )
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
@@ -152,7 +152,7 @@ class FinalEpochStatsService:
             return None
 
         # Calculate summary statistics
-        stats = _calculate_summary_statistics(final_cm)
+        stats = calculate_summary_statistics(final_cm)
 
         # Persist to database
         run_metric_crud.create_final_epoch_stats(db, run_id, stats, final_cm["epoch"])
@@ -192,7 +192,7 @@ class FinalEpochStatsService:
         }
 
         # Calculate summary statistics
-        stats = _calculate_summary_statistics(cm_dict)
+        stats = calculate_summary_statistics(cm_dict)
 
         # Persist to database
         server_evaluation_crud.update_final_epoch_stats(db, run_id, stats)

@@ -11,12 +11,12 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.api.deps import get_db
+from federated_pneumonia_detection.src.api.deps import get_db, get_analytics
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+from federated_pneumonia_detection.src.control.analytics.facade import AnalyticsFacade
 
 from ..schema.runs_schemas import AnalyticsSummaryResponse
-from .runs_analytics_utils import generate_analytics_summary
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -28,6 +28,7 @@ async def get_analytics_summary(
     training_mode: Optional[str] = Query(None, description="Filter by training mode"),
     days: Optional[int] = Query(None, description="Filter by last N days"),
     db: Session = Depends(get_db),
+    analytics: AnalyticsFacade | None = Depends(get_analytics),
 ) -> AnalyticsSummaryResponse:
     """
     Get aggregated statistics for centralized vs federated training comparison.
@@ -41,14 +42,19 @@ async def get_analytics_summary(
         AnalyticsSummaryResponse with aggregated statistics and top runs
     """
     try:
-        runs = run_crud.get_by_status_and_mode(
-            db,
-            status=status,
-            training_mode=training_mode,
-        )
+        # Check if analytics service is available
+        if analytics is None:
+            logger.warning("Analytics service not available, returning empty response")
+            raise HTTPException(
+                status_code=503,
+                detail="Analytics service unavailable. Please check server logs.",
+            )
 
-        return generate_analytics_summary(db, runs, status, training_mode, days)
-
+        # Use cached analytics service
+        filters = {"status": status, "training_mode": training_mode, "days": days}
+        return analytics.metrics.get_analytics_summary(db, filters=filters)  # type: ignore[misc]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error generating analytics summary: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

@@ -14,25 +14,30 @@ from federated_pneumonia_detection.src.api.endpoints.streaming.websocket_server 
     start_websocket_server_thread,
 )
 from federated_pneumonia_detection.src.boundary.engine import create_tables
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (
-    ArxivAugmentedEngine,
-)
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
-    MCPManager,
-)
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
-    QueryEngine,
+from federated_pneumonia_detection.src.control.analytics import AnalyticsFacade
+from federated_pneumonia_detection.src.control.analytics.internals import (
+    BackfillService,
+    CacheProvider,
+    ExportService,
+    MetricsService,
+    RankingService,
+    SummaryService,
 )
 from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (
     get_wandb_tracker,
 )
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
+from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
+    server_evaluation_crud,
+)
 
 logger = logging.getLogger(__name__)
 
-# Module-level singleton references
-_mcp_manager: MCPManager | None = None
-_arxiv_engine: ArxivAugmentedEngine | None = None
-_query_engine: QueryEngine | None = None
+# Module-level singleton references (types imported lazily)
+_mcp_manager = None
+_arxiv_engine = None
+_query_engine = None
 
 
 async def initialize_services(app=None) -> None:
@@ -44,7 +49,8 @@ async def initialize_services(app=None) -> None:
     2. WebSocket server (optional - logs warning on failure)
     3. MCP Manager (optional - logs warning on failure)
     4. Chat services (ArxivEngine, QueryEngine - optional, logs warning)
-    5. W&B tracker (optional - logs warning on failure)
+    5. Analytics services (optional - logs warning on failure)
+    6. W&B tracker (optional - logs warning on failure)
 
     Args:
         app: FastAPI app instance for storing services in app.state
@@ -63,7 +69,10 @@ async def initialize_services(app=None) -> None:
     # 4. Chat services (optional - for performance optimization)
     _arxiv_engine, _query_engine = await _initialize_chat_services(app)
 
-    # 5. W&B tracker (optional)
+    # 5. Analytics services (optional - for performance optimization)
+    _initialize_analytics_services(app)
+
+    # 6. W&B tracker (optional)
     _initialize_wandb_tracker()
 
 
@@ -108,8 +117,12 @@ def _initialize_database() -> None:
         raise
 
 
-async def _initialize_mcp_manager() -> MCPManager:
+async def _initialize_mcp_manager():
     """Initialize MCP manager for arxiv integration."""
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
+        MCPManager,
+    )
+
     mcp_manager = MCPManager.get_instance()
 
     try:
@@ -181,7 +194,7 @@ def _shutdown_database() -> None:
         logger.warning(f"Error disposing database connections: {e}")
 
 
-async def _shutdown_mcp_manager(mcp_manager: MCPManager) -> None:
+async def _shutdown_mcp_manager(mcp_manager) -> None:
     """Shutdown MCP manager."""
     try:
         await mcp_manager.shutdown()
@@ -206,12 +219,7 @@ def _shutdown_wandb_tracker() -> None:
         )
 
 
-async def _initialize_chat_services(
-    app,
-) -> tuple[
-    ArxivAugmentedEngine | None,
-    QueryEngine | None,
-]:
+async def _initialize_chat_services(app):
     """
     Initialize chat services (ArxivEngine and QueryEngine) at startup.
 
@@ -227,6 +235,13 @@ async def _initialize_chat_services(
     Returns:
         Tuple of (arxiv_engine, query_engine) - either initialized instances or None
     """
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (
+        ArxivAugmentedEngine,
+    )
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
+        QueryEngine,
+    )
+
     arxiv_engine = None
     query_engine = None
 
@@ -259,6 +274,157 @@ async def _initialize_chat_services(
         logger.info("[Startup] Chat services stored in app.state")
 
     return arxiv_engine, query_engine
+
+
+def _initialize_analytics_services(app) -> AnalyticsFacade | None:
+    """
+    Initialize analytics services at startup for caching and performance.
+
+    Creates CacheProvider (TTL=600s) and all 5 analytics services.
+    Stored in app.state.analytics for endpoint access via dependency injection.
+
+    Args:
+        app: FastAPI app instance for storing services in app.state
+
+    Returns:
+        AnalyticsFacade instance or None if initialization fails catastrophically.
+        Returns a partial facade if some services fail initialization.
+    """
+    logger.info("[Startup] Initializing analytics services...")
+
+    # Track which services initialized successfully
+    services_status: dict[str, bool] = {}
+    cache: CacheProvider | None = None
+    metrics_service: MetricsService | None = None
+    summary_service: SummaryService | None = None
+    ranking_service: RankingService | None = None
+    export_service: ExportService | None = None
+    backfill_service: BackfillService | None = None
+
+    # CacheProvider is critical - if this fails, entire analytics subsystem fails
+    try:
+        cache = CacheProvider(ttl=600, maxsize=1000)
+        logger.info("[Startup/Analytics] CacheProvider initialized successfully")
+        services_status["cache"] = True
+    except Exception as e:
+        logger.error(f"[Startup/Analytics] CacheProvider initialization failed: {e}")
+        logger.warning(
+            "[Startup/Analytics] Cannot initialize analytics services without cache provider"
+        )
+        return None
+
+    # MetricsService - optional
+    try:
+        metrics_service = MetricsService(
+            cache=cache,
+            run_crud_obj=run_crud,
+            run_metric_crud_obj=run_metric_crud,
+            server_evaluation_crud_obj=server_evaluation_crud,
+        )
+        logger.info("[Startup/Analytics] MetricsService initialized successfully")
+        services_status["metrics"] = True
+    except Exception as e:
+        logger.warning(
+            f"[Startup/Analytics] MetricsService initialization failed: {e} (metrics endpoints will be degraded)"
+        )
+        services_status["metrics"] = False
+
+    # SummaryService - optional
+    try:
+        summary_service = SummaryService(
+            cache=cache,
+            run_crud_obj=run_crud,
+            run_metric_crud_obj=run_metric_crud,
+            server_evaluation_crud_obj=server_evaluation_crud,
+        )
+        logger.info("[Startup/Analytics] SummaryService initialized successfully")
+        services_status["summary"] = True
+    except Exception as e:
+        logger.warning(
+            f"[Startup/Analytics] SummaryService initialization failed: {e} (summary endpoints will be degraded)"
+        )
+        services_status["summary"] = False
+
+    # RankingService - optional
+    try:
+        ranking_service = RankingService(
+            cache=cache,
+            run_crud_obj=run_crud,
+        )
+        logger.info("[Startup/Analytics] RankingService initialized successfully")
+        services_status["ranking"] = True
+    except Exception as e:
+        logger.warning(
+            f"[Startup/Analytics] RankingService initialization failed: {e} (ranking endpoints will be degraded)"
+        )
+        services_status["ranking"] = False
+
+    # ExportService - optional
+    try:
+        export_service = ExportService(
+            cache=cache,
+            run_crud_obj=run_crud,
+            run_metric_crud_obj=run_metric_crud,
+        )
+        logger.info("[Startup/Analytics] ExportService initialized successfully")
+        services_status["export"] = True
+    except Exception as e:
+        logger.warning(
+            f"[Startup/Analytics] ExportService initialization failed: {e} (export endpoints will be degraded)"
+        )
+        services_status["export"] = False
+
+    # BackfillService - optional
+    try:
+        backfill_service = BackfillService(
+            run_crud_obj=run_crud,
+            server_evaluation_crud_obj=server_evaluation_crud,
+        )
+        logger.info("[Startup/Analytics] BackfillService initialized successfully")
+        services_status["backfill"] = True
+    except Exception as e:
+        logger.warning(
+            f"[Startup/Analytics] BackfillService initialization failed: {e} (backfill endpoints will be degraded)"
+        )
+        services_status["backfill"] = False
+
+    # Create facade with available services (at least cache must be working)
+    try:
+        facade = AnalyticsFacade(
+            metrics=metrics_service,
+            summary=summary_service,
+            ranking=ranking_service,
+            export=export_service,
+            backfill=backfill_service,
+        )
+        logger.info(
+            f"[Startup/Analytics] Analytics facade created with "
+            f"{sum(1 for v in services_status.values() if v)}/{len(services_status)} services available"
+        )
+
+        # Log unavailable services for visibility
+        unavailable = [
+            name
+            for name, available in services_status.items()
+            if not available and name != "cache"
+        ]
+        if unavailable:
+            logger.warning(
+                f"[Startup/Analytics] Unavailable services: {', '.join(unavailable)}. "
+                "Endpoints using these services will fall back to direct CRUD calls."
+            )
+
+        # Store in app.state
+        if app is not None:
+            app.state.analytics = facade
+            logger.info("[Startup] Analytics services initialized and cached")
+
+        return facade
+
+    except Exception as e:
+        logger.error(f"[Startup/Analytics] Failed to create analytics facade: {e}")
+        logger.warning("[Startup/Analytics] Analytics subsystem will be unavailable")
+        return None
 
 
 def _shutdown_chat_services(app) -> None:

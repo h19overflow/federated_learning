@@ -140,6 +140,7 @@ class RunSummary(BaseModel):
         metrics_count: Number of metrics recorded.
         run_description: Optional description of the run.
         federated_info: Federated-specific info if applicable.
+        error: Optional error message if summary could not be fully built.
     """
 
     id: int = Field(gt=0, description="Run identifier")
@@ -157,6 +158,9 @@ class RunSummary(BaseModel):
     )
     final_epoch_stats: Optional[FinalEpochStats] = Field(
         None, description="Pre-computed final epoch statistics"
+    )
+    error: Optional[str] = Field(
+        None, description="Error message if summary unavailable"
     )
 
 

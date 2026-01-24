@@ -6,16 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.api.deps import get_db
+from federated_pneumonia_detection.src.api.deps import get_db, get_analytics
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.models import (
     RunMetric,
     ServerEvaluation,
 )
+from federated_pneumonia_detection.src.control.analytics.facade import AnalyticsFacade
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 from ..schema.runs_schemas import MetricsResponse
-from .shared.utils import _transform_run_to_results
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 async def get_run_metrics(
     run_id: int,
     db: Session = Depends(get_db),
+    analytics: AnalyticsFacade | None = Depends(get_analytics),
 ) -> MetricsResponse:
     """
     Get complete training results for a specific run.
@@ -34,65 +35,24 @@ async def get_run_metrics(
 
     Args:
         run_id: Database run ID (received via WebSocket during training)
+        db: Database session
+        analytics: Optional analytics facade for cached metrics retrieval
 
     Returns:
         ExperimentResults matching frontend TypeScript interface
     """
+    if analytics is None:
+        logger.warning("Analytics service not available for metrics endpoint")
+        raise HTTPException(
+            status_code=503,
+            detail="Analytics service unavailable. Please check server logs.",
+        )
+
     try:
-        run = run_crud.get_with_metrics(db, run_id)
-
-        if not run:
-            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
-
-        # Try to fetch persisted final epoch stats
-        persisted_stats: Optional[Dict[str, float]] = None
-
-        if run.training_mode == "centralized":
-            final_metrics = (
-                db.query(RunMetric)
-                .filter(
-                    RunMetric.run_id == run.id,
-                    RunMetric.metric_name.in_(
-                        [
-                            "final_sensitivity",
-                            "final_specificity",
-                            "final_precision_cm",
-                            "final_accuracy_cm",
-                            "final_f1_cm",
-                        ]
-                    ),
-                )
-                .all()
-            )
-
-            if len(final_metrics) == 5:
-                persisted_stats = {
-                    m.metric_name.replace("final_", ""): m.metric_value
-                    for m in final_metrics
-                }
-                logger.info(
-                    f"[Metrics] Using persisted final stats for centralized run {run_id}"
-                )
-
-        elif run.training_mode == "federated":
-            last_eval = (
-                db.query(ServerEvaluation)
-                .filter(ServerEvaluation.run_id == run.id)
-                .order_by(desc(ServerEvaluation.round_number))
-                .first()
-            )
-
-            if last_eval and last_eval.additional_metrics:
-                persisted_stats = last_eval.additional_metrics.get("final_epoch_stats")
-                if persisted_stats:
-                    logger.info(
-                        f"[Metrics] Using persisted final stats for federated run {run_id}"
-                    )
-
-        # Transform with persisted stats (will fall back to calculation if None)
-        results = _transform_run_to_results(run, persisted_stats=persisted_stats)
-
-        return results
+        # Use analytics service for metrics retrieval
+        logger.info(f"[Metrics] Using analytics service for run {run_id}")
+        metrics_data = analytics.metrics.get_run_metrics(db, run_id)
+        return MetricsResponse(**metrics_data)
 
     except HTTPException:
         raise

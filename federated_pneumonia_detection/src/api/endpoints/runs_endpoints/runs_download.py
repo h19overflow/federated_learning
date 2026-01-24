@@ -1,14 +1,16 @@
 """Download endpoints for exporting training run results."""
 
+import io
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.api.deps import get_db
+from federated_pneumonia_detection.src.api.deps import get_db, get_analytics
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.control.analytics.facade import AnalyticsFacade
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
-
-from .shared.exporters import CSVExporter, DownloadService
-from .shared.utils import _transform_run_to_results
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -18,32 +20,33 @@ logger = get_logger(__name__)
 async def download_metrics_csv(
     run_id: int,
     db: Session = Depends(get_db),
+    analytics: Optional[AnalyticsFacade] = Depends(get_analytics),
 ):
     """
     Download training history metrics as CSV file.
 
     Args:
         run_id: Database run ID
+        analytics: AnalyticsFacade dependency (optional)
 
     Returns:
         Streaming CSV file download
     """
+    if analytics is None:
+        logger.warning("Analytics service not available for download endpoint")
+        raise HTTPException(
+            status_code=503,
+            detail="Analytics service unavailable. Please check server logs.",
+        )
+
     try:
-        run = run_crud.get_with_metrics(db, run_id)
-
-        if not run:
-            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
-
-        results = _transform_run_to_results(run)
-
-        if not results.get("training_history"):
-            raise HTTPException(status_code=404, detail="No training history available")
-
-        return DownloadService.prepare_download(
-            data=results,
-            run_id=run_id,
-            prefix="metrics",
-            exporter=CSVExporter(),
+        content, media_type, filename = analytics.export.export_run(
+            db, run_id, format="csv"
+        )
+        return StreamingResponse(
+            io.BytesIO(content),
+            media_type=media_type,
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     except HTTPException:
