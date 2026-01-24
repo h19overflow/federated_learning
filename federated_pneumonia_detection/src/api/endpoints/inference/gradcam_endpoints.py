@@ -57,8 +57,8 @@ async def generate_heatmap(
     return HeatmapResponse(
         success=True,
         filename=result.filename,
-        heatmap_base64=result.heatmap_base64,
-        original_image_base64=result.original_image_base64,
+        heatmap_base64=str(result.heatmap_base64),
+        original_image_base64=str(result.original_image_base64),
         processing_time_ms=result.processing_time_ms,
     )
 

@@ -39,7 +39,7 @@ class GradCAMService:
         """
         self.inference_service = inference_service
 
-    def generate_single_heatmap(
+    async def generate_single_heatmap(
         self,
         image: Image.Image,
         filename: str,
@@ -58,6 +58,15 @@ class GradCAMService:
             BatchHeatmapItem with heatmap result or error details
         """
         start_time = time.time()
+
+        # Handle None images gracefully
+        if image is None:
+            return BatchHeatmapItem(
+                filename=filename,
+                success=False,
+                error="Invalid or unreadable image file",
+                processing_time_ms=0,
+            )
 
         try:
             engine = self.inference_service.engine
@@ -123,7 +132,7 @@ class GradCAMService:
         results = []
 
         for image, filename in images:
-            result = self.generate_single_heatmap(
+            result = await self.generate_single_heatmap(
                 image=image,
                 filename=filename,
                 colormap=colormap,

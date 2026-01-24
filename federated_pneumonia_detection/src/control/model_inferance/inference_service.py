@@ -6,13 +6,15 @@ Import from here into api/deps.py for endpoint use.
 
 import logging
 import time
-from typing import Optional, Tuple
+from typing import Optional
 
 from fastapi import HTTPException, UploadFile
 from PIL import Image
 
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
+    BatchInferenceResponse,
     InferencePrediction,
+    InferenceResponse,
     PredictionClass,
     SingleImageResult,
 )
@@ -65,7 +67,7 @@ class InferenceService:
                 detail="Inference model is not available. Please try again later.",
             )
 
-    def predict(self, image: Image.Image) -> Tuple[str, float, float, float]:
+    def predict(self, image: Image.Image) -> tuple[str, float, float, float]:
         """Run inference on an image."""
         if self.engine is None:
             raise RuntimeError("Inference engine not available")
@@ -136,7 +138,7 @@ class InferenceService:
     async def predict_single(
         self,
         file: UploadFile,
-    ) -> tuple:
+    ) -> InferenceResponse:
         """Run inference on a single image.
 
         Handles validation, image reading, and prediction. Returns timing and response data.
@@ -145,7 +147,7 @@ class InferenceService:
             file: Uploaded image file
 
         Returns:
-            Tuple of (response_dict, processing_time_ms, model_version)
+            InferenceResponse object with prediction results
         """
         start_time = time.time()
 
@@ -181,16 +183,11 @@ class InferenceService:
                 model_version=model_version,
             )
 
-            return (
-                {
-                    "success": True,
-                    "prediction": prediction,
-                    "clinical_interpretation": None,
-                    "model_version": model_version,
-                    "processing_time_ms": processing_time_ms,
-                },
-                processing_time_ms,
-                model_version,
+            return InferenceResponse(
+                success=True,
+                prediction=prediction,
+                model_version=model_version,
+                processing_time_ms=processing_time_ms,
             )
 
         except Exception as e:
@@ -201,7 +198,7 @@ class InferenceService:
     async def predict_batch(
         self,
         files: list,
-    ) -> tuple:
+    ) -> BatchInferenceResponse:
         """Run inference on multiple images with aggregated results.
 
         Processes images sequentially and returns aggregated results with
@@ -211,7 +208,7 @@ class InferenceService:
             files: List of uploaded image files
 
         Returns:
-            Tuple of (response_dict, total_processing_time_ms, model_version)
+            BatchInferenceResponse object with results and summary statistics
         """
         batch_start_time = time.time()
 
@@ -242,16 +239,12 @@ class InferenceService:
             model_version=model_version,
         )
 
-        return (
-            {
-                "success": True,
-                "results": results,
-                "summary": summary,
-                "model_version": model_version,
-                "total_processing_time_ms": total_batch_time_ms,
-            },
-            total_batch_time_ms,
-            model_version,
+        return BatchInferenceResponse(
+            success=True,
+            results=results,
+            summary=summary,
+            model_version=model_version,
+            total_processing_time_ms=total_batch_time_ms,
         )
 
     def get_info(self) -> dict:
