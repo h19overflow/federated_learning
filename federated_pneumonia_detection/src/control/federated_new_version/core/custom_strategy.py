@@ -312,7 +312,7 @@ class ConfigurableFedAvg(FedAvg):
 
         try:
             # Lazy import to avoid import-time DB connection
-            from federated_pneumonia_detection.src.internals.services.final_epoch_stats_service import (
+            from federated_pneumonia_detection.src.control.analytics.internals.final_epoch_stats_service import (
                 FinalEpochStatsService,
             )
             from federated_pneumonia_detection.src.boundary.engine import get_session

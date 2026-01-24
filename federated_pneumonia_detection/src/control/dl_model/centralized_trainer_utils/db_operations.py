@@ -6,7 +6,7 @@ from typing import Optional
 
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.internals.services.final_epoch_stats_service import (
+from federated_pneumonia_detection.src.control.analytics.internals.final_epoch_stats_service import (
     FinalEpochStatsService,
 )
 

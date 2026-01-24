@@ -4,7 +4,6 @@ Service for consolidating final epoch statistics extraction and persistence.
 Eliminates duplicate CM extraction logic across:
 - Centralized training (db_operations.py)
 - Federated strategy (custom_strategy.py)
-- Backfill utilities (backfill_final_epoch_stats.py)
 """
 
 from typing import Any, Dict, Optional
@@ -12,9 +11,6 @@ from typing import Any, Dict, Optional
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.control.analytics.internals.transformers import (
-    calculate_summary_statistics,
-)
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
@@ -22,6 +18,9 @@ from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
 from federated_pneumonia_detection.src.boundary.models import (
     RunMetric,
     ServerEvaluation,
+)
+from federated_pneumonia_detection.src.control.analytics.internals.transformers import (
+    calculate_summary_statistics,
 )
 
 

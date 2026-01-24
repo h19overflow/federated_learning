@@ -8,6 +8,7 @@ from .backfill_service import BackfillService
 from .cache import CacheProvider
 from .definitions import *  # All types and protocols
 from .export_service import ExportService
+from .final_epoch_stats_service import FinalEpochStatsService
 from .metric_extractors import (
     CentralizedMetricExtractor,
     FederatedMetricExtractor,
@@ -27,6 +28,7 @@ __all__ = [
     "BackfillService",
     "CacheProvider",
     "ExportService",
+    "FinalEpochStatsService",
     "MetricsService",
     "RankingService",
     "SummaryService",
