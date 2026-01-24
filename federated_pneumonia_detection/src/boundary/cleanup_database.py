@@ -32,7 +32,7 @@ def confirm_action(message: str) -> bool:
     Returns:
         True if user confirms, False otherwise
     """
-    print(f"\n⚠️  WARNING: {message}")
+    print(f"\n WARNING: {message}")
     response = input("Type 'yes' to confirm: ").strip().lower()
     return response == "yes"
 

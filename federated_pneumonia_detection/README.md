@@ -77,24 +77,25 @@ uv run flwr run src/control/federated_new_version
 
 Traditional single-machine training for baseline comparisons. Fast iteration with full dataset access.
 
-```
-Upload Dataset → Train ResNet50 → Validate → Export Metrics
+```mermaid
+flowchart LR
+  A[Upload Dataset] --> B[Train ResNet50]
+  B --> C[Validate]
+  C --> D[Export Metrics]
 ```
 
 ### Federated Mode
 
 Distributed training across multiple clients with privacy preservation.
 
-```
-Server initializes model
-  ↓
-Clients train locally (parallel)
-  ↓
-Server aggregates weights (FedAvg)
-  ↓
-Server evaluates global model
-  ↓
-Repeat for N rounds
+```mermaid
+flowchart TD
+  A[Server Initializes Model] --> B[Clients Train Locally<br/>parallel]
+  B --> C[Server Aggregates Weights<br/>FedAvg]
+  C --> D[Server Evaluates Global Model]
+  D --> E{Rounds<br/>Complete?}
+  E -->|No| B
+  E -->|Yes| F[Training Done]
 ```
 
 **Key Benefit**: Hospitals collaborate without exposing patient data. Each hospital trains on local data; only anonymized model updates are shared.
@@ -136,30 +137,21 @@ Repeat for N rounds
 
 ## 📦 Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────┐
-│ API Layer (FastAPI)                                 │
-│ - REST endpoints (/experiments, /runs, /inference) │
-│ - WebSocket streaming (real-time metrics)          │
-└────────────────────┬────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────┐
-│ Control Layer (Training Logic)                      │
-│ - Centralized: CentralizedTrainer                   │
-│ - Federated: Flower server/client coordination     │
-└────────────────────┬────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────┐
-│ Entities Layer (Models)                             │
-│ - ResNetWithCustomHead (PyTorch Lightning)         │
-│ - CustomImageDataset (chest X-ray loading)         │
-└────────────────────┬────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────┐
-│ Boundary Layer (Data Access)                        │
-│ - PostgreSQL (SQLAlchemy ORM)                       │
-│ - CRUD operations (runs, metrics, evaluations)     │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+  A["API Layer<br/>FastAPI<br/>REST endpoints<br/>WebSocket streaming"]
+  B["Control Layer<br/>Training Logic<br/>Centralized/Federated<br/>Flower coordination"]
+  C["Entities Layer<br/>Models<br/>ResNetWithCustomHead<br/>CustomImageDataset"]
+  D["Boundary Layer<br/>Data Access<br/>PostgreSQL/SQLAlchemy<br/>CRUD operations"]
+  
+  A --> B
+  B --> C
+  C --> D
+  
+  style A fill:#2196F3,stroke:#1565C0,color:#fff,stroke-width:2px
+  style B fill:#9C27B0,stroke:#6A1B9A,color:#fff,stroke-width:2px
+  style C fill:#4CAF50,stroke:#2E7D32,color:#fff,stroke-width:2px
+  style D fill:#FF9800,stroke:#E65100,color:#fff,stroke-width:2px
 ```
 
 ### Module Documentation

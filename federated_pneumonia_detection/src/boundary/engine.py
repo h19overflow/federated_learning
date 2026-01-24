@@ -1,24 +1,8 @@
 """
-Database engine configuration with connection pooling and session management.
+Database engine and session management with connection pooling.
 
-This module provides a global pooled SQLAlchemy engine and session factory for
-database operations. Connection pooling improves performance by reusing database
-connections and managing connection lifecycle efficiently.
-
-Key Features:
-    - Global engine instance created once at module import time
-    - Connection pooling with QueuePool for optimal performance
-    - Pre-ping to detect and recover from stale connections
-    - Automatic connection recycling to prevent connection exhaustion
-    - Context manager support for session lifecycle management
-    - Migration-aware schema creation (uses Alembic for production)
-
-Models are defined in the models/ subdirectory.
-
-Migration Strategy:
-    - Development: Use create_tables() for quick iteration
-    - Production: Use Alembic migrations (alembic upgrade head)
-    - The USE_ALEMBIC environment variable controls behavior
+Provides a singleton SQLAlchemy engine with QueuePool, pre-ping for stale connections,
+and automatic recycling. Migration-aware: use create_tables() for dev or Alembic for production.
 """
 
 import logging
@@ -45,27 +29,7 @@ SessionLocal = None
 
 
 def _get_engine():
-    """
-    Create and return a global SQLAlchemy engine with connection pooling.
-
-    This function implements the singleton pattern - the engine is created only
-    once at module import time and reused for all subsequent database operations.
-
-    Connection Pool Configuration:
-        - poolclass=QueuePool: Standard connection pool with FIFO ordering
-        - pool_size=5: Number of persistent connections to maintain
-        - max_overflow=10: Maximum additional connections beyond pool_size
-        - pool_pre_ping=True: Test connection validity before checkout
-        - pool_recycle=3600: Recycle connections after 1 hour (seconds)
-        - echo=False: Disable SQL query logging (set True for debugging)
-        - connect_args={"timeout": 10}: Connection timeout in seconds
-
-    Returns:
-        sqlalchemy.engine.Engine: The global SQLAlchemy engine instance
-
-    Raises:
-        SQLAlchemyError: If engine creation `fails
-    """
+    """Create global SQLAlchemy engine with QueuePool (5 connections, 10 overflow, 1hr recycle)."""
     global _engine, SessionLocal
 
     if _engine is not None:
@@ -102,41 +66,7 @@ def _get_engine():
 
 
 def create_tables(force: bool = False):
-    """
-    Create all database tables defined by SQLAlchemy models and verify their existence.
-
-    MIGRATION-AWARE BEHAVIOR:
-    - If USE_ALEMBIC=true (production): Warns to use 'alembic upgrade head' instead
-    - If USE_ALEMBIC=false or unset (development): Creates tables directly
-    - If force=True: Always creates tables regardless of USE_ALEMBIC setting
-
-    This function uses the global engine to create tables if they don't exist.
-    It performs verification checks to ensure all expected tables were created
-    successfully and logs the results.
-
-    Args:
-        force: If True, always create tables even if USE_ALEMBIC=true
-
-    Returns:
-        sqlalchemy.engine.Engine: The global SQLAlchemy engine instance
-
-    Example:
-        >>> # Development (quick iteration)
-        >>> from federated_pneumonia_detection.src.boundary.engine import create_tables
-        >>> engine = create_tables()
-        >>> # Output: Creating database tables...
-        >>> #         Table verified: runs
-        >>> #         [OK] All expected tables are present in the database.
-
-        >>> # Production (with migrations)
-        >>> # Set USE_ALEMBIC=true in .env
-        >>> engine = create_tables()
-        >>> # Output: [WARNING] USE_ALEMBIC=true: Use 'alembic upgrade head' instead
-        >>> #         Skipping Base.metadata.create_all()
-
-    Raises:
-        ValueError: If force=False and USE_ALEMBIC=true
-    """
+    """Create and verify all database tables. Respects USE_ALEMBIC env var (production mode)."""
     engine = get_engine()
     use_alembic = os.getenv("USE_ALEMBIC", "false").lower() == "true"
 
@@ -208,25 +138,7 @@ def create_tables(force: bool = False):
 
 
 def get_session():
-    """
-    Create a new database session with proper error handling.
-
-    This function returns a new session instance from the SessionLocal factory.
-    The session borrows a connection from the connection pool for use during
-    database operations.
-
-    Connection Lifecycle:
-        1. Session created: Borrows connection from pool
-        2. Database operations: Use connection for queries/transactions
-        3. session.commit(): Persist changes (if applicable)
-        4. session.close(): Return connection to pool (important!)
-
-    Returns:
-        sqlalchemy.orm.Session: A new database session instance
-
-    Raises:
-        SQLAlchemyError: If session creation fails
-    """
+    """Create a new database session (borrows connection from pool, call .close() to return)."""
     try:
         # Initialize engine if not already created
         if SessionLocal is None:
@@ -242,17 +154,10 @@ def get_session():
 
 def get_engine():
     """
-    Get the global SQLAlchemy engine instance.
-
-    This function returns the global engine, initializing it on first call
-    if it hasn't been created yet. The engine is created only once and reused
-    for all subsequent database operations.
+    Get or initialize the global SQLAlchemy engine instance (singleton).
 
     Returns:
-        sqlalchemy.engine.Engine: The global SQLAlchemy engine instance
-
-    Raises:
-        SQLAlchemyError: If engine initialization fails
+        sqlalchemy.engine.Engine: The global SQLAlchemy engine with connection pooling
     """
     global _engine
 
@@ -264,20 +169,7 @@ def get_engine():
 
 
 def dispose_engine():
-    """
-    Dispose of the global SQLAlchemy engine and close all connections.
-
-    This function should be called during application shutdown to properly
-    close all database connections and release resources. It disposes the
-    connection pool, closing all idle and active connections.
-
-    IMPORTANT: Call this function before application exit to ensure
-    clean shutdown of database connections.
-
-    Raises:
-        SQLAlchemyError: If engine disposal fails
-
-    """
+    """Dispose engine and close all connections (call on app shutdown)."""
     global _engine, SessionLocal
 
     try:
@@ -300,17 +192,7 @@ _get_engine()
 
 
 if __name__ == "__main__":
-    """
-    Main execution block for testing database setup.
-
-    This block is executed when the script is run directly:
-    - Creates database tables
-    - Verifies table existence
-    - Disposes engine on completion
-
-    Example:
-        >>> python -m federated_pneumonia_detection.src.boundary.engine
-    """
+    """Create tables and dispose engine on exit."""
     try:
         create_tables()
         logger.info("Database setup completed successfully")
