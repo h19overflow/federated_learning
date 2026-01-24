@@ -23,7 +23,7 @@ from federated_pneumonia_detection.src.boundary.models import (
     RunMetric,
     ServerEvaluation,
 )
-from .cache import CacheProvider, cache_key
+from ..infrastructure import CacheProvider, cache_key
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 if TYPE_CHECKING:
@@ -135,6 +135,93 @@ class SummaryService:
                     logger.warning(f"Failed to build summary for run {run.id}: {e}")
 
             return {"total": total, "summaries": summaries}
+
+        return self._cache.get_or_set(key, _compute)
+
+    def list_runs_with_summaries(
+        self,
+        db: Session,
+        limit: int = 100,
+        offset: int = 0,
+        status: Optional[str] = None,
+        training_mode: Optional[str] = None,
+        sort_by: str = "start_time",
+        sort_order: str = "desc",
+    ) -> dict[str, Any]:
+        """Get paginated list of run summaries with filtering and sorting.
+
+        This method handles all the complexity of fetching, filtering, sorting,
+        and building summaries for the API layer.
+
+        Args:
+            db: Database session.
+            limit: Maximum number of runs to return (1-1000).
+            offset: Number of runs to skip for pagination.
+            status: Filter by run status (optional).
+            training_mode: Filter by training mode (optional).
+            sort_by: Field to sort by (default: "start_time").
+            sort_order: Sort direction "asc" or "desc" (default: "desc").
+
+        Returns:
+            Dictionary containing:
+            - runs: List of run summary dictionaries
+            - total: Total number of runs matching filters
+        """
+        # Build cache key from all parameters
+        cache_filters = {
+            "status": status,
+            "training_mode": training_mode,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+        }
+        key = cache_key("list_runs_with_summaries", (limit, offset), cache_filters)
+
+        def _compute() -> dict[str, Any]:
+            # Use CRUD method for filtered, sorted, paginated list
+            runs, total_count = self._run_crud.list_with_filters(
+                db,
+                status=status,
+                training_mode=training_mode,
+                sort_by=sort_by,
+                sort_order=sort_order,
+                limit=limit,
+                offset=offset,
+            )
+
+            # Build summaries for all runs
+            summaries = []
+            for run in runs:
+                try:
+                    summary = self._build_run_summary(run, db)
+                    summaries.append(summary)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to build summary for run {run.id}: {e}",
+                        exc_info=True,
+                    )
+                    # Graceful degradation: append minimal summary with error indicator
+                    summaries.append(
+                        {
+                            "id": run.id,
+                            "training_mode": run.training_mode,
+                            "status": run.status,
+                            "start_time": run.start_time.isoformat()
+                            if run.start_time
+                            else None,
+                            "end_time": run.end_time.isoformat()
+                            if run.end_time
+                            else None,
+                            "best_val_recall": 0.0,
+                            "best_val_accuracy": 0.0,
+                            "metrics_count": 0,
+                            "run_description": None,
+                            "federated_info": None,
+                            "final_epoch_stats": None,
+                            "error": "Summary unavailable",
+                        }
+                    )
+
+            return {"runs": summaries, "total": total_count}
 
         return self._cache.get_or_set(key, _compute)
 

@@ -124,6 +124,32 @@ class SummaryService(Protocol):
         """
         ...
 
+    def list_runs_with_summaries(
+        self,
+        db: Session,
+        limit: int = 100,
+        offset: int = 0,
+        status: str | None = None,
+        training_mode: str | None = None,
+        sort_by: str = "start_time",
+        sort_order: str = "desc",
+    ) -> dict[str, Any]:
+        """Get paginated list of run summaries with filtering and sorting.
+
+        Args:
+            db: Database session.
+            limit: Maximum number of runs to return.
+            offset: Number of runs to skip for pagination.
+            status: Filter by run status (optional).
+            training_mode: Filter by training mode (optional).
+            sort_by: Field to sort by.
+            sort_order: Sort direction "asc" or "desc".
+
+        Returns:
+            Dictionary containing runs list and total count.
+        """
+        ...
+
 
 class RankingService(Protocol):
     """Service for ranking and ordering runs."""

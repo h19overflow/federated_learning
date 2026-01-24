@@ -5,19 +5,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.api.deps import get_db
+from federated_pneumonia_detection.src.api.deps import get_db, get_analytics
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
-    server_evaluation_crud,
-)
-from federated_pneumonia_detection.src.api.deps import get_analytics
-from federated_pneumonia_detection.src.control.analytics.internals.backfill_service import (
-    BackfillService,
-)
 from federated_pneumonia_detection.src.control.analytics.facade import AnalyticsFacade
-from federated_pneumonia_detection.src.control.analytics.internals.summary_service import (
-    SummaryService,
-)
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
 
 from ..schema.runs_schemas import BackfillResponse, RunsListResponse, RunSummary
@@ -62,116 +52,37 @@ async def list_all_runs(
      Returns:
          RunsListResponse with filtered, paginated run summaries and total count
     """
-    if analytics is None:
+    if analytics is None or analytics.summary is None:
         logger.warning("Analytics service not available for list endpoint")
         raise HTTPException(
             status_code=503,
             detail="Analytics service unavailable. Please check server logs.",
         )
 
-    # Log applied filters for debugging
     logger.info(
-        f"[RunsList] Fetching runs with filters - status: {status}, "
+        f"[RunsList] Fetching runs - status: {status}, "
         f"training_mode: {training_mode}, sort_by: {sort_by}, "
         f"sort_order: {sort_order}, limit: {limit}, offset: {offset}"
     )
 
     try:
-        # Use CRUD method for filtered list with pagination
-        try:
-            runs, total_count = run_crud.list_with_filters(
-                db,
-                status=status,
-                training_mode=training_mode,
-                sort_by=sort_by,
-                sort_order=sort_order,
-                limit=limit,
-                offset=offset,
-            )
-        except Exception as e:
-            logger.error(f"[RunsList] Database query failed: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to retrieve runs from database: {str(e)}",
-            )
-
-        # Batch fetch final epoch stats for all runs
-        run_ids = [r.id for r in runs]
-        final_stats_map = {}
-
-        # Batch fetch for centralized runs
-        centralized_ids = [r.id for r in runs if r.training_mode == "centralized"]  # type: ignore[misc]
-        if centralized_ids:
-            try:
-                centralized_stats = run_crud.batch_get_final_metrics(
-                    db, centralized_ids
-                )  # type: ignore[misc]
-                final_stats_map.update(centralized_stats)
-            except Exception as e:
-                logger.error(
-                    f"[RunsList] Centralized metrics fetch failed for {len(centralized_ids)} runs: {e}",
-                    exc_info=True,
-                )
-                # Graceful degradation: continue with empty stats for these runs
-                for run_id in centralized_ids:
-                    final_stats_map[run_id] = {}
-
-        # Batch fetch for federated runs
-        federated_ids = [r.id for r in runs if r.training_mode == "federated"]  # type: ignore[misc]
-        if federated_ids:
-            try:
-                federated_stats = run_crud.batch_get_federated_final_stats(
-                    db, federated_ids
-                )  # type: ignore[misc]
-                final_stats_map.update(federated_stats)
-            except Exception as e:
-                logger.error(
-                    f"[RunsList] Federated metrics fetch failed for {len(federated_ids)} runs: {e}",
-                    exc_info=True,
-                )
-                # Graceful degradation: continue with empty stats for these runs
-                for run_id in federated_ids:
-                    final_stats_map[run_id] = {}
-
-        # Build summaries using SummaryService
-        run_summaries = []
-        summary_service = SummaryService(cache=None)  # type: ignore[arg-type]
-        for run in runs:
-            try:
-                summary = summary_service._build_run_summary(run, db)  # type: ignore[attr-defined]
-                run_summaries.append(summary)
-            except Exception as e:
-                logger.error(
-                    f"[RunsList] Failed to build summary for run {run.id}: {e}",
-                    exc_info=True,
-                )
-                # Graceful degradation: append minimal summary with error indicator
-                run_summaries.append(
-                    {
-                        "id": run.id,
-                        "training_mode": run.training_mode,
-                        "status": run.status,
-                        "start_time": run.start_time.isoformat()
-                        if run.start_time
-                        else None,
-                        "end_time": run.end_time.isoformat() if run.end_time else None,
-                        "best_val_recall": 0.0,
-                        "best_val_accuracy": 0.0,
-                        "metrics_count": 0,
-                        "run_description": None,
-                        "federated_info": None,
-                        "final_epoch_stats": None,
-                        "error": "Summary unavailable",
-                    }
-                )
+        result = analytics.summary.list_runs_with_summaries(
+            db=db,
+            limit=limit,
+            offset=offset,
+            status=status,
+            training_mode=training_mode,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
 
         return RunsListResponse(
-            runs=[RunSummary(**summary) for summary in run_summaries],
-            total=total_count,
+            runs=[RunSummary(**summary) for summary in result["runs"]],
+            total=result["total"],
         )
 
     except Exception as e:
-        logger.error(f"Error listing runs: {e}", exc_info=True)
+        logger.error(f"[RunsList] Error listing runs: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -179,6 +90,7 @@ async def list_all_runs(
 async def backfill_server_evaluations(
     run_id: int,
     db: Session = Depends(get_db),
+    analytics: AnalyticsFacade | None = Depends(get_analytics),
 ) -> BackfillResponse:
     """
     Backfill server evaluations from results JSON file.
@@ -195,11 +107,13 @@ async def backfill_server_evaluations(
         if not run:
             raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
 
-        # Execute backfill using shared service
-        backfill_service = BackfillService(
-            run_crud_obj=run_crud, server_evaluation_crud_obj=server_evaluation_crud
-        )
-        result = backfill_service.backfill_from_json(db, run_id, {})
+        # Validate analytics and backfill service are available
+        if analytics is None or analytics.backfill is None:
+            logger.error("[Backfill] Analytics/BackfillService unavailable")
+            raise HTTPException(status_code=503, detail="Backfill service unavailable")
+
+        # Execute backfill using cached service from facade
+        result = analytics.backfill.backfill_from_json(db, run_id, {})
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result["message"])

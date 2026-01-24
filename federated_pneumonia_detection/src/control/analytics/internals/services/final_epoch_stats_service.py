@@ -19,7 +19,7 @@ from federated_pneumonia_detection.src.boundary.models import (
     RunMetric,
     ServerEvaluation,
 )
-from federated_pneumonia_detection.src.control.analytics.internals.transformers import (
+from ..utils import (
     calculate_summary_statistics,
 )
 

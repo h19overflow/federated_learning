@@ -53,8 +53,8 @@ async def delete_existing_chat_session(session_id: str) -> dict:
 def _to_schema(session: ChatSession) -> ChatSessionSchema:
     """Convert a ChatSession model to API schema."""
     return ChatSessionSchema(
-        id=session.id,
-        title=session.title,
+        id=str(session.id),
+        title=str(session.title),
         created_at=session.created_at.isoformat(),
         updated_at=session.updated_at.isoformat(),
     )

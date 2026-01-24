@@ -21,7 +21,7 @@ from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
-from .cache import CacheProvider
+from ..infrastructure import CacheProvider
 
 
 class DataExporter(ABC):

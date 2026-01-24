@@ -22,14 +22,13 @@ from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metri
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
-from .cache import CacheProvider, cache_key
-from .definitions import MetricsService as MetricsServiceProtocol
-from .metric_extractors import (
+from ..infrastructure import CacheProvider, cache_key
+from ..extractors import (
     CentralizedMetricExtractor,
     FederatedMetricExtractor,
     MetricExtractor,
 )
-from .transformers import (
+from ..utils import (
     calculate_summary_statistics,
     find_best_epoch,
     transform_run_to_results,
@@ -39,7 +38,7 @@ if TYPE_CHECKING:
     from federated_pneumonia_detection.src.boundary.models import Run
 
 
-class MetricsService(MetricsServiceProtocol):
+class MetricsService:
     """Service for retrieving and aggregating metrics with caching."""
 
     def __init__(
