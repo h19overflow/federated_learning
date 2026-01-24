@@ -2,7 +2,8 @@
 
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Optional,cast
+
 
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.engine import get_session
@@ -41,7 +42,7 @@ def create_training_run(
         db.commit()
         run_id = new_run.id
         logger.info(f"Created run in database with id={run_id}")
-        return run_id
+        return cast(Optional[int], run_id)
     except Exception as e:
         logger.error(f"Failed to create run: {e}")
         db.rollback()
@@ -77,7 +78,7 @@ def complete_training_run(run_id: int, logger: logging.Logger) -> None:
         run_crud.complete_run(db, run_id=run_id, status="completed")
 
         # Compute and persist final epoch stats using service
-        FinalEpochStatsService.calculate_and_persist_centralized(db, run_id, logger)
+        FinalEpochStatsService.calculate_and_persist_centralized(db, run_id)
 
         db.commit()
         logger.info(f"Run {run_id} marked as completed")

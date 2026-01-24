@@ -1,5 +1,7 @@
 # Alembic Database Migrations
 
+**Last Updated**: 2026-01-24
+
 This directory contains Alembic migrations for the Federated Pneumonia Detection database.
 
 ## Overview
