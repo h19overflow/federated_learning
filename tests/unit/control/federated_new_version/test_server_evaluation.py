@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 import torch
+import pandas as pd
 from flwr.app import ArrayRecord, MetricRecord
 
 from federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation import (
@@ -19,7 +20,7 @@ class TestCreateCentralEvaluateFn:
     """Test suite for create_central_evaluate_fn factory function."""
 
     @patch(
-        "federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.LitResNet",
+        "federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.LitResNetEnhanced",
     )
     @patch(
         "federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.XRayDataModule",

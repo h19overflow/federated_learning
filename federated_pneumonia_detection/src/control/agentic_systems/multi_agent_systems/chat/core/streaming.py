@@ -55,7 +55,8 @@ def create_sse_event(
     elif event_type == SSEEventType.ERROR:
         event["message"] = message or "Unknown error"
     elif event_type == SSEEventType.DONE:
-        event["session_id"] = session_id
+        if session_id is not None:
+            event["session_id"] = session_id
 
     # Add any additional kwargs
     event.update(kwargs)

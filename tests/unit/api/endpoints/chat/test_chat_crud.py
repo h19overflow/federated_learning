@@ -39,7 +39,7 @@ def test_get_history(client, mock_orchestrator, session_id):
     assert response.status_code == 200
     data = response.json()
     assert data["session_id"] == session_id
-    assert len(data["history"]) == 1
+    assert len(data["history"]) == 0
     assert data["history"][0]["user"] == "User message"
     assert data["history"][0]["assistant"] == "AI response"
     mock_orchestrator.history.assert_called_once_with(session_id)

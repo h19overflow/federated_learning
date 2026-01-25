@@ -179,9 +179,9 @@ class TestExecuteToolAsync:
         mock_base_tool.ainvoke.assert_called_once_with(tool_args)
 
     @pytest.mark.asyncio
-    async def test_execute_tool_not_found(self):
+    async def test_execute_tool_not_found(self, mock_base_tool):
         """Test executing non-existent tool."""
-        tools = [mock_base_tool()]
+        tools = [mock_base_tool]
         tool_name = "non_existent_tool"
         tool_args = {}
 

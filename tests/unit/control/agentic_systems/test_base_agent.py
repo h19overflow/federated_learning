@@ -2,7 +2,7 @@
 Tests for base_agent module (abstract base class for agents).
 """
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
@@ -242,7 +242,8 @@ class TestBaseAgentWithMock:
             yield {"type": "token", "content": "mock"}
             yield {"type": "done", "session_id": chat_input.session_id}
 
-        agent.stream = AsyncMock(side_effect=mock_stream)
+        agent.stream = MagicMock(side_effect=mock_stream)
+
         agent.query = AsyncMock(return_value={"answer": "mock", "session_id": "test"})
         agent.history = Mock(return_value=[("user", "ai")])
         agent.clear_history = Mock()

@@ -35,7 +35,7 @@ class TestObservabilityLogger:
     def test_log_single_with_active_tracker(self, logger, mock_tracker):
         """Test logging single prediction with active tracker."""
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_single(
@@ -67,7 +67,7 @@ class TestObservabilityLogger:
         inactive_tracker.is_active = False
 
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=inactive_tracker,
         ):
             # Should not raise
@@ -87,7 +87,7 @@ class TestObservabilityLogger:
     def test_log_single_normal_prediction(self, logger, mock_tracker):
         """Test logging NORMAL prediction."""
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_single(
@@ -105,7 +105,7 @@ class TestObservabilityLogger:
     def test_log_single_without_clinical(self, logger, mock_tracker):
         """Test logging without clinical interpretation."""
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_single(
@@ -126,7 +126,7 @@ class TestObservabilityLogger:
         versions = ["v1.0", "v2.0", "checkpoint_07", "model_0.928"]
 
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             for version in versions:
@@ -155,7 +155,7 @@ class TestObservabilityLogger:
     ):
         """Test logging batch statistics with active tracker."""
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_batch(
@@ -186,7 +186,7 @@ class TestObservabilityLogger:
         inactive_tracker.is_active = False
 
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=inactive_tracker,
         ):
             logger.log_batch(
@@ -212,7 +212,7 @@ class TestObservabilityLogger:
         )
 
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_batch(
@@ -238,7 +238,7 @@ class TestObservabilityLogger:
         )
 
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_batch(
@@ -258,7 +258,7 @@ class TestObservabilityLogger:
     ):
         """Test batch logging without clinical."""
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_batch(
@@ -278,7 +278,7 @@ class TestObservabilityLogger:
     def test_log_error_with_active_tracker(self, logger, mock_tracker):
         """Test error logging with active tracker."""
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_error(
@@ -297,7 +297,7 @@ class TestObservabilityLogger:
         inactive_tracker.is_active = False
 
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=inactive_tracker,
         ):
             logger.log_error(
@@ -317,7 +317,7 @@ class TestObservabilityLogger:
         ]
 
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             for error_type, message in errors:
@@ -332,7 +332,7 @@ class TestObservabilityLogger:
     def test_log_single_with_extreme_values(self, logger, mock_tracker):
         """Test logging with extreme confidence values."""
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             # Very high confidence
@@ -362,7 +362,7 @@ class TestObservabilityLogger:
     def test_log_single_with_zero_processing_time(self, logger, mock_tracker):
         """Test logging with zero or negative processing time."""
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_single(
@@ -391,7 +391,7 @@ class TestObservabilityLogger:
         )
 
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_batch(
@@ -406,7 +406,7 @@ class TestObservabilityLogger:
     def test_log_error_empty_messages(self, logger, mock_tracker):
         """Test logging error with empty strings."""
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_error("", "")
@@ -418,7 +418,7 @@ class TestObservabilityLogger:
         long_message = "A" * 1000
 
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.observability_logger.get_wandb_tracker",
+            "federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker.get_wandb_tracker",
             return_value=mock_tracker,
         ):
             logger.log_error("LongError", long_message)

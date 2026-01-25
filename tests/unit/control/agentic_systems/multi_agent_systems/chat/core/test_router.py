@@ -12,6 +12,15 @@ from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_syste
     _get_router_llm,
     classify_query,
 )
+import federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.router as router
+
+
+@pytest.fixture(autouse=True)
+def reset_router_llm():
+    """Reset the router LLM singleton before each test."""
+    router._router_llm = None
+    yield
+    router._router_llm = None
 
 
 class TestQueryClassification:
@@ -259,26 +268,26 @@ class TestRouterPrompt:
 
         assert "research" in prompt
         assert "basic" in prompt
-        assert "federated learning" in prompt
-        assert "ResNet" in prompt
-        assert "VGG" in prompt
-        assert "Andrew Ng" in prompt
+        assert "papers" in prompt
+        assert "comparisons" in prompt
+        assert "citations" in prompt
 
     def test_router_prompt_research_examples(self):
         """Test that prompt has research examples."""
         prompt = ROUTER_CLASSIFICATION_PROMPT
 
-        assert "What papers discuss federated learning?" in prompt
-        assert "Compare ResNet and VGG" in prompt
-        assert "Find papers by Andrew Ng" in prompt
+        assert "Questions about papers" in prompt
+        assert "Requests for comparisons" in prompt
+        assert "technical details" in prompt
 
     def test_router_prompt_basic_examples(self):
         """Test that prompt has basic examples."""
         prompt = ROUTER_CLASSIFICATION_PROMPT
 
-        assert "Hello" in prompt
-        assert "Thanks!" in prompt
-        assert "Can you explain that more?" in prompt
+        assert "Greetings" in prompt
+        assert "thanks" in prompt
+        assert "acknowledgments" in prompt
+        assert "Clarifications" in prompt
 
     def test_router_prompt_formatting(self):
         """Test that router prompt can be formatted."""

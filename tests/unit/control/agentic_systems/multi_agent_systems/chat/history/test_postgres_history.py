@@ -51,7 +51,7 @@ class TestChatHistoryManager:
         """Create ChatHistoryManager for testing."""
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
             ),
             patch(
                 "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.PostgresChatMessageHistory",
@@ -78,7 +78,7 @@ class TestChatHistoryManager:
         """Test _get_postgres_history with UUID session_id."""
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=mock_connection,
             ),
             patch(
@@ -93,14 +93,14 @@ class TestChatHistoryManager:
 
             # Should use UUID directly
             mock_history_class.assert_called_once()
-            call_kwargs = mock_history_class.call_args[1]
-            assert call_kwargs["session_id"] == uuid_session_id
+            call_args = mock_history_class.call_args[0]
+            assert call_args[1] == uuid_session_id
 
     def test_get_postgres_history_with_string(self, mock_connection):
         """Test _get_postgres_history with string session_id (converted to UUID)."""
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=mock_connection,
             ),
             patch(
@@ -115,16 +115,16 @@ class TestChatHistoryManager:
 
             # Should convert string to UUID
             mock_history_class.assert_called_once()
-            call_kwargs = mock_history_class.call_args[1]
+            call_args = mock_history_class.call_args[0]
             # Should be a UUID (generated via UUID5)
-            assert isinstance(call_kwargs["session_id"], str)
-            assert UUID(call_kwargs["session_id"])
+            assert isinstance(call_args[1], str)
+            assert UUID(call_args[1])
 
     def test_add_to_history(self, mock_postgres_history):
         """Test adding messages to history."""
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -149,7 +149,7 @@ class TestChatHistoryManager:
         """Test retrieving history."""
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -173,7 +173,7 @@ class TestChatHistoryManager:
 
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -198,7 +198,7 @@ class TestChatHistoryManager:
 
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -217,7 +217,7 @@ class TestChatHistoryManager:
         """Test clearing history."""
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -234,7 +234,7 @@ class TestChatHistoryManager:
         """Test formatting history as context string."""
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -261,7 +261,7 @@ class TestChatHistoryManager:
 
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -278,7 +278,7 @@ class TestChatHistoryManager:
         """Test getting raw messages."""
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -304,7 +304,7 @@ class TestChatHistoryManagerErrorHandling:
 
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -319,9 +319,12 @@ class TestChatHistoryManagerErrorHandling:
 
     def test_get_history_handles_connection_error(self):
         """Test that get_history handles connection errors."""
+        mock_pool = MagicMock()
+        mock_pool.getconn.side_effect = Exception("Connection failed")
+
         with patch(
-            "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
-            side_effect=Exception("Connection failed"),
+            "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
+            return_value=mock_pool,
         ):
             manager = ChatHistoryManager()
 
@@ -335,7 +338,7 @@ class TestChatHistoryManagerErrorHandling:
 
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -359,7 +362,7 @@ class TestChatHistoryManagerIntegration:
 
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -399,7 +402,7 @@ class TestChatHistoryManagerIntegration:
 
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -427,7 +430,7 @@ class TestChatHistoryManagerIntegration:
         """Test that manager works with different table names."""
         with (
             patch(
-                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.psycopg.connect",
+                "federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history.ConnectionPool",
                 return_value=MagicMock(),
             ),
             patch(
@@ -444,5 +447,5 @@ class TestChatHistoryManagerIntegration:
 
             # Verify different table names used
             assert mock_history_class.call_count == 2
-            assert mock_history_class.call_args_list[0][1]["table_name"] == "table_1"
-            assert mock_history_class.call_args_list[1][1]["table_name"] == "table_2"
+            assert mock_history_class.call_args_list[0][0][0] == "table_1"
+            assert mock_history_class.call_args_list[1][0][0] == "table_2"

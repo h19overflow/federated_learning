@@ -24,7 +24,7 @@ class TestInferenceEngine:
     def mock_lit_model_class(self):
         """Mock LitResNetEnhanced.load_from_checkpoint."""
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.internals.inference_engine.LitResNetEnhanced",
+            "federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced.LitResNetEnhanced",
         ) as mock_lit:
             mock_model = Mock()
             mock_model.eval = Mock()

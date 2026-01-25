@@ -72,19 +72,15 @@ class TestCentralizedTrainer:
         "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.XRayDataModule",
     )
     @patch(
-        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.LitResNetEnhanced",
+        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.build_model_and_callbacks",
     )
     @patch(
-        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.create_trainer_from_config",
-    )
-    @patch(
-        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.TensorBoardLogger",
+        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.build_trainer",
     )
     def test_train_workflow(
         self,
-        mock_tb_logger,
-        mock_create_trainer,
-        mock_model_class,
+        mock_build_trainer,
+        mock_build_model,
         mock_datamodule_class,
         mock_split,
         mock_load,
@@ -107,14 +103,14 @@ class TestCentralizedTrainer:
         )
 
         mock_trainer = MagicMock()
-        mock_create_trainer.return_value = mock_trainer
+        mock_build_trainer.return_value = mock_trainer
         mock_trainer.callbacks = []
         mock_trainer.current_epoch = 10
         mock_trainer.global_step = 100
         mock_trainer.state.stage.value = "finished"
 
         mock_model = MagicMock()
-        mock_model_class.return_value = mock_model
+        mock_build_model.return_value = (mock_model, [], MagicMock())
         mock_model.get_model_summary.return_value = "summary"
 
         # Initialize trainer
@@ -131,7 +127,7 @@ class TestCentralizedTrainer:
         # Assertions
         assert results["run_id"] == 1
         assert results["current_epoch"] == 10
-        mock_create_trainer.assert_called_once()
+        mock_build_trainer.assert_called_once()
         # Verify trainer fit was called with model and datamodule
         mock_trainer.fit.assert_called_once_with(
             mock_model,
@@ -145,27 +141,3 @@ class TestCentralizedTrainer:
             run_id=1,
             status="completed",
         )
-
-    @patch(
-        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.ConfigManager",
-    )
-    def test_create_data_module(self, mock_config_class, mock_config):
-        """Test _create_data_module logic."""
-        mock_config_class.return_value = mock_config
-        trainer = CentralizedTrainer()
-
-        train_df = pd.DataFrame({"Target": [0]})
-        val_df = pd.DataFrame({"Target": [1]})
-        image_dir = "fake_dir"
-
-        with patch(
-            "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.XRayDataModule",
-        ) as mock_dm:
-            trainer._create_data_module(train_df, val_df, image_dir)
-            mock_dm.assert_called_once_with(
-                train_df=train_df,
-                val_df=val_df,
-                config=mock_config,
-                image_dir=image_dir,
-                validate_images_on_init=False,
-            )

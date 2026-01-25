@@ -54,6 +54,9 @@ async def get_run_metrics(
         metrics_data = analytics.metrics.get_run_metrics(db, run_id)
         return MetricsResponse(**metrics_data)
 
+    except ValueError as e:
+        logger.warning(f"Run {run_id} not found: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:

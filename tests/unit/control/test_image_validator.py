@@ -47,7 +47,7 @@ class TestImageValidator:
         file = UploadFile(
             filename="test.gif",
             file=BytesIO(b"fake gif data"),
-            content_type="image/gif",
+            headers={"content-type": "image/gif"},
         )
 
         error = validator.validate(file)
@@ -62,7 +62,7 @@ class TestImageValidator:
         file = UploadFile(
             filename="test.jpg",
             file=BytesIO(b"fake jpg"),
-            content_type="IMAGE/JPEG",
+            headers={"content-type": "IMAGE/JPEG"},
         )
         error = validator.validate(file)
         # Should fail because it doesn't match exactly
@@ -73,7 +73,7 @@ class TestImageValidator:
         file = UploadFile(
             filename="test.jpg",
             file=BytesIO(b"fake jpg"),
-            content_type="image/jpeg",
+            headers={"content-type": "image/jpeg"},
         )
         error = validator.validate(file)
         assert error is None
@@ -88,7 +88,7 @@ class TestImageValidator:
             file = UploadFile(
                 filename=f"test.{content_type.split('/')[1]}",
                 file=BytesIO(b"fake image"),
-                content_type=content_type,
+                headers={"content-type": content_type},
             )
             error = validator.validate(file)
             assert error is None, f"Failed for {content_type}"
@@ -125,7 +125,7 @@ class TestImageValidator:
         file = UploadFile(
             filename="test.jpg",
             file=BytesIO(b"fake data"),
-            content_type=None,
+            headers={"content-type": None},
         )
 
         error = validator.validate(file)
@@ -138,7 +138,7 @@ class TestImageValidator:
         file = UploadFile(
             filename="test.jpg",
             file=BytesIO(b"fake data"),
-            content_type="",
+            headers={"content-type": ""},
         )
 
         error = validator.validate(file)
@@ -152,7 +152,7 @@ class TestImageValidator:
         file = UploadFile(
             filename="test.jpg",
             file=BytesIO(b"fake data"),
-            content_type=" image/jpeg ",
+            headers={"content-type": " image/jpeg "},
         )
 
         error = validator.validate(file)
@@ -197,7 +197,7 @@ class TestImageValidator:
         file = UploadFile(
             filename="real_image.jpg",
             file=buffer,
-            content_type="image/jpeg",
+            headers={"content-type": "image/jpeg"},
         )
 
         error = validator.validate(file)
@@ -221,7 +221,7 @@ class TestImageValidator:
         file = UploadFile(
             filename="real_image.png",
             file=buffer,
-            content_type="image/png",
+            headers={"content-type": "image/png"},
         )
 
         error = validator.validate(file)

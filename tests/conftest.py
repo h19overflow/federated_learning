@@ -3,15 +3,32 @@ Shared fixtures and configuration for pytest.
 Provides common test setup and utilities across all test modules.
 """
 
+import datetime
 import logging
 import os
 import tempfile
 from typing import Dict, Generator
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
+from federated_pneumonia_detection.src.api.main import app
+from federated_pneumonia_detection.src.api import deps
+from federated_pneumonia_detection.src.boundary.models import Base, Run, RunMetric
+from federated_pneumonia_detection.src.control.model_inferance.inference_service import (
+    InferenceService,
+)
+from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
+    InferenceResponse,
+    InferencePrediction,
+    PredictionClass,
+)
 from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
 from tests.fixtures.sample_data import (
     MockDatasets,
@@ -238,3 +255,97 @@ def test_seeds(request):
 def image_sizes(request):
     """Different image sizes for testing."""
     return request.param
+
+
+# --- Boundary & API Fixtures ---
+
+
+@pytest.fixture(scope="function")
+def db_session():
+    """
+    Creates a fresh in-memory SQLite database for each test.
+    """
+    # Use StaticPool to share connection across threads (important for in-memory SQLite)
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    # Create tables
+    Base.metadata.create_all(bind=engine)
+
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def mock_inference_service():
+    """Mock the heavy InferenceService."""
+    mock = MagicMock(spec=InferenceService)
+    # Default behavior: return a valid response
+    mock.predict_single.return_value = InferenceResponse(
+        prediction=InferencePrediction(
+            predicted_class=PredictionClass.PNEUMONIA,
+            confidence=0.95,
+            pneumonia_probability=0.95,
+            normal_probability=0.05,
+        ),
+        processing_time_ms=100.0,
+    )
+    return mock
+
+
+@pytest.fixture
+def client(db_session, mock_inference_service):
+    """
+    FastAPI TestClient with dependency overrides.
+    """
+
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    def override_get_inference_service():
+        return mock_inference_service
+
+    app.dependency_overrides[deps.get_db] = override_get_db
+    app.dependency_overrides[deps.get_inference_service] = (
+        override_get_inference_service
+    )
+
+    with TestClient(app) as c:
+        yield c
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def sample_run_data(db_session):
+    """
+    Populates the DB with a sample Run and Metrics for analytics testing.
+    """
+    run = Run(
+        id=1,
+        run_description="Test Run",
+        status="completed",
+        training_mode="centralized",
+        start_time=datetime.datetime(2023, 1, 1, 10, 0, 0),
+        end_time=datetime.datetime(2023, 1, 1, 11, 0, 0),
+    )
+    db_session.add(run)
+
+    # Add metrics
+    metric1 = RunMetric(run_id=1, metric_name="val_acc", metric_value=0.85, step=1)
+    metric2 = RunMetric(run_id=1, metric_name="val_loss", metric_value=0.30, step=1)
+    db_session.add_all([metric1, metric2])
+
+    db_session.commit()
+    return run
