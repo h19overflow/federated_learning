@@ -49,6 +49,7 @@ def normalize_content(content: Union[str, List[Any], None]) -> str:
                 )
             else:
                 logger.warning(f"[Content] Part {i}: unexpected type {type(part)}")
+                parts.append(str(part))
         result = "".join(parts)
         logger.debug(
             f"[Content] Normalized list to string, final length: {len(result)}",

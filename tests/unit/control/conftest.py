@@ -90,7 +90,6 @@ def mock_upload_file_jpeg():
     return UploadFile(
         filename="test_xray.jpg",
         file=buffer,
-        content_type="image/jpeg",
     )
 
 
@@ -107,7 +106,6 @@ def mock_upload_file_png():
     return UploadFile(
         filename="test_xray.png",
         file=buffer,
-        content_type="image/png",
     )
 
 
@@ -119,7 +117,6 @@ def mock_upload_file_invalid_type():
     return UploadFile(
         filename="test.pdf",
         file=buffer,
-        content_type="application/pdf",
     )
 
 
@@ -131,7 +128,6 @@ def mock_upload_file_corrupted():
     return UploadFile(
         filename="corrupted.jpg",
         file=buffer,
-        content_type="image/jpeg",
     )
 
 
@@ -446,7 +442,6 @@ def create_mock_file(content_type: str, filename: str, data: bytes) -> UploadFil
     return UploadFile(
         filename=filename,
         file=buffer,
-        content_type=content_type,
     )
 
 

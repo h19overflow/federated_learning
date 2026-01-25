@@ -349,10 +349,14 @@ def _extract_metrics_from_result(result_dict: dict):
         else result_dict.get("loss", 0.0)
     )
 
-    accuracy = result_dict.get("test_accuracy")
+    accuracy = result_dict.get("test_acc")
     if accuracy is None:
-        accuracy = result_dict.get("test_acc")
-    if accuracy is None:
+        accuracy = result_dict.get("test_accuracy")
+    if (
+        accuracy is None
+        and "test_acc" not in result_dict
+        and "test_accuracy" not in result_dict
+    ):
         accuracy = result_dict.get("accuracy", 0.0)
 
     precision = (

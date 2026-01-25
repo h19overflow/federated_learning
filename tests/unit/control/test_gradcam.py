@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 import torch
 import torch.nn as nn
+from unittest.mock import Mock
 from PIL import Image
 
 from federated_pneumonia_detection.src.control.model_inferance.gradcam import (
@@ -77,13 +78,13 @@ class TestGradCAM:
 
     def test_get_layer_by_name_valid(self, gradcam, mock_model):
         """Test getting layer by valid name."""
-        layer = gradcam._get_layer_by_name("1")
+        layer = gradcam._get_layer_by_name("2")
         assert layer is not None
         assert isinstance(layer, nn.Conv2d)
 
     def test_get_layer_by_name_invalid(self, gradcam):
         """Test getting layer by invalid name raises error."""
-        with pytest.raises(ValueError, match="Layer not found"):
+        with pytest.raises(ValueError, match="not found in model"):
             gradcam._get_layer_by_name("nonexistent")
 
     # =========================================================================
@@ -103,10 +104,8 @@ class TestGradCAM:
             nn.ReLU(),
         )
 
-        gradcam = GradCAM(model)
-
         with pytest.raises(ValueError, match="No convolutional layer found"):
-            gradcam._get_last_conv_layer()
+            GradCAM(model)
 
     # =========================================================================
     # Test hook registration and removal

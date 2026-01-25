@@ -128,7 +128,7 @@ class TestNormalizeContent:
         content = ["   ", "Hello", "   ", "World", "   "]
         result = normalize_content(content)
 
-        assert result == "   Hello    World   "
+        assert result == "   Hello   World   "
 
     def test_normalize_newlines(self):
         """Test normalizing newlines."""

@@ -112,7 +112,9 @@ class TestExtractMetricsFromResult:
             "test_auroc": 0.85,
         }
 
-        loss, acc, prec, rec, f1, auroc = _extract_metrics_from_result(result_dict)
+        loss, acc, prec, rec, f1, auroc, tp, tn, fp, fn = _extract_metrics_from_result(
+            result_dict
+        )
 
         assert loss == 0.5
         assert acc == 0.8
@@ -132,7 +134,9 @@ class TestExtractMetricsFromResult:
             "auroc": 0.85,
         }
 
-        loss, acc, prec, rec, f1, auroc = _extract_metrics_from_result(result_dict)
+        loss, acc, prec, rec, f1, auroc, tp, tn, fp, fn = _extract_metrics_from_result(
+            result_dict
+        )
 
         assert loss == 0.5
         assert acc == 0.8
@@ -152,7 +156,9 @@ class TestExtractMetricsFromResult:
             "test_auroc": 0.0,
         }
 
-        loss, acc, prec, rec, f1, auroc = _extract_metrics_from_result(result_dict)
+        loss, acc, prec, rec, f1, auroc, tp, tn, fp, fn = _extract_metrics_from_result(
+            result_dict
+        )
 
         # Zero should be returned, not None or default
         assert loss == 0.0
@@ -169,7 +175,9 @@ class TestExtractMetricsFromResult:
             "test_accuracy": 0.8,
         }
 
-        loss, acc, prec, rec, f1, auroc = _extract_metrics_from_result(result_dict)
+        loss, acc, prec, rec, f1, auroc, tp, tn, fp, fn = _extract_metrics_from_result(
+            result_dict
+        )
 
         assert loss == 0.5
         assert acc == 0.8
@@ -186,7 +194,9 @@ class TestExtractMetricsFromResult:
             "test_precision": 0.75,
         }
 
-        loss, acc, prec, rec, f1, auroc = _extract_metrics_from_result(result_dict)
+        loss, acc, prec, rec, f1, auroc, tp, tn, fp, fn = _extract_metrics_from_result(
+            result_dict
+        )
 
         assert loss == 0.5
         assert acc is None  # None preserved
@@ -203,7 +213,9 @@ class TestExtractMetricsFromResult:
             "test_accuracy": 0.75,  # Should be ignored
         }
 
-        loss, acc, prec, rec, f1, auroc = _extract_metrics_from_result(result_dict)
+        loss, acc, prec, rec, f1, auroc, tp, tn, fp, fn = _extract_metrics_from_result(
+            result_dict
+        )
 
         assert loss == 0.5
         assert acc == 0.8  # test_acc used, not test_accuracy
@@ -212,7 +224,9 @@ class TestExtractMetricsFromResult:
         """Test extracting from empty dictionary."""
         result_dict = {}
 
-        loss, acc, prec, rec, f1, auroc = _extract_metrics_from_result(result_dict)
+        loss, acc, prec, rec, f1, auroc, tp, tn, fp, fn = _extract_metrics_from_result(
+            result_dict
+        )
 
         assert loss == 0.0
         assert acc == 0.0

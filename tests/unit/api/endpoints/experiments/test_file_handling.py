@@ -11,7 +11,8 @@ Tests cover:
 import os
 import tempfile
 import zipfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
+
 
 import pytest
 
@@ -23,6 +24,7 @@ from federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_hand
 class TestPrepareZip:
     """Test prepare_zip function for handling uploaded ZIP files."""
 
+    @pytest.mark.asyncio
     async def test_prepare_zip_valid_zip(
         self,
         sample_zip_file,
@@ -35,7 +37,7 @@ class TestPrepareZip:
         mock_upload.filename = "test_data.zip"
 
         with open(sample_zip_file, "rb") as f:
-            mock_upload.read = MagicMock(return_value=f.read())
+            mock_upload.read = AsyncMock(return_value=f.read())
             mock_upload.seek = MagicMock(side_effect=lambda x: f.seek(x))
 
         source_path = await prepare_zip(mock_upload, experiment_logger, "test_exp")
@@ -45,6 +47,7 @@ class TestPrepareZip:
         assert os.path.exists(os.path.join(source_path, "Images"))
         assert os.path.exists(os.path.join(source_path, "stage2_train_metadata.csv"))
 
+    @pytest.mark.asyncio
     async def test_prepare_zip_with_root_directory(
         self,
         sample_zip_with_root_dir,
@@ -55,7 +58,7 @@ class TestPrepareZip:
         mock_upload.filename = "test_wrapped.zip"
 
         with open(sample_zip_with_root_dir, "rb") as f:
-            mock_upload.read = MagicMock(return_value=f.read())
+            mock_upload.read = AsyncMock(return_value=f.read())
             mock_upload.seek = MagicMock(side_effect=lambda x: f.seek(x))
 
         source_path = await prepare_zip(mock_upload, experiment_logger, "test_exp")
@@ -65,6 +68,7 @@ class TestPrepareZip:
         assert os.path.exists(os.path.join(source_path, "Images"))
         assert os.path.exists(os.path.join(source_path, "metadata.csv"))
 
+    @pytest.mark.asyncio
     async def test_prepare_zip_direct_structure(self, experiment_logger, tmp_path):
         """Test ZIP with direct structure (no root directory)."""
         # Create ZIP with direct structure
@@ -94,7 +98,7 @@ class TestPrepareZip:
         mock_upload.filename = "direct.zip"
 
         with open(zip_path, "rb") as f:
-            mock_upload.read = MagicMock(return_value=f.read())
+            mock_upload.read = AsyncMock(return_value=f.read())
             mock_upload.seek = MagicMock(side_effect=lambda x: f.seek(x))
 
         source_path = await prepare_zip(mock_upload, experiment_logger, "test_exp")
@@ -103,17 +107,19 @@ class TestPrepareZip:
         assert os.path.exists(source_path)
         assert os.path.exists(os.path.join(source_path, "Images"))
 
+    @pytest.mark.asyncio
     async def test_prepare_zip_invalid_file(self, experiment_logger, invalid_zip_file):
         """Test error handling for invalid ZIP file."""
         mock_upload = MagicMock()
         mock_upload.filename = "invalid.zip"
 
         with open(invalid_zip_file, "rb") as f:
-            mock_upload.read = MagicMock(return_value=f.read())
+            mock_upload.read = AsyncMock(return_value=f.read())
 
         with pytest.raises(Exception):
             await prepare_zip(mock_upload, experiment_logger, "test_exp")
 
+    @pytest.mark.asyncio
     async def test_prepare_zip_temp_dir_cleanup_on_error(
         self,
         experiment_logger,
@@ -124,21 +130,27 @@ class TestPrepareZip:
         mock_upload.filename = "invalid.zip"
 
         with open(invalid_zip_file, "rb") as f:
-            mock_upload.read = MagicMock(return_value=f.read())
+            mock_upload.read = AsyncMock(return_value=f.read())
 
         # Track temp directories created
         with patch(
             "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.tempfile.mkdtemp",
+            return_value="/tmp/fake_temp_dir",
         ) as mock_mkdtemp:
-            temp_dir = tempfile.mkdtemp()
-            mock_mkdtemp.return_value = temp_dir
+            with patch(
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.os.path.exists",
+                return_value=True,
+            ):
+                with patch(
+                    "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.shutil.rmtree",
+                ) as mock_rmtree:
+                    with pytest.raises(Exception):
+                        await prepare_zip(mock_upload, experiment_logger, "test_exp")
 
-            with pytest.raises(Exception):
-                await prepare_zip(mock_upload, experiment_logger, "test_exp")
+                    # Verify cleanup was attempted
+                    mock_rmtree.assert_called_once_with("/tmp/fake_temp_dir")
 
-            # Verify cleanup was attempted
-            assert not os.path.exists(temp_dir)
-
+    @pytest.mark.asyncio
     async def test_prepare_zip_handles_multiple_items_in_root(
         self,
         experiment_logger,
@@ -162,18 +174,18 @@ class TestPrepareZip:
                         arcname = os.path.relpath(file_path, temp_dir)
                         zf.write(file_path, arcname)
 
-            # Add a directory (requires special handling)
-            for root, dirs, _ in os.walk(temp_dir):
-                for dir_name in dirs:
-                    dir_path = os.path.join(root, dir_name)
-                    arcname = os.path.relpath(dir_path, temp_dir)
-                    zf.write(dir_path, arcname)
+                # Add a directory (requires special handling)
+                for root, dirs, _ in os.walk(temp_dir):
+                    for dir_name in dirs:
+                        dir_path = os.path.join(root, dir_name)
+                        arcname = os.path.relpath(dir_path, temp_dir)
+                        zf.write(dir_path, arcname)
 
         mock_upload = MagicMock()
         mock_upload.filename = "multi_root.zip"
 
         with open(zip_path, "rb") as f:
-            mock_upload.read = MagicMock(return_value=f.read())
+            mock_upload.read = AsyncMock(return_value=f.read())
             mock_upload.seek = MagicMock(side_effect=lambda x: f.seek(x))
 
         source_path = await prepare_zip(mock_upload, experiment_logger, "test_exp")
@@ -181,6 +193,7 @@ class TestPrepareZip:
         # Should return extraction path directly
         assert os.path.exists(source_path)
 
+    @pytest.mark.asyncio
     async def test_prepare_zip_single_non_root_directory(
         self,
         experiment_logger,
@@ -208,7 +221,7 @@ class TestPrepareZip:
         mock_upload.filename = "single_non_root.zip"
 
         with open(zip_path, "rb") as f:
-            mock_upload.read = MagicMock(return_value=f.read())
+            mock_upload.read = AsyncMock(return_value=f.read())
             mock_upload.seek = MagicMock(side_effect=lambda x: f.seek(x))
 
         source_path = await prepare_zip(mock_upload, experiment_logger, "test_exp")

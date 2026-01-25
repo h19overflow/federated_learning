@@ -33,18 +33,50 @@ class InferencePrediction(BaseModel):
     normal_probability: float = Field(ge=0.0, le=1.0)
 
 
+class RiskAssessment(BaseModel):
+    """Risk assessment details.
+
+    Attributes:
+        risk_level: The determined risk level (e.g., HIGH, MODERATE, LOW).
+        false_negative_risk: Risk of a false negative result.
+        factors: List of factors contributing to the risk assessment.
+    """
+
+    risk_level: str
+    false_negative_risk: str
+    factors: List[str] = Field(default_factory=list)
+
+
+class ClinicalInterpretation(BaseModel):
+    """AI-generated clinical interpretation of the prediction.
+
+    Attributes:
+        summary: Human-readable summary of the findings.
+        confidence_explanation: Explanation of the model's confidence.
+        risk_assessment: Detailed risk assessment.
+        recommendations: Recommended next steps.
+    """
+
+    summary: str
+    confidence_explanation: str
+    risk_assessment: RiskAssessment
+    recommendations: List[str] = Field(default_factory=list)
+
+
 class InferenceResponse(BaseModel):
     """Complete response from the inference endpoint.
 
     Attributes:
         success: Whether the inference completed successfully.
         prediction: Core model prediction results.
+        clinical_interpretation: AI-generated clinical insights.
         model_version: Version/checkpoint of the model used.
         processing_time_ms: Time taken for inference in milliseconds.
     """
 
     success: bool = True
     prediction: InferencePrediction
+    clinical_interpretation: Optional[ClinicalInterpretation] = None
     model_version: str = Field(default="pneumonia_model_01_0.988-v2")
     processing_time_ms: float = Field(ge=0.0)
 
@@ -70,6 +102,7 @@ class SingleImageResult(BaseModel):
         filename: Original filename of the image.
         success: Whether inference succeeded for this image.
         prediction: Prediction result if successful.
+        clinical_interpretation: AI-generated clinical insights.
         error: Error message if inference failed.
         processing_time_ms: Time taken for this image.
     """
@@ -77,6 +110,7 @@ class SingleImageResult(BaseModel):
     filename: str
     success: bool = True
     prediction: Optional[InferencePrediction] = None
+    clinical_interpretation: Optional[ClinicalInterpretation] = None
     error: Optional[str] = None
     processing_time_ms: float = Field(ge=0.0, default=0.0)
 

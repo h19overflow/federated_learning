@@ -70,7 +70,6 @@ class TestImageProcessor:
         file = UploadFile(
             filename="test_gray.png",
             file=buffer,
-            content_type="image/png",
         )
 
         # Read without conversion
@@ -82,7 +81,6 @@ class TestImageProcessor:
         file = UploadFile(
             filename="test_gray.png",
             file=buffer,
-            content_type="image/png",
         )
         image_rgb = await processor.read_from_upload(file, convert_rgb=True)
         assert image_rgb.mode == "RGB"
@@ -108,7 +106,6 @@ class TestImageProcessor:
         file = UploadFile(
             filename="invalid.jpg",
             file=BytesIO(b"not a real image"),
-            content_type="image/jpeg",
         )
 
         with pytest.raises(HTTPException) as exc_info:
@@ -124,7 +121,6 @@ class TestImageProcessor:
         file = UploadFile(
             filename="empty.jpg",
             file=BytesIO(b""),
-            content_type="image/jpeg",
         )
 
         with pytest.raises(HTTPException):
@@ -150,7 +146,6 @@ class TestImageProcessor:
         file = UploadFile(
             filename="sized.jpg",
             file=buffer,
-            content_type="image/jpeg",
         )
 
         image = await processor.read_from_upload(file)
@@ -277,7 +272,6 @@ class TestImageProcessor:
             file = UploadFile(
                 filename=f"image_{i}.png",
                 file=buffer,
-                content_type="image/png",
             )
 
             image = await processor.read_from_upload(file)
@@ -309,14 +303,13 @@ class TestImageProcessor:
 
         buffer = BytesIO()
         img.save(buffer, format="PNG")
-        # Don't seek back to start
+        buffer.seek(0)  # Ensure we are at the start
 
         file = UploadFile(
             filename="test.png",
             file=buffer,
-            content_type="image/png",
         )
 
-        # Should still work because read() is called which advances position
+        # Should work now
         image = await processor.read_from_upload(file)
         assert image is not None

@@ -93,17 +93,17 @@ class TestCustomPartitioner:
         """Test loading partition with negative ID."""
         partitioner = CustomPartitioner(sample_metadata_df, 3)
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             partitioner.load_partition(-1)
 
     def test_load_partition_invalid_id_too_large(self, sample_metadata_df):
         """Test loading partition with ID >= num_partitions."""
         partitioner = CustomPartitioner(sample_metadata_df, 3)
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             partitioner.load_partition(3)
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             partitioner.load_partition(10)
 
     def test_partition_size_distribution(self, sample_metadata_df):
@@ -128,15 +128,15 @@ class TestCustomPartitioner:
         num_partitions = 3
         partitioner = CustomPartitioner(sample_metadata_df, num_partitions)
 
-        # Load all partitions
-        all_part_indices = set()
+        # Load all partitions and collect patientIds
+        all_patient_ids = set()
         for i in range(num_partitions):
             partition_df = partitioner.load_partition(i)
-            all_part_indices.update(partition_df.index)
+            all_patient_ids.update(partition_df["patientId"])
 
-        # Check that all original indices are covered
-        original_indices = set(sample_metadata_df.index)
-        assert all_part_indices == original_indices
+        # Check that all original patientIds are covered
+        original_patient_ids = set(sample_metadata_df["patientId"])
+        assert all_patient_ids == original_patient_ids
 
     def test_partition_with_single_partition(self, sample_metadata_df):
         """Test partitioning into a single partition."""

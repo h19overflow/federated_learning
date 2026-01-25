@@ -15,6 +15,7 @@ import pytest
 from federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks import (
     run_centralized_training_task,
 )
+import os
 
 
 class TestRunCentralizedTrainingTask:
@@ -100,7 +101,7 @@ class TestRunCentralizedTrainingTask:
             # Verify error is captured in result
             assert result["status"] == "failed"
             assert "error" in result
-            assert "RuntimeError" in result["error"]
+            assert "Training failed" in result["error"]
 
     @pytest.mark.unit
     def test_centralized_training_task_with_checkpoint_results(
@@ -112,7 +113,7 @@ class TestRunCentralizedTrainingTask:
         source_path = str(tmp_path / "data")
         os.makedirs(source_path)
 
-        mock_trainer.train.return_value = {
+        mock_centralized_trainer.train.return_value = {
             "final_metrics": {"loss": 0.4},
             "checkpoint_path": str(tmp_path / "checkpoints" / "model.ckpt"),
             "best_model_path": str(tmp_path / "checkpoints" / "best.ckpt"),
@@ -120,7 +121,7 @@ class TestRunCentralizedTrainingTask:
 
         with patch(
             "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
-            return_value=mock_trainer,
+            return_value=mock_centralized_trainer,
         ):
             result = run_centralized_training_task(
                 source_path=source_path,
@@ -186,7 +187,7 @@ class TestRunCentralizedTrainingTask:
             )
 
             assert result["status"] == "failed"
-            assert "FileNotFoundError" in result["error"]
+            assert "CSV not found" in result["error"]
 
     @pytest.mark.unit
     def test_centralized_training_task_value_error(self, tmp_path):
@@ -210,7 +211,7 @@ class TestRunCentralizedTrainingTask:
             )
 
             assert result["status"] == "failed"
-            assert "ValueError" in result["error"]
+            assert "Invalid configuration" in result["error"]
 
     @pytest.mark.unit
     def test_centralized_training_task_with_empty_metrics(self, tmp_path):
@@ -253,13 +254,13 @@ class TestRunCentralizedTrainingTask:
         source_path = str(tmp_path / "data")
         os.makedirs(source_path)
 
-        mock_trainer.train.return_value = {
+        mock_centralized_trainer.train.return_value = {
             "final_metrics": {"accuracy": 0.90},
         }
 
         with patch(
             "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
-            return_value=mock_trainer,
+            return_value=mock_centralized_trainer,
         ):
             run_centralized_training_task(
                 source_path=source_path,

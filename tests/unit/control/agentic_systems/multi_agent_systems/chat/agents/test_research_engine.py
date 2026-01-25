@@ -9,6 +9,9 @@ import pytest
 from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (
     ArxivAugmentedEngine,
 )
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.contracts import (
+    ChatInput,
+)
 
 
 class TestArxivAugmentedEngine:
@@ -207,7 +210,9 @@ class TestArxivAugmentedEngine:
 
             mock_stream_query.side_effect = mock_stream_gen
 
-            result = await research_engine.query("What is FL?", "session_1")
+            result = await research_engine.query(
+                ChatInput(query="What is FL?", session_id="session_1"),
+            )
 
         assert isinstance(result, dict)
         assert "answer" in result
@@ -227,7 +232,9 @@ class TestArxivAugmentedEngine:
 
             mock_stream_query.side_effect = mock_stream_gen
 
-            result = await research_engine.query("Query", "session_1")
+            result = await research_engine.query(
+                ChatInput(query="Query", session_id="session_1"),
+            )
 
         assert "tools_used" in result
         assert len(result["tools_used"]) == 1
@@ -245,7 +252,9 @@ class TestArxivAugmentedEngine:
 
             mock_stream_query.side_effect = mock_stream_gen
 
-            result = await research_engine.query("Query", "session_1")
+            result = await research_engine.query(
+                ChatInput(query="Query", session_id="session_1"),
+            )
 
         assert "error" in result
         assert result["error"] == "Failed"
