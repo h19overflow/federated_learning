@@ -13,10 +13,10 @@ experiment:
   contrast_stretch: true
   device: auto
   dropout_rate: 0.3
-  early_stopping_patience: 3
+  early_stopping_patience: 5
   edge_enhancement: false
   edge_strength: 1.0
-  epochs: 1
+  epochs: 10
   file-path: C:\Users\User\AppData\Local\Temp\tmpx8zrutqz\extracted\sample\stage2_train_metadata.csv
   fine_tune_layers_count: 5
   freeze_backbone: true

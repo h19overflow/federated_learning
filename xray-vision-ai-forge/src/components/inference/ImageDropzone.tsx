@@ -113,26 +113,28 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
   // Show preview if image is selected
   if (selectedImage && previewUrl) {
     return (
-      <div className="relative w-full h-full min-h-[400px] rounded-3xl bg-white/90 backdrop-blur-sm border-2 border-[hsl(172_30%_88%)] shadow-lg overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center p-8">
+      <div className="relative w-full h-full min-h-[400px] rounded-3xl bg-white border-2 border-[hsl(172_35%_80%)] shadow-md overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center p-8 bg-gradient-to-br from-white via-[hsl(172_30%_98%)] to-white">
           <img
             src={previewUrl}
             alt="X-ray preview"
-            className="max-w-full max-h-full object-contain rounded-2xl shadow-xl"
+            className="max-w-full max-h-full object-contain rounded-2xl shadow-md"
           />
         </div>
 
         {/* File info overlay */}
-        <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
-          <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-md border border-[hsl(168_20%_90%)]">
+        <div className="absolute top-4 left-4 right-4 flex items-start justify-between gap-3">
+          <div className="bg-white border border-[hsl(172_30%_85%)] px-4 py-3 rounded-2xl shadow-sm">
             <div className="flex items-center gap-2 text-sm text-[hsl(172_43%_20%)]">
-              <ImageIcon className="w-4 h-4 text-[hsl(172_63%_28%)]" />
-              <span className="font-medium truncate max-w-[200px]">
-                {selectedImage.name}
-              </span>
-              <span className="text-[hsl(215_15%_50%)]">
-                ({(selectedImage.size / 1024).toFixed(1)} KB)
-              </span>
+              <ImageIcon className="w-4 h-4 text-[hsl(172_63%_28%)] flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="font-semibold truncate max-w-[180px]">
+                  {selectedImage.name}
+                </p>
+                <p className="text-xs text-[hsl(215_15%_50%)]">
+                  {(selectedImage.size / 1024).toFixed(1)} KB
+                </p>
+              </div>
             </div>
           </div>
 
@@ -141,7 +143,7 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
             size="sm"
             onClick={handleClear}
             disabled={disabled}
-            className="bg-white/95 backdrop-blur-sm border-[hsl(210_15%_88%)] hover:bg-red-50 hover:border-red-300 hover:text-red-600 rounded-xl transition-all"
+            className="bg-white border-[hsl(210_15%_85%)] text-[hsl(172_43%_20%)] hover:bg-red-50 hover:border-red-300 hover:text-red-600 rounded-xl transition-colors duration-200 flex-shrink-0"
           >
             <X className="w-4 h-4 mr-1" />
             Remove
@@ -159,11 +161,11 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
       onDrop={handleDrop}
       className={`
         relative w-full h-full min-h-[400px] rounded-3xl border-2 border-dashed
-        transition-all duration-300 cursor-pointer
+        transition-colors duration-200 cursor-pointer
         ${
           isDragging
-            ? "border-[hsl(172_63%_28%)] bg-[hsl(172_40%_95%)]"
-            : "border-[hsl(172_30%_85%)] bg-white/60 hover:bg-white/90 hover:border-[hsl(172_40%_75%)]"
+            ? "border-[hsl(172_63%_28%)] bg-[hsl(172_35%_92%)]"
+            : "border-[hsl(172_30%_80%)] bg-white hover:bg-[hsl(172_30%_98%)] hover:border-[hsl(172_40%_70%)]"
         }
         ${disabled ? "opacity-50 cursor-not-allowed" : ""}
       `}
@@ -181,21 +183,21 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
         htmlFor="xray-upload"
         className="absolute inset-0 flex flex-col items-center justify-center p-8 cursor-pointer"
       >
-        {/* Upload icon with animation */}
+        {/* Upload icon */}
         <div
           className={`
           mb-6 w-20 h-20 rounded-2xl flex items-center justify-center
-          transition-all duration-300
+          transition-colors duration-200
           ${
             isDragging
-              ? "bg-[hsl(172_63%_28%)] scale-110"
-              : "bg-[hsl(172_40%_94%)]"
+              ? "bg-[hsl(172_63%_28%)]"
+              : "bg-[hsl(172_35%_90%)]"
           }
         `}
         >
           <Upload
             className={`
-            w-10 h-10 transition-colors
+            w-10 h-10 transition-colors duration-200
             ${isDragging ? "text-white" : "text-[hsl(172_63%_28%)]"}
           `}
           />
@@ -211,11 +213,11 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
 
         {/* File requirements */}
         <div className="flex flex-wrap gap-2 justify-center">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(168_25%_96%)] text-xs text-[hsl(172_43%_25%)] border border-[hsl(168_20%_90%)]">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(172_30%_92%)] text-xs text-[hsl(172_43%_25%)] border border-[hsl(172_30%_85%)]">
             <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)]" />
             PNG or JPEG
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(168_25%_96%)] text-xs text-[hsl(172_43%_25%)] border border-[hsl(168_20%_90%)]">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(172_30%_92%)] text-xs text-[hsl(172_43%_25%)] border border-[hsl(172_30%_85%)]">
             <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)]" />
             Max 10MB
           </span>
@@ -223,7 +225,7 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
 
         {/* Error message */}
         {error && (
-          <div className="mt-4 px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
+          <div className="mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium">
             {error}
           </div>
         )}

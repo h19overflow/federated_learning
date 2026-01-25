@@ -4,6 +4,7 @@
  * Displays GradCAM heatmap visualization showing which regions
  * of the X-ray the model focused on for its prediction.
  * Helps doctors understand the AI's reasoning.
+ * Clean, minimal animations for medical UI.
  */
 
 import React, { useState } from "react";
@@ -31,22 +32,22 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-lg">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-md">
             <Flame className="w-5 h-5 text-white" />
           </div>
           <div>
             <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)]">
               GradCAM Heatmap
             </h3>
-            <p className="text-sm text-[hsl(215_15%_45%)]">
-              Areas the model focused on
+            <p className="text-xs text-[hsl(215_15%_45%)] uppercase tracking-wide">
+              Model Attention Map
             </p>
           </div>
         </div>
 
         <button
           onClick={() => setIsZoomed(!isZoomed)}
-          className="p-2 rounded-lg bg-white/80 border border-[hsl(168_20%_90%)] hover:bg-white transition-colors"
+          className="p-2 rounded-lg bg-white/80 border border-[hsl(168_20%_90%)] hover:bg-white"
           title={isZoomed ? "Zoom out" : "Zoom in"}
         >
           {isZoomed ? (
@@ -59,17 +60,17 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
 
       {/* Heatmap Image */}
       <div
-        className={`relative rounded-2xl overflow-hidden border-2 shadow-lg transition-all duration-300 ${
+        className={`relative rounded-2xl overflow-hidden border-2 shadow-md ${
           isPneumonia
-            ? "border-amber-300 shadow-amber-100"
-            : "border-emerald-300 shadow-emerald-100"
+            ? "border-amber-300"
+            : "border-emerald-300"
         } ${isZoomed ? "cursor-zoom-out" : "cursor-zoom-in"}`}
         onClick={() => setIsZoomed(!isZoomed)}
       >
         <img
           src={heatmapDataUrl}
           alt="GradCAM heatmap visualization"
-          className={`w-full transition-transform duration-300 ${
+          className={`w-full ${
             isZoomed ? "scale-150" : "scale-100"
           }`}
           style={{ imageRendering: "auto" }}
@@ -91,20 +92,19 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
           <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <div className="space-y-2">
             <p className="text-sm text-[hsl(215_20%_35%)]">
-              <strong>How to interpret:</strong> Warmer colors (red/orange)
+              <strong>Interpretation:</strong> Warmer colors (red/orange)
               indicate regions that strongly influenced the model's{" "}
               {isPneumonia ? "pneumonia" : "normal"} prediction.
               {isPneumonia && (
                 <span className="block mt-1">
-                  These highlighted areas may show opacity patterns,
-                  consolidation, or infiltrates typically associated with
-                  pneumonia.
+                  These areas may show opacity patterns, consolidation, or
+                  infiltrates typical of pneumonia.
                 </span>
               )}
             </p>
             <p className="text-xs text-[hsl(215_15%_50%)]">
-              This visualization uses Gradient-weighted Class Activation Mapping
-              (GradCAM) to provide explainable AI insights for clinical review.
+              GradCAM (Gradient-weighted Class Activation Mapping) provides
+              explainable AI insights for clinical review.
             </p>
           </div>
         </div>

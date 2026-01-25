@@ -1,8 +1,9 @@
 /**
  * PredictionResult Component
  *
- * Displays prediction results with visual confidence indicators.
+ * Displays prediction results with prominent confidence indicators.
  * Color-coded for NORMAL (green) vs PNEUMONIA (amber/red).
+ * Minimal animations, clear medical UI hierarchy.
  */
 
 import React from "react";
@@ -31,6 +32,7 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
         border: "hsl(35 60% 80%)",
         icon: AlertTriangle,
         label: "Pneumonia Detected",
+        textColor: "hsl(35 70% 35%)",
       }
     : {
         primary: "hsl(152 60% 42%)", // Green
@@ -38,46 +40,50 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
         border: "hsl(152 50% 80%)",
         icon: CheckCircle2,
         label: "Normal",
+        textColor: "hsl(152 60% 30%)",
       };
 
   const Icon = colors.icon;
 
   return (
     <div className="space-y-6">
-      {/* Main prediction card */}
+      {/* Main prediction card - prominent display */}
       <div
-        className="p-8 rounded-3xl border-2 shadow-xl transition-all duration-500"
+        className="p-8 rounded-3xl border-2 shadow-lg"
         style={{
           backgroundColor: colors.bg,
           borderColor: colors.border,
         }}
       >
         {/* Prediction icon and label */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-4 mb-8">
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md flex-shrink-0"
             style={{ backgroundColor: "white" }}
           >
             <Icon className="w-8 h-8" style={{ color: colors.primary }} />
           </div>
           <div>
-            <h3 className="text-2xl font-semibold text-[hsl(172_43%_15%)]">
+            <h2
+              className="text-3xl font-bold mb-1"
+              style={{ color: colors.textColor }}
+            >
               {colors.label}
-            </h3>
-            <p className="text-[hsl(215_15%_45%)]">
-              Prediction: {prediction.predicted_class}
+            </h2>
+            <p className="text-sm text-[hsl(215_15%_45%)]">
+              {prediction.predicted_class}
             </p>
           </div>
         </div>
 
-        {/* Confidence meter */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
+        {/* Confidence meter - prominent */}
+        <div className="mb-8 p-6 bg-white/60 rounded-2xl">
+          <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-[hsl(172_43%_20%)]">
-              Confidence Level
+              Confidence Score
             </span>
             <span
-              className="text-lg font-bold"
+              className="text-3xl font-bold"
               style={{ color: colors.primary }}
             >
               {confidence.toFixed(1)}%
@@ -85,9 +91,9 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
           </div>
 
           {/* Progress bar */}
-          <div className="relative h-4 bg-white rounded-full overflow-hidden shadow-inner">
+          <div className="relative h-3 bg-white rounded-full overflow-hidden shadow-inner">
             <div
-              className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
+              className="absolute inset-y-0 left-0 rounded-full"
               style={{
                 width: `${confidence}%`,
                 backgroundColor: colors.primary,
@@ -97,54 +103,58 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
         </div>
 
         {/* Probability breakdown */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] uppercase tracking-wide">
-            Probability Breakdown
+        <div className="space-y-4">
+          <h4 className="text-xs font-semibold text-[hsl(172_43%_20%)] uppercase tracking-widest">
+            Probability Distribution
           </h4>
 
           {/* Pneumonia probability */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-[hsl(215_15%_40%)]">Pneumonia</span>
-            <div className="flex items-center gap-3 flex-1 ml-4">
-              <div className="flex-1 h-2 bg-white rounded-full overflow-hidden shadow-inner">
-                <div
-                  className="h-full bg-[hsl(35_70%_50%)] transition-all duration-700"
-                  style={{
-                    width: `${prediction.pneumonia_probability * 100}%`,
-                  }}
-                />
-              </div>
-              <span className="text-sm font-medium text-[hsl(172_43%_20%)] w-14 text-right">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-[hsl(215_15%_40%)]">
+                Pneumonia
+              </span>
+              <span className="text-sm font-bold text-[hsl(172_43%_20%)]">
                 {(prediction.pneumonia_probability * 100).toFixed(1)}%
               </span>
+            </div>
+            <div className="h-2 bg-white rounded-full overflow-hidden shadow-inner">
+              <div
+                className="h-full bg-[hsl(35_70%_50%)]"
+                style={{
+                  width: `${prediction.pneumonia_probability * 100}%`,
+                }}
+              />
             </div>
           </div>
 
           {/* Normal probability */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-[hsl(215_15%_40%)]">Normal</span>
-            <div className="flex items-center gap-3 flex-1 ml-4">
-              <div className="flex-1 h-2 bg-white rounded-full overflow-hidden shadow-inner">
-                <div
-                  className="h-full bg-[hsl(152_60%_42%)] transition-all duration-700"
-                  style={{ width: `${prediction.normal_probability * 100}%` }}
-                />
-              </div>
-              <span className="text-sm font-medium text-[hsl(172_43%_20%)] w-14 text-right">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-[hsl(215_15%_40%)]">
+                Normal
+              </span>
+              <span className="text-sm font-bold text-[hsl(172_43%_20%)]">
                 {(prediction.normal_probability * 100).toFixed(1)}%
               </span>
+            </div>
+            <div className="h-2 bg-white rounded-full overflow-hidden shadow-inner">
+              <div
+                className="h-full bg-[hsl(152_60%_42%)]"
+                style={{ width: `${prediction.normal_probability * 100}%` }}
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Metadata card */}
+      {/* Metadata cards */}
       <div className="grid grid-cols-2 gap-4">
         <div className="p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] shadow-md">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2">
             <Activity className="w-4 h-4 text-[hsl(172_63%_28%)]" />
             <span className="text-xs font-semibold text-[hsl(215_15%_50%)] uppercase tracking-wide">
-              Model Version
+              Model
             </span>
           </div>
           <p className="text-sm font-medium text-[hsl(172_43%_15%)] truncate">
@@ -153,7 +163,7 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
         </div>
 
         <div className="p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] shadow-md">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2">
             <svg
               className="w-4 h-4 text-[hsl(172_63%_28%)]"
               viewBox="0 0 24 24"
@@ -165,7 +175,7 @@ export const PredictionResult: React.FC<PredictionResultProps> = ({
               <polyline points="12 6 12 12 16 14" />
             </svg>
             <span className="text-xs font-semibold text-[hsl(215_15%_50%)] uppercase tracking-wide">
-              Processing Time
+              Time
             </span>
           </div>
           <p className="text-sm font-medium text-[hsl(172_43%_15%)]">

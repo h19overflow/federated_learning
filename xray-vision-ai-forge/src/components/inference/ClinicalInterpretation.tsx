@@ -1,8 +1,9 @@
 /**
  * ClinicalInterpretation Component
  *
- * Displays AI-generated clinical interpretation in a clean card format.
+ * Displays AI-generated clinical interpretation in a clean, professional format.
  * Includes risk assessment, recommendations, and disclaimer.
+ * Medical UI standards with clear hierarchy and minimal animations.
  */
 
 import React from "react";
@@ -39,6 +40,7 @@ export const ClinicalInterpretation: React.FC<ClinicalInterpretationProps> = ({
           border: "hsl(152 50% 80%)",
           text: "hsl(152 60% 30%)",
           icon: CheckCircle2,
+          accentBg: "hsl(152 60% 42%)",
         };
       case "MODERATE":
         return {
@@ -46,6 +48,7 @@ export const ClinicalInterpretation: React.FC<ClinicalInterpretationProps> = ({
           border: "hsl(45 60% 80%)",
           text: "hsl(45 70% 35%)",
           icon: AlertCircle,
+          accentBg: "hsl(45 70% 50%)",
         };
       case "HIGH":
         return {
@@ -53,6 +56,7 @@ export const ClinicalInterpretation: React.FC<ClinicalInterpretationProps> = ({
           border: "hsl(35 60% 80%)",
           text: "hsl(35 70% 35%)",
           icon: AlertTriangle,
+          accentBg: "hsl(35 70% 45%)",
         };
       case "CRITICAL":
         return {
@@ -60,6 +64,7 @@ export const ClinicalInterpretation: React.FC<ClinicalInterpretationProps> = ({
           border: "hsl(0 60% 80%)",
           text: "hsl(0 70% 40%)",
           icon: ShieldAlert,
+          accentBg: "hsl(0 70% 50%)",
         };
       default:
         return {
@@ -67,6 +72,7 @@ export const ClinicalInterpretation: React.FC<ClinicalInterpretationProps> = ({
           border: "hsl(210 15% 80%)",
           text: "hsl(210 15% 40%)",
           icon: AlertCircle,
+          accentBg: "hsl(210 15% 50%)",
         };
     }
   };
@@ -90,55 +96,60 @@ export const ClinicalInterpretation: React.FC<ClinicalInterpretationProps> = ({
           </svg>
         </div>
         <div>
-          <h3 className="text-xl font-semibold text-[hsl(172_43%_15%)]">
+          <h2 className="text-xl font-semibold text-[hsl(172_43%_15%)]">
             Clinical Interpretation
-          </h3>
-          <p className="text-sm text-[hsl(215_15%_45%)]">
+          </h2>
+          <p className="text-xs text-[hsl(215_15%_45%)] uppercase tracking-wide">
             AI-Assisted Analysis
           </p>
         </div>
       </div>
 
       {/* Summary section */}
-      <div className="p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] shadow-md">
-        <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] uppercase tracking-wide mb-3">
+      <div className="p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] shadow-sm">
+        <h3 className="text-sm font-semibold text-[hsl(172_43%_20%)] uppercase tracking-widest mb-3">
           Summary
-        </h4>
-        <p className="text-[hsl(215_15%_40%)] leading-relaxed">{summary}</p>
+        </h3>
+        <p className="text-[hsl(215_15%_40%)] leading-relaxed text-sm">
+          {summary}
+        </p>
       </div>
 
       {/* Confidence explanation */}
-      <div className="p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] shadow-md">
-        <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] uppercase tracking-wide mb-3">
+      <div className="p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-[hsl(168_20%_90%)] shadow-sm">
+        <h3 className="text-sm font-semibold text-[hsl(172_43%_20%)] uppercase tracking-widest mb-3">
           Confidence Explanation
-        </h4>
-        <p className="text-[hsl(215_15%_40%)] leading-relaxed">
+        </h3>
+        <p className="text-[hsl(215_15%_40%)] leading-relaxed text-sm">
           {confidence_explanation}
         </p>
       </div>
 
-      {/* Risk assessment card */}
+      {/* Risk assessment card - prominent */}
       <div
-        className="p-6 rounded-2xl border-2 shadow-lg"
+        className="p-6 rounded-2xl border-l-4 shadow-md"
         style={{
           backgroundColor: riskStyle.bg,
-          borderColor: riskStyle.border,
+          borderColor: riskStyle.accentBg,
         }}
       >
         <div className="flex items-start gap-4 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: "white" }}
+          >
             <RiskIcon className="w-5 h-5" style={{ color: riskStyle.text }} />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <h4
-                className="text-sm font-semibold uppercase tracking-wide"
+              <h3
+                className="text-sm font-bold uppercase tracking-wide"
                 style={{ color: riskStyle.text }}
               >
                 Risk Assessment
-              </h4>
+              </h3>
               <span
-                className="px-3 py-1 rounded-full text-xs font-bold shadow-sm"
+                className="px-3 py-1 rounded-lg text-xs font-bold"
                 style={{
                   backgroundColor: "white",
                   color: riskStyle.text,
@@ -158,14 +169,14 @@ export const ClinicalInterpretation: React.FC<ClinicalInterpretationProps> = ({
 
         {/* Risk factors */}
         {risk_assessment.factors.length > 0 && (
-          <div>
-            <h5
-              className="text-xs font-semibold uppercase tracking-wide mb-2"
+          <div className="pt-4 border-t" style={{ borderColor: riskStyle.border }}>
+            <h4
+              className="text-xs font-semibold uppercase tracking-widest mb-3"
               style={{ color: riskStyle.text }}
             >
               Contributing Factors
-            </h5>
-            <ul className="space-y-1.5">
+            </h4>
+            <ul className="space-y-2">
               {risk_assessment.factors.map((factor, index) => (
                 <li
                   key={index}
@@ -186,16 +197,16 @@ export const ClinicalInterpretation: React.FC<ClinicalInterpretationProps> = ({
 
       {/* Recommendations */}
       {recommendations.length > 0 && (
-        <div className="p-6 rounded-2xl bg-[hsl(172_40%_95%)] border border-[hsl(172_40%_85%)] shadow-md">
-          <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] uppercase tracking-wide mb-3 flex items-center gap-2">
+        <div className="p-6 rounded-2xl bg-[hsl(172_40%_95%)] border border-[hsl(172_40%_85%)] shadow-sm">
+          <h3 className="text-sm font-semibold text-[hsl(172_43%_20%)] uppercase tracking-widest mb-4 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
             Recommendations
-          </h4>
-          <ul className="space-y-2.5">
+          </h3>
+          <ul className="space-y-3">
             {recommendations.map((recommendation, index) => (
               <li
                 key={index}
-                className="flex items-start gap-3 text-[hsl(215_15%_40%)]"
+                className="flex items-start gap-3 text-[hsl(215_15%_40%)] text-sm"
               >
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[hsl(172_63%_28%)] text-white text-xs font-bold flex items-center justify-center mt-0.5">
                   {index + 1}
@@ -208,13 +219,13 @@ export const ClinicalInterpretation: React.FC<ClinicalInterpretationProps> = ({
       )}
 
       {/* Disclaimer */}
-      <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-200 shadow-sm">
+      <div className="p-4 rounded-2xl bg-amber-50 border-l-4 border-amber-500 shadow-sm">
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h5 className="text-sm font-semibold text-amber-900 mb-1">
+            <h4 className="text-sm font-semibold text-amber-900 mb-1">
               Medical Disclaimer
-            </h5>
+            </h4>
             <p className="text-xs text-amber-800 leading-relaxed">
               {disclaimer}
             </p>

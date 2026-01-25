@@ -49,30 +49,32 @@ export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Title */}
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-[hsl(172_40%_94%)] flex items-center justify-center">
-          <TrendingUp className="w-6 h-6 text-[hsl(172_63%_28%)]" />
-        </div>
-        <div>
-          <h3 className="text-xl font-semibold text-[hsl(172_43%_15%)]">
-            Batch Analysis Summary
-          </h3>
-          <p className="text-sm text-[hsl(215_15%_45%)]">
-            {total_images} image{total_images !== 1 ? "s" : ""} processed in{" "}
-            {totalProcessingTimeSeconds.toFixed(1)}s
-          </p>
-        </div>
-      </div>
+       {/* Title */}
+       <div className="flex items-center gap-4">
+         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[hsl(172_40%_94%)] to-[hsl(172_40%_88%)] flex items-center justify-center shadow-md">
+           <TrendingUp className="w-7 h-7 text-[hsl(172_63%_28%)]" />
+         </div>
+         <div className="flex-1">
+           <h2 className="text-2xl font-bold text-[hsl(172_43%_15%)]">
+             Batch Analysis Summary
+           </h2>
+           <p className="text-sm text-[hsl(215_15%_45%)] mt-0.5">
+             <span className="font-semibold text-[hsl(172_43%_20%)]">{total_images}</span> image{total_images !== 1 ? "s" : ""} processed in{" "}
+             <span className="font-semibold text-[hsl(172_43%_20%)]">{totalProcessingTimeSeconds.toFixed(1)}s</span>
+           </p>
+         </div>
+       </div>
 
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <BarChart3 className="w-4 h-4 text-[hsl(172_63%_28%)]" />
-          <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] uppercase tracking-wide">
-            Processing Overview
-          </h4>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+       <div>
+         <div className="flex items-center gap-2 mb-4">
+           <div className="w-8 h-8 rounded-lg bg-[hsl(172_40%_94%)] flex items-center justify-center">
+             <BarChart3 className="w-4 h-4 text-[hsl(172_63%_28%)]" />
+           </div>
+           <h4 className="text-sm font-bold text-[hsl(172_43%_20%)] uppercase tracking-wide">
+             Processing Overview
+           </h4>
+         </div>
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {/* Total images */}
           <div className="p-4 rounded-xl bg-white/90 backdrop-blur-sm border border-[hsl(172_30%_88%)] shadow-md">
             <div className="flex items-center justify-between mb-1">
@@ -134,13 +136,15 @@ export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Activity className="w-4 h-4 text-[hsl(172_63%_28%)]" />
-          <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] uppercase tracking-wide">
-            Prediction Distribution
-          </h4>
-        </div>
+       <div>
+         <div className="flex items-center gap-2 mb-4">
+           <div className="w-8 h-8 rounded-lg bg-[hsl(172_40%_94%)] flex items-center justify-center">
+             <Activity className="w-4 h-4 text-[hsl(172_63%_28%)]" />
+           </div>
+           <h4 className="text-sm font-bold text-[hsl(172_43%_20%)] uppercase tracking-wide">
+             Prediction Distribution
+           </h4>
+         </div>
         <div className="grid grid-cols-2 gap-3">
           {/* Normal count */}
           <div className="p-5 rounded-xl bg-[hsl(152_50%_95%)] border border-[hsl(152_50%_85%)] shadow-md">
@@ -158,12 +162,12 @@ export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({
                 {successful > 0 ? `(${normalDetectionRate.toFixed(1)}%)` : "-"}
               </span>
             </div>
-            <div className="mt-2 w-full bg-white/50 rounded-full h-2">
-              <div
-                className="bg-[hsl(152_60%_42%)] h-2 rounded-full transition-all duration-500"
-                style={{ width: `${normalDetectionRate}%` }}
-              />
-            </div>
+             <div className="mt-2 w-full bg-white/50 rounded-full h-2">
+               <div
+                 className="bg-[hsl(152_60%_42%)] h-2 rounded-full transition-all duration-300"
+                 style={{ width: `${normalDetectionRate}%` }}
+               />
+             </div>
           </div>
 
           {/* Pneumonia count */}
@@ -184,23 +188,25 @@ export const BatchSummaryStats: React.FC<BatchSummaryStatsProps> = ({
                   : "-"}
               </span>
             </div>
-            <div className="mt-2 w-full bg-white/50 rounded-full h-2">
-              <div
-                className="bg-[hsl(35_70%_45%)] h-2 rounded-full transition-all duration-500"
-                style={{ width: `${pneumoniaDetectionRate}%` }}
-              />
-            </div>
+             <div className="mt-2 w-full bg-white/50 rounded-full h-2">
+               <div
+                 className="bg-[hsl(35_70%_45%)] h-2 rounded-full transition-all duration-300"
+                 style={{ width: `${pneumoniaDetectionRate}%` }}
+               />
+             </div>
           </div>
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <BarChart3 className="w-4 h-4 text-[hsl(172_63%_28%)]" />
-          <h4 className="text-sm font-semibold text-[hsl(172_43%_20%)] uppercase tracking-wide">
-            Confidence Metrics
-          </h4>
-        </div>
+       <div>
+         <div className="flex items-center gap-2 mb-4">
+           <div className="w-8 h-8 rounded-lg bg-[hsl(172_40%_94%)] flex items-center justify-center">
+             <BarChart3 className="w-4 h-4 text-[hsl(172_63%_28%)]" />
+           </div>
+           <h4 className="text-sm font-bold text-[hsl(172_43%_20%)] uppercase tracking-wide">
+             Confidence Metrics
+           </h4>
+         </div>
         <div className="p-5 rounded-xl bg-white/90 backdrop-blur-sm border border-[hsl(172_30%_88%)] shadow-md">
           <div className="flex items-center justify-between mb-3">
             <div>

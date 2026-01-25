@@ -275,22 +275,22 @@ export const BatchExportButton: React.FC<BatchExportButtonProps> = ({
 
   const hasImageFiles = imageFiles && imageFiles.size > 0;
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          disabled={disabled}
-          size="lg"
-          className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white rounded-2xl shadow-lg shadow-[hsl(172_63%_22%)]/20 hover:shadow-xl transition-all duration-300"
-        >
-          <Download className="w-5 h-5 mr-2" />
-          Export Results
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="w-64 rounded-xl border-[hsl(172_30%_85%)] bg-white/95 backdrop-blur-sm shadow-xl"
-      >
+   return (
+     <DropdownMenu>
+       <DropdownMenuTrigger asChild>
+         <Button
+           disabled={disabled}
+           size="lg"
+           className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white rounded-2xl shadow-lg shadow-[hsl(172_63%_22%)]/20 transition-colors duration-200"
+         >
+           <Download className="w-5 h-5 mr-2" />
+           Export Results
+         </Button>
+       </DropdownMenuTrigger>
+       <DropdownMenuContent
+         align="end"
+         className="w-64 rounded-xl border-[hsl(172_30%_85%)] bg-white/95 backdrop-blur-sm shadow-xl"
+       >
         <DropdownMenuItem
           onClick={handleExportCSV}
           className="cursor-pointer rounded-lg hover:bg-[hsl(168_25%_96%)] focus:bg-[hsl(168_25%_96%)] p-3"

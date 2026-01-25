@@ -113,8 +113,8 @@ export const ResultDetailModal: React.FC<ResultDetailModalProps> = ({
   if (!result) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-[hsl(168_25%_97%)] border-2 border-[hsl(172_30%_88%)]">
+     <Dialog open={isOpen} onOpenChange={onClose}>
+       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-[hsl(168_25%_97%)] border-2 border-[hsl(172_30%_88%)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 duration-200">
         <DialogHeader>
           <div className="flex items-center justify-between pr-8">
             <div>
@@ -184,28 +184,28 @@ export const ResultDetailModal: React.FC<ResultDetailModalProps> = ({
                     className="max-w-full max-h-[400px] object-contain rounded-xl shadow-xl"
                   />
                 </div>
-                {/* Heatmap button overlay */}
-                {result.success && imageFile && (
-                  <div className="absolute bottom-4 right-4">
-                    <Button
-                      onClick={handleGenerateHeatmap}
-                      disabled={heatmapLoading}
-                      className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white rounded-xl shadow-lg"
-                    >
-                      {heatmapLoading ? (
-                        <>
-                          <Activity className="w-4 h-4 mr-2 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Flame className="w-4 h-4 mr-2" />
-                          Show Heatmap
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
+                 {/* Heatmap button overlay */}
+                 {result.success && imageFile && (
+                   <div className="absolute bottom-4 right-4">
+                     <Button
+                       onClick={handleGenerateHeatmap}
+                       disabled={heatmapLoading}
+                       className="bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white rounded-xl shadow-lg transition-colors duration-200"
+                     >
+                       {heatmapLoading ? (
+                         <>
+                           <Activity className="w-4 h-4 mr-2 animate-spin" />
+                           Generating...
+                         </>
+                       ) : (
+                         <>
+                           <Flame className="w-4 h-4 mr-2" />
+                           Show Heatmap
+                         </>
+                       )}
+                     </Button>
+                   </div>
+                 )}
               </div>
             )
           )}

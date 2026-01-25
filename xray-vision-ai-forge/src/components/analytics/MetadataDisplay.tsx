@@ -245,7 +245,7 @@ const NestedMetadata: React.FC<{
   // Limit nesting depth to prevent overly deep rendering
   if (depth > 2) {
     return (
-      <span className="text-xs text-[hsl(215_15%_55%)] italic">
+      <span className="text-[10px] text-[hsl(215_15%_60%)] italic">
         Complex object
       </span>
     );
@@ -254,19 +254,21 @@ const NestedMetadata: React.FC<{
   return (
     <div
       className={cn(
-        "space-y-2",
-        depth > 0 && "pl-4 border-l-2 border-[hsl(172_30%_88%)]",
+        "space-y-1 w-full",
+        depth > 0 && "pl-3 border-l border-[hsl(172_30%_90%)]",
       )}
     >
       {Object.entries(data).map(([key, value]) => (
         <div
           key={key}
-          className="flex items-start justify-between gap-3 text-sm"
+          className="flex items-center justify-between gap-4 text-[11px]"
         >
-          <span className="text-[hsl(215_15%_50%)] font-medium min-w-[120px]">
-            {formatKey(key)}:
+          <span className="text-[hsl(215_15%_55%)] font-medium whitespace-nowrap">
+            {formatKey(key)}
           </span>
-          <span className="flex-1 text-right">{formatValue(value)}</span>
+          <span className="text-[hsl(172_43%_25%)]">
+            {formatValue(value)}
+          </span>
         </div>
       ))}
     </div>
@@ -367,85 +369,51 @@ export const MetadataDisplay: React.FC<MetadataDisplayProps> = ({
     other: "Additional Details",
   };
 
-  // If there's only one category or fewer than 4 items, show flat view
-  const shouldUseFlatView =
-    categorizedData.length === 1 || Object.keys(metadata).length < 4;
-
-  if (shouldUseFlatView) {
-    return (
-      <Card className="overflow-hidden rounded-2xl border-[hsl(210_15%_92%)] shadow-sm">
-        <CardContent className="p-0">
-          <div className="bg-gradient-to-r from-[hsl(168_25%_97%)] to-white px-6 py-4 border-b border-[hsl(168_20%_92%)]">
-            <h3 className="text-lg font-semibold text-[hsl(172_43%_18%)] flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-[hsl(172_40%_92%)]">
-                <Settings className="h-5 w-5 text-[hsl(172_63%_30%)]" />
-              </div>
-              {title}
-            </h3>
-          </div>
-          <div className="p-6 space-y-4">
-            {Object.entries(metadata).map(([key, value]) => (
-              <div
-                key={key}
-                className="flex items-start gap-4 pb-4 border-b border-[hsl(168_20%_94%)] last:border-0 last:pb-0"
-              >
-                <div className="p-2 rounded-lg bg-[hsl(168_25%_95%)] text-[hsl(172_40%_40%)]">
-                  {getMetadataIcon(key)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[hsl(215_15%_45%)] mb-1">
-                    {formatKey(key)}
-                  </p>
-                  <div className="text-[hsl(172_43%_20%)]">
-                    {formatValue(value)}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Categorized view for larger metadata
   return (
-    <div className="space-y-4">
-      {categorizedData.map(([category, values]) => (
-        <Card
-          key={category}
-          className="overflow-hidden rounded-2xl border-[hsl(210_15%_92%)] shadow-sm"
-        >
-          <CardContent className="p-0">
-            <div className="bg-gradient-to-r from-[hsl(168_25%_97%)] to-white px-6 py-3 border-b border-[hsl(168_20%_92%)]">
-              <h4 className="text-md font-semibold text-[hsl(172_43%_18%)]">
+    <Card className="overflow-hidden rounded-xl border-[hsl(210_15%_92%)] shadow-sm bg-white">
+      <div className="bg-gradient-to-r from-[hsl(168_25%_98%)] to-white px-5 py-3 border-b border-[hsl(168_20%_92%)]">
+        <h3 className="text-sm font-bold text-[hsl(172_43%_18%)] flex items-center gap-2">
+          <Settings className="h-4 w-4 text-[hsl(172_63%_35%)]" />
+          {title}
+        </h3>
+      </div>
+      <CardContent className="p-6 space-y-8">
+        {categorizedData.map(([category, values]) => (
+          <div key={category} className="space-y-4">
+            {/* Category Header */}
+            <div className="flex items-center gap-3">
+              <div className="h-1.5 w-1.5 rounded-full bg-[hsl(172_63%_45%)]" />
+              <h4 className="text-[11px] font-bold text-[hsl(172_63%_30%)] uppercase tracking-widest">
                 {categoryLabels[category] || formatKey(category)}
               </h4>
+              <div className="h-[1px] flex-1 bg-gradient-to-r from-[hsl(172_30%_90%)] to-transparent" />
             </div>
-            <div className="p-6 space-y-4">
+
+            {/* Grid of Metadata Items */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {Object.entries(values).map(([key, value]) => (
                 <div
                   key={key}
-                  className="flex items-start gap-4 pb-4 border-b border-[hsl(168_20%_94%)] last:border-0 last:pb-0"
+                  className="group flex items-start gap-3 p-3 rounded-xl border border-[hsl(168_20%_92%)] bg-[hsl(168_25%_99%)]/50 hover:bg-white hover:border-[hsl(172_40%_80%)] hover:shadow-sm transition-all duration-200"
                 >
-                  <div className="p-2 rounded-lg bg-[hsl(168_25%_95%)] text-[hsl(172_40%_40%)]">
+                  <div className="flex-shrink-0 mt-0.5 p-2 rounded-lg bg-white border border-[hsl(168_20%_92%)] text-[hsl(172_40%_45%)] group-hover:text-[hsl(172_63%_35%)] group-hover:border-[hsl(172_40%_85%)] transition-colors shadow-sm">
                     {getMetadataIcon(key)}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[hsl(215_15%_45%)] mb-1">
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-[10px] font-bold text-[hsl(215_15%_50%)] uppercase tracking-wider mb-1">
                       {formatKey(key)}
-                    </p>
-                    <div className="text-[hsl(172_43%_20%)]">
+                    </span>
+                    <div className="text-sm font-semibold text-[hsl(172_43%_18%)] break-words">
                       {formatValue(value)}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 };
 

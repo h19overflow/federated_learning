@@ -159,117 +159,117 @@ export const BatchUploadZone: React.FC<BatchUploadZoneProps> = ({
   const totalSize = selectedImages.reduce((sum, file) => sum + file.size, 0);
   const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
 
-  // Show file list with thumbnails if images are selected
-  if (selectedImages.length > 0) {
-    return (
-      <div className="space-y-4">
-        {/* Header with stats */}
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-white/90 backdrop-blur-sm border border-[hsl(172_30%_88%)] shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[hsl(172_40%_94%)] flex items-center justify-center">
-              <ImageIcon className="w-5 h-5 text-[hsl(172_63%_28%)]" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-[hsl(172_43%_15%)]">
-                {selectedImages.length} Image
-                {selectedImages.length !== 1 ? "s" : ""} Selected
-              </h3>
-              <p className="text-xs text-[hsl(215_15%_50%)]">
-                Total size: {totalSizeMB} MB
-              </p>
-            </div>
-          </div>
+   // Show file list with thumbnails if images are selected
+   if (selectedImages.length > 0) {
+     return (
+       <div className="space-y-4">
+         {/* Header with stats */}
+         <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-[hsl(172_30%_85%)] shadow-sm">
+           <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-xl bg-[hsl(172_35%_90%)] flex items-center justify-center">
+               <ImageIcon className="w-5 h-5 text-[hsl(172_63%_28%)]" />
+             </div>
+             <div>
+               <h3 className="text-sm font-semibold text-[hsl(172_43%_15%)]">
+                 {selectedImages.length} Image{selectedImages.length !== 1 ? "s" : ""} Selected
+               </h3>
+               <p className="text-xs text-[hsl(215_15%_50%)]">
+                 Total size: {totalSizeMB} MB
+               </p>
+             </div>
+           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClearAll}
-            disabled={disabled}
-            className="border-[hsl(210_15%_88%)] hover:bg-red-50 hover:border-red-300 hover:text-red-600 rounded-xl transition-all"
-          >
-            <Trash2 className="w-4 h-4 mr-1.5" />
-            Clear All
-          </Button>
-        </div>
+           <Button
+             variant="outline"
+             size="sm"
+             onClick={handleClearAll}
+             disabled={disabled}
+             className="border-[hsl(210_15%_85%)] text-[hsl(172_43%_20%)] hover:bg-red-50 hover:border-red-300 hover:text-red-600 rounded-xl transition-colors duration-200"
+           >
+             <Trash2 className="w-4 h-4 mr-1.5" />
+             Clear All
+           </Button>
+         </div>
 
-        {/* Thumbnail grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto p-1 rounded-2xl">
-          {selectedImages.map((file) => (
-            <div
-              key={file.name}
-              className="relative group aspect-square rounded-xl bg-white/90 backdrop-blur-sm border border-[hsl(172_30%_88%)] shadow-md overflow-hidden hover:shadow-lg transition-all"
-            >
-              {previewUrls.get(file.name) && (
-                <img
-                  src={previewUrls.get(file.name)}
-                  alt={file.name}
-                  className="w-full h-full object-cover"
-                />
-              )}
+         {/* Thumbnail grid */}
+         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto p-2 rounded-2xl bg-[hsl(172_30%_98%)]">
+           {selectedImages.map((file) => (
+             <div
+               key={file.name}
+               className="relative group aspect-square rounded-xl bg-white border border-[hsl(172_30%_85%)] shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200"
+             >
+               {previewUrls.get(file.name) && (
+                 <img
+                   src={previewUrls.get(file.name)}
+                   alt={file.name}
+                   className="w-full h-full object-cover"
+                 />
+               )}
 
-              {/* Overlay with filename */}
-              <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
-                <p className="text-xs text-white font-medium truncate">
-                  {file.name}
-                </p>
-                <p className="text-xs text-white/80">
-                  {(file.size / 1024).toFixed(1)} KB
-                </p>
-              </div>
+               {/* Overlay with filename */}
+               <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
+                 <p className="text-xs text-white font-medium truncate">
+                   {file.name}
+                 </p>
+                 <p className="text-xs text-white/80">
+                   {(file.size / 1024).toFixed(1)} KB
+                 </p>
+               </div>
 
-              {/* Remove button */}
-              <button
-                onClick={() => handleRemoveFile(file.name)}
-                disabled={disabled}
-                className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-white/95 backdrop-blur-sm shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
+               {/* Remove button - always visible for clarity */}
+               <button
+                 onClick={() => handleRemoveFile(file.name)}
+                 disabled={disabled}
+                 className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-colors duration-200 disabled:opacity-50"
+                 title="Remove image"
+               >
+                 <X className="w-4 h-4" />
+               </button>
+             </div>
+           ))}
+         </div>
 
-        {/* Add more button */}
-        {selectedImages.length < MAX_FILES && (
-          <div>
-            <input
-              type="file"
-              id="batch-upload-more"
-              className="hidden"
-              accept={ACCEPTED_TYPES.join(",")}
-              onChange={handleFileInput}
-              disabled={disabled}
-              multiple
-            />
-            <label
-              htmlFor="batch-upload-more"
-              className={`
-                flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-dashed
-                transition-all cursor-pointer
-                ${
-                  disabled
-                    ? "opacity-50 cursor-not-allowed"
-                    : "border-[hsl(172_30%_85%)] bg-white/60 hover:bg-white/90 hover:border-[hsl(172_40%_75%)]"
-                }
-              `}
-            >
-              <Upload className="w-5 h-5 text-[hsl(172_63%_28%)]" />
-              <span className="text-sm font-medium text-[hsl(172_43%_20%)]">
-                Add More Images ({MAX_FILES - selectedImages.length} remaining)
-              </span>
-            </label>
-          </div>
-        )}
+         {/* Add more button */}
+         {selectedImages.length < MAX_FILES && (
+           <div>
+             <input
+               type="file"
+               id="batch-upload-more"
+               className="hidden"
+               accept={ACCEPTED_TYPES.join(",")}
+               onChange={handleFileInput}
+               disabled={disabled}
+               multiple
+             />
+             <label
+               htmlFor="batch-upload-more"
+               className={`
+                 flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-dashed
+                 transition-colors duration-200 cursor-pointer
+                 ${
+                   disabled
+                     ? "opacity-50 cursor-not-allowed"
+                     : "border-[hsl(172_30%_80%)] bg-white hover:bg-[hsl(172_30%_98%)] hover:border-[hsl(172_40%_70%)]"
+                 }
+               `}
+             >
+               <Upload className="w-5 h-5 text-[hsl(172_63%_28%)]" />
+               <span className="text-sm font-medium text-[hsl(172_43%_20%)]">
+                 Add More Images ({MAX_FILES - selectedImages.length} remaining)
+               </span>
+             </label>
+           </div>
+         )}
 
-        {/* Error message */}
-        {error && (
-          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm whitespace-pre-line">
-            {error}
-          </div>
-        )}
-      </div>
-    );
-  }
+         {/* Error message */}
+         {error && (
+           <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium whitespace-pre-line">
+             {error}
+           </div>
+         )}
+       </div>
+     );
+   }
 
   // Show dropzone
   return (
@@ -280,11 +280,11 @@ export const BatchUploadZone: React.FC<BatchUploadZoneProps> = ({
         onDrop={handleDrop}
         className={`
           relative w-full h-full min-h-[400px] rounded-3xl border-2 border-dashed
-          transition-all duration-300 cursor-pointer
+          transition-colors duration-200 cursor-pointer
           ${
             isDragging
-              ? "border-[hsl(172_63%_28%)] bg-[hsl(172_40%_95%)]"
-              : "border-[hsl(172_30%_85%)] bg-white/60 hover:bg-white/90 hover:border-[hsl(172_40%_75%)]"
+              ? "border-[hsl(172_63%_28%)] bg-[hsl(172_35%_92%)]"
+              : "border-[hsl(172_30%_80%)] bg-white hover:bg-[hsl(172_30%_98%)] hover:border-[hsl(172_40%_70%)]"
           }
           ${disabled ? "opacity-50 cursor-not-allowed" : ""}
         `}
@@ -303,21 +303,21 @@ export const BatchUploadZone: React.FC<BatchUploadZoneProps> = ({
           htmlFor="batch-upload"
           className="absolute inset-0 flex flex-col items-center justify-center p-8 cursor-pointer"
         >
-          {/* Upload icon with animation */}
+          {/* Upload icon */}
           <div
             className={`
             mb-6 w-20 h-20 rounded-2xl flex items-center justify-center
-            transition-all duration-300
+            transition-colors duration-200
             ${
               isDragging
-                ? "bg-[hsl(172_63%_28%)] scale-110"
-                : "bg-[hsl(172_40%_94%)]"
+                ? "bg-[hsl(172_63%_28%)]"
+                : "bg-[hsl(172_35%_90%)]"
             }
           `}
           >
             <Upload
               className={`
-              w-10 h-10 transition-colors
+              w-10 h-10 transition-colors duration-200
               ${isDragging ? "text-white" : "text-[hsl(172_63%_28%)]"}
             `}
             />
@@ -328,21 +328,20 @@ export const BatchUploadZone: React.FC<BatchUploadZoneProps> = ({
             {isDragging ? "Drop images here" : "Upload Multiple X-Ray Images"}
           </h3>
           <p className="text-[hsl(215_15%_45%)] text-center mb-4 max-w-sm">
-            Drag and drop up to {MAX_FILES} chest X-ray images here, or click to
-            browse
+            Drag and drop up to {MAX_FILES} chest X-ray images here, or click to browse
           </p>
 
           {/* File requirements */}
           <div className="flex flex-wrap gap-2 justify-center">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(168_25%_96%)] text-xs text-[hsl(172_43%_25%)] border border-[hsl(168_20%_90%)]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(172_30%_92%)] text-xs text-[hsl(172_43%_25%)] border border-[hsl(172_30%_85%)]">
               <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)]" />
               PNG or JPEG
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(168_25%_96%)] text-xs text-[hsl(172_43%_25%)] border border-[hsl(168_20%_90%)]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(172_30%_92%)] text-xs text-[hsl(172_43%_25%)] border border-[hsl(172_30%_85%)]">
               <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)]" />
               Max {MAX_FILES} images
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(168_25%_96%)] text-xs text-[hsl(172_43%_25%)] border border-[hsl(168_20%_90%)]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(172_30%_92%)] text-xs text-[hsl(172_43%_25%)] border border-[hsl(172_30%_85%)]">
               <span className="w-1.5 h-1.5 rounded-full bg-[hsl(172_63%_35%)]" />
               10MB per file
             </span>
@@ -352,7 +351,7 @@ export const BatchUploadZone: React.FC<BatchUploadZoneProps> = ({
 
       {/* Error message */}
       {error && (
-        <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm whitespace-pre-line">
+        <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium whitespace-pre-line">
           {error}
         </div>
       )}
