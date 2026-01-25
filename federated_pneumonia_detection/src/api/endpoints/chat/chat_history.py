@@ -21,7 +21,7 @@ async def get_chat_history(
     session_id: str,
     limit: int = 50,
     offset: int = 0,
-    request: Request = None,
+    request: Optional[Request] = None,
 ) -> ChatHistoryResponse:
     """
     Retrieve conversation history for a session with pagination.

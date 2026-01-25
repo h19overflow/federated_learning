@@ -8,6 +8,8 @@ import os
 from typing import Any, Dict, Optional
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
+from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+
 
 from .centralized_trainer_utils import (
     build_model_and_callbacks,
@@ -44,7 +46,7 @@ class CentralizedTrainer:
         """
         self.checkpoint_dir = checkpoint_dir
         self.logs_dir = logs_dir
-        self.logger = self._setup_logging()
+        self.logger = get_logger(__name__)
         self.config = self._load_config(config_path)
         os.makedirs(self.checkpoint_dir, exist_ok=True)
         os.makedirs(self.logs_dir, exist_ok=True)
@@ -143,19 +145,6 @@ class CentralizedTrainer:
             },
             "temp_dir_active": self.data_source_extractor.temp_extract_dir is not None,
         }
-
-    def _setup_logging(self) -> logging.Logger:
-        """Setup comprehensive logging."""
-        logger = logging.getLogger(__name__)
-        if not logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            )
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
-            logger.setLevel(logging.INFO)
-        return logger
 
     def _load_config(self, config_path: Optional[str]) -> ConfigManager:
         """Load configuration from path or use defaults."""

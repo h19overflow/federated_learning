@@ -49,6 +49,10 @@ from federated_pneumonia_detection.src.api.services.startup import (
     initialize_services,
     shutdown_services,
 )
+from federated_pneumonia_detection.src.internals.loggers.logging_config import (
+    configure_logging,
+    request_id_ctx,
+)
 from federated_pneumonia_detection.config.settings import get_settings
 
 env_path = Path(__file__).parent.parent.parent / ".env"
@@ -72,8 +76,15 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         # Store in request state for access in endpoints
         request.state.request_id = request_id
 
-        # Process request
-        response = await call_next(request)
+        # Set request ID in context for logging
+        token = request_id_ctx.set(request_id)
+
+        try:
+            # Process request
+            response = await call_next(request)
+        finally:
+            # Reset context
+            request_id_ctx.reset(token)
 
         # Add to response headers
         response.headers["X-Request-ID"] = request_id
@@ -93,6 +104,7 @@ async def lifespan(app: FastAPI):
     - Chat services (ArxivEngine, QueryEngine with app.state singletons)
     - W&B inference tracker
     """
+    configure_logging()
     await initialize_services(app)
     yield
     await shutdown_services(app)

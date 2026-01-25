@@ -1,85 +1,81 @@
-"""
-Centralized logging configuration for the application.
-
-Configures third-party library log levels and provides consistent
-logger initialization across the codebase.
-"""
-
 import logging
+import logging.config
 import os
+import yaml
+from contextvars import ContextVar
+from pathlib import Path
+from typing import Any, Dict
+
+# Context variable to store the request ID
+request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
 
 
-def configure_logging() -> None:
+class RequestIdFilter(logging.Filter):
     """
-    Configure application logging with proper third-party library silencing.
-
-    This function should be called once at application startup (in main.py's
-    lifespan handler) to configure all logging behavior.
-
-    Log Level Strategy:
-        - INFO: Critical business events (start/end of operations, errors, warnings)
-        - DEBUG: Detailed flow, chunk counts, intermediate steps
-        - WARNING: Graceful degradations, non-critical issues
-        - ERROR: Critical failures
-
-    Third-Party Libraries:
-        - langchain_google_genai: WARNING (silences API key warnings)
-        - google.genai: WARNING (silences AFC messages)
-        - uvicorn.access: WARNING (silences HTTP request logs)
-        - uvicorn: INFO (keep important server logs)
+    Logging filter that injects the current request ID into the log record.
     """
-    # Get log level from environment variable, default to INFO
-    log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
-    log_level = getattr(logging, log_level_str, logging.INFO)
 
-    # Configure root logger format
-    logging.basicConfig(
-        level=log_level,
-        format="%(levelname)s - %(message)s - %(filename)s - %(lineno)d",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    # Silence third-party library noise
-    _configure_third_party_loggers()
-
-    # Log configuration
-    logger = logging.getLogger(__name__)
-    logger.info(
-        f"Logging configured: level={log_level_str}, "
-        f"third-party libs silenced (langchain_google_genai, google.genai, uvicorn.access)",
-    )
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = request_id_ctx.get()
+        return True
 
 
-def _configure_third_party_loggers() -> None:
+def configure_logging(
+    config_path: str = "federated_pneumonia_detection/config/logging.yaml",
+) -> None:
     """
-    Configure third-party library loggers to reduce noise.
+    Configure logging using a YAML configuration file.
 
-    These libraries log too much at INFO level, drowning out important
-    application logs. We set them to WARNING or higher.
+    Args:
+        config_path: Path to the logging configuration file relative to the repository root.
     """
-    # LangChain Google Generative AI: Silences "Both GOOGLE_API_KEY and GEMINI_API_KEY"
-    logging.getLogger("langchain_google_genai").setLevel(logging.WARNING)
+    # Determine the repository root (assuming this file is in src/internals/loggers/)
+    # federated_pneumonia_detection/src/internals/loggers/logging_config.py -> 5 levels up to root
+    root_dir = Path(__file__).resolve().parents[4]
+    abs_config_path = root_dir / config_path
 
-    # Google GenAI: Silences "AFC is enabled with max remote calls: 10"
-    logging.getLogger("google.genai").setLevel(logging.WARNING)
+    if not abs_config_path.exists():
+        # Fallback to current working directory if not found relative to root
+        abs_config_path = Path(config_path).resolve()
 
-    # Uvicorn Access: Silences HTTP request logs (GET /chat/history, etc.)
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    if not abs_config_path.exists():
+        print(
+            f"Logging configuration file not found at {abs_config_path}. Using basic configuration."
+        )
+        logging.basicConfig(level=logging.INFO)
+        return
 
-    # Keep uvicorn server logs at INFO (important startup/shutdown messages)
-    logging.getLogger("uvicorn").setLevel(logging.INFO)
+    try:
+        with open(abs_config_path, "r") as f:
+            config: Dict[str, Any] = yaml.safe_load(f)
+
+        # Inject RequestIdFilter into the configuration
+        if "filters" not in config:
+            config["filters"] = {}
+
+        config["filters"]["request_id"] = {
+            "()": "federated_pneumonia_detection.src.internals.loggers.logging_config.RequestIdFilter"
+        }
+
+        # Add the filter to the console handler
+        if "handlers" in config and "console" in config["handlers"]:
+            if "filters" not in config["handlers"]["console"]:
+                config["handlers"]["console"]["filters"] = []
+            if "request_id" not in config["handlers"]["console"]["filters"]:
+                config["handlers"]["console"]["filters"].append("request_id")
+
+        logging.config.dictConfig(config)
+
+        logger = logging.getLogger(__name__)
+        logger.info(f"Logging configured successfully from {abs_config_path}")
+
+    except Exception as e:
+        print(f"Failed to configure logging from {abs_config_path}: {e}")
+        logging.basicConfig(level=logging.INFO)
 
 
 def get_logger(name: str) -> logging.Logger:
     """
     Get a logger with the specified name.
-
-    This is the preferred way to get loggers in the codebase.
-
-    Args:
-        name: Usually __name__ for module-level loggers
-
-    Returns:
-        Configured logger instance
     """
     return logging.getLogger(name)
