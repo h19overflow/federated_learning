@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict
-
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 
 from federated_pneumonia_detection.src.api.deps import get_query_engine

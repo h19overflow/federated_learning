@@ -16,7 +16,6 @@ from federated_pneumonia_detection.src.boundary.CRUD.fetch_documents import (
     fetch_all_documents,
 )
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 load_dotenv()
 

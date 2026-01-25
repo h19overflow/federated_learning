@@ -153,7 +153,20 @@ def run_federated_training_task(
         if process.stdout:
             for line in iter(process.stdout.readline, ""):
                 if line:
-                    task_logger.info(f"[FLWR] {line.rstrip()}")
+                    stripped_line = line.rstrip()
+                    # Clean up double logging: remove log level if present in the captured line
+                    # e.g. "INFO - message" -> "message"
+                    for level in ["INFO", "WARNING", "ERROR", "DEBUG", "CRITICAL"]:
+                        # Check for "LEVEL - " format
+                        if stripped_line.startswith(f"{level} - "):
+                            stripped_line = stripped_line[len(level) + 3 :]
+                            break
+                        # Check for "LEVEL: " format
+                        elif stripped_line.startswith(f"{level}: "):
+                            stripped_line = stripped_line[len(level) + 2 :]
+                            break
+
+                    task_logger.info(f"[FLWR] {stripped_line}")
 
         # Wait for process to complete
         return_code = process.wait()

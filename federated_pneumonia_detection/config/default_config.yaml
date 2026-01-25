@@ -13,15 +13,15 @@ experiment:
   contrast_stretch: true
   device: auto
   dropout_rate: 0.3
-  early_stopping_patience: 5
+  early_stopping_patience: 3
   edge_enhancement: false
   edge_strength: 1.0
-  epochs: 10
-  file-path: C:\Users\User\AppData\Local\Temp\tmpx8zrutqz\extracted\sample\stage2_train_metadata.csv
+  epochs: 1
+  file-path: C:\Users\User\AppData\Local\Temp\tmpryjubzsq\extracted\sample\stage2_train_metadata.csv
   fine_tune_layers_count: 5
   freeze_backbone: true
   gradient_sample_interval: 20
-  image-dir: C:\Users\User\AppData\Local\Temp\tmpx8zrutqz\extracted\sample\Images
+  image-dir: C:\Users\User\AppData\Local\Temp\tmpryjubzsq\extracted\sample\Images
   learning_rate: 0.001
   local_epochs: 1
   lower_percentile: 5.0

@@ -35,12 +35,15 @@ logger = logging.getLogger(__name__)
 class ArxivAugmentedEngine(BaseAgent):
     """Research agent combining local RAG and arxiv search capabilities."""
 
-    def __init__(self, max_history: int = 10) -> None:
+    def __init__(
+        self, max_history: int = 10, query_engine: Optional[QueryEngine] = None
+    ) -> None:
         """
         Initialize the arxiv-augmented engine.
 
         Args:
             max_history: Maximum conversation turns to keep in memory
+            query_engine: Optional injected QueryEngine to avoid double initialization
         """
         logger.info(f"[ArxivEngine] Initializing with max_history={max_history}")
 
@@ -63,8 +66,15 @@ class ArxivAugmentedEngine(BaseAgent):
         self._query_engine = None
         self._rag_tool = None
         try:
-            logger.info("[ArxivEngine] Initializing RAG tool via QueryEngine...")
-            self._query_engine = QueryEngine()
+            if query_engine:
+                logger.info("[ArxivEngine] Using injected QueryEngine for RAG tool...")
+                self._query_engine = query_engine
+            else:
+                logger.info(
+                    "[ArxivEngine] Initializing new QueryEngine for RAG tool..."
+                )
+                self._query_engine = QueryEngine()
+
             self._rag_tool = create_rag_tool(self._query_engine)
             logger.info("[ArxivEngine] RAG tool initialized successfully")
         except Exception as e:

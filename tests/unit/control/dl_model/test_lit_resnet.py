@@ -30,13 +30,13 @@ class TestLitResNetEnhanced:
         model = LitResNetEnhanced(config=mock_config)
 
         assert model.config == mock_config
-        assert isinstance(model.loss_fn, FocalLossWithLabelSmoothing)
+        assert isinstance(model.loss_factory, FocalLossWithLabelSmoothing)
         mock_resnet_head.assert_called_once()
 
     def test_initialization_no_smoothing(self, mock_config, mock_resnet_head):
         """Verify FocalLoss is used when label_smoothing is 0."""
         model = LitResNetEnhanced(config=mock_config, label_smoothing=0)
-        assert isinstance(model.loss_fn, FocalLoss)
+        assert isinstance(model.loss_factory, FocalLoss)
 
     def test_initialization_invalid_lr(self, mock_config, mock_resnet_head):
         """Verify ValueError is raised for invalid learning rate."""
@@ -61,12 +61,12 @@ class TestLitResNetEnhanced:
         model = LitResNetEnhanced(
             config=mock_config, use_focal_loss=True, label_smoothing=0.1
         )
-        assert isinstance(model.loss_fn, FocalLossWithLabelSmoothing)
+        assert isinstance(model.loss_factory, FocalLossWithLabelSmoothing)
 
     def test_loss_selection_bce(self, mock_config, mock_resnet_head):
         """Verify BCEWithLogitsLoss is selected when use_focal_loss=False."""
         model = LitResNetEnhanced(config=mock_config, use_focal_loss=False)
-        assert isinstance(model.loss_fn, nn.BCEWithLogitsLoss)
+        assert isinstance(model.loss_factory, nn.BCEWithLogitsLoss)
 
     def test_forward(self, mock_config, mock_resnet_head):
         """Verify forward calls internal model."""

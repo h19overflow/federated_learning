@@ -263,7 +263,7 @@ async def _initialize_chat_services(app):
     # Initialize ArxivEngine (main research engine)
     try:
         logger.info("[Startup] Initializing ArxivEngine (research engine)...")
-        arxiv_engine = ArxivAugmentedEngine(max_history=10)
+        arxiv_engine = ArxivAugmentedEngine(max_history=10, query_engine=query_engine)
         logger.info("[Startup] ArxivEngine initialized successfully")
     except Exception as e:
         logger.warning(
