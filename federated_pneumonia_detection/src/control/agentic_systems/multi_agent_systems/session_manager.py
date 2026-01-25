@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import List, Optional
+from typing import List, Optional, Tuple
+
 
 from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
     create_chat_session,
@@ -85,3 +86,15 @@ class SessionManager:
     def clear_history(self, session_id: str) -> None:
         """Clear conversation history for a session."""
         self._history_manager.clear_history(session_id)
+
+    def get_session_history(self, session_id: str) -> List[Tuple[str, str]]:
+        """
+        Get conversation history for a session.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            List of (user_message, ai_response) tuples
+        """
+        return self._history_manager.get_history(session_id)

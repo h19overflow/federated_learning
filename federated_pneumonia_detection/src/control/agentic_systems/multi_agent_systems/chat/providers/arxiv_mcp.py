@@ -80,6 +80,7 @@ class MCPManager:
 
                 self._client = MultiServerMCPClient(server_config)
                 self._tools = await self._client.get_tools()
+                self._is_available = True
             except Exception as e:
                 logger.error(f"Failed to initialize MCP Manager: {e}")
                 self._is_available = False

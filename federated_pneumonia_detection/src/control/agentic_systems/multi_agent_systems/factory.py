@@ -46,6 +46,27 @@ class AgentFactory:
             )
         return self._research_agent
 
+    def create_agent(self, agent_type: str = "research") -> BaseAgent:
+        """
+        Create an agent of the specified type.
+
+        Args:
+            agent_type: Type of agent to create ('research' or 'basic')
+
+        Returns:
+            BaseAgent instance
+
+        Raises:
+            ValueError: If agent_type is unknown
+        """
+        if agent_type == "research":
+            return self.get_chat_agent()
+        elif agent_type == "basic":
+            # Currently both use ArxivAugmentedEngine, but can be differentiated
+            return self.get_chat_agent()
+        else:
+            raise ValueError(f"Unknown agent type: {agent_type}")
+
 
 _agent_factory: Optional[AgentFactory] = None
 
