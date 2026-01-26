@@ -57,19 +57,16 @@ class TestCentralizedTrainer:
         "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.ConfigManager",
     )
     @patch(
-        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.get_session",
+        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer_utils.db_operations.get_session",
     )
     @patch(
-        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.run_crud",
+        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer_utils.db_operations.run_crud",
     )
     @patch(
-        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.load_metadata",
+        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.prepare_dataset",
     )
     @patch(
-        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.create_train_val_split",
-    )
-    @patch(
-        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.XRayDataModule",
+        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.create_data_module",
     )
     @patch(
         "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.build_model_and_callbacks",
@@ -77,13 +74,24 @@ class TestCentralizedTrainer:
     @patch(
         "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.build_trainer",
     )
+    @patch(
+        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.create_training_run",
+    )
+    @patch(
+        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.collect_training_results",
+    )
+    @patch(
+        "federated_pneumonia_detection.src.control.dl_model.centralized_trainer.complete_training_run",
+    )
     def test_train_workflow(
         self,
+        mock_complete_run,
+        mock_collect_results,
+        mock_create_run,
         mock_build_trainer,
         mock_build_model,
-        mock_datamodule_class,
-        mock_split,
-        mock_load,
+        mock_create_data_module,
+        mock_prepare_dataset,
         mock_run_crud,
         mock_get_session,
         mock_config_class,
@@ -95,9 +103,9 @@ class TestCentralizedTrainer:
         mock_db = MagicMock()
         mock_get_session.return_value = mock_db
         mock_run_crud.create.return_value = Mock(id=1)
+        mock_create_run.return_value = 1
 
-        mock_load.return_value = pd.DataFrame({"Target": [0, 1]})
-        mock_split.return_value = (
+        mock_prepare_dataset.return_value = (
             pd.DataFrame({"Target": [0]}),
             pd.DataFrame({"Target": [1]}),
         )
@@ -112,6 +120,15 @@ class TestCentralizedTrainer:
         mock_model = MagicMock()
         mock_build_model.return_value = (mock_model, [], MagicMock())
         mock_model.get_model_summary.return_value = "summary"
+
+        mock_data_module = MagicMock()
+        mock_create_data_module.return_value = mock_data_module
+
+        mock_collect_results.return_value = {
+            "run_id": 1,
+            "current_epoch": 10,
+            "final_metrics": {"accuracy": 0.9},
+        }
 
         # Initialize trainer
         trainer = CentralizedTrainer()
@@ -131,13 +148,8 @@ class TestCentralizedTrainer:
         # Verify trainer fit was called with model and datamodule
         mock_trainer.fit.assert_called_once_with(
             mock_model,
-            mock_datamodule_class.return_value,
+            mock_data_module,
         )
 
         # Verify database interaction
-        mock_run_crud.create.assert_called_once()
-        mock_run_crud.complete_run.assert_called_once_with(
-            mock_db,
-            run_id=1,
-            status="completed",
-        )
+        mock_complete_run.assert_called_once_with(1, trainer.logger)

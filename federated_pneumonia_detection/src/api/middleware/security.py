@@ -24,7 +24,7 @@ PATTERNS: dict[str, re.Pattern] = {
     ),
     "data_exfiltration": re.compile(
         r"(?i)"
-        r"((reveal|show|display|output|print|tell\s+me|give\s+me|what\s+is)\s+(the\s+|your\s+)?(system\s*prompt|initial\s*prompt|hidden\s*instruction|internal\s*instruction|secret\s*instruction|password|api\s*key|credentials?|confidential))"
+        r"((reveal|show|display|output|print|tell(\s+me)?|give(\s+me)?|what\s+is)\s+(me\s+)?(the\s+|your\s+)?(system\s*prompt|initial\s*prompt|hidden\s*instruction|internal\s*instruction|secret\s*instruction|password|api\s*key|credentials?|confidential))"
         r"|(extract\s+(the\s+)?(system|hidden|secret)\s+(prompt|instruction|data))"
         r"|(\bdump\s+(the\s+)?(memory|context|history))",
     ),

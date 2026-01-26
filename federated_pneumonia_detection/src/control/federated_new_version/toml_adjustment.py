@@ -55,8 +55,13 @@ def update_flwr_config(
     # Track what was updated
     updates_made = []
 
-    # Update nested config values
+    # Update nested config values (filter out None values)
     for key, value in kwargs.items():
+        # Skip None values
+        if value is None:
+            print(f"[TOML Update] [WARN] Skipping {key}: value is None")
+            continue
+
         try:
             if key == "num_server_rounds":
                 data["tool"]["flwr"]["app"]["config"]["num-server-rounds"] = value

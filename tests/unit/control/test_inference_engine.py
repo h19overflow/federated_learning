@@ -276,7 +276,8 @@ class TestInferenceEngine:
     ):
         """Test prediction returns PNEUMONIA with high confidence."""
         mock_lit, mock_model = mock_lit_model_class
-        mock_model.return_value = torch.tensor([[0.85]])
+        # Logit for 0.85 probability: ln(0.85/0.15) ≈ 1.7346
+        mock_model.return_value = torch.tensor([[1.7346]])
 
         checkpoint_file = tmp_path / "test.ckpt"
         checkpoint_file.write_text("mock")
@@ -298,7 +299,8 @@ class TestInferenceEngine:
     ):
         """Test prediction returns NORMAL with high confidence."""
         mock_lit, mock_model = mock_lit_model_class
-        mock_model.return_value = torch.tensor([[-0.85]])  # Negative logit
+        # Logit for 0.15 probability (Normal 0.85): ln(0.15/0.85) ≈ -1.7346
+        mock_model.return_value = torch.tensor([[-1.7346]])  # Negative logit
 
         checkpoint_file = tmp_path / "test.ckpt"
         checkpoint_file.write_text("mock")
@@ -318,7 +320,7 @@ class TestInferenceEngine:
     ):
         """Test prediction at 0.5 boundary."""
         mock_lit, mock_model = mock_lit_model_class
-        mock_model.return_value = torch.tensor([[0.5]])
+        mock_model.return_value = torch.tensor([[0.0]])
 
         checkpoint_file = tmp_path / "test.ckpt"
         checkpoint_file.write_text("mock")
@@ -393,6 +395,8 @@ class TestInferenceEngine:
         # Create engine without loading model
         engine = InferenceEngine.__new__(InferenceEngine)
         engine.model = None
+        engine._transform = Mock()
+        engine.device = "cpu"
 
         with pytest.raises(RuntimeError, match="Inference engine not available"):
             engine.predict(sample_rgb_image)

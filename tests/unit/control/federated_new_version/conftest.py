@@ -3,20 +3,63 @@ Shared fixtures for federated learning tests.
 """
 
 from typing import Dict, Generator
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 import torch
-from flwr.app import (
-    ArrayRecord,
-    ConfigRecord,
-    Context,
-    Message,
-    MetricRecord,
-    RecordDict,
-)
-from flwr.serverapp import Grid
+import sys
+
+# Mock flwr modules before importing
+sys.modules['flwr'] = MagicMock()
+sys.modules['flwr.app'] = MagicMock()
+sys.modules['flwr.serverapp'] = MagicMock()
+
+# Create mock classes for flwr types
+class MockArrayRecord:
+    def __init__(self, *args, **kwargs):
+        self.data = {}
+
+    def to_torch_state_dict(self):
+        return {}
+
+class MockMetricRecord:
+    def __init__(self, *args, **kwargs):
+        self.data = {}
+
+    def __getitem__(self, key):
+        return self.data.get(key)
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def items(self):
+        return self.data.items()
+
+    def __contains__(self, key):
+        return key in self.data
+
+# Set up the mocks
+sys.modules['flwr'].app = sys.modules['flwr.app']
+sys.modules['flwr'].ArrayRecord = MockArrayRecord
+sys.modules['flwr'].MetricRecord = MockMetricRecord
+sys.modules['flwr'].ConfigRecord = dict
+sys.modules['flwr'].Context = object
+sys.modules['flwr'].Message = object
+sys.modules['flwr'].RecordDict = dict
+sys.modules['flwr.serverapp'].Grid = object
+
+# Now we can import the mock types
+ArrayRecord = MockArrayRecord
+MetricRecord = MockMetricRecord
+ConfigRecord = dict
+Context = object
+Message = object
+RecordDict = dict
 
 
 @pytest.fixture

@@ -127,7 +127,6 @@ app.add_middleware(
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(MaliciousPromptMiddleware)
 
-# Register global exception handlers for structured error responses
 register_exception_handlers(app)
 
 
@@ -139,7 +138,6 @@ async def read_root():
 app.include_router(configuration_endpoints.router)
 app.include_router(centralized_endpoints.router)
 app.include_router(federated_endpoints.router)
-# app.include_router(comparison_endpoints.router)
 app.include_router(status_endpoints.router)
 app.include_router(runs_endpoints_router)
 app.include_router(chat_router)

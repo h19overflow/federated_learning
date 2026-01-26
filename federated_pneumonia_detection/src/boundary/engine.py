@@ -12,7 +12,6 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
-
 from federated_pneumonia_detection.config.settings import get_settings
 
 from .models import Base

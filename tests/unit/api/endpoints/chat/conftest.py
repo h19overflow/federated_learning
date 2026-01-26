@@ -4,6 +4,32 @@ import sys
 
 
 @pytest.fixture
+def mock_db_session():
+    """Mock database session for chat tests."""
+    from sqlalchemy.orm import Session
+    mock_session = MagicMock(spec=Session)
+    mock_session.query.return_value = MagicMock()
+    mock_session.add.return_value = None
+    mock_session.commit.return_value = None
+    mock_session.rollback.return_value = None
+    mock_session.refresh.return_value = None
+    mock_session.close.return_value = None
+    mock_session.flush.return_value = None
+
+    # Mock filter chaining
+    def mock_filter_method(*args, **kwargs):
+        result_mock = MagicMock()
+        result_mock.first.return_value = None
+        result_mock.all.return_value = []
+        result_mock.filter.return_value = result_mock
+        result_mock.order_by.return_value = result_mock
+        return result_mock
+
+    mock_session.query.return_value.filter = mock_filter_method
+    return mock_session
+
+
+@pytest.fixture
 def mock_orchestrator():
     """Mock StreamingOrchestrator (Agent)."""
     mock = MagicMock()
@@ -48,7 +74,7 @@ def mock_session_manager():
 
 
 @pytest.fixture
-def client(mock_agent_factory, mock_session_manager):
+def client(mock_agent_factory, mock_session_manager, mock_db_session):
     """FastAPI TestClient with mocks."""
     from fastapi.testclient import TestClient
 
@@ -57,17 +83,22 @@ def client(mock_agent_factory, mock_session_manager):
 
     # Mock dependencies using dependency_overrides where possible
     from federated_pneumonia_detection.src.api.deps import (
+        get_db,
         get_query_engine,
         get_mcp_manager,
+        get_inference_service,
     )
 
     mock_query_engine = MagicMock()
+    app.dependency_overrides[get_db] = lambda: mock_db_session
     app.dependency_overrides[get_query_engine] = lambda: mock_query_engine
     app.dependency_overrides[get_mcp_manager] = lambda: MagicMock()
+    app.dependency_overrides[get_inference_service] = lambda: MagicMock()
 
     # For non-dependency-injected components, use patching
     # We patch the modules where these are used
     with (
+        patch("federated_pneumonia_detection.src.api.main.initialize_services"),
         patch(
             "federated_pneumonia_detection.src.api.endpoints.chat.chat_sessions.session_manager",
             mock_session_manager,

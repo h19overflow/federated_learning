@@ -4,7 +4,15 @@ Unit tests for core/utils module.
 Tests federated learning utility functions.
 """
 
-from unittest.mock import Mock, patch
+import sys
+from unittest.mock import Mock, MagicMock, patch
+
+# Mock flwr modules before any imports
+sys.modules['flwr'] = MagicMock()
+sys.modules['flwr.serverapp'] = MagicMock()
+sys.modules['flwr.serverapp.strategy'] = MagicMock()
+sys.modules['flwr_datasets'] = MagicMock()
+sys.modules['flwr_datasets.partitioner'] = MagicMock()
 
 import pandas as pd
 import pytest

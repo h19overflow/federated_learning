@@ -1,7 +1,7 @@
 import pytest
 
 
-def test_predict_valid_image(client, mock_inference_engine, dummy_image_bytes):
+def test_predict_valid_image(api_client_with_db, mock_inference_engine, dummy_image_bytes):
     """
     Positive test: Upload a dummy image and check for successful prediction.
     Ensures the endpoint correctly interacts with the InferenceService and engine.
@@ -11,7 +11,7 @@ def test_predict_valid_image(client, mock_inference_engine, dummy_image_bytes):
 
     # Act
     # Simulate file upload with valid image bytes
-    response = client.post(
+    response = api_client_with_db.post(
         "/api/inference/predict",
         files={"file": ("test.jpg", dummy_image_bytes, "image/jpeg")},
     )
@@ -28,7 +28,7 @@ def test_predict_valid_image(client, mock_inference_engine, dummy_image_bytes):
     assert mock_inference_engine.predict.called
 
 
-def test_predict_invalid_file(client):
+def test_predict_invalid_file(api_client_with_db):
     """
     Negative test: Upload a non-image file and check for 400 Bad Request.
     Ensures the ImageValidator correctly rejects unsupported file types.
@@ -37,7 +37,7 @@ def test_predict_invalid_file(client):
     dummy_text_content = b"this is not an image"
 
     # Act
-    response = client.post(
+    response = api_client_with_db.post(
         "/api/inference/predict",
         files={"file": ("test.txt", dummy_text_content, "text/plain")},
     )

@@ -244,12 +244,9 @@ class TestRunCentralizedTrainingTask:
         self,
         mock_centralized_trainer,
         tmp_path,
-        caplog,
     ):
         """Test that task logs training start appropriately."""
-        import logging
-
-        caplog.set_level(logging.INFO)
+        from unittest.mock import Mock
 
         source_path = str(tmp_path / "data")
         os.makedirs(source_path)
@@ -258,9 +255,15 @@ class TestRunCentralizedTrainingTask:
             "final_metrics": {"accuracy": 0.90},
         }
 
+        # Create mock logger
+        mock_logger = Mock()
+
         with patch(
             "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
             return_value=mock_centralized_trainer,
+        ), patch(
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.get_logger",
+            return_value=mock_logger,
         ):
             run_centralized_training_task(
                 source_path=source_path,
@@ -270,7 +273,7 @@ class TestRunCentralizedTrainingTask:
                 csv_filename="data.csv",
             )
 
-            # Check that training was logged
-            log_messages = [record.message for record in caplog.records]
+            # Check that training was logged via mock logger
+            log_messages = [str(call[0][0]) if call[0] else str(call[1]) if call[1] else "" for call in mock_logger.info.call_args_list]
             assert any("CENTRALIZED TRAINING" in msg for msg in log_messages)
             assert any("TRAINING COMPLETED" in msg for msg in log_messages)

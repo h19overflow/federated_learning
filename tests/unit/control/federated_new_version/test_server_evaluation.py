@@ -25,7 +25,7 @@ class TestCreateCentralEvaluateFn:
     @patch(
         "federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.XRayDataModule",
     )
-    @patch("pandas.read_csv")
+    @patch("federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv")
     @patch("torchmetrics.Precision")
     @patch("torchmetrics.Recall")
     @patch("torchmetrics.F1Score")
@@ -126,7 +126,7 @@ class TestCreateCentralEvaluateFn:
         )
 
         # Create mock ArrayRecord
-        mock_arrays = Mock(spec=ArrayRecord)
+        mock_arrays = ArrayRecord()
         mock_arrays.to_torch_state_dict = Mock(
             return_value={"layer.weight": torch.randn(10, 10)},
         )
@@ -139,10 +139,19 @@ class TestCreateCentralEvaluateFn:
             assert "server_round" not in str(e)
             assert "arrays" not in str(e)
 
-    @patch("pandas.read_csv")
-    def test_evaluate_fn_loads_data(self, mock_read_csv, mock_config_manager):
+    @patch("federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.LitResNetEnhanced")
+    @patch("federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv")
+    @patch("torch.cuda.is_available", return_value=False)
+    def test_evaluate_fn_loads_data(self, mock_cuda, mock_read_csv, mock_model_class, mock_config_manager):
         """Test that evaluate function loads CSV data."""
         mock_read_csv.return_value = pd.DataFrame({"patientId": [1, 2]})
+
+        # Mock model instance
+        mock_model_instance = Mock()
+        mock_model_instance.load_state_dict = Mock()
+        mock_model_instance.to = Mock(return_value=mock_model_instance)
+        mock_model_instance.eval = Mock()
+        mock_model_class.return_value = mock_model_instance
 
         evaluate_fn = create_central_evaluate_fn(
             config_manager=mock_config_manager,
@@ -150,7 +159,7 @@ class TestCreateCentralEvaluateFn:
             image_dir="test_images",
         )
 
-        mock_arrays = Mock(spec=ArrayRecord)
+        mock_arrays = ArrayRecord()
         mock_arrays.to_torch_state_dict = Mock(return_value={})
 
         # Call will likely fail due to mocks, but CSV should be attempted
@@ -161,7 +170,7 @@ class TestCreateCentralEvaluateFn:
 
         mock_read_csv.assert_called_once_with("test.csv")
 
-    @patch("pandas.read_csv")
+    @patch("federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv")
     def test_evaluate_fn_handles_missing_filename(
         self,
         mock_read_csv,
@@ -182,7 +191,7 @@ class TestCreateCentralEvaluateFn:
             image_dir="test_images",
         )
 
-        mock_arrays = Mock(spec=ArrayRecord)
+        mock_arrays = ArrayRecord()
         mock_arrays.to_torch_state_dict = Mock(return_value={})
 
         # Will fail due to mocks, but test passes if no TypeError
@@ -194,7 +203,7 @@ class TestCreateCentralEvaluateFn:
         except Exception:
             pass  # Expected due to other mocks
 
-    @patch("pandas.read_csv")
+    @patch("federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv")
     def test_evaluate_fn_handles_missing_patientId(
         self,
         mock_read_csv,
@@ -215,7 +224,7 @@ class TestCreateCentralEvaluateFn:
             image_dir="test_images",
         )
 
-        mock_arrays = Mock(spec=ArrayRecord)
+        mock_arrays = ArrayRecord()
         mock_arrays.to_torch_state_dict = Mock(return_value={})
 
         # Should raise ValueError about missing patientId/filename

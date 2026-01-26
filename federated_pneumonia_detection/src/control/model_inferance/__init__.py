@@ -27,7 +27,6 @@ from .inference_service import (
     get_inference_service,
 )
 from .internals import (
-    DEFAULT_CHECKPOINT_PATH,
     BatchStatistics,
     ImageProcessor,
     ImageValidator,
@@ -38,7 +37,6 @@ from .internals import (
 __all__ = [
     # Core engine
     "InferenceEngine",
-    "DEFAULT_CHECKPOINT_PATH",
     # Components
     "ImageValidator",
     "ImageProcessor",

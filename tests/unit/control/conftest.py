@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 from fastapi import UploadFile
 from PIL import Image
+from starlette.datastructures import Headers
 
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
     BatchSummaryStats,
@@ -90,6 +91,7 @@ def mock_upload_file_jpeg():
     return UploadFile(
         filename="test_xray.jpg",
         file=buffer,
+        headers=Headers({"content-type": "image/jpeg"}),
     )
 
 
@@ -106,6 +108,7 @@ def mock_upload_file_png():
     return UploadFile(
         filename="test_xray.png",
         file=buffer,
+        headers=Headers({"content-type": "image/png"}),
     )
 
 
@@ -117,6 +120,7 @@ def mock_upload_file_invalid_type():
     return UploadFile(
         filename="test.pdf",
         file=buffer,
+        headers=Headers({"content-type": "application/pdf"}),
     )
 
 
@@ -128,6 +132,7 @@ def mock_upload_file_corrupted():
     return UploadFile(
         filename="corrupted.jpg",
         file=buffer,
+        headers=Headers({"content-type": "image/jpeg"}),
     )
 
 

@@ -18,10 +18,10 @@ router = APIRouter()
 
 @router.get("/history/{session_id}", response_model=ChatHistoryResponse)
 async def get_chat_history(
+    request: Request,
     session_id: str,
     limit: int = 50,
     offset: int = 0,
-    request: Optional[Request] = None,
 ) -> ChatHistoryResponse:
     """
     Retrieve conversation history for a session with pagination.

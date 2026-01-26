@@ -9,6 +9,7 @@ Tests cover:
 - Error handling for missing files
 """
 
+import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -17,6 +18,34 @@ import pytest
 from federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks import (
     run_federated_training_task,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_federated_modules():
+    """
+    Automatically mock federated learning modules that require flwr.
+    This prevents import errors when flwr is not installed.
+    """
+    mock_utils = Mock()
+    mock_utils.read_configs_to_toml = Mock(return_value={})
+
+    mock_toml_adjustment = Mock()
+    mock_toml_adjustment.update_flwr_config = Mock()
+
+    modules_to_mock = {
+        "federated_pneumonia_detection.src.control.federated_new_version.core.utils": mock_utils,
+        "federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment": mock_toml_adjustment,
+    }
+
+    # Add mocks to sys.modules
+    for module_name, mock_module in modules_to_mock.items():
+        sys.modules[module_name] = mock_module
+
+    yield
+
+    # Clean up sys.modules
+    for module_name in modules_to_mock.keys():
+        sys.modules.pop(module_name, None)
 
 
 class TestRunFederatedTrainingTask:
@@ -534,6 +563,7 @@ class TestRunFederatedTrainingTask:
         mock_config_manager,
         mock_subprocess_popen,
         tmp_path,
+        monkeypatch,
         caplog,
     ):
         """Test warning when required environment variables are missing."""
@@ -547,17 +577,14 @@ class TestRunFederatedTrainingTask:
         csv_path = source_path / "metadata.csv"
         csv_path.write_text("file,label\n")
 
-        # Missing some required env vars
-        test_env = {"POSTGRES_DB_URI": "test"}
+        # Unset all required env vars to simulate missing environment
+        for var in ["POSTGRES_DB_URI", "POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD"]:
+            monkeypatch.delenv(var, raising=False)
 
         with (
             patch(
                 "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
                 return_value=mock_config_manager,
-            ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",
-                return_value=test_env,
             ),
             patch(
                 "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
@@ -571,10 +598,6 @@ class TestRunFederatedTrainingTask:
                 "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",
                 return_value=mock_subprocess_popen,
             ),
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",
-                return_value={},
-            ),
         ):
             run_federated_training_task(
                 source_path=str(source_path),
@@ -583,7 +606,7 @@ class TestRunFederatedTrainingTask:
                 num_server_rounds=3,
             )
 
-            # Check for warning about missing env vars
+            # Check for warning about missing env vars using caplog
             log_messages = [record.message for record in caplog.records]
             assert any("Missing environment variables" in msg for msg in log_messages)
 

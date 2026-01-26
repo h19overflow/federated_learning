@@ -14,15 +14,17 @@ from torchvision import transforms
 
 logger = logging.getLogger(__name__)
 
-# Default checkpoint path (relative to model_inferance module)
-DEFAULT_CHECKPOINT_PATH = Path(__file__).parent.parent / "pneumonia_model_07_0.928.ckpt"
-
 
 class InferenceEngine:
     """Core inference engine for pneumonia classification.
 
     Handles model loading, preprocessing, and prediction logic.
     """
+
+    # Default checkpoint path (relative to model_inferance module)
+    DEFAULT_CHECKPOINT_PATH = (
+        Path(__file__).parent.parent / "pneumonia_model_07_0.928.ckpt"
+    )
 
     def __init__(
         self,
@@ -35,7 +37,7 @@ class InferenceEngine:
             checkpoint_path: Path to the model checkpoint.
             device: Device to run inference on (auto-detected if None).
         """
-        self.checkpoint_path = checkpoint_path or DEFAULT_CHECKPOINT_PATH
+        self.checkpoint_path = checkpoint_path or self.DEFAULT_CHECKPOINT_PATH
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = None
         self.model_version = self.checkpoint_path.stem
@@ -97,6 +99,9 @@ class InferenceEngine:
         Returns:
             Tuple of (predicted_class, confidence, pneumonia_prob, normal_prob).
         """
+        if self.model is None:
+            raise RuntimeError("Inference engine not available")
+
         start_time = time.time()
         input_tensor = self.preprocess(image)
         logits = self.model(input_tensor)

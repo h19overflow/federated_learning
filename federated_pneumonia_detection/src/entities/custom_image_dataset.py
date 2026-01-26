@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 import torch
+from PIL import Image
 from torch.utils.data import Dataset
 
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
@@ -120,6 +121,18 @@ class CustomImageDataset(Dataset):
     def __len__(self) -> int:
         """Return the number of valid items in the dataset."""
         return len(self.valid_indices)
+
+    def _load_image(self, filename: str) -> Image.Image:
+        """
+        Legacy wrapper for image loading to maintain backward compatibility.
+
+        Args:
+            filename: Name of the image file
+
+        Returns:
+            Loaded PIL Image
+        """
+        return load_image(filename, self.image_dir, self.color_mode)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """

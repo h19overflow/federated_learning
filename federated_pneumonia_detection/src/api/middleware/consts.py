@@ -42,9 +42,12 @@ PATTERNS: Dict[str, re.Pattern] = {
     # Category 2: System/Data Exfiltration Attempts
     "data_exfiltration": re.compile(
         r"(?i)"
-        r"((reveal|show|display|output|print|tell\s+me|give\s+me|what\s+is)\s+(the\s+|your\s+)?(system\s*prompt|initial\s*prompt|hidden\s*instruction|internal\s*instruction|secret\s*instruction|password|api\s*key|credentials?|confidential))"
-        r"|(extract\s+(the\s+)?(system|hidden|secret)\s+(prompt|instruction|data))"
-        r"|(\bdump\s+(the\s+)?(memory|context|history))",
+        r"((?:tell|give)\s+me\s+(?:the\s+|your\s+)?(?:system\s*prompt|initial\s*prompt|hidden\s*instruction|internal\s*instruction|secret\s*instruction)\b)"
+        r"|((?:reveal|show|display|output|print)(?:\s+me)?\s+(?:the\s+|your\s+)?(?:system\s*prompt|initial\s*prompt|hidden\s*instruction|internal\s*instruction|secret\s*instruction)\b)"
+        r"|((?:tell|give)\s+me\s+(?:the\s+|your\s+)?(?:password|api\s*key|credentials?|confidential)\b)"
+        r"|((?:reveal|show|display|output|print)(?:\s+me)?\s+(?:the\s+|your\s+)?(?:password|api\s*key|credentials?|confidential)\b)"
+        r"|(?:extract\s+(?:the\s+)?(?:system|hidden|secret)\s+(?:prompt|instruction|data))"
+        r"|(?:\bdump\s+(?:the\s+)?(?:memory|context|history))",
     ),
     # Category 3: Role/Identity Hijacking
     "identity_hijack": re.compile(

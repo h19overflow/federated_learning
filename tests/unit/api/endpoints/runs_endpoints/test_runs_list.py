@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, ANY
 
 
-def test_list_runs_filtering(client, mock_facade, mock_run_crud):
+def test_list_runs_filtering(api_client_with_db, mock_facade, mock_run_crud):
     """Positive test for listing runs with filtering.
 
     Mocks analytics.summary.list_runs_with_summaries and asserts 200 response.
@@ -32,7 +32,7 @@ def test_list_runs_filtering(client, mock_facade, mock_run_crud):
     }
 
     # Call endpoint with query params
-    response = client.get("/api/runs/list?limit=10&offset=5&status=completed")
+    response = api_client_with_db.get("/api/runs/list?limit=10&offset=5&status=completed")
 
     assert response.status_code == 200
     data = response.json()
@@ -48,7 +48,7 @@ def test_list_runs_filtering(client, mock_facade, mock_run_crud):
     assert kwargs["status"] == "completed"
 
 
-def test_list_runs_integration(client, mock_facade):
+def test_list_runs_integration(api_client_with_db, mock_facade):
     """Integration test to verify query params are passed correctly.
 
     Verifies that offset (skip), limit, and status are passed to the service mock.
@@ -56,7 +56,7 @@ def test_list_runs_integration(client, mock_facade):
     mock_facade.summary.list_runs_with_summaries.return_value = {"runs": [], "total": 0}
 
     # Test different combinations of query params
-    client.get(
+    api_client_with_db.get(
         "/api/runs/list?limit=50&offset=20&status=running&training_mode=federated"
     )
 

@@ -3,11 +3,42 @@ Unit tests for ConfigurableFedAvg strategy.
 Tests client configuration and metrics aggregation math.
 """
 
-from unittest.mock import MagicMock, patch
+import sys
+from unittest.mock import MagicMock
+
+# Mock flwr modules before any imports
+sys.modules['flwr'] = MagicMock()
+sys.modules['flwr.app'] = MagicMock()
+sys.modules['flwr.serverapp'] = MagicMock()
+
+# Create mock classes
+class MockArrayRecord:
+    def __init__(self, *args, **kwargs):
+        self.data = {}
+    def to_torch_state_dict(self):
+        return {}
+
+class MockConfigRecord(dict):
+    pass
+
+class MockMessage:
+    pass
+
+# Set up the mocks
+sys.modules['flwr'].ArrayRecord = MockArrayRecord
+sys.modules['flwr'].ConfigRecord = MockConfigRecord
+sys.modules['flwr'].Message = MockMessage
+sys.modules['flwr.serverapp'].Grid = object
 
 import pytest
-from flwr.app import ArrayRecord, ConfigRecord, Message
-from flwr.serverapp import Grid
+
+# Now import the mocked classes for type hints
+ArrayRecord = MockArrayRecord
+ConfigRecord = MockConfigRecord
+Message = MockMessage
+Grid = object
+
+from unittest.mock import patch
 
 from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
     ConfigurableFedAvg,

@@ -7,7 +7,7 @@ from federated_pneumonia_detection.src.control.model_inferance.inference_service
 from unittest.mock import MagicMock
 
 
-def test_model_not_loaded(client, dummy_image_bytes):
+def test_model_not_loaded(api_client_with_db, dummy_image_bytes):
     """
     Regression test: Ensure the API returns 503 Service Unavailable when the
     inference engine fails to load.
@@ -35,7 +35,7 @@ def test_model_not_loaded(client, dummy_image_bytes):
     try:
         # Act
         # Attempt a prediction with a valid file type
-        response = client.post(
+        response = api_client_with_db.post(
             "/api/inference/predict",
             files={"file": ("test.jpg", dummy_image_bytes, "image/jpeg")},
         )
@@ -45,7 +45,7 @@ def test_model_not_loaded(client, dummy_image_bytes):
         assert "Inference model is not available" in response.json()["detail"]
 
         # Also check health endpoint
-        health_response = client.get("/api/inference/health")
+        health_response = api_client_with_db.get("/api/inference/health")
         assert health_response.status_code == 200
         assert health_response.json()["status"] == "unhealthy"
         assert health_response.json()["model_loaded"] is False

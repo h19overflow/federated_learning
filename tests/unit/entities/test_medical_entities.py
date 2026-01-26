@@ -174,9 +174,8 @@ class TestCustomImageDataset:
             image_dir=temp_data_structure["base_path"],
         )
 
-        with patch.object(
-            CustomImageDataset,
-            "_load_image",
+        with patch(
+            "federated_pneumonia_detection.src.entities.custom_image_dataset.load_image",
             side_effect=Exception("Load failed"),
         ):
             with pytest.raises(RuntimeError, match="Failed to load sample"):
