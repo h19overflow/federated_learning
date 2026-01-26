@@ -9,7 +9,6 @@ from federated_pneumonia_detection.src.boundary.models import RunMetric
 logger = logging.getLogger(__name__)
 
 
-# TODO: run metrics are still not being recordede for the federated training mode
 class RunMetricCRUD(BaseCRUD[RunMetric]):
     """CRUD operations for RunMetric model."""
 

@@ -126,6 +126,71 @@ class ConfigManager:
         """Get a copy of the entire configuration as a dictionary."""
         return copy.deepcopy(self.config)
 
+    def update_from_dict(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update configuration from a nested dictionary and save changes.
+
+        Args:
+            config_data: Nested configuration dictionary (typically from Pydantic model)
+
+        Returns:
+            Dictionary with update metadata (updated_count, fields, verified_values)
+        """
+        flattened = self.flatten_config(config_data)
+
+
+        # Log specific important changes
+        if "experiment.epochs" in flattened:
+            self.logger.info(f"Setting experiment.epochs = {flattened['experiment.epochs']}")
+        if "experiment.batch_size" in flattened:
+            self.logger.info(
+                f"Setting experiment.batch_size = {flattened['experiment.batch_size']}"
+            )
+        if "experiment.learning_rate" in flattened:
+            self.logger.info(
+                f"Setting experiment.learning_rate = {flattened['experiment.learning_rate']}"
+            )
+
+        # Apply updates
+        updated_count = 0
+        for key_path, value in flattened.items():
+            self.set(key_path, value)
+            updated_count += 1
+
+        # Save changes
+        self.save()
+
+        # Verify saved values
+        self.reload()
+        verification = self._verify_updates(flattened)
+
+        self.logger.info(f"Verified saved values: {verification}")
+
+        return {
+            "updated_count": updated_count,
+            "fields": list(flattened.keys()),
+            "verified_values": verification,
+        }
+
+    def _verify_updates(self, flattened: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Verify that updates were saved correctly.
+
+        Args:
+            flattened: Dictionary of flattened key paths that were updated
+
+        Returns:
+            Dictionary of verified values for important fields
+        """
+        verification = {}
+        if "experiment.epochs" in flattened:
+            verification["epochs"] = self.get("experiment.epochs")
+        if "experiment.batch_size" in flattened:
+            verification["batch_size"] = self.get("experiment.batch_size")
+        if "experiment.learning_rate" in flattened:
+            verification["learning_rate"] = self.get("experiment.learning_rate")
+        return verification
+
     def __getitem__(self, key_path: str) -> Any:
         """Support dictionary-style access: config['experiment.learning_rate']"""
         return self.get(key_path)
