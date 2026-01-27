@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, ANY
+from federated_pneumonia_detection.src.api.deps import get_analytics
 
 
 def test_list_runs_filtering(api_client_with_db, mock_facade, mock_run_crud):
@@ -31,8 +32,15 @@ def test_list_runs_filtering(api_client_with_db, mock_facade, mock_run_crud):
         "total": 1,
     }
 
+    # Override get_analytics dependency
+    from federated_pneumonia_detection.src.api.main import app
+
+    app.dependency_overrides[get_analytics] = lambda: mock_facade
+
     # Call endpoint with query params
-    response = api_client_with_db.get("/api/runs/list?limit=10&offset=5&status=completed")
+    response = api_client_with_db.get(
+        "/api/runs/list?limit=10&offset=5&status=completed"
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -47,6 +55,9 @@ def test_list_runs_filtering(api_client_with_db, mock_facade, mock_run_crud):
     assert kwargs["offset"] == 5
     assert kwargs["status"] == "completed"
 
+    # Clean up
+    app.dependency_overrides.pop(get_analytics, None)
+
 
 def test_list_runs_integration(api_client_with_db, mock_facade):
     """Integration test to verify query params are passed correctly.
@@ -54,6 +65,11 @@ def test_list_runs_integration(api_client_with_db, mock_facade):
     Verifies that offset (skip), limit, and status are passed to the service mock.
     """
     mock_facade.summary.list_runs_with_summaries.return_value = {"runs": [], "total": 0}
+
+    # Override get_analytics dependency
+    from federated_pneumonia_detection.src.api.main import app
+
+    app.dependency_overrides[get_analytics] = lambda: mock_facade
 
     # Test different combinations of query params
     api_client_with_db.get(
@@ -70,3 +86,6 @@ def test_list_runs_integration(api_client_with_db, mock_facade):
         sort_by="start_time",
         sort_order="desc",
     )
+
+    # Clean up
+    app.dependency_overrides.pop(get_analytics, None)

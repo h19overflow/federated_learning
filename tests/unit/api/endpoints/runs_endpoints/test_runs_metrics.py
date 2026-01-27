@@ -8,9 +8,12 @@ def test_get_run_detail_success(client, sample_run_data, mock_facade):
     GET /api/runs/{run_id}/metrics
     Assert 200 OK and correct ID.
     """
+    # sample_run_data is a dict, so access id as dict key
+    run_id = sample_run_data["id"]
+
     # Configure mock to return valid data matching MetricsResponse schema
     mock_facade.metrics.get_run_metrics.return_value = {
-        "experiment_id": f"run_{sample_run_data.id}",
+        "experiment_id": f"run_{run_id}",
         "status": "completed",
         "final_metrics": {"accuracy": 0.95, "loss": 0.1},
         "training_history": [{"epoch": 1, "loss": 0.5}, {"epoch": 2, "loss": 0.1}],
@@ -18,11 +21,11 @@ def test_get_run_detail_success(client, sample_run_data, mock_facade):
         "metadata": {"mode": "centralized"},
     }
 
-    response = client.get(f"/api/runs/{sample_run_data.id}/metrics")
+    response = client.get(f"/api/runs/{run_id}/metrics")
     assert response.status_code == 200
     data = response.json()
     # MetricsResponse uses experiment_id as the field name
-    assert data["experiment_id"] == f"run_{sample_run_data.id}"
+    assert data["experiment_id"] == f"run_{run_id}"
 
 
 @pytest.mark.unit

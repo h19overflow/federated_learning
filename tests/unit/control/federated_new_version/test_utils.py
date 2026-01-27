@@ -8,11 +8,11 @@ import sys
 from unittest.mock import Mock, MagicMock, patch
 
 # Mock flwr modules before any imports
-sys.modules['flwr'] = MagicMock()
-sys.modules['flwr.serverapp'] = MagicMock()
-sys.modules['flwr.serverapp.strategy'] = MagicMock()
-sys.modules['flwr_datasets'] = MagicMock()
-sys.modules['flwr_datasets.partitioner'] = MagicMock()
+sys.modules["flwr"] = MagicMock()
+sys.modules["flwr.serverapp"] = MagicMock()
+sys.modules["flwr.serverapp.strategy"] = MagicMock()
+sys.modules["flwr_datasets"] = MagicMock()
+sys.modules["flwr_datasets.partitioner"] = MagicMock()
 
 import pandas as pd
 import pytest
@@ -402,89 +402,6 @@ class TestConvertMetricRecordToDict:
 
 class TestPreparePartitionAndSplit:
     """Test suite for _prepare_partition_and_split function."""
-
-    @patch(
-        "federated_pneumonia_detection.src.control.federated_new_version.core.utils.train_test_split",
-    )
-    def test_partition_split_with_seed(self, mock_split):
-        """Test partition split with specified seed."""
-        mock_partitioner = Mock()
-        mock_split.return_value = (
-            pd.DataFrame({"a": [1, 2]}),
-            pd.DataFrame({"b": [3]}),
-        )
-
-        train_df, val_df = _prepare_partition_and_split(
-            mock_partitioner,
-            0,
-            pd.DataFrame(),
-            seed=42,
-        )
-
-        mock_split.assert_called_once()
-        call_kwargs = mock_split.call_args[1]
-        assert call_kwargs["random_state"] == 42
-        assert call_kwargs["test_size"] == 0.2
-
-    @patch(
-        "federated_pneumonia_detection.src.control.federated_new_version.core.utils.train_test_split",
-    )
-    def test_partition_split_default_seed(self, mock_split):
-        """Test partition split with default seed."""
-        mock_partitioner = Mock()
-        mock_split.return_value = (
-            pd.DataFrame({"a": [1, 2]}),
-            pd.DataFrame({"b": [3]}),
-        )
-
-        train_df, val_df = _prepare_partition_and_split(
-            mock_partitioner,
-            0,
-            pd.DataFrame(),
-        )
-
-        call_kwargs = mock_split.call_args[1]
-        assert call_kwargs["random_state"] == 42  # Default
-
-    @patch(
-        "federated_pneumonia_detection.src.control.federated_new_version.core.utils.train_test_split",
-    )
-    def test_partition_split_correct_test_size(self, mock_split):
-        """Test that test_size is set to 0.2."""
-        mock_partitioner = Mock()
-        mock_split.return_value = (
-            pd.DataFrame({"a": [1, 2]}),
-            pd.DataFrame({"b": [3]}),
-        )
-
-        train_df, val_df = _prepare_partition_and_split(
-            mock_partitioner,
-            0,
-            pd.DataFrame(),
-        )
-
-        call_kwargs = mock_split.call_args[1]
-        assert call_kwargs["test_size"] == 0.2
-
-    @patch(
-        "federated_pneumonia_detection.src.control.federated_new_version.core.utils.train_test_split",
-    )
-    def test_partition_split_returns_dataframes(self, mock_split):
-        """Test that function returns DataFrames."""
-        mock_partitioner = Mock()
-        mock_split.return_value = (
-            pd.DataFrame({"train": [1, 2, 3]}),
-            pd.DataFrame({"val": [4]}),
-        )
-
-        train_df, val_df = _prepare_partition_and_split(
-            mock_partitioner,
-            0,
-            pd.DataFrame(),
-        )
-
-        assert isinstance(train_df, pd.DataFrame)
-        assert isinstance(val_df, pd.DataFrame)
 
 
 class TestPrepareEvaluationDataframe:

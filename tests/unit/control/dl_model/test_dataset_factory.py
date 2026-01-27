@@ -52,7 +52,10 @@ class TestDatasetFactory:
         image_dir = Path("/tmp/images")
         dataset_type = "train"
 
-        with caplog.at_level(logging.INFO):
+        with caplog.at_level(
+            logging.INFO,
+            logger="federated_pneumonia_detection.src.control.dl_model.internals.model.data_module_utils.dataset_factory",
+        ):
             dataset = create_dataset(
                 dataframe=sample_dataframe,
                 image_dir=image_dir,
@@ -77,7 +80,7 @@ class TestDatasetFactory:
         assert dataset == mock_dataset_instance
 
         # Verify logging
-        assert f"{dataset_type.capitalize()} dataset created" in caplog.text
+        assert "Train dataset created:" in caplog.text
         assert "10 samples" in caplog.text
         assert "classes: {'0': 5, '1': 5}" in caplog.text
         assert "estimated memory: 100.5 MB" in caplog.text
@@ -101,7 +104,10 @@ class TestDatasetFactory:
 
         dataset_type = "val"
 
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(
+            logging.WARNING,
+            logger="federated_pneumonia_detection.src.control.dl_model.internals.model.data_module_utils.dataset_factory",
+        ):
             dataset = create_dataset(
                 dataframe=sample_dataframe,
                 image_dir=Path("/tmp/images"),

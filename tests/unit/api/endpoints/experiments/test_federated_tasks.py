@@ -563,13 +563,15 @@ class TestRunFederatedTrainingTask:
         mock_config_manager,
         mock_subprocess_popen,
         tmp_path,
-        monkeypatch,
         caplog,
     ):
         """Test warning when required environment variables are missing."""
         import logging
 
-        caplog.set_level(logging.WARNING)
+        caplog.set_level(
+            logging.WARNING,
+            logger="federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks",
+        )
 
         source_path = tmp_path / "data"
         images_dir = source_path / "Images"
@@ -577,14 +579,14 @@ class TestRunFederatedTrainingTask:
         csv_path = source_path / "metadata.csv"
         csv_path.write_text("file,label\n")
 
-        # Unset all required env vars to simulate missing environment
-        for var in ["POSTGRES_DB_URI", "POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD"]:
-            monkeypatch.delenv(var, raising=False)
-
         with (
             patch(
                 "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
                 return_value=mock_config_manager,
+            ),
+            patch(
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",
+                return_value={},
             ),
             patch(
                 "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
@@ -608,7 +610,9 @@ class TestRunFederatedTrainingTask:
 
             # Check for warning about missing env vars using caplog
             log_messages = [record.message for record in caplog.records]
-            assert any("Missing environment variables" in msg for msg in log_messages)
+            assert any(
+                "[WARN] Missing environment variables:" in msg for msg in log_messages
+            )
 
     @pytest.mark.unit
     def test_federated_training_task_unexpected_exception(

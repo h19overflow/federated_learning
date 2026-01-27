@@ -29,7 +29,7 @@ os.environ["USE_ALEMBIC"] = "false"
 # Prevent database engine creation during imports
 # Mock the engine module BEFORE any app imports
 mock_engine = MagicMock()
-sys.modules['federated_pneumonia_detection.src.boundary.engine'] = MagicMock(
+sys.modules["federated_pneumonia_detection.src.boundary.engine"] = MagicMock(
     get_engine=lambda: mock_engine,
     create_tables=lambda: None,
     dispose_engine=lambda: None,
@@ -130,7 +130,9 @@ def api_client_with_db(mock_db_session, mock_inference_service):
         return MagicMock()
 
     app.dependency_overrides[deps.get_db] = override_get_db
-    app.dependency_overrides[deps.get_inference_service] = override_get_inference_service
+    app.dependency_overrides[deps.get_inference_service] = (
+        override_get_inference_service
+    )
     app.dependency_overrides[deps.get_query_engine] = override_get_query_engine
 
     # Mock startup services to prevent database connection during app startup
@@ -142,18 +144,42 @@ def api_client_with_db(mock_db_session, mock_inference_service):
 
 
 @pytest.fixture
-def mock_inference_service():
+def mock_inference_service(mock_inference_engine):
     """Mock InferenceService with sensible defaults."""
-    mock = MagicMock(spec=InferenceService)
-    mock.predict_single.return_value = InferenceResponse(
-        prediction=InferencePrediction(
-            predicted_class=PredictionClass.PNEUMONIA,
-            confidence=0.95,
-            pneumonia_probability=0.95,
-            normal_probability=0.05,
-        ),
-        processing_time_ms=100.0,
-    )
+    from fastapi import HTTPException
+
+    mock = MagicMock()
+
+    # Mock validator to raise HTTPException for invalid files
+    def mock_validate_or_raise(file):
+        if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file type: {file.content_type}. Must be PNG or JPEG.",
+            )
+
+    # Create a side effect function that calls the engine and builds a response
+    async def predict_single_impl(file):
+        # Validate first (will raise if invalid)
+        mock_validate_or_raise(file)
+        # Call the engine's predict method
+        predicted_class, confidence, pneumonia_prob, normal_prob = (
+            mock_inference_engine.predict(None)
+        )
+        return InferenceResponse(
+            prediction=InferencePrediction(
+                predicted_class=predicted_class,
+                confidence=confidence,
+                pneumonia_probability=pneumonia_prob,
+                normal_probability=normal_prob,
+            ),
+            processing_time_ms=100.0,
+            model_version="mock-1.0.0",
+        )
+
+    # Use AsyncMock with side_effect to call the engine
+    mock.predict_single = AsyncMock(side_effect=predict_single_impl)
+
     mock.is_ready.return_value = True
     mock.check_ready_or_raise.return_value = None
     mock.get_info.return_value = {
@@ -162,6 +188,12 @@ def mock_inference_service():
         "gpu_available": False,
         "model_version": "mock-1.0.0",
     }
+
+    # Attach the engine mock to the service
+    mock.engine = mock_inference_engine
+
+    # Attach the validator with the side effect
+    mock.validator.validate_or_raise.side_effect = mock_validate_or_raise
     return mock
 
 
@@ -201,7 +233,7 @@ def mock_session_manager():
     # Mock session history with sample messages
     mock.get_session_history.return_value = [
         {"role": "user", "content": "Hello"},
-        {"role": "assistant", "content": "Hi there!"}
+        {"role": "assistant", "content": "Hi there!"},
     ]
 
     return mock
@@ -246,7 +278,9 @@ def mock_agent_factory():
 
 
 @pytest.fixture
-def api_client_with_all_mocks(mock_db_session, mock_session_manager, mock_agent_factory, mock_inference_service):
+def api_client_with_all_mocks(
+    mock_db_session, mock_session_manager, mock_agent_factory, mock_inference_service
+):
     """
     Fully mocked TestClient for API tests.
 
@@ -287,7 +321,9 @@ def api_client_with_all_mocks(mock_db_session, mock_session_manager, mock_agent_
 
     # Override database dependency
     app.dependency_overrides[deps.get_db] = override_get_db
-    app.dependency_overrides[deps.get_inference_service] = override_get_inference_service
+    app.dependency_overrides[deps.get_inference_service] = (
+        override_get_inference_service
+    )
     app.dependency_overrides[deps.get_query_engine] = override_get_query_engine
     app.dependency_overrides[get_mcp_manager] = override_get_mcp_manager
 
@@ -352,7 +388,9 @@ def api_client_with_inference(mock_db_session, mock_inference_service):
         return mock_inference_service
 
     app.dependency_overrides[deps.get_db] = override_get_db
-    app.dependency_overrides[deps.get_inference_service] = override_get_inference_service
+    app.dependency_overrides[deps.get_inference_service] = (
+        override_get_inference_service
+    )
 
     with TestClient(app) as client:
         yield client
@@ -441,6 +479,7 @@ def mock_run_crud():
         MagicMock: Mock run CRUD with predefined behaviors
     """
     from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
+
     mock = MagicMock(spec=RunCRUD)
     mock.get_multi.return_value = []
     mock.get.return_value = None
@@ -479,10 +518,7 @@ def mock_inference_engine():
     """
     mock = MagicMock()
     mock.model_version = "mock-1.0.0"
-    mock.get_info.return_value = {
-        "gpu_available": False,
-        "model_version": "mock-1.0.0"
-    }
+    mock.get_info.return_value = {"gpu_available": False, "model_version": "mock-1.0.0"}
     # Default prediction: NORMAL, Confidence, Pneumonia Prob, Normal Prob
     mock.predict.return_value = ("NORMAL", 0.99, 0.01, 0.99)
     return mock
