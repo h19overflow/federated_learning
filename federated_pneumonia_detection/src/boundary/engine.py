@@ -31,6 +31,7 @@ def _get_settings_lazy():
         _settings = get_settings()
     return _settings
 
+
 # Global engine instance - created once at module import
 _engine = None
 

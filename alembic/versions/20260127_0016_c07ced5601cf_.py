@@ -5,11 +5,12 @@ Revises: 8252e1e6c4d3
 Create Date: 2026-01-27 00:16:28.293004+00:00
 
 """
+
 from typing import Sequence, Union
 
 # revision identifiers, used by Alembic.
-revision: str = 'c07ced5601cf'
-down_revision: Union[str, None] = '8252e1e6c4d3'
+revision: str = "c07ced5601cf"
+down_revision: Union[str, None] = "8252e1e6c4d3"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
