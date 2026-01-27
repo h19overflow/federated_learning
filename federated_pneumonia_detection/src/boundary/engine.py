@@ -17,9 +17,19 @@ from federated_pneumonia_detection.config.settings import get_settings
 
 from .models import Base
 
-# Initialize settings and logger
-settings = get_settings()
+# Initialize logger
 logger = logging.getLogger(__name__)
+
+# Settings loaded lazily (not at import time)
+_settings = None
+
+
+def _get_settings_lazy():
+    """Get settings instance, loading only when needed."""
+    global _settings
+    if _settings is None:
+        _settings = get_settings()
+    return _settings
 
 # Global engine instance - created once at module import
 _engine = None
@@ -37,6 +47,9 @@ def _get_engine():
         return _engine
 
     try:
+        # Get settings lazily
+        settings = _get_settings_lazy()
+
         # Create engine with connection pooling configuration
         _engine = create_engine(
             settings.get_postgres_db_uri(),
@@ -187,8 +200,8 @@ def dispose_engine():
         raise
 
 
-# Initialize engine at module import time
-_get_engine()
+# Engine initialization is lazy - only happens when get_engine() or get_session() is called
+# This prevents settings validation errors during test imports
 
 
 if __name__ == "__main__":

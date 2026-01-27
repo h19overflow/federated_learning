@@ -7,8 +7,6 @@ for centralized and federated training.
 
 # Lightning Modules (surface level)
 # Submodules (expose for convenience)
-# Data Module
-from ..data.xray_data_module import XRayDataModule
 from . import callbacks, collectors, optimizers
 from .lit_resnet_enhanced import LitResNetEnhanced
 
@@ -18,8 +16,6 @@ from .losses import FocalLoss, FocalLossWithLabelSmoothing
 __all__ = [
     # Lightning Modules
     "LitResNetEnhanced",
-    # Data
-    "XRayDataModule",
     # Losses
     "FocalLoss",
     "FocalLossWithLabelSmoothing",
