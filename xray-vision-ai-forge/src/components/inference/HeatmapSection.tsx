@@ -63,16 +63,16 @@ const HeatmapSection: React.FC<HeatmapSectionProps> = ({
           />
         </div>
       ) : (
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-white to-[hsl(168_25%_97%)] border border-[hsl(172_30%_88%)] shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] mb-1">
-                GradCAM Heatmap
-              </h3>
-              <p className="text-sm text-[hsl(215_15%_45%)]">
-                Visualize which regions influenced the model's prediction
-              </p>
-            </div>
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[hsl(168_25%_97%)] border border-[hsl(172_30%_88%)] shadow-sm">
+          <div>
+            <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] mb-1">
+              GradCAM Heatmap
+            </h3>
+            <p className="text-sm text-[hsl(215_15%_45%)]">
+              Visualize which regions influenced the model's prediction
+            </p>
+          </div>
+          <div className="mt-4">
             <Button
               onClick={onGenerateHeatmap}
               disabled={heatmapLoading}
