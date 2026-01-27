@@ -26,6 +26,7 @@ from federated_pneumonia_detection.src.control.federated_new_version.core.utils 
     filter_list_of_dicts,
 )
 
+
 disable_progress_bar()
 
 app = ClientApp()
