@@ -368,6 +368,11 @@ export interface EpochEndData {
   phase: "train" | "val" | "test";
   metrics: EpochMetrics;
   client_id?: string;
+  // Confusion matrix values (sent when phase="val")
+  val_cm_tp?: number;
+  val_cm_tn?: number;
+  val_cm_fp?: number;
+  val_cm_fn?: number;
 }
 
 export interface RoundStartData {
