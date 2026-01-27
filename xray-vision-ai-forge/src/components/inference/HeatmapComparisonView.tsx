@@ -165,7 +165,15 @@ export const HeatmapComparisonView: React.FC<HeatmapComparisonViewProps> = ({
       </div>
 
       {/* Zoom Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          if (!open) {
+            setZoomLevel(1.0);
+          }
+        }}
+      >
         <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 overflow-hidden bg-slate-950 border-slate-800 shadow-2xl">
           <DialogHeader className="p-4 bg-slate-900/50 border-b border-slate-800 flex flex-row items-center justify-between space-y-0">
             <DialogTitle className="text-slate-100 flex items-center gap-2">
@@ -183,7 +191,7 @@ export const HeatmapComparisonView: React.FC<HeatmapComparisonViewProps> = ({
               drag
               dragConstraints={containerRef}
               dragElastic={0.1}
-              initial={{ scale: 0.9, opacity: 0, x: 0, y: 0 }}
+              initial={{ scale: 0.9, opacity: isModalOpen ? 1 : 0, x: 0, y: 0 }}
               animate={controls}
               className="flex gap-4 md:gap-12 p-12 items-center"
             >
