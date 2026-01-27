@@ -1,11 +1,13 @@
 /**
  * Hook for managing real-time training observability metrics.
  * Subscribes to batch_metrics and epoch_end WebSocket events.
+ * Subscribes to batch_metrics and epoch_end WebSocket events.
  * Implements throttling (500ms) and data windowing (max 200 points).
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { TrainingProgressWebSocket } from "@/services/websocket";
+import type { BatchMetricsData, BatchMetricsDataPoint, EpochEndData } from "@/types/api";
 import type { BatchMetricsData, BatchMetricsDataPoint, EpochEndData } from "@/types/api";
 
 const MAX_DATA_POINTS = 200;
@@ -33,6 +35,7 @@ export function useTrainingMetrics(
 ): UseTrainingMetricsReturn {
   const [batchMetrics, setBatchMetrics] = useState<BatchMetricsDataPoint[]>([]);
   const [isReceiving, setIsReceiving] = useState(false);
+  const [confusionMatrix, setConfusionMatrix] = useState<ConfusionMatrixData | null>(null);
 
   const batchBufferRef = useRef<BatchMetricsDataPoint[]>([]);
   const lastFlushRef = useRef<number>(0);
@@ -72,10 +75,38 @@ export function useTrainingMetrics(
       scheduleFlush();
     };
 
+    const handleEpochEnd = (data: EpochEndData) => {
+      setIsReceiving(true);
+      console.log("[useTrainingMetrics] Received epoch_end event:", {
+        phase: data.phase,
+        hasCmTp: "val_cm_tp" in data,
+        hasCmTn: "val_cm_tn" in data,
+        hasCmFp: "val_cm_fp" in data,
+        hasCmFn: "val_cm_fn" in data,
+        val_cm_tp: data.val_cm_tp,
+        val_cm_tn: data.val_cm_tn,
+        val_cm_fp: data.val_cm_fp,
+        val_cm_fn: data.val_cm_fn,
+      });
+
+      // Extract confusion matrix values when phase is validation
+      if (data.phase === "val" && (data.val_cm_tp !== undefined || data.val_cm_tn !== undefined)) {
+        setConfusionMatrix({
+          tp: data.val_cm_tp ?? null,
+          tn: data.val_cm_tn ?? null,
+          fp: data.val_cm_fp ?? null,
+          fn: data.val_cm_fn ?? null,
+          epoch: data.epoch,
+        });
+      }
+    };
+
     const unsubBatch = ws.on("batch_metrics", handleBatchMetrics);
+    const unsubEpoch = ws.on("epoch_end", handleEpochEnd);
 
     return () => {
       unsubBatch();
+      unsubEpoch();
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
     };
   }, [ws, scheduleFlush]);
@@ -98,6 +129,7 @@ export function useTrainingMetrics(
   const reset = useCallback(() => {
     setBatchMetrics([]);
     setIsReceiving(false);
+    setConfusionMatrix(null);
     batchBufferRef.current = [];
   }, []);
 
@@ -107,6 +139,7 @@ export function useTrainingMetrics(
     currentAccuracy,
     currentF1,
     isReceiving,
+    confusionMatrix,
     reset,
   };
 }
