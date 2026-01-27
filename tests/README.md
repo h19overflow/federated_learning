@@ -3,7 +3,6 @@
 Comprehensive test suite for the Federated Pneumonia Detection System with >90% code coverage target.
 
 ## Test Pyramid
-
 ```mermaid
 graph TB
     A["API Tests (Integration)<br/>REST & WebSocket Endpoints"] --> B["Integration Tests<br/>Data Pipeline | Training | Federated Learning"]

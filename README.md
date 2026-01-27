@@ -4,7 +4,6 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-Lightning-orange.svg)](https://pytorchlightning.ai/)
 [![Flower](https://img.shields.io/badge/Flower-Federated-purple.svg)](https://flower.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-
 A production-ready federated learning system for pneumonia detection from chest X-ray images. Enables privacy-preserving collaborative medical AI across distributed institutions without centralizing sensitive patient data.
 
 ## System Architecture
