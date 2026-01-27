@@ -1,197 +1,507 @@
-# Federated Pneumonia Detection System
+# 🫁 Federated Pneumonia Detection System
 
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-Lightning-orange.svg)](https://pytorchlightning.ai/)
 [![Flower](https://img.shields.io/badge/Flower-Federated-purple.svg)](https://flower.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-A production-ready federated learning system for pneumonia detection from chest X-ray images. Enables privacy-preserving collaborative medical AI across distributed institutions without centralizing sensitive patient data.
 
-## System Architecture
+> **Privacy-Preserving Medical AI for Multi-Institutional Collaboration**
+
+A production-ready hybrid learning system enabling hospitals to collaboratively train pneumonia detection models on chest X-rays **without sharing sensitive patient data**. Compare centralized deep learning against federated learning (Flower) through a unified, real-time dashboard.
+
+---
+
+## 🎯 Why This System?
+
+| Challenge | Solution |
+|-----------|----------|
+| 🔒 **Data Privacy** | Federated learning keeps data at source—only model weights travel |
+| 🏥 **Multi-Site Collaboration** | Enable cross-hospital research without data centralization |
+| 📊 **Performance Comparison** | Side-by-side evaluation of centralized vs federated approaches |
+| 🤖 **AI-Powered Insights** | Built-in research assistant with RAG for clinical literature |
+| ⚡ **Real-Time Monitoring** | WebSocket-powered dashboard with live training metrics |
+
+---
+
+## 🏗️ System Architecture
+
+### High-Level Overview
 
 ```mermaid
 graph TB
-    subgraph frontend["🖥️ Frontend Layer"]
-        direction TB
-        UI["React UI<br/>(Dashboard)"]
-        WS_Client["WebSocket<br/>Client"]
+    subgraph Users["👥 Users"]
+        Clinician["Clinician / Researcher"]
     end
 
-    subgraph api_layer["🌐 API Layer (Boundary)"]
-        direction TB
-        FastAPI["FastAPI<br/>REST Server"]
-        WS_Server["WebSocket<br/>Server"]
-        Schemas["Request/Response<br/>Schemas"]
+    subgraph Frontend["🖥️ Frontend - React/Vite"]
+        Dashboard["Training Dashboard"]
+        InferenceUI["Inference Interface"]
+        ChatUI["AI Research Assistant"]
+        AnalyticsUI["Analytics & Reports"]
     end
 
-    subgraph control_layer["🎮 Control Layer"]
-        direction TB
-        subgraph ct["Centralized Training"]
-            CentralizedTrainer["CentralizedTrainer<br/>(PyTorch Lightning)"]
-        end
-        subgraph fl["Federated Learning"]
-            ServerApp["FL ServerApp<br/>(Flower)"]
-            ClientApp["FL ClientApp<br/>(Flower)"]
-            DataPartitioner["Data Partitioner<br/>(IID/Non-IID/Stratified)"]
-        end
-        Orchestrator["ExperimentOrchestrator<br/>(Comparison)"]
+    subgraph APIGateway["🌐 API Gateway - FastAPI"]
+        REST["REST Endpoints"]
+        WebSocket["WebSocket Server"]
+        Middleware["Security & Error Handling"]
     end
 
-    subgraph entities_layer["📦 Entities Layer"]
-        direction TB
-        ResNet["ResNetWithCustomHead<br/>(Model)"]
-        Dataset["XRayDataModule<br/>(Data)"]
-        Config["SystemConstants<br/>ExperimentConfig"]
+    subgraph ControlLayer["🎮 Control Layer"]
+        Analytics["AnalyticsFacade"]
+        Training["Training Orchestrator"]
+        Inference["Inference Engine"]
+        Agentic["AI Agentic System"]
     end
 
-    subgraph boundary_layer["🧱 Boundary Layer"]
-        direction TB
-        RunDAO["Run DAO<br/>(ORM)"]
-        MetricDAO["Metric DAO<br/>(ORM)"]
+    subgraph DataLayer["💾 Data Layer"]
+        PostgreSQL[("PostgreSQL + pgvector")]
+        FileStorage["File System"]
+        Cache["In-Memory Cache"]
     end
 
-    subgraph utils_layer["⚙️ Utils Layer"]
-        direction TB
-        ConfigLoader["ConfigLoader<br/>(YAML)"]
-        MetricsSender["MetricsWebSocketSender<br/>(Real-time)"]
-        Logging["Logging & Error<br/>Handling"]
+    subgraph External["🔗 External Services"]
+        WandB["Weights & Biases"]
+        ArXiv["ArXiv API"]
+        LLM["Gemini/PaLM API"]
     end
 
-    subgraph data["💾 Data Layer"]
-        direction TB
-        DB[("PostgreSQL<br/>(Metrics & Runs)")]
-        FileSystem["File System<br/>(Datasets & Models)"]
-    end
+    Clinician --> Dashboard
+    Clinician --> InferenceUI
+    Clinician --> ChatUI
 
-    UI -->|HTTP| FastAPI
-    UI -->|WebSocket| WS_Client
-    WS_Client <-->|Stream Updates| WS_Server
+    Dashboard --> REST
+    InferenceUI --> REST
+    ChatUI --> REST
+    Dashboard -.->|Real-time Metrics| WebSocket
 
-    FastAPI -->|Validate| Schemas
-    FastAPI -->|Invoke| CentralizedTrainer
-    FastAPI -->|Invoke| ServerApp
-    FastAPI -->|Query| RunDAO
+    REST --> Middleware
+    Middleware --> ControlLayer
 
-    CentralizedTrainer -->|Uses| ResNet
-    CentralizedTrainer -->|Uses| Dataset
-    CentralizedTrainer -->|Uses| Config
-    CentralizedTrainer -->|Sends Metrics| MetricsSender
+    Analytics --> PostgreSQL
+    Training --> PostgreSQL
+    Training --> FileStorage
+    Inference --> FileStorage
+    Agentic --> PostgreSQL
 
-    ServerApp -->|Uses| ResNet
-    ServerApp -->|Coordinates| ClientApp
-    ServerApp -->|Uses| DataPartitioner
-    ServerApp -->|Sends Metrics| MetricsSender
+    Training -.->|Experiment Tracking| WandB
+    Agentic -.->|Literature Search| ArXiv
+    Agentic -.->|LLM Generation| LLM
 
-    ClientApp -->|Uses| ResNet
-    ClientApp -->|Uses| Dataset
-
-    DataPartitioner -->|Loads| Dataset
-
-    CentralizedTrainer -->|Persists| RunDAO
-    CentralizedTrainer -->|Logs| MetricDAO
-
-    ServerApp -->|Persists| RunDAO
-    ServerApp -->|Logs| MetricDAO
-
-    MetricsSender -->|Broadcasts| WS_Server
-
-    Orchestrator -->|Runs| CentralizedTrainer
-    Orchestrator -->|Runs| ServerApp
-    Orchestrator -->|Uses| ConfigLoader
-
-    ConfigLoader -->|Loads| Config
-    Logging -->|Monitors| CentralizedTrainer
-    Logging -->|Monitors| ServerApp
-
-    RunDAO -->|Read/Write| DB
-    MetricDAO -->|Read/Write| DB
-    Dataset -->|Read| FileSystem
-    ResNet -->|Checkpoint| FileSystem
-
-    style frontend fill:#007BFF,stroke:#333,stroke-width:2px,color:#fff
-    style api_layer fill:#FF6F00,stroke:#333,stroke-width:2px,color:#fff
-    style control_layer fill:#2962FF,stroke:#333,stroke-width:2px,color:#fff
-    style entities_layer fill:#D50000,stroke:#333,stroke-width:2px,color:#fff
-    style boundary_layer fill:#AA00FF,stroke:#333,stroke-width:2px,color:#fff
-    style utils_layer fill:#00897B,stroke:#333,stroke-width:2px,color:#fff
-    style data fill:#558B2F,stroke:#333,stroke-width:2px,color:#fff
+    style Frontend fill:#61DAFB,stroke:#1565C0,color:#000
+    style APIGateway fill:#009688,stroke:#004D40,color:#fff
+    style ControlLayer fill:#FF6F00,stroke:#E65100,color:#fff
+    style DataLayer fill:#7C4DFF,stroke:#4527A0,color:#fff
+    style External fill:#00C853,stroke:#1B5E20,color:#fff
 ```
 
-## Key Features
+### Training Mode Comparison
 
-- **Dual Training Modes**: Centralized or federated learning from a single API
-- **Privacy-Preserving**: Flower framework—hospitals send weights, not patient data
-- **Production-Ready**: Built on PyTorch Lightning + Flower
-- **Data Distribution**: IID, Non-IID (patient-based), or Stratified partitioning
-- **Real-Time Monitoring**: WebSocket streaming to React dashboard
-- **Built-in Comparison**: Side-by-side centralized vs federated evaluation
-- **Type-Safe**: Full type hints, >90% test coverage
+```mermaid
+graph LR
+    subgraph Centralized["🏢 Centralized Training"]
+        CData["Central Dataset"]
+        CModel["ResNet50 Model"]
+        CTrain["PyTorch Lightning Trainer"]
+        CMetrics["Metrics & Checkpoints"]
+        
+        CData --> CTrain
+        CTrain --> CModel
+        CModel --> CMetrics
+    end
 
-## Quick Start
+    subgraph Federated["🌐 Federated Training"]
+        FServer["FL Server (Flower)"]
+        FStrategy["ConfigurableFedAvg"]
+        
+        subgraph Clients["Client Nodes"]
+            C1["Client 1<br/>Hospital A"]
+            C2["Client 2<br/>Hospital B"]
+            C3["Client 3<br/>Hospital C"]
+        end
+        
+        FServer -->|Global Model| C1
+        FServer -->|Global Model| C2
+        FServer -->|Global Model| C3
+        
+        C1 -->|Local Weights| FStrategy
+        C2 -->|Local Weights| FStrategy
+        C3 -->|Local Weights| FStrategy
+        
+        FStrategy -->|Aggregated Model| FServer
+    end
+
+    CMetrics --> Comparison
+    FServer --> Comparison
+    
+    Comparison["📊 Comparison Engine"]
+
+    style Centralized fill:#E3F2FD,stroke:#1565C0,color:#000
+    style Federated fill:#F3E5F5,stroke:#7B1FA2,color:#000
+    style Clients fill:#FFF3E0,stroke:#E65100,color:#000
+    style Comparison fill:#E8F5E9,stroke:#2E7D32,color:#000
+```
+
+### AI Agentic & RAG Architecture
+
+```mermaid
+graph TB
+    subgraph UserQuery["💬 User Query"]
+        Query["Clinical Question"]
+    end
+
+    subgraph AgentRouter["🤖 Agent Router"]
+        Router["Intent Classification"]
+        
+        subgraph Agents["Specialized Agents"]
+            Research["Research Agent"]
+            Clinical["Clinical Agent"]
+            Explain["Explanation Agent"]
+        end
+    end
+
+    subgraph RAG["📚 RAG Pipeline"]
+        Retriever["Vector Store Retriever<br/>(pgvector)"]
+        Reranker["BM25 + Semantic Reranker"]
+        Generator["Context-Aware Generator"]
+    end
+
+    subgraph Tools["🔧 External Tools"]
+        ArXiv["ArXiv MCP Search"]
+        Embeddings["Sentence Transformers"]
+    end
+
+    subgraph Memory["🧠 Memory"]
+        ChatHistory["PostgreSQL Chat History"]
+        Context["Session Context"]
+    end
+
+    Query --> Router
+    Router --> Research
+    Router --> Clinical
+    Router --> Explain
+
+    Research --> Retriever
+    Clinical --> Retriever
+    Explain --> Retriever
+
+    Retriever --> Reranker
+    Reranker --> Generator
+    
+    Research -.->|Literature Search| ArXiv
+    Retriever -.->|Embeddings| Embeddings
+    
+    Generator --> ChatHistory
+    Generator --> Context
+    
+    Generator --> Response["✅ AI Response"]
+
+    style UserQuery fill:#E1F5FE,stroke:#0288D1,color:#000
+    style AgentRouter fill:#F3E5F5,stroke:#7B1FA2,color:#000
+    style RAG fill:#FFF8E1,stroke:#F57F17,color:#000
+    style Tools fill:#E8F5E9,stroke:#2E7D32,color:#000
+    style Memory fill:#FFF3E0,stroke:#E65100,color:#000
+```
+
+---
+
+## ✨ Key Features
+
+### 🔬 Machine Learning
+- **Dual Training Modes**: Seamlessly switch between centralized and federated learning
+- **Privacy-Preserving**: Flower framework—hospitals share weights, never patient data
+- **Data Distribution Strategies**: IID, Non-IID (patient-based), or Stratified partitioning
+- **Custom ResNet50**: Pre-trained backbone with domain-specific classification head
+- **Advanced Augmentation**: Contrast stretching, adaptive histogram equalization
+
+### 🖥️ User Interface
+- **Real-Time Dashboard**: WebSocket-streamed metrics with Recharts visualizations
+- **Interactive Training**: Start, monitor, and compare experiments from your browser
+- **Inference Interface**: Single/batch prediction with Grad-CAM heatmap overlays
+- **AI Research Assistant**: RAG-powered chat for clinical literature queries
+
+### 📊 Analytics & Observability
+- **AnalyticsFacade**: Unified API for metrics, summaries, rankings, and exports
+- **Weights & Biases**: Comprehensive experiment tracking and visualization
+- **LangSmith Tracing**: Full observability for AI agent interactions
+- **Multi-Format Exports**: CSV, JSON, and text report generation
+
+### 🏛️ Architecture Quality
+- **Clean Architecture**: Strict N-layer design (API → Control → Boundary → Entities)
+- **Type Safety**: Full Python type hints, TypeScript frontend
+- **Testing**: >90% coverage with pytest and Vitest
+- **Production-Ready**: Async FastAPI, PostgreSQL with connection pooling
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.12+ with `uv` package manager
-- PostgreSQL
-- Node.js 20+
-- CUDA-capable GPU (recommended)
+| Component | Version | Check |
+|-----------|---------|-------|
+| Python | 3.12+ | `python --version` |
+| uv | latest | `uv --version` |
+| Node.js | 20+ | `node --version` |
+| PostgreSQL | 14+ | `psql --version` |
+| CUDA (optional) | 12.0+ | `nvidia-smi` |
 
 ### Installation
 
 ```bash
+# Clone repository
 git clone <repository-url>
 cd FYP2
+
+# Install Python dependencies
 uv sync
+
+# Install frontend dependencies
 cd xray-vision-ai-forge && npm install && cd ..
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your database credentials
 ```
 
-### Start the System
+### Launch System
 
 ```bash
-# Terminal 1: Backend
-python -m federated_pneumonia_detection.src.api.main
+# One-command launch (PowerShell)
+.\scripts\start.ps1
 
-# Terminal 2: Frontend
+# Or manually - Backend
+uv run uvicorn federated_pneumonia_detection.src.api.main:app --reload --host 127.0.0.1 --port 8001
+
+# Or manually - Frontend
 cd xray-vision-ai-forge && npm run dev
-
-# Terminal 3: WebSocket relay (optional)
-python scripts/websocket_server.py
 ```
 
-Visit `http://localhost:5173` for the dashboard.
+**Access Points:**
+- 🖥️ **Dashboard**: http://localhost:5173
+- 📚 **API Docs**: http://127.0.0.1:8001/docs
+- 🔌 **WebSocket**: ws://localhost:8765
 
-## Architecture Layers
+---
 
-| Layer        | Purpose                                 | Location                |
-| ------------ | --------------------------------------- | ----------------------- |
-| **Frontend** | React UI dashboard                      | `xray-vision-ai-forge/` |
-| **API**      | FastAPI REST + WebSocket                | `src/api/`              |
-| **Control**  | Training orchestration                  | `src/control/`          |
-| **Entities** | Domain models (ResNet, Dataset, Config) | `src/entities/`         |
-| **Boundary** | Database access (ORM/CRUD)              | `src/boundary/`         |
-| **Utils**    | Config loading, metrics, logging        | `src/utils/`            |
-| **Data**     | PostgreSQL + file system                | External                |
+## 📖 Usage Examples
 
-See individual module READMEs for details:
+### Centralized Training
 
-- [API Documentation](federated_pneumonia_detection/src/api/README.md)
-- [Control Layer](federated_pneumonia_detection/src/control/README.md)
-- [Entities](federated_pneumonia_detection/src/entities/README.md)
-- [Boundary/Database](federated_pneumonia_detection/src/boundary/README.md)
+```python
+from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import CentralizedTrainer
 
-## Technologies
+trainer = CentralizedTrainer(
+    config_path="federated_pneumonia_detection/config/default_config.yaml"
+)
+results = trainer.train(
+    source_path="path/to/dataset.zip",
+    experiment_name="baseline_centralized"
+)
+print(f"Best F1: {results['best_model_score']:.4f}")
+```
 
-| Category               | Tech                                     |
-| ---------------------- | ---------------------------------------- |
-| **Deep Learning**      | PyTorch, PyTorch Lightning               |
-| **Federated Learning** | Flower, NumPy, Scikit-learn              |
-| **API & Web**          | FastAPI, Uvicorn, WebSockets, Pydantic   |
-| **Database**           | SQLAlchemy 2.0, PostgreSQL, Pandas       |
-| **Monitoring**         | Weights & Biases, TensorBoard, LangSmith |
-| **Frontend**           | React 18+, TypeScript, Chart.js          |
+### Federated Training
 
-## Configuration
+```python
+from federated_pneumonia_detection.src.control.federated_learning.federated_trainer import FederatedTrainer
 
-All parameters in one YAML file: `federated_pneumonia_detection/config/default_config.yaml`
+trainer = FederatedTrainer(partition_strategy="non-iid")
+results = trainer.train(
+    source_path="path/to/dataset.zip",
+    experiment_name="federated_hospitals"
+)
+print(f"Rounds: {results['num_rounds']}, Clients: {results['num_clients']}")
+```
+
+### AI Research Assistant (API)
+
+```python
+import requests
+
+# Ask a clinical question
+response = requests.post("http://localhost:8001/api/v1/chat/stream", json={
+    "message": "What are the latest findings on pneumonia detection using deep learning?",
+    "session_id": "research-session-1"
+})
+
+# Stream the AI response
+for chunk in response.iter_content():
+    print(chunk.decode(), end="")
+```
+
+---
+
+## 🏛️ Architecture Layers
+
+```mermaid
+graph LR
+    subgraph Layers["Clean Architecture Layers"]
+        direction TB
+        API["🌐 API Layer<br/>FastAPI / WebSocket"]
+        Control["🎮 Control Layer<br/>Business Logic"]
+        Boundary["🧱 Boundary Layer<br/>DB / External APIs"]
+        Entities["📦 Entities Layer<br/>Models / Datasets"]
+        Internals["⚙️ Internals<br/>Utils / Logging"]
+    end
+
+    API --> Control
+    Control --> Boundary
+    Control --> Entities
+    Boundary --> Entities
+    Internals --> API
+    Internals --> Control
+    Internals --> Boundary
+    Internals --> Entities
+
+    style API fill:#FF6F00,stroke:#E65100,color:#fff
+    style Control fill:#2962FF,stroke:#1565C0,color:#fff
+    style Boundary fill:#AA00FF,stroke:#7B1FA2,color:#fff
+    style Entities fill:#D50000,stroke:#B71C1C,color:#fff
+    style Internals fill:#00897B,stroke:#00695C,color:#fff
+```
+
+| Layer | Purpose | Key Components |
+|-------|---------|----------------|
+| **API** | HTTP/WebSocket entry points | FastAPI routers, middleware, schemas |
+| **Control** | Business logic orchestration | Trainers, AnalyticsFacade, AgenticSystem |
+| **Boundary** | External interface adapters | SQLAlchemy CRUD, Vector DB queries |
+| **Entities** | Pure domain models | ResNet model, XRay dataset, config |
+| **Internals** | Cross-cutting utilities | Transforms, logging, constants |
+
+---
+
+## 🧪 Experiment Workflow
+
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant Frontend as Frontend
+    participant API as FastAPI
+    participant Control as Control Layer
+    participant DB as PostgreSQL
+    participant WS as WebSocket
+
+    User->>Frontend: Upload Dataset
+    Frontend->>API: POST /training/start
+    API->>Control: Initiate Training
+    Control->>DB: Create Run Record
+    Control-->>WS: Stream Metrics
+    WS-->>Frontend: Real-time Updates
+    
+    loop Each Epoch/Round
+        Control->>Control: Train/Evaluate
+        Control->>DB: Save Metrics
+        Control-->>WS: Batch Metrics
+        WS-->>Frontend: Update Charts
+    end
+    
+    Control->>DB: Finalize Run
+    Control-->>API: Return Results
+    API-->>Frontend: Training Complete
+    Frontend-->>User: Show Results
+```
+
+---
+
+## 📊 Monitoring & Observability
+
+### Weights & Biases Integration
+
+| Feature | Capability |
+|---------|------------|
+| 📈 **Metrics Tracking** | Loss, accuracy, recall, precision per epoch |
+| 🖼️ **Media Logging** | Confusion matrices, Grad-CAM visualizations |
+| 🔍 **Hyperparameter Sweeps** | Automated hyperparameter optimization |
+| 📊 **System Monitoring** | GPU/CPU utilization, memory usage |
+
+### LangSmith Observability
+
+| Feature | Capability |
+|---------|------------|
+| 🔍 **Trace Visualization** | Full conversation flow with token usage |
+| 📊 **Hallucination Detection** | Automated evaluation (25% sampling) |
+| 📈 **Performance Metrics** | Latency, token count, cost tracking |
+| 🔄 **Feedback Loops** | Answer relevance scoring |
+
+---
+
+## 🛠️ Technology Stack
+
+### Backend
+| Category | Technologies |
+|----------|--------------|
+| **Deep Learning** | PyTorch, PyTorch Lightning, TorchVision |
+| **Federated Learning** | Flower (flwr), flwr-datasets |
+| **API Framework** | FastAPI, Uvicorn, WebSockets |
+| **Database** | SQLAlchemy 2.0, PostgreSQL, pgvector |
+| **AI/LLM** | LangChain, LangGraph, Google Generative AI |
+| **Experiment Tracking** | Weights & Biases, TensorBoard |
+| **Data Science** | NumPy, Pandas, Matplotlib, Seaborn |
+
+### Frontend
+| Category | Technologies |
+|----------|--------------|
+| **Framework** | React 18, Vite, TypeScript |
+| **Styling** | Tailwind CSS, Shadcn UI, Radix Primitives |
+| **State Management** | React Query, React Context |
+| **Visualization** | Recharts, Framer Motion |
+| **Testing** | Vitest, React Testing Library |
+
+---
+
+## 🧪 Testing
+
+```bash
+# Backend tests
+pytest                           # All tests
+pytest --cov=federated_pneumonia_detection  # With coverage
+pytest tests/unit/               # Component tests
+pytest tests/integration/        # End-to-end workflows
+
+# Frontend tests
+cd xray-vision-ai-forge
+npm run test                     # Unit tests
+npm run test:coverage            # With coverage
+```
+
+---
+
+## 📁 Project Structure
+
+```
+FYP2/
+├── 📁 federated_pneumonia_detection/    # Backend Python package
+│   ├── 📁 src/
+│   │   ├── 📁 api/                      # FastAPI entry points
+│   │   ├── 📁 control/                  # Business logic
+│   │   │   ├── 📁 dl_model/             # Centralized training
+│   │   │   ├── 📁 federated_new_version/# Federated learning
+│   │   │   ├── 📁 analytics/            # Analytics services
+│   │   │   └── 📁 agentic_systems/      # AI chat & RAG
+│   │   ├── 📁 boundary/                 # Database access
+│   │   ├── 📁 entities/                 # Domain models
+│   │   └── 📁 internals/                # Utilities
+│   ├── 📁 config/                       # YAML configurations
+│   └── 📁 tests/                        # Test suites
+├── 📁 xray-vision-ai-forge/             # React frontend
+│   ├── 📁 src/
+│   │   ├── 📁 components/               # React components
+│   │   ├── 📁 services/                 # API/WebSocket clients
+│   │   └── 📁 types/                    # TypeScript definitions
+│   └── package.json
+├── 📁 docs/                             # Documentation
+├── 📁 scripts/                          # Orchestration scripts
+├── 📁 alembic/                          # Database migrations
+└── 📁 docker/                           # Container configurations
+```
+
+---
+
+## ⚙️ Configuration
+
+All experiment parameters are defined in `federated_pneumonia_detection/config/default_config.yaml`:
 
 ```yaml
 system:
@@ -202,174 +512,72 @@ system:
 experiment:
   learning_rate: 0.0015
   epochs: 15
-  num_rounds: 15
-  num_clients: 5
+  num_rounds: 15          # Federated rounds
+  num_clients: 5          # Federated clients
   clients_per_round: 3
+  partition_strategy: "non-iid"  # iid | non-iid | stratified
+
+monitoring:
+  wandb_enabled: true
+  tensorboard_enabled: true
 ```
 
-Load in code:
+---
 
-```python
-from federated_pneumonia_detection.src.utils.config_loader import ConfigLoader
+## 🔐 Security & Privacy
 
-config_loader = ConfigLoader(config_dir="federated_pneumonia_detection/config")
-config = config_loader.create_experiment_config()
-print(f"Batch size: {config.batch_size}")
-```
+| Feature | Implementation |
+|---------|----------------|
+| **Input Validation** | Pydantic schemas for all API inputs |
+| **Prompt Injection Detection** | MaliciousPromptMiddleware for AI endpoints |
+| **Error Sanitization** | Structured error responses without stack traces |
+| **Request Tracing** | X-Request-ID middleware for audit trails |
+| **Data Privacy** | Federated learning—raw data never leaves clients |
 
-## Federated Learning Modes
+---
 
-**Non-IID (Patient-Based)** — Realistic multi-hospital distribution:
+## 📚 Documentation
 
-```python
-from federated_pneumonia_detection.src.control.federated_learning.federated_trainer import FederatedTrainer
+| Document | Description |
+|----------|-------------|
+| [AGENTS.md](AGENTS.md) | AI agent entry point and system overview |
+| [docs/INDEX.md](docs/INDEX.md) | Complete documentation index |
+| [docs/architecture/INTEGRATION.md](docs/architecture/INTEGRATION.md) | System integration map |
+| [docs/operations/ANALYTICS_API.md](docs/operations/ANALYTICS_API.md) | Analytics API reference |
+| [scripts/README.md](scripts/README.md) | Orchestration scripts guide |
 
-trainer = FederatedTrainer(partition_strategy="non-iid")
-results = trainer.train(source_path="path/to/dataset.zip")
-```
+---
 
-**IID** — Controlled baseline experiments
-**Stratified** — Maintains class balance
+## 🤝 Contributing
 
-## Monitoring & Visualization
+1. **Create Feature Branch**: `git checkout -b feature/your-feature`
+2. **Follow Standards**: Type hints, docstrings, max 150 lines per file
+3. **Run Tests**: `pytest --cov=federated_pneumonia_detection`
+4. **Commit**: `git commit -m "feat: add your feature"`
+5. **Open PR**: Link to relevant issue and include test results
 
-### Weights & Biases Integration
+### Code Quality
+- **Ruff**: Linting and import sorting (`ruff check .`)
+- **Pre-commit**: Automated checks before commits
+- **Type Safety**: Strict mypy and TypeScript checking
 
-Real-time tracking of predictions, batches, and system resources:
+---
 
-#### Single Prediction Monitoring
-
-![Single Prediction Monitoring](docs/W&B/Single_monitoring.png)
-
-- Prediction confidence scores (Normal/Pneumonia)
-- Inference latency
-- Input preprocessing metrics
-- Model output logits
-
-#### Batch Prediction Monitoring
-
-![Batch Monitoring](docs/W&B/Batch_Monitoring.png)
-
-- Throughput: Up to 500 predictions/batch
-- Class distribution and error rates
-- Processing time breakdown
-
-#### System Resource Monitoring
-
-![System Monitoring](docs/W&B/System_monitoring.png)
-
-- GPU/CPU memory and utilization
-- Disk I/O for dataset loading
-- Thermal metrics
-
-### LangSmith Observability
-
-LLM tracing and evaluation for the research assistant:
-
-![LangSmith Traces](docs/langsmith/image-1.png)
-![LangSmith Evaluation](docs/langsmith/image.png)
-
-- Full conversation traces with token usage
-- Automated hallucination detection (25% sampling)
-- Answer relevance scoring
-
-## Testing
-
-```bash
-pytest                           # All tests
-pytest --cov=federated_pneumonia_detection  # With coverage
-pytest tests/unit/               # Component tests only
-pytest tests/integration/        # End-to-end workflows
-```
-
-Test structure:
-
-```
-tests/
-├── unit/                 # Component-level tests
-├── integration/          # Full training workflows
-├── api/                  # HTTP endpoint tests
-└── conftest.py          # Shared fixtures
-```
-
-## Common Workflows
-
-### Centralized Training
-
-```python
-from federated_pneumonia_detection.src.control.dl_model.centralized_trainer import CentralizedTrainer
-
-trainer = CentralizedTrainer(config_path="federated_pneumonia_detection/config/default_config.yaml")
-results = trainer.train(source_path="path/to/dataset.zip", experiment_name="baseline")
-print(f"Best F1: {results['best_model_score']:.4f}")
-```
-
-### Federated Learning
-
-```python
-from federated_pneumonia_detection.src.control.federated_learning.federated_trainer import FederatedTrainer
-
-trainer = FederatedTrainer(partition_strategy="non-iid")
-results = trainer.train(source_path="path/to/dataset.zip", experiment_name="federated")
-print(f"Completed {results['num_rounds']} rounds across {results['num_clients']} clients")
-```
-
-### Compare Both Approaches
-
-```python
-from federated_pneumonia_detection.src.control.comparison import ExperimentOrchestrator
-
-orchestrator = ExperimentOrchestrator()
-comparison = orchestrator.run_comparison("path/to/dataset.zip")
-print(f"Centralized F1: {comparison['centralized']['metrics']['f1']:.4f}")
-print(f"Federated F1: {comparison['federated']['metrics']['f1']:.4f}")
-```
-
-## Dataset Format
-
-```
-dataset/
-├── Images/
-│   ├── NORMAL/
-│   │   ├── image_001.png
-│   │   └── ...
-│   └── PNEUMONIA/
-│       ├── image_001.png
-│       └── ...
-└── metadata.csv
-```
-
-Metadata CSV columns: `patientId, filename, Target` (0=Normal, 1=Pneumonia)
-
-## Performance Metrics
-
-| Metric        | Purpose                             |
-| ------------- | ----------------------------------- |
-| **Accuracy**  | (TP + TN) / Total                   |
-| **Precision** | TP / (TP + FP)                      |
-| **Recall**    | TP / (TP + FN)                      |
-| **F1 Score**  | Harmonic mean of precision & recall |
-| **AUC-ROC**   | Area under ROC curve                |
-
-## Additional Resources
-
-- **[USAGE_EXAMPLE.md](USAGE_EXAMPLE.md)** — Detailed usage examples
-- **[FEDERATED_INTEGRATION_SUMMARY.md](FEDERATED_INTEGRATION_SUMMARY.md)** — Implementation overview
-- **[Flower Docs](https://flower.dev/)** — Federated learning framework
-- **[PyTorch Lightning Docs](https://pytorchlightning.ai/)** — Training abstractions
-
-## Contributing
-
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Follow code standards: type hints, docstrings, tests
-3. Run tests: `pytest --cov=federated_pneumonia_detection`
-4. Commit: `git commit -m "Add your feature"`
-5. Open a PR
-
-## License
+## 📄 License
 
 MIT License - see [LICENSE](LICENSE)
 
 ---
 
-**Note**: This is a research project for educational purposes. For clinical deployment, consult medical professionals and follow regulatory guidelines (FDA, HIPAA).
+## ⚠️ Disclaimer
+
+> **This is a research project for educational purposes.** 
+> 
+> For clinical deployment, consult medical professionals and ensure compliance with regulatory guidelines (FDA, HIPAA, GDPR). The system is not intended for direct patient diagnosis without proper validation and approval.
+
+---
+
+<p align="center">
+  <strong>🫁 Privacy-Preserving Medical AI for Everyone</strong><br>
+  <em>Enabling collaborative healthcare research while protecting patient privacy</em>
+</p>
