@@ -1,0 +1,71 @@
+# syntax=docker/dockerfile:1
+# =============================================================================
+# Federated Learning Dockerfile - Flower Framework
+# Uses pinned requirements.txt for reproducible builds
+# =============================================================================
+
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        build-essential \
+        git \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/ \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN uv venv $VIRTUAL_ENV
+
+# Copy requirements file (pinned versions)
+COPY requriments.txt ./requirements.txt
+
+# Install PyTorch with CUDA support first, then federated learning deps
+RUN grep -v "^-e file:" requirements.txt > requirements-filtered.txt && \
+    # Install PyTorch packages from PyTorch index (cu128)
+    uv pip install \
+        "torch==2.10.0+cu128" \
+        "torchaudio==2.10.0+cu128" \
+        "torchvision==0.25.0+cu128" \
+        --index-url https://download.pytorch.org/whl/cu128 && \
+    # Install federated learning specific packages from requirements
+    grep -E "^(flwr|pytorch-lightning|pandas|numpy|scikit-learn|pillow|matplotlib|seaborn|tqdm|psutil|tensorboard|pyyaml|python-dotenv|psycopg|sqlalchemy)" requirements-filtered.txt > requirements-federated.txt && \
+    uv pip install -r requirements-federated.txt
+
+# -----------------------------------------------------------------------------
+# Runtime Stage
+# -----------------------------------------------------------------------------
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libpq5 \
+        libgomp1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+RUN useradd --create-home --shell /bin/bash appuser
+
+COPY --chown=appuser:appuser federated_pneumonia_detection ./federated_pneumonia_detection
+COPY --chown=appuser:appuser pyproject.toml ./
+
+RUN mkdir -p /app/data /app/results /app/.cache \
+    && chown -R appuser:appuser /app
+
+USER appuser
+
+CMD ["python", "-m", "flwr", "run", "federated_pneumonia_detection/src/control/federated_new_version", "--run-config", "num-server-rounds=3"]

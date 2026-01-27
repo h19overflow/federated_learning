@@ -1,0 +1,89 @@
+# syntax=docker/dockerfile:1
+# =============================================================================
+# Backend Dockerfile - FastAPI + PyTorch + Federated Learning
+# Uses pinned requirements.txt for reproducible builds
+# =============================================================================
+
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Install system dependencies and uv package manager
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        build-essential \
+        git \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/ \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN uv venv $VIRTUAL_ENV
+
+# Copy requirements file (pinned versions)
+COPY requriments.txt ./requirements.txt
+
+# Filter out the editable install line and install PyTorch first from correct index
+# Then install remaining dependencies
+RUN grep -v "^-e file:" requirements.txt > requirements-filtered.txt && \
+    # Install PyTorch packages from PyTorch index (cu128)
+    uv pip install \
+        "torch==2.10.0+cu128" \
+        "torchaudio==2.10.0+cu128" \
+        "torchvision==0.25.0+cu128" \
+        --index-url https://download.pytorch.org/whl/cu128 && \
+    # Remove torch lines from requirements to avoid reinstall
+    grep -v "^torch" requirements-filtered.txt > requirements-no-torch.txt && \
+    # Install all other dependencies
+    uv pip install -r requirements-no-torch.txt
+
+# -----------------------------------------------------------------------------
+# Runtime Stage
+# -----------------------------------------------------------------------------
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        libpq5 \
+        libgomp1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash appuser
+
+# Copy application code
+COPY --chown=appuser:appuser federated_pneumonia_detection ./federated_pneumonia_detection
+COPY --chown=appuser:appuser alembic ./alembic
+COPY --chown=appuser:appuser alembic.ini ./
+COPY --chown=appuser:appuser pyproject.toml ./
+COPY --chown=appuser:appuser conftest.py ./
+
+# Create directories
+RUN mkdir -p /app/data /app/results /app/logs /app/.cache \
+    && chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8001 8765
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8001/ || exit 1
+
+CMD ["uvicorn", "federated_pneumonia_detection.src.api.main:app", "--host", "0.0.0.0", "--port", "8001"]

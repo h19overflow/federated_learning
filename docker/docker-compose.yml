@@ -1,0 +1,129 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: fyp2-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fyp2_db}
+      POSTGRES_USER: ${POSTGRES_USER:-fyp2_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fyp2_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fyp2_user} -d ${POSTGRES_DB:-fyp2_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fyp2-network
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: fyp2-backend
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-fyp2_db}
+      - POSTGRES_USER=${POSTGRES_USER:-fyp2_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-fyp2_password}
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB_URI=postgresql://${POSTGRES_USER:-fyp2_user}:${POSTGRES_PASSWORD:-fyp2_password}@postgres:5432/${POSTGRES_DB:-fyp2_db}
+      - WEBSOCKET_HOST=0.0.0.0
+      - WEBSOCKET_PORT=${WEBSOCKET_PORT:-8765}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:5173","http://localhost:3000","http://frontend:80"]}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - LANGSMITH_TRACING=${LANGSMITH_TRACING:-false}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
+      - LANGSMITH_PROJECT=${LANGSMITH_PROJECT:-fyp2}
+    ports:
+      - "${BACKEND_PORT:-8001}:8001"
+      - "${WEBSOCKET_PORT:-8765}:8765"
+    volumes:
+      - ../data:/app/data
+      - ../results:/app/results
+      - ../logs:/app/logs
+      - model_cache:/app/.cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - fyp2-network
+
+  # React Frontend (Vite + Nginx)
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8001}
+        - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:8765}
+    container_name: fyp2-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      - backend
+    networks:
+      - fyp2-network
+
+  # Federated Learning Simulation (optional - run with --profile federated)
+  federated:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.federated
+    container_name: fyp2-federated
+    profiles:
+      - federated
+    environment:
+      - POSTGRES_DB_URI=postgresql://${POSTGRES_USER:-fyp2_user}:${POSTGRES_PASSWORD:-fyp2_password}@postgres:5432/${POSTGRES_DB:-fyp2_db}
+      - FL_NUM_ROUNDS=${FL_NUM_ROUNDS:-3}
+      - FL_NUM_CLIENTS=${FL_NUM_CLIENTS:-2}
+    volumes:
+      - ../data:/app/data
+      - ../results:/app/results
+      - model_cache:/app/.cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - fyp2-network
+
+volumes:
+  postgres_data:
+    driver: local
+  model_cache:
+    driver: local
+
+networks:
+  fyp2-network:
+    driver: bridge

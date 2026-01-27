@@ -1,0 +1,80 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv
+ENV
+env
+.eggs
+*.egg-info
+*.egg
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+.tox
+.nox
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Build artifacts
+build
+dist
+*.manifest
+*.spec
+
+# Node.js
+xray-vision-ai-forge/node_modules
+xray-vision-ai-forge/.next
+xray-vision-ai-forge/dist
+xray-vision-ai-forge/.cache
+
+# Data and results (mount as volumes)
+data/
+results/
+logs/
+wandb/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Analysis
+analysis/
+undefined/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+credentials.json
+
+# Large files
+*.ckpt
+*.pt
+*.pth
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log
