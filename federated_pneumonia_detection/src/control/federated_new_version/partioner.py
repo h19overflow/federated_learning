@@ -23,7 +23,7 @@ class CustomPartitioner(Partitioner):
     def load_partition(self, partition_id: int) -> DataFrame:
         if not (0 <= partition_id < self._num_partitions):
             raise ValueError(
-                f"partition_id must be between 0 and {self._num_partitions - 1}, got {partition_id}",
+                f"partition_id must be between 0 and {self._num_partitions - 1}, got {partition_id}",  # noqa: E501
             )
         partition_idx = self.partition_indices[partition_id]
         # Return a Subset of your base Dataset

@@ -113,7 +113,7 @@ class GradientMonitorCallback(pl.Callback):
             # Compute gradient norm for this parameter
             grad_norm = param.grad.data.norm(2).item()
 
-            # Extract layer prefix (e.g., "encoder.layer1" from "encoder.layer1.conv.weight")
+            # Extract layer prefix (e.g., "encoder.layer1" from "encoder.layer1.conv.weight")  # noqa: E501
             layer_prefix = self._get_layer_prefix(name)
 
             # Aggregate norms by layer prefix

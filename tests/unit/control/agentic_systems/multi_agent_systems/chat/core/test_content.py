@@ -2,7 +2,7 @@
 Tests for content processing utilities module.
 """
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.content import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.content import (  # noqa: E501
     chunk_content,
     normalize_content,
 )
@@ -277,7 +277,10 @@ class TestContentIntegration:
         ]
 
         result = normalize_content(content)
-        expected = "Based on the documents, federated learning is a distributed machine learning approach."
+        expected = (
+            "Based on the documents, federated learning is a distributed "
+            "machine learning approach."
+        )
 
         assert result == expected
 

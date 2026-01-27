@@ -13,7 +13,15 @@ import logging
 from federated_pneumonia_detection.src.api.endpoints.streaming.websocket_server import (
     start_websocket_server_thread,
 )
+from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
+from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
+from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
+    server_evaluation_crud,
+)
 from federated_pneumonia_detection.src.boundary.engine import create_tables
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.factory import (  # noqa: E501
+    AgentFactory,
+)
 from federated_pneumonia_detection.src.control.analytics import AnalyticsFacade
 from federated_pneumonia_detection.src.control.analytics.internals import (
     BackfillService,
@@ -23,16 +31,8 @@ from federated_pneumonia_detection.src.control.analytics.internals import (
     RankingService,
     SummaryService,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (  # noqa: E501
     get_wandb_tracker,
-)
-from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
-from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
-    server_evaluation_crud,
-)
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.factory import (
-    AgentFactory,
 )
 
 logger = logging.getLogger(__name__)
@@ -122,7 +122,7 @@ def _initialize_database() -> None:
 
 async def _initialize_mcp_manager():
     """Initialize MCP manager for arxiv integration."""
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (  # noqa: E501
         MCPManager,
     )
 
@@ -238,10 +238,10 @@ async def _initialize_chat_services(app):
     Returns:
         Tuple of (query_engine, agent_factory) - either initialized instances or None
     """
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (  # noqa: E501
         ArxivAugmentedEngine,
     )
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (  # noqa: E501
         QueryEngine,
     )
 
@@ -332,7 +332,7 @@ def _initialize_analytics_services(app) -> AnalyticsFacade | None:
     except Exception as e:
         logger.error(f"[Startup/Analytics] CacheProvider initialization failed: {e}")
         logger.warning(
-            "[Startup/Analytics] Cannot initialize analytics services without cache provider"
+            "[Startup/Analytics] Cannot initialize analytics services without cache provider"  # noqa: E501
         )
         return None
 
@@ -348,7 +348,7 @@ def _initialize_analytics_services(app) -> AnalyticsFacade | None:
         services_status["metrics"] = True
     except Exception as e:
         logger.warning(
-            f"[Startup/Analytics] MetricsService initialization failed: {e} (metrics endpoints will be degraded)"
+            f"[Startup/Analytics] MetricsService initialization failed: {e} (metrics endpoints will be degraded)"  # noqa: E501
         )
         services_status["metrics"] = False
 
@@ -364,7 +364,7 @@ def _initialize_analytics_services(app) -> AnalyticsFacade | None:
         services_status["summary"] = True
     except Exception as e:
         logger.warning(
-            f"[Startup/Analytics] SummaryService initialization failed: {e} (summary endpoints will be degraded)"
+            f"[Startup/Analytics] SummaryService initialization failed: {e} (summary endpoints will be degraded)"  # noqa: E501
         )
         services_status["summary"] = False
 
@@ -378,7 +378,7 @@ def _initialize_analytics_services(app) -> AnalyticsFacade | None:
         services_status["ranking"] = True
     except Exception as e:
         logger.warning(
-            f"[Startup/Analytics] RankingService initialization failed: {e} (ranking endpoints will be degraded)"
+            f"[Startup/Analytics] RankingService initialization failed: {e} (ranking endpoints will be degraded)"  # noqa: E501
         )
         services_status["ranking"] = False
 
@@ -393,7 +393,7 @@ def _initialize_analytics_services(app) -> AnalyticsFacade | None:
         services_status["export"] = True
     except Exception as e:
         logger.warning(
-            f"[Startup/Analytics] ExportService initialization failed: {e} (export endpoints will be degraded)"
+            f"[Startup/Analytics] ExportService initialization failed: {e} (export endpoints will be degraded)"  # noqa: E501
         )
         services_status["export"] = False
 
@@ -407,7 +407,7 @@ def _initialize_analytics_services(app) -> AnalyticsFacade | None:
         services_status["backfill"] = True
     except Exception as e:
         logger.warning(
-            f"[Startup/Analytics] BackfillService initialization failed: {e} (backfill endpoints will be degraded)"
+            f"[Startup/Analytics] BackfillService initialization failed: {e} (backfill endpoints will be degraded)"  # noqa: E501
         )
         services_status["backfill"] = False
 
@@ -422,7 +422,7 @@ def _initialize_analytics_services(app) -> AnalyticsFacade | None:
         )
         logger.info(
             f"[Startup/Analytics] Analytics facade created with "
-            f"{sum(1 for v in services_status.values() if v)}/{len(services_status)} services available"
+            f"{sum(1 for v in services_status.values() if v)}/{len(services_status)} services available"  # noqa: E501
         )
 
         # Log unavailable services for visibility

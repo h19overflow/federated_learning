@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 import torch
 
-from federated_pneumonia_detection.src.control.model_inferance.internals.inference_engine import (
+from federated_pneumonia_detection.src.control.model_inferance.internals.inference_engine import (  # noqa: E501
     InferenceEngine,
 )
 
@@ -24,7 +24,8 @@ class TestInferenceEngine:
     def mock_lit_model_class(self):
         """Mock LitResNetEnhanced.load_from_checkpoint."""
         with patch(
-            "federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced.LitResNetEnhanced",
+            "federated_pneumonia_detection.src.control.dl_model.internals.model."
+            "lit_resnet_enhanced.LitResNetEnhanced",
         ) as mock_lit:
             mock_model = Mock()
             mock_model.eval = Mock()
@@ -35,9 +36,6 @@ class TestInferenceEngine:
 
     def test_init_with_default_checkpoint(self, mock_lit_model_class, tmp_path):
         """Test initialization with default checkpoint path."""
-        _, mock_model = mock_lit_model_class
-
-        # Create a checkpoint file
         checkpoint_dir = tmp_path / "model_inferance"
         checkpoint_dir.mkdir(parents=True)
         checkpoint_file = checkpoint_dir / "pneumonia_model_07_0.928.ckpt"
@@ -91,12 +89,12 @@ class TestInferenceEngine:
         tmp_path,
     ):
         """Test that _load_model correctly calls Lightning's load_from_checkpoint."""
-        mock_lit, mock_model = mock_lit_model_class
+        mock_lit, _ = mock_lit_model_class
 
         checkpoint_file = tmp_path / "test.ckpt"
         checkpoint_file.write_text("mock")
 
-        engine = InferenceEngine(checkpoint_path=checkpoint_file, device="cpu")
+        InferenceEngine(checkpoint_path=checkpoint_file, device="cpu")
 
         mock_lit.load_from_checkpoint.assert_called_once()
         call_args = mock_lit.load_from_checkpoint.call_args

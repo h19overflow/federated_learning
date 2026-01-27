@@ -114,3 +114,24 @@ repos:
         args: ["-vv", "--config", "pyproject.toml"]
         # Skip certain directories
         exclude: ^(tests/|scripts/|analysis/)
+
+  # ============================================
+  # Unit Tests - Run before commit
+  # ============================================
+  - repo: local
+    hooks:
+      - id: pytest-unit
+        name: Run unit tests
+        entry: pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+        args:
+          - "tests/unit"
+          - "-v"
+          - "--tb=short"
+          - "--maxfail=5"
+          - "-x"
+          - "--no-cov"
+        stages: [pre-commit]

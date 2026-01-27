@@ -11,7 +11,7 @@ from typing import Optional
 
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from PIL import Image
 
 logger = logging.getLogger(__name__)

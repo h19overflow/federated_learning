@@ -16,7 +16,7 @@ class TextReportExporter(DataExporter):
         lines += ["EXPERIMENT INFORMATION", "-" * 80]
         lines.append(f"Experiment: {metadata.get('experiment_name', 'N/A')}")
         lines.append(
-            f"Status: {data.get('status', 'N/A')} | Epochs: {metadata.get('total_epochs', 'N/A')}",
+            f"Status: {data.get('status', 'N/A')} | Epochs: {metadata.get('total_epochs', 'N/A')}",  # noqa: E501
         )
         final = data.get("final_metrics", {})
         lines += ["", "FINAL METRICS", "-" * 80]
@@ -34,7 +34,7 @@ class TextReportExporter(DataExporter):
             for e in history[:5]:
                 lines.append(
                     f"E{e.get('epoch', 1):<2} | TL:{e.get('train_loss', 0):.3f} "
-                    f"VL:{e.get('val_loss', 0):.3f} VA:{e.get('val_acc', 0) * 100:.1f}%",
+                    f"VL:{e.get('val_loss', 0):.3f} VA:{e.get('val_acc', 0) * 100:.1f}%",  # noqa: E501
                 )
         lines += [
             "",

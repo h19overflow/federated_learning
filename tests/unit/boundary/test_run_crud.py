@@ -1,7 +1,8 @@
-import pytest
 from datetime import datetime
+
+import pytest
 from sqlalchemy.orm import Session
-from federated_pneumonia_detection.src.boundary.models import Run
+
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 
 

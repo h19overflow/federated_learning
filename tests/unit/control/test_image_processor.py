@@ -8,7 +8,7 @@ import base64
 import pytest
 from fastapi import HTTPException, UploadFile
 
-from federated_pneumonia_detection.src.control.model_inferance.internals.image_processor import (
+from federated_pneumonia_detection.src.control.model_inferance.internals.image_processor import (  # noqa: E501
     ImageProcessor,
 )
 

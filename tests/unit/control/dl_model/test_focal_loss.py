@@ -1,7 +1,7 @@
 import pytest
 import torch
-import torch.nn as nn
-from federated_pneumonia_detection.src.control.dl_model.internals.model.losses.focal_loss import (
+
+from federated_pneumonia_detection.src.control.dl_model.internals.model.losses.focal_loss import (  # noqa: E501
     FocalLoss,
     FocalLossWithLabelSmoothing,
 )

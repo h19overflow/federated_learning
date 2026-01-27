@@ -16,13 +16,13 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from federated_pneumonia_detection.src.control.report_generation.internals.constants import (
+from federated_pneumonia_detection.src.control.report_generation.internals.constants import (  # noqa: E501
     BRAND_COLOR,
     LIGHT_BG,
     SUCCESS_COLOR,
     WARNING_COLOR,
 )
-from federated_pneumonia_detection.src.control.report_generation.internals.images import (
+from federated_pneumonia_detection.src.control.report_generation.internals.images import (  # noqa: E501
     base64_to_image,
     pil_to_reportlab_image,
 )
@@ -304,8 +304,8 @@ def _add_images_section(
         story.append(
             Paragraph(
                 "<b>Heatmap Interpretation:</b> Warmer colors (red/orange) indicate "
-                "regions that strongly influenced the model's prediction. These areas "
-                f"may show patterns associated with {pattern_desc}.",
+                "regions that strongly influenced the model's prediction. "
+                f"These areas may show patterns associated with {pattern_desc}.",
                 ParagraphStyle(
                     "HeatmapNote",
                     fontSize=8,

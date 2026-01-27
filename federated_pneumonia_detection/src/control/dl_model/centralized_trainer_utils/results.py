@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 import pytorch_lightning as pl
 
-from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (  # noqa: E501
     LitResNetEnhanced,
 )
 

@@ -135,7 +135,7 @@ async def get_server_evaluation(
         summary = server_evaluation_crud.get_summary_stats(db, run_id)
 
         logger.info(
-            f"[ServerEvaluation] Run {run_id} - Returning {len(evaluations_list)} evaluations",
+            f"[ServerEvaluation] Run {run_id} - Returning {len(evaluations_list)} evaluations",  # noqa: E501
         )
 
         return {

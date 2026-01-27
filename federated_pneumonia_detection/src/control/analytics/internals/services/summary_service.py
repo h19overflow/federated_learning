@@ -23,8 +23,9 @@ from federated_pneumonia_detection.src.boundary.models import (
     RunMetric,
     ServerEvaluation,
 )
-from ..infrastructure import CacheProvider, cache_key
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+
+from ..infrastructure import CacheProvider, cache_key
 
 if TYPE_CHECKING:
     from federated_pneumonia_detection.src.boundary.models import Run
@@ -391,7 +392,7 @@ class SummaryService:
             )
 
             if last_eval and last_eval.additional_metrics:  # type: ignore[misc]
-                # .get() may return None, so ensure we return None explicitly if not found
+                # .get() may return None, so ensure we return None explicitly if not found  # noqa: E501
                 final_stats = last_eval.additional_metrics.get("final_epoch_stats")
                 if final_stats is not None:
                     return final_stats

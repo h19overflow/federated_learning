@@ -8,10 +8,10 @@ from typing import List
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (  # noqa: E501
     MCPManager,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.tools.arxiv_embedding_tool import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.tools.arxiv_embedding_tool import (  # noqa: E501
     create_arxiv_embedding_tool,
 )
 

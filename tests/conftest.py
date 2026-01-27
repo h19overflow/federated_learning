@@ -18,16 +18,18 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.api.main import app
 from federated_pneumonia_detection.src.api import deps
-from federated_pneumonia_detection.src.boundary.models import Base, Run, RunMetric
-from federated_pneumonia_detection.src.control.model_inferance.inference_service import (
-    InferenceService,
-)
-from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
-    InferenceResponse,
+
+# Long import lines
+from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (  # noqa: E501
     InferencePrediction,
+    InferenceResponse,
     PredictionClass,
+)
+from federated_pneumonia_detection.src.api.main import app
+from federated_pneumonia_detection.src.boundary.models import Base, Run, RunMetric
+from federated_pneumonia_detection.src.control.model_inferance.inference_service import (  # noqa: E501
+    InferenceService,
 )
 from federated_pneumonia_detection.src.internals.data_processing import DataProcessor
 from tests.fixtures.sample_data import (
@@ -271,12 +273,12 @@ def db_session():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     # Create tables
     Base.metadata.create_all(bind=engine)
 
-    session = TestingSessionLocal()
+    session = testing_session_local()
     try:
         yield session
     finally:
@@ -318,7 +320,7 @@ def client(db_session, mock_inference_service):
 
     app.dependency_overrides[deps.get_db] = override_get_db
     app.dependency_overrides[deps.get_inference_service] = (
-        override_get_inference_service
+        override_get_inference_service  # noqa: E501
     )
 
     with TestClient(app) as c:

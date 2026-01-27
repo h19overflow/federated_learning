@@ -9,14 +9,14 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.control.dl_model.internals.model.callbacks.progressive import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.callbacks.progressive import (  # noqa: E501
     ProgressiveUnfreezeCallback,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.model.callbacks.setup import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.callbacks.setup import (  # noqa: E501
     create_trainer_from_config,
     prepare_trainer_and_callbacks_pl,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (  # noqa: E501
     LitResNetEnhanced,
 )
 
@@ -54,7 +54,7 @@ def build_model_and_callbacks(
     logger.info("Setting up model and callbacks (Enhanced v3 - Balanced)...")
     if is_federated and client_id is not None:
         logger.info(
-            f"[CentralizedTrainer] Federated mode enabled for client_id={client_id}, round={round_number}",
+            f"[CentralizedTrainer] Federated mode enabled for client_id={client_id}, round={round_number}",  # noqa: E501
         )
 
     batch_interval = config.get("experiment.batch_sample_interval", 10)

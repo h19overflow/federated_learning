@@ -1,14 +1,15 @@
-import pytest
-import pandas as pd
 import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from federated_pneumonia_detection.src.control.dl_model.internals.model.data_module_utils.validation import (
-    validate_inputs,
-)
-from federated_pneumonia_detection.src.control.dl_model.internals.data.xray_data_module import (
+import pandas as pd
+import pytest
+
+from federated_pneumonia_detection.src.control.dl_model.internals.data.xray_data_module import (  # noqa: E501
     XRayDataModule,
+)
+from federated_pneumonia_detection.src.control.dl_model.internals.model.data_module_utils.validation import (  # noqa: E501
+    validate_inputs,
 )
 
 
@@ -121,7 +122,7 @@ class TestDataExceptions:
 
         with patch(
             "federated_pneumonia_detection.src.control.dl_model.internals.data.xray_data_module.TransformBuilder"
-        ) as mock_builder_cls:
+        ):
             dm = XRayDataModule(
                 train_df=train_df,
                 val_df=val_df,

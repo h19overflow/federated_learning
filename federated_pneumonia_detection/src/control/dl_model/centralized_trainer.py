@@ -1,15 +1,13 @@
 """
 Centralized training orchestrator for pneumonia detection system.
-Orchestrates complete training workflow from zip file or directory to trained model with comprehensive logging.
+Orchestrates complete training workflow from zip file or directory to trained model with comprehensive logging.  # noqa: E501
 """
 
-import logging
 import os
 from typing import Any, Dict, Optional
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
-
 
 from .centralized_trainer_utils import (
     build_model_and_callbacks,
@@ -27,7 +25,7 @@ from .internals import DataSourceExtractor
 class CentralizedTrainer:
     """
     Centralized training orchestrator that handles complete training workflow.
-    Accepts zip files or directories containing dataset and orchestrates all training components.
+    Accepts zip files or directories containing dataset and orchestrates all training components.  # noqa: E501
     """
 
     def __init__(

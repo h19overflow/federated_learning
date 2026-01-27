@@ -1,7 +1,6 @@
-import pytest
 import json
-from unittest.mock import MagicMock
-from federated_pneumonia_detection.src.control.analytics.internals.services.ranking_service import (
+
+from federated_pneumonia_detection.src.control.analytics.internals.services import (
     RankingService,
 )
 

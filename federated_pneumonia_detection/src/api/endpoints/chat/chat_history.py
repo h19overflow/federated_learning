@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Request
 
 from federated_pneumonia_detection.src.api.deps import get_query_engine
 from federated_pneumonia_detection.src.api.endpoints.schema import ChatHistoryResponse
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems import (  # noqa: E501
     get_agent_factory,
 )
 

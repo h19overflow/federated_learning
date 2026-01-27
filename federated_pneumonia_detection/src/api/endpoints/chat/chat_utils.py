@@ -189,7 +189,7 @@ def _build_metrics_summary(all_metrics) -> str:
 
 def _build_metrics_summary_from_aggregation(metrics_summary) -> str:
     """Build metrics summary from SQL aggregation results."""
-    summary = f"METRICS SUMMARY ({sum(m.count for m in metrics_summary)} total metrics recorded):\n"
+    summary = f"METRICS SUMMARY ({sum(m.count for m in metrics_summary)} total metrics recorded):\n"  # noqa: E501
     summary += "-" * 60 + "\n"
 
     for metric in metrics_summary:
@@ -283,6 +283,7 @@ async def enhance_query_with_run_context(query: str, run_id: int) -> str:
         Enhanced query string with context appended
     """
     import asyncio
+
     from federated_pneumonia_detection.src.boundary.CRUD import (
         run_crud,
         run_metric_crud,

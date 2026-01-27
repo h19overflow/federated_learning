@@ -138,17 +138,19 @@ class ConfigManager:
         """
         flattened = self.flatten_config(config_data)
 
-
         # Log specific important changes
         if "experiment.epochs" in flattened:
-            self.logger.info(f"Setting experiment.epochs = {flattened['experiment.epochs']}")
+            self.logger.info(
+                f"Setting experiment.epochs = {flattened['experiment.epochs']}"
+            )
         if "experiment.batch_size" in flattened:
             self.logger.info(
                 f"Setting experiment.batch_size = {flattened['experiment.batch_size']}"
             )
         if "experiment.learning_rate" in flattened:
             self.logger.info(
-                f"Setting experiment.learning_rate = {flattened['experiment.learning_rate']}"
+                f"Setting experiment.learning_rate = "
+                f"{flattened['experiment.learning_rate']}"
             )
 
         # Apply updates

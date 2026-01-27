@@ -21,13 +21,13 @@ from federated_pneumonia_detection.src.control.dl_model.centralized_trainer_util
     build_model_and_callbacks,
     build_trainer,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (  # noqa: E501
     MetricsWebSocketSender,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (  # noqa: E501
     LitResNetEnhanced,
 )
-from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
+from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (  # noqa: E501
     ConfigurableFedAvg,
 )
 from federated_pneumonia_detection.src.control.federated_new_version.partioner import (
@@ -216,7 +216,7 @@ def _initialize_strategy(
 
     strategy.set_total_rounds(num_rounds)
     logger.info(
-        "Strategy configured: FedAvg with weighted aggregation by num_examples + server evaluation",
+        "Strategy configured: FedAvg with weighted aggregation by num_examples + server evaluation",  # noqa: E501
     )
 
     return strategy
@@ -224,13 +224,13 @@ def _initialize_strategy(
 
 def filter_list_of_dicts(data: list[dict[str, Any]], fields: list[str]):
     """Filter list of dicts to include only specified keys from last epoch."""
-    DEFAULT_FLOAT = 0.0
-    DEFAULT_INT = 0
+    default_float = 0.0
+    default_int = 0
 
     if not data:
         out: dict[str, Any] = {}
         for field in fields:
-            out[field] = DEFAULT_INT if field == "epoch" else DEFAULT_FLOAT
+            out[field] = default_int if field == "epoch" else default_float
         return out
 
     last_epoch_metrics = data[-1]
@@ -240,22 +240,22 @@ def filter_list_of_dicts(data: list[dict[str, Any]], fields: list[str]):
         val = last_epoch_metrics.get(field)
         if field == "epoch":
             if val is None:
-                metrics[field] = DEFAULT_INT
+                metrics[field] = default_int
             else:
                 try:
                     metrics[field] = int(val)
                 except Exception:
-                    metrics[field] = DEFAULT_INT
+                    metrics[field] = default_int
             continue
 
         if val is None:
-            metrics[field] = DEFAULT_FLOAT
+            metrics[field] = default_float
             continue
 
         try:
             metrics[field] = float(val)
         except Exception:
-            metrics[field] = DEFAULT_FLOAT
+            metrics[field] = default_float
 
     return metrics
 

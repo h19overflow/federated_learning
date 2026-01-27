@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
 from federated_pneumonia_detection.src.api.deps import get_config
-from federated_pneumonia_detection.src.api.endpoints.schema.configuration_schemas import (
+from federated_pneumonia_detection.src.api.endpoints.schema.configuration_schemas import (  # noqa: E501
     ConfigurationUpdateRequest,
 )
 

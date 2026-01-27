@@ -19,6 +19,7 @@ from federated_pneumonia_detection.src.boundary.models import (
     RunMetric,
     ServerEvaluation,
 )
+
 from ..utils import (
     calculate_summary_statistics,
 )
@@ -32,7 +33,7 @@ class FinalEpochStatsService:
         """
         Extract confusion matrix from final epoch of centralized run.
 
-        Queries RunMetric table for the highest epoch with CM data (val_cm_tp, val_cm_tn, etc.)
+        Queries RunMetric table for the highest epoch with CM data (val_cm_tp, val_cm_tn, etc.)  # noqa: E501
         and returns consolidated confusion matrix dictionary.
 
         Args:
@@ -40,7 +41,7 @@ class FinalEpochStatsService:
             run_id: Run ID to extract CM from
 
         Returns:
-            Dict with keys: true_positives, true_negatives, false_positives, false_negatives, epoch
+            Dict with keys: true_positives, true_negatives, false_positives, false_negatives, epoch  # noqa: E501
             or None if incomplete data
         """
         # Find max epoch that has CM data
@@ -95,7 +96,7 @@ class FinalEpochStatsService:
             run_id: Run ID to extract CM from
 
         Returns:
-            Dict with keys: true_positives, true_negatives, false_positives, false_negatives
+            Dict with keys: true_positives, true_negatives, false_positives, false_negatives  # noqa: E501
             or None if incomplete data
         """
         # Get last ServerEvaluation record
@@ -134,7 +135,7 @@ class FinalEpochStatsService:
         """
         Calculate final epoch stats for centralized run and persist to database.
 
-        Extracts CM from RunMetric, calculates summary statistics (sensitivity, specificity, etc.),
+        Extracts CM from RunMetric, calculates summary statistics (sensitivity, specificity, etc.),  # noqa: E501
         and persists as final_* metrics using run_metric_crud.
 
         Args:
@@ -142,7 +143,7 @@ class FinalEpochStatsService:
             run_id: Run ID to process
 
         Returns:
-            Dict with calculated stats (sensitivity, specificity, precision_cm, accuracy_cm, f1_cm)
+            Dict with calculated stats (sensitivity, specificity, precision_cm, accuracy_cm, f1_cm)  # noqa: E501
             or None if CM extraction failed
         """
         # Extract CM from centralized run
@@ -166,15 +167,15 @@ class FinalEpochStatsService:
         Calculate final epoch stats for federated run and persist to database.
 
         Extracts CM from aggregated round metrics, calculates summary statistics,
-        and persists to ServerEvaluation additional_metrics using server_evaluation_crud.
+        and persists to ServerEvaluation additional_metrics using server_evaluation_crud.  # noqa: E501
 
         Args:
             db: Database session
             run_id: Run ID to process
-            round_metrics: Aggregated metrics from final round (must contain cm_tp, cm_tn, cm_fp, cm_fn)
+            round_metrics: Aggregated metrics from final round (must contain cm_tp, cm_tn, cm_fp, cm_fn)  # noqa: E501
 
         Returns:
-            Dict with calculated stats (sensitivity, specificity, precision_cm, accuracy_cm, f1_cm)
+            Dict with calculated stats (sensitivity, specificity, precision_cm, accuracy_cm, f1_cm)  # noqa: E501
             or None if CM values are missing
         """
         # Check if all CM values present in round metrics

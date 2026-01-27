@@ -10,15 +10,17 @@ from typing import List
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from federated_pneumonia_detection.src.api.deps import (
-    get_inference_service,
     get_gradcam_service,
+    get_inference_service,
 )
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
     BatchHeatmapResponse,
     HeatmapResponse,
 )
-from federated_pneumonia_detection.src.control.model_inferance import InferenceService
-from federated_pneumonia_detection.src.control.model_inferance import GradCAMService
+from federated_pneumonia_detection.src.control.model_inferance import (
+    GradCAMService,
+    InferenceService,
+)
 
 router = APIRouter(prefix="/api/inference", tags=["gradcam"])
 
@@ -94,7 +96,7 @@ async def generate_heatmaps_batch(
             service.validator.validate_or_raise(file)
             image = await service.processor.read_from_upload(file, convert_rgb=True)
             images.append((image, file.filename or "unknown"))
-        except HTTPException as e:
+        except HTTPException:
             images.append((None, file.filename or "unknown"))
 
     results = await gradcam_service.generate_batch_heatmaps(

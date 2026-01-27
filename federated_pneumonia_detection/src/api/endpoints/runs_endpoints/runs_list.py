@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.api.deps import get_db, get_analytics
+from federated_pneumonia_detection.src.api.deps import get_analytics, get_db
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.control.analytics.facade import AnalyticsFacade
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger

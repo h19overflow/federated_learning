@@ -6,8 +6,10 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from federated_pneumonia_detection.src.boundary.models.chat_session import ChatSession
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.session_manager import (
+from federated_pneumonia_detection.src.boundary.models.chat_session import (
+    ChatSession,
+)
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.session_manager import (  # noqa: E501
     SessionManager,
 )
 
@@ -228,7 +230,8 @@ class TestSessionManagerErrorHandling:
             # Should not raise exception
             session_manager.ensure_session("session_123", "query")
 
-            # Should NOT attempt to create session as fallback (per current implementation)
+            # Should NOT attempt to create session as fallback
+            # (per current implementation)
             mock_create.assert_not_called()
 
     def test_ensure_session_create_failure_logged(self, session_manager):

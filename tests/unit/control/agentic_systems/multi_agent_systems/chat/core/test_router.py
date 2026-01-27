@@ -6,13 +6,15 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.router import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core import (  # noqa: E501
+    router,
+)
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.router import (  # noqa: E501
     ROUTER_CLASSIFICATION_PROMPT,
     QueryClassification,
     _get_router_llm,
     classify_query,
 )
-import federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.router as router
 
 
 @pytest.fixture(autouse=True)
@@ -101,7 +103,7 @@ class TestGetRouterLLM:
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            llm = _get_router_llm()
+            _get_router_llm()
 
             # Verify with_structured_output was called with correct model
             mock_llm_instance.with_structured_output.assert_called_once()

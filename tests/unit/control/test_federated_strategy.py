@@ -4,7 +4,7 @@ Tests client configuration and metrics aggregation math.
 """
 
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 # Create mock classes FIRST
@@ -69,7 +69,6 @@ sys.modules["flwr"].MetricRecord = MockMetricRecord
 sys.modules["flwr.serverapp"].Grid = object
 sys.modules["flwr.serverapp.strategy"].FedAvg = MockFedAvg
 
-import pytest
 
 # Now import the mocked classes for type hints
 ArrayRecord = MockArrayRecord
@@ -77,10 +76,6 @@ ConfigRecord = MockConfigRecord
 Message = MockMessage
 MetricRecord = MockMetricRecord
 Grid = object
-
-from federated_pneumonia_detection.src.control.federated_new_version.core.custom_strategy import (
-    ConfigurableFedAvg,
-)
 
 
 class TestConfigurableFedAvg:

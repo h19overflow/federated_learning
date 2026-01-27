@@ -1,8 +1,8 @@
 """
 Data processing orchestrator module.
 
-This module provides the DataProcessor class which orchestrates data processing workflows
-by coordinating the utility functions from data_processing_functions.
+This module provides the DataProcessor class which orchestrates data processing
+workflows by coordinating the utility functions from data_processing_functions.
 
 Architecture:
 - data_processing_functions.py: Contains pure utility functions (the logic)

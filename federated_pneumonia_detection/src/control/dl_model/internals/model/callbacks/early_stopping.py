@@ -17,9 +17,9 @@ if TYPE_CHECKING:
 
 class EarlyStoppingSignalCallback(pl.Callback):
     """
-    Custom callback to detect when early stopping is triggered and signal frontend via WebSocket.
+    Custom callback to detect when early stopping is triggered and signal frontend via WebSocket.  # noqa: E501
 
-    This callback monitors the EarlyStopping callback state and sends a notification when
+    This callback monitors the EarlyStopping callback state and sends a notification when  # noqa: E501
     training stops due to early stopping conditions being met.
     """
 
@@ -53,7 +53,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
             if isinstance(callback, EarlyStopping):
                 self.early_stop_callback = callback
                 self.logger.info(
-                    f"[EarlyStoppingSignal] Found EarlyStopping callback with patience={callback.patience}",
+                    f"[EarlyStoppingSignal] Found EarlyStopping callback with patience={callback.patience}",  # noqa: E501
                 )
                 break
 
@@ -78,13 +78,13 @@ class EarlyStoppingSignalCallback(pl.Callback):
         if not self.early_stop_callback or not self.websocket_sender:
             return
 
-        # If current_epoch < max_epochs, training stopped early (likely due to early stopping)
+        # If current_epoch < max_epochs, training stopped early (likely due to early stopping)  # noqa: E501
         is_early_stopped = trainer.current_epoch < trainer.max_epochs
 
         if is_early_stopped:
             self.logger.info(
                 f"[EarlyStoppingSignal] Detected early stopping: "
-                f"current_epoch={trainer.current_epoch}, max_epochs={trainer.max_epochs}",
+                f"current_epoch={trainer.current_epoch}, max_epochs={trainer.max_epochs}",  # noqa: E501
             )
             self._signal_early_stopping(trainer)
             self.has_signaled = True
@@ -108,7 +108,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
 
             self.logger.info(
                 f"[EarlyStoppingSignal] 🛑 Sending early_stopping signal - "
-                f"Epoch: {current_epoch}, {metric_name}={best_value:.4f}, Patience: {self.early_stop_callback.patience}",
+                f"Epoch: {current_epoch}, {metric_name}={best_value:.4f}, Patience: {self.early_stop_callback.patience}",  # noqa: E501
             )
 
             # Send early stopping notification
@@ -120,7 +120,7 @@ class EarlyStoppingSignalCallback(pl.Callback):
             )
 
             self.logger.info(
-                f"[Early Stopping Signal] [OK] Successfully signaled at epoch {current_epoch}",
+                f"[Early Stopping Signal] [OK] Successfully signaled at epoch {current_epoch}",  # noqa: E501
             )
 
         except Exception as e:

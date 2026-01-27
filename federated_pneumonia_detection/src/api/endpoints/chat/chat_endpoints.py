@@ -5,7 +5,6 @@ from fastapi import APIRouter
 from federated_pneumonia_detection.src.api.endpoints.chat.chat_history import (
     router as history_router,
 )
-
 from federated_pneumonia_detection.src.api.endpoints.chat.chat_sessions import (
     router as sessions_router,
 )

@@ -7,28 +7,28 @@ from typing import Any, AsyncGenerator, Dict, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_helpers import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_helpers import (  # noqa: E501
     build_messages,
     build_tools,
     create_research_agent,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_basic import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_basic import (  # noqa: E501
     stream_basic,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_research import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_research import (  # noqa: E501
     stream_research,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_state import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_state import (  # noqa: E501
     StreamState,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.router import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.router import (  # noqa: E501
     classify_query,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.streaming import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.streaming import (  # noqa: E501
     SSEEventType,
     create_sse_event,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.prompts.research_prompts import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.prompts.research_prompts import (  # noqa: E501
     BASIC_MODE_SYSTEM_PROMPT,
     RESEARCH_MODE_SYSTEM_PROMPT,
 )
@@ -65,7 +65,7 @@ async def stream_query(
 
             # Inject history into basic mode system prompt
             if history_context:
-                enriched_prompt = f"{BASIC_MODE_SYSTEM_PROMPT}\n\nCONVERSATION HISTORY:\n{history_context}"
+                enriched_prompt = f"{BASIC_MODE_SYSTEM_PROMPT}\n\nCONVERSATION HISTORY:\n{history_context}"  # noqa: E501
             else:
                 enriched_prompt = BASIC_MODE_SYSTEM_PROMPT
 

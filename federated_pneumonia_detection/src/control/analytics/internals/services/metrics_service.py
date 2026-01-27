@@ -11,7 +11,6 @@ All read-heavy operations are cached via CacheProvider for performance.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -22,15 +21,14 @@ from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metri
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
     server_evaluation_crud,
 )
-from ..infrastructure import CacheProvider, cache_key
+
 from ..extractors import (
     CentralizedMetricExtractor,
     FederatedMetricExtractor,
     MetricExtractor,
 )
+from ..infrastructure import CacheProvider, cache_key
 from ..utils import (
-    calculate_summary_statistics,
-    find_best_epoch,
     transform_run_to_results,
 )
 

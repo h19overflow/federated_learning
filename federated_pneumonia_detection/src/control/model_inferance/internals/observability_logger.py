@@ -19,7 +19,7 @@ class ObservabilityLogger:
         model_version: str,
     ) -> None:
         """Log single prediction metrics."""
-        from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (
+        from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (  # noqa: E501
             get_wandb_tracker,
         )
 
@@ -43,7 +43,7 @@ class ObservabilityLogger:
         model_version: str,
     ) -> None:
         """Log batch prediction metrics."""
-        from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (
+        from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (  # noqa: E501
             get_wandb_tracker,
         )
 
@@ -65,7 +65,7 @@ class ObservabilityLogger:
 
     def log_error(self, error_type: str, message: str) -> None:
         """Log error to W&B."""
-        from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (
+        from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (  # noqa: E501
             get_wandb_tracker,
         )
 

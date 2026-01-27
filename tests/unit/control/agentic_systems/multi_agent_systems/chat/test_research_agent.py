@@ -1,8 +1,10 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import tool
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_helpers import (
+
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_helpers import (  # noqa: E501
     create_research_agent,
 )
 
@@ -32,7 +34,10 @@ def test_research_agent_graph_structure():
 
 @pytest.mark.asyncio
 async def test_research_agent_execution_calls_tools():
-    """Mock the graph execution and verify that if the LLM decides to search, the 'tools' node is called."""
+    """
+    Mock the graph execution and verify that if the LLM decides to search,
+    the 'tools' node is called.
+    """
     llm = MagicMock()
     # Mock llm.bind_tools to return a mock model
     mock_model = MagicMock()

@@ -108,7 +108,8 @@ def configure_fine_tuning(
 
     Args:
         features: Backbone features sequential
-        fine_tune_layers_count: Number of layers to fine-tune (negative unfreezes last n)
+        fine_tune_layers_count: Number of layers to fine-tune
+            (negative unfreezes last n)
         logger: Logger instance
     """
     # Freeze all backbone parameters by default
@@ -126,7 +127,8 @@ def configure_fine_tuning(
     total_unfrozen = sum(1 for param in features.parameters() if param.requires_grad)
 
     logger.info(
-        f"Fine-tuning: {total_unfrozen}/{total_frozen + total_unfrozen} backbone parameters unfrozen",
+        f"Fine-tuning: {total_unfrozen}/{total_frozen + total_unfrozen} "
+        f"backbone parameters unfrozen"
     )
 
 

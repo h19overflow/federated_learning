@@ -79,13 +79,13 @@ class BackfillService:
 
             db.commit()
             logger.info(
-                f"[Backfill] [OK] SUCCESS: Backfilled {rounds_processed} server evaluations"
+                f"[Backfill] [OK] SUCCESS: Backfilled {rounds_processed} server evaluations"  # noqa: E501
             )
 
             return {
                 "run_id": run_id,
                 "success": True,
-                "message": f"Successfully backfilled {rounds_processed} server evaluations",
+                "message": f"Successfully backfilled {rounds_processed} server evaluations",  # noqa: E501
                 "rounds_processed": rounds_processed,
             }
 

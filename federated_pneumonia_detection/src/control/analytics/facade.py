@@ -7,10 +7,11 @@ in app.state for performance.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
+
     from federated_pneumonia_detection.src.control.analytics.internals import (
         BackfillService,
         ExportService,
@@ -39,7 +40,7 @@ class AnalyticsFacade:
         export: Optional[ExportService] = None,
         backfill: Optional[BackfillService] = None,
     ):
-        """Initialize facade with analytics services (all optional for partial initialization).
+        """Initialize facade with analytics services (all optional for partial initialization).  # noqa: E501
 
         Args:
             metrics: MetricsService for metric extraction and aggregation.

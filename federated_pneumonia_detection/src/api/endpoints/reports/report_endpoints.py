@@ -48,7 +48,7 @@ async def generate_single_report(request: SingleReportRequest) -> Response:
         if request.clinical_interpretation:
             clinical_interpretation = {
                 "summary": request.clinical_interpretation.summary,
-                "confidence_explanation": request.clinical_interpretation.confidence_explanation,
+                "confidence_explanation": request.clinical_interpretation.confidence_explanation,  # noqa: E501
                 "risk_assessment": request.clinical_interpretation.risk_assessment,
                 "recommendations": request.clinical_interpretation.recommendations,
             }

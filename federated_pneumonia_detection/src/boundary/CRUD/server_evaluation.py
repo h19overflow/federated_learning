@@ -176,10 +176,10 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
             return {}
 
         # Exclude round 0 (initial untrained model) from best metrics calculation
-        # Round 0 often has misleading metrics (e.g., 100% recall from predicting all positive)
+        # Round 0 often has misleading metrics (e.g., 100% recall from predicting all positive)  # noqa: E501
         trained_evaluations = [e for e in evaluations if e.round_number > 0]
 
-        # Use trained evaluations for best metrics, fall back to all if only round 0 exists
+        # Use trained evaluations for best metrics, fall back to all if only round 0 exists  # noqa: E501
         evals_for_best = trained_evaluations if trained_evaluations else evaluations
 
         latest = evaluations[-1]
@@ -262,12 +262,12 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
         stats_dict: Dict[str, float],
     ) -> Optional[ServerEvaluation]:
         """
-        Update last ServerEvaluation record with final epoch stats in additional_metrics.
+        Update last ServerEvaluation record with final epoch stats in additional_metrics.  # noqa: E501
 
         Args:
             db: Database session
             run_id: Run ID
-            stats_dict: Dict with keys: sensitivity, specificity, precision_cm, accuracy_cm, f1_cm
+            stats_dict: Dict with keys: sensitivity, specificity, precision_cm, accuracy_cm, f1_cm  # noqa: E501
 
         Returns:
             Updated ServerEvaluation or None if not found
@@ -298,7 +298,7 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
 
         logger.info(
             f"Updated final epoch stats for run_id={run_id} in "
-            f"ServerEvaluation id={latest_evaluation.id}, round={latest_evaluation.round_number}"
+            f"ServerEvaluation id={latest_evaluation.id}, round={latest_evaluation.round_number}"  # noqa: E501
         )
 
         return latest_evaluation

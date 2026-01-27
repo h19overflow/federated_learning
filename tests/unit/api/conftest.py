@@ -13,13 +13,13 @@ Usage:
 Phase 1 Implementation - TEST_FAILURE_ANALYSIS_AND_FIX_PLAN.md
 """
 
+import datetime
 import os
 import sys
-import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 # Set test mode before any imports
@@ -37,16 +37,12 @@ sys.modules["federated_pneumonia_detection.src.boundary.engine"] = MagicMock(
     SessionLocal=MagicMock(),
 )
 
-from federated_pneumonia_detection.src.api.main import app
-from federated_pneumonia_detection.src.api import deps
-from federated_pneumonia_detection.src.control.model_inferance.inference_service import (
-    InferenceService,
-)
-from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
-    InferenceResponse,
+from federated_pneumonia_detection.src.api import deps  # noqa: E402
+from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (  # noqa: E402
     InferencePrediction,
-    PredictionClass,
+    InferenceResponse,
 )
+from federated_pneumonia_detection.src.api.main import app  # noqa: E402
 
 
 @pytest.fixture
@@ -113,8 +109,6 @@ def api_client_with_db(mock_db_session, mock_inference_service):
     Yields:
         TestClient: FastAPI test client with mocked database
     """
-    from fastapi.testclient import TestClient
-    from federated_pneumonia_detection.src.api.main import app
 
     def override_get_db():
         """Override function that yields mock session."""
@@ -302,8 +296,6 @@ def api_client_with_all_mocks(
     Yields:
         TestClient: FastAPI test client with all dependencies mocked
     """
-    from fastapi.testclient import TestClient
-    from federated_pneumonia_detection.src.api.main import app
     from federated_pneumonia_detection.src.api.deps import get_mcp_manager
 
     def override_get_db():
@@ -378,8 +370,6 @@ def api_client_with_inference(mock_db_session, mock_inference_service):
     Yields:
         TestClient: FastAPI test client with inference mocked
     """
-    from fastapi.testclient import TestClient
-    from federated_pneumonia_detection.src.api.main import app
 
     def override_get_db():
         yield mock_db_session
@@ -495,6 +485,7 @@ def dummy_image_bytes():
         bytes: JPEG image bytes
     """
     from io import BytesIO
+
     from PIL import Image
 
     img = Image.new("RGB", (1, 1), color="red")

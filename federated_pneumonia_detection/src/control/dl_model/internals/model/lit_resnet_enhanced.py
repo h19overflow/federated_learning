@@ -1,25 +1,27 @@
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Optional, Tuple, cast
+
 import pytorch_lightning as pl
 import torch
 from torchvision.models import ResNet50_Weights
-from federated_pneumonia_detection.src.control.dl_model.internals.model.optimizers.factory import (
+
+from federated_pneumonia_detection.src.control.dl_model.internals.model.optimizers.factory import (  # noqa: E501
     OptimizerFactory,
+)
+from federated_pneumonia_detection.src.control.dl_model.internals.model.utils.loss_factory import (  # noqa: E501
+    LossFactory,
+)
+from federated_pneumonia_detection.src.control.dl_model.internals.model.utils.metrics_handler import (  # noqa: E501
+    MetricsHandler,
+)
+from federated_pneumonia_detection.src.control.dl_model.internals.model.utils.step_logic import (  # noqa: E501
+    StepLogic,
+)
+from federated_pneumonia_detection.src.control.dl_model.internals.model.utils.summary_helper import (  # noqa: E501
+    SummaryHelper,
 )
 from federated_pneumonia_detection.src.entities.resnet_with_custom_head import (
     ResNetWithCustomHead,
-)
-from federated_pneumonia_detection.src.control.dl_model.internals.model.utils.loss_factory import (
-    LossFactory,
-)
-from federated_pneumonia_detection.src.control.dl_model.internals.model.utils.metrics_handler import (
-    MetricsHandler,
-)
-from federated_pneumonia_detection.src.control.dl_model.internals.model.utils.step_logic import (
-    StepLogic,
-)
-from federated_pneumonia_detection.src.control.dl_model.internals.model.utils.summary_helper import (
-    SummaryHelper,
 )
 
 

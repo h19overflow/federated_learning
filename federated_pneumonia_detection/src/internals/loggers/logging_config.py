@@ -1,10 +1,10 @@
 import logging
 import logging.config
-import os
-import yaml
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Dict
+
+import yaml
 
 # Context variable to store the request ID
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
@@ -27,10 +27,12 @@ def configure_logging(
     Configure logging using a YAML configuration file.
 
     Args:
-        config_path: Path to the logging configuration file relative to the repository root.
+        config_path: Path to the logging configuration file relative to the
+            repository root.
     """
     # Determine the repository root (assuming this file is in src/internals/loggers/)
-    # federated_pneumonia_detection/src/internals/loggers/logging_config.py -> 5 levels up to root
+    # federated_pneumonia_detection/src/internals/loggers/logging_config.py
+    # -> 5 levels up to root
     root_dir = Path(__file__).resolve().parents[4]
     abs_config_path = root_dir / config_path
 
@@ -40,7 +42,8 @@ def configure_logging(
 
     if not abs_config_path.exists():
         print(
-            f"Logging configuration file not found at {abs_config_path}. Using basic configuration."
+            f"Logging configuration file not found at {abs_config_path}. "
+            f"Using basic configuration."
         )
         logging.basicConfig(level=logging.INFO)
         return
@@ -54,7 +57,8 @@ def configure_logging(
             config["filters"] = {}
 
         config["filters"]["request_id"] = {
-            "()": "federated_pneumonia_detection.src.internals.loggers.logging_config.RequestIdFilter"
+            "()": "federated_pneumonia_detection.src.internals.loggers."
+            "logging_config.RequestIdFilter"
         }
 
         # Add the filter to the console handler

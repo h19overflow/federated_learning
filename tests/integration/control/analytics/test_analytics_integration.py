@@ -1,15 +1,16 @@
+from datetime import datetime
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
 
-from federated_pneumonia_detection.src.boundary.models.base import Base
 from federated_pneumonia_detection.src.boundary.models import Run, RunMetric
+from federated_pneumonia_detection.src.boundary.models.base import Base
 from federated_pneumonia_detection.src.control.analytics.facade import AnalyticsFacade
 from federated_pneumonia_detection.src.control.analytics.internals import (
-    SummaryService,
-    MetricsService,
     CacheProvider,
+    MetricsService,
+    SummaryService,
 )
 
 
@@ -17,8 +18,8 @@ def test_full_analytics_flow_centralized():
     # Setup Logic
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    session_factory = sessionmaker(bind=engine)
+    session = session_factory()
 
     try:
         # Arrange
@@ -33,7 +34,7 @@ def test_full_analytics_flow_centralized():
         session.commit()
         session.refresh(run)
 
-        # Create 2 RunMetric objects linked to this run (epoch 1: acc=0.8, epoch 2: acc=0.9)
+        # Create 2 RunMetric objects (epoch 1: acc=0.8, epoch 2: acc=0.9)  # noqa: E501
         metric1 = RunMetric(
             run_id=run.id, metric_name="val_acc", metric_value=0.8, step=1
         )

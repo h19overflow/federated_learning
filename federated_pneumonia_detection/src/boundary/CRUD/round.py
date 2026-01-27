@@ -14,7 +14,7 @@ class RoundCRUD:
         round_number: int,
         round_metadata: Optional[dict] = None,
     ):
-        """Create a new round for a specific client (thread-safe via database unique constraint)"""
+        """Create a new round for a specific client (thread-safe via database unique constraint)"""  # noqa: E501
         with get_session() as session:
             try:
                 new_round = Round(

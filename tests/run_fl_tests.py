@@ -51,13 +51,13 @@ def main():
     elif args.suite == "integration":
         test_path = "tests/integration/federated_learning/"
     elif args.suite == "all":
-        test_path = "tests/unit/control/federated_learning/ tests/integration/federated_learning/"
+        test_path = "tests/unit/control/federated_learning/ tests/integration/federated_learning/"  # noqa: E501
     elif args.suite == "coverage":
         base_cmd.extend(
             [
                 "tests/unit/control/federated_learning/",
                 "tests/integration/federated_learning/",
-                "--cov=federated_pneumonia_detection.src.control.federated_learning",
+                "--cov=federated_pneumonia_detection.src.control.federated_learning",  # noqa: E501
                 "--cov-report=html",
                 "--cov-report=term",
             ],

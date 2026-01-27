@@ -140,7 +140,7 @@ class RunCRUD(BaseCRUD[Run]):
             self.logger.info(
                 f"Run {run_id} updated: status={updated_run.status}, "
                 f"end_time={updated_run.end_time}, "
-                f"duration={(updated_run.end_time - updated_run.start_time).total_seconds() / 60:.2f} minutes",
+                f"duration={(updated_run.end_time - updated_run.start_time).total_seconds() / 60:.2f} minutes",  # noqa: E501
             )
 
         return updated_run
@@ -244,7 +244,7 @@ class RunCRUD(BaseCRUD[Run]):
             db: Database session
             run_id: Run ID to associate metrics with
             epoch_metrics: List of epoch metric dictionaries
-            federated_context: Optional dict with 'client_id' and 'round_number' for federated mode
+            federated_context: Optional dict with 'client_id' and 'round_number' for federated mode  # noqa: E501
         """
         try:
             client_id, round_id = self._resolve_federated_context(db, federated_context)
@@ -482,7 +482,6 @@ class RunCRUD(BaseCRUD[Run]):
         else:
             return "other"
 
-   
     def _transform_epoch_to_metrics(
         self,
         epoch_data: Dict[str, Any],

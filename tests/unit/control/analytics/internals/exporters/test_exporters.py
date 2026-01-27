@@ -1,14 +1,12 @@
-import json
 import csv
+import json
 from io import StringIO
+
 import pytest
-from federated_pneumonia_detection.src.control.analytics.internals.exporters.csv_exporter import (
+
+from federated_pneumonia_detection.src.control.analytics.internals.exporters import (
     CSVExporter,
-)
-from federated_pneumonia_detection.src.control.analytics.internals.exporters.json_exporter import (
     JSONExporter,
-)
-from federated_pneumonia_detection.src.control.analytics.internals.exporters.text_exporter import (
     TextReportExporter,
 )
 

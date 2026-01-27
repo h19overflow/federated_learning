@@ -4,7 +4,7 @@ Tests for contracts module (shared types and enums).
 
 import pytest
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.contracts import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.contracts import (  # noqa: E501
     AgentEvent,
     AgentEventType,
     ChatInput,

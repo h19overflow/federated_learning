@@ -12,6 +12,7 @@ def get_logger(name: str) -> logging.Logger:
 
 def setup_logger(name: str) -> logging.Logger:
     """
-    Legacy setup_logger. Now just calls get_logger as configuration is handled centrally.
+    Legacy setup_logger. Now just calls get_logger as configuration is
+    handled centrally.
     """
     return get_logger(name)

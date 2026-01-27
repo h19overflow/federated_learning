@@ -55,7 +55,7 @@ def get_all_chat_sessions() -> List[ChatSession]:
         for session in sessions:
             db.expunge(
                 session,
-            )  # Detach each instance so attributes remain accessible after session closes
+            )  # Detach each instance so attributes remain accessible after session closes  # noqa: E501
         return sessions
     finally:
         db.close()

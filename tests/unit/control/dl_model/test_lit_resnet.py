@@ -1,11 +1,13 @@
+from unittest.mock import ANY, MagicMock, patch
+
 import pytest
 import torch
 import torch.nn as nn
-from unittest.mock import MagicMock, patch, ANY
-from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
+
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (  # noqa: E501
     LitResNetEnhanced,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.model.losses import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.losses import (  # noqa: E501
     FocalLoss,
     FocalLossWithLabelSmoothing,
 )

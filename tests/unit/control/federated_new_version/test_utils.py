@@ -5,7 +5,10 @@ Tests federated learning utility functions.
 """
 
 import sys
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock
+
+import pandas as pd
+import pytest
 
 # Mock flwr modules before any imports
 sys.modules["flwr"] = MagicMock()
@@ -14,15 +17,11 @@ sys.modules["flwr.serverapp.strategy"] = MagicMock()
 sys.modules["flwr_datasets"] = MagicMock()
 sys.modules["flwr_datasets.partitioner"] = MagicMock()
 
-import pandas as pd
-import pytest
-
-from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
+from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (  # noqa: E402,E501
     _convert_metric_record_to_dict,
     _create_metric_record_dict,
     _extract_metrics_from_result,
     _prepare_evaluation_dataframe,
-    _prepare_partition_and_split,
     filter_list_of_dicts,
 )
 
@@ -94,7 +93,7 @@ class TestFilterListOfDicts:
         assert result["train_loss"] == 0.3
 
     def test_filter_preserves_zero_values(self):
-        """Test that legitimate zero values are preserved, not replaced with defaults."""
+        """Test zero values are preserved, not replaced with defaults."""
         data = [{"epoch": 1, "train_loss": 0.0, "train_acc": 0.0}]
         fields = ["epoch", "train_loss", "train_acc", "val_f1"]
         result = filter_list_of_dicts(data, fields)
@@ -445,7 +444,7 @@ class TestPrepareEvaluationDataframe:
 
         assert isinstance(result, pd.DataFrame)
 
-    def test_no_patientId_column(self):
+    def test_no_patient_id_column(self):
         """Test handling when patientId column is missing."""
         df = pd.DataFrame({"class": ["Normal", "Pneumonia"]})
 

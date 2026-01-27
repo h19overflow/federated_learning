@@ -16,14 +16,13 @@ from federated_pneumonia_detection.config.config_manager import (
 from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import RunMetricCRUD
 from federated_pneumonia_detection.src.boundary.engine import get_session
-
 from federated_pneumonia_detection.src.control.analytics import AnalyticsFacade
 
 if TYPE_CHECKING:
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (  # noqa: E501
         MCPManager,
     )
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (  # noqa: E501
         QueryEngine,
     )
     from federated_pneumonia_detection.src.control.model_inferance import (
@@ -95,7 +94,7 @@ def get_query_engine(app_state=None) -> Optional["QueryEngine"]:
     global _query_engine
     if _query_engine is None:
         try:
-            from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
+            from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (  # noqa: E501
                 QueryEngine,
             )
 
@@ -113,7 +112,7 @@ def get_mcp_manager() -> "MCPManager":
     """Get MCPManager singleton."""
     global _mcp_manager
     if _mcp_manager is None:
-        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
+        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (  # noqa: E501
             MCPManager,
         )
 
@@ -165,7 +164,7 @@ def get_analytics(request: Request) -> Optional[AnalyticsFacade]:
 
 def get_gradcam_service(
     service: "InferenceService" = Depends(get_inference_service),
-) -> "GradCAMService":
+):  # noqa: F821
     """Get GradCAMService singleton for dependency injection.
 
     Args:

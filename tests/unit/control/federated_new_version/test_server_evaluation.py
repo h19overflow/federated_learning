@@ -6,12 +6,12 @@ Tests server-side evaluation functions.
 
 from unittest.mock import MagicMock, Mock, patch
 
+import pandas as pd
 import pytest
 import torch
-import pandas as pd
 from flwr.app import ArrayRecord, MetricRecord
 
-from federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation import (
+from federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation import (  # noqa: E501
     create_central_evaluate_fn,
 )
 
@@ -25,7 +25,9 @@ class TestCreateCentralEvaluateFn:
     @patch(
         "federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.XRayDataModule",
     )
-    @patch("federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv")
+    @patch(
+        "federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv"
+    )
     @patch("torchmetrics.Precision")
     @patch("torchmetrics.Recall")
     @patch("torchmetrics.F1Score")
@@ -139,10 +141,16 @@ class TestCreateCentralEvaluateFn:
             assert "server_round" not in str(e)
             assert "arrays" not in str(e)
 
-    @patch("federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.LitResNetEnhanced")
-    @patch("federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv")
+    @patch(
+        "federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.LitResNetEnhanced"
+    )
+    @patch(
+        "federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv"
+    )
     @patch("torch.cuda.is_available", return_value=False)
-    def test_evaluate_fn_loads_data(self, mock_cuda, mock_read_csv, mock_model_class, mock_config_manager):
+    def test_evaluate_fn_loads_data(
+        self, mock_cuda, mock_read_csv, mock_model_class, mock_config_manager
+    ):
         """Test that evaluate function loads CSV data."""
         mock_read_csv.return_value = pd.DataFrame({"patientId": [1, 2]})
 
@@ -170,7 +178,9 @@ class TestCreateCentralEvaluateFn:
 
         mock_read_csv.assert_called_once_with("test.csv")
 
-    @patch("federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv")
+    @patch(
+        "federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv"
+    )
     def test_evaluate_fn_handles_missing_filename(
         self,
         mock_read_csv,
@@ -203,20 +213,22 @@ class TestCreateCentralEvaluateFn:
         except Exception:
             pass  # Expected due to other mocks
 
-    @patch("federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv")
-    def test_evaluate_fn_handles_missing_patientId(
+    @patch(
+        "federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation.pd.read_csv"
+    )
+    def test_evaluate_fn_handles_missing_patient_id(
         self,
         mock_read_csv,
         mock_config_manager,
     ):
         """Test that evaluate function handles missing patientId column gracefully."""
-        df_without_patientId = pd.DataFrame(
+        df_without_patient_id = pd.DataFrame(
             {
                 "filename": ["1.png", "2.png"],
                 "class": ["Normal", "Pneumonia"],
             },
         )
-        mock_read_csv.return_value = df_without_patientId
+        mock_read_csv.return_value = df_without_patient_id
 
         evaluate_fn = create_central_evaluate_fn(
             config_manager=mock_config_manager,

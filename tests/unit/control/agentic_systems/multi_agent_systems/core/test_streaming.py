@@ -1,12 +1,14 @@
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_research import (
+
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_research import (  # noqa: E501
     stream_research,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_state import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.stream_state import (  # noqa: E501
     StreamState,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.streaming import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.streaming import (  # noqa: E501
     SSEEventType,
 )
 

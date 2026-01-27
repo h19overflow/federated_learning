@@ -11,7 +11,7 @@ try:
 except ImportError:
     import tomli as tomllib
 
-from federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment import (
+from federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment import (  # noqa: E501
     update_flwr_config,
 )
 

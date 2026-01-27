@@ -16,7 +16,7 @@ from langchain_core.tools import BaseTool, tool
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (  # noqa: E501
         QueryEngine,
     )
 

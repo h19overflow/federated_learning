@@ -1,5 +1,5 @@
-import pytest
-from unittest.mock import MagicMock, ANY
+from unittest.mock import ANY
+
 from federated_pneumonia_detection.src.api.deps import get_analytics
 
 
@@ -9,7 +9,8 @@ def test_list_runs_filtering(api_client_with_db, mock_facade, mock_run_crud):
     Mocks analytics.summary.list_runs_with_summaries and asserts 200 response.
     Also mocks run_crud.get_multi to satisfy instruction requirements.
     """
-    # Mock run_crud.get_multi (as requested, though endpoint uses list_with_filters via facade)
+    # Mock run_crud.get_multi (as requested,
+    # though endpoint uses list_with_filters via facade)
     mock_run_crud.get_multi.return_value = []
 
     # Mock response from facade summary service

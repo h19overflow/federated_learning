@@ -1,14 +1,16 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 from fastapi.testclient import TestClient
-from federated_pneumonia_detection.src.api.main import app
+
 from federated_pneumonia_detection.src.api.deps import (
-    get_db,
     get_analytics,
+    get_db,
     get_experiment_crud,
 )
-from federated_pneumonia_detection.src.control.analytics.facade import AnalyticsFacade
+from federated_pneumonia_detection.src.api.main import app
 from federated_pneumonia_detection.src.boundary.CRUD.run import RunCRUD
+from federated_pneumonia_detection.src.control.analytics.facade import AnalyticsFacade
 
 
 @pytest.fixture

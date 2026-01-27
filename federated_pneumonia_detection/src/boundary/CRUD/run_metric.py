@@ -142,7 +142,7 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
         Args:
             db: Database session
             run_id: Run ID
-            stats_dict: Dict with keys: sensitivity, specificity, precision_cm, accuracy_cm, f1_cm
+            stats_dict: Dict with keys: sensitivity, specificity, precision_cm, accuracy_cm, f1_cm  # noqa: E501
             final_epoch: Final epoch number (step value)
 
         Returns:

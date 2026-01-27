@@ -66,7 +66,7 @@ async def get_federated_rounds(
         )
 
         logger.info(
-            f"[FederatedRounds] Run {run_id} - Found {len(server_evaluations)} server evaluations",
+            f"[FederatedRounds] Run {run_id} - Found {len(server_evaluations)} server evaluations",  # noqa: E501
         )
 
         num_clients = 0
@@ -98,7 +98,7 @@ async def get_federated_rounds(
             )
 
         logger.info(
-            f"[FederatedRounds] Run {run_id} - Returning {len(rounds_list)} rounds with server evaluation metrics",
+            f"[FederatedRounds] Run {run_id} - Returning {len(rounds_list)} rounds with server evaluation metrics",  # noqa: E501
         )
 
         return {

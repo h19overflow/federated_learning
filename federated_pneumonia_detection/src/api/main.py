@@ -1,4 +1,4 @@
-# >   uvicorn federated_pneumonia_detection.src.api.main:app --reload --host 127.0.0.1 --port 8001
+# >   uvicorn federated_pneumonia_detection.src.api.main:app --reload --host 127.0.0.1 --port 8001  # noqa: E501
 import logging
 import os
 import uuid
@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from federated_pneumonia_detection.config.settings import get_settings
 from federated_pneumonia_detection.src.api.endpoints.chat import (
     chat_router,
 )
@@ -21,16 +22,16 @@ from federated_pneumonia_detection.src.api.endpoints.experiments import (
     federated_endpoints,
     status_endpoints,
 )
-from federated_pneumonia_detection.src.api.endpoints.inference.batch_prediction_endpoints import (
+from federated_pneumonia_detection.src.api.endpoints.inference.batch_prediction_endpoints import (  # noqa: E501
     router as inference_batch_router,
 )
-from federated_pneumonia_detection.src.api.endpoints.inference.gradcam_endpoints import (
+from federated_pneumonia_detection.src.api.endpoints.inference.gradcam_endpoints import (  # noqa: E501
     router as inference_gradcam_router,
 )
 from federated_pneumonia_detection.src.api.endpoints.inference.health_endpoints import (
     router as inference_health_router,
 )
-from federated_pneumonia_detection.src.api.endpoints.inference.single_prediction_endpoint import (
+from federated_pneumonia_detection.src.api.endpoints.inference.single_prediction_endpoint import (  # noqa: E501
     router as inference_prediction_router,
 )
 from federated_pneumonia_detection.src.api.endpoints.reports import (
@@ -53,7 +54,6 @@ from federated_pneumonia_detection.src.internals.loggers.logging_config import (
     configure_logging,
     request_id_ctx,
 )
-from federated_pneumonia_detection.config.settings import get_settings
 
 env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)

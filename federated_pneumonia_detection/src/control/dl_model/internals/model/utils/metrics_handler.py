@@ -13,7 +13,7 @@ import torchmetrics
 class MetricsHandler(nn.Module):
     """
     Handles initialization, update, and logging of metrics for LitResNetEnhanced.
-    Provides a clean interface to manage 13 different metrics across train/val/test stages.
+    Provides a clean interface to manage 13 different metrics across train/val/test stages.  # noqa: E501
     """
 
     def __init__(self, num_classes: int):

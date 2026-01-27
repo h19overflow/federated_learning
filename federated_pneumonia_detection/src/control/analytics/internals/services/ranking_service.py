@@ -5,8 +5,9 @@ from typing import Any, Dict, List
 
 from sqlalchemy.orm import Session
 
-from ..infrastructure import CacheProvider
 from federated_pneumonia_detection.src.internals.loggers.logger import get_logger
+
+from ..infrastructure import CacheProvider
 
 logger = get_logger(__name__)
 

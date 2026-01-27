@@ -7,7 +7,7 @@ from typing import Tuple
 import pytorch_lightning as pl
 import torch
 
-from federated_pneumonia_detection.src.control.dl_model.internals.model.utils.metrics_handler import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.utils.metrics_handler import (  # noqa: E501
     MetricsHandler,
 )
 

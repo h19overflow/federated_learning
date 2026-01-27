@@ -1,7 +1,9 @@
-import pytest
 from datetime import datetime
 from unittest.mock import MagicMock
-from federated_pneumonia_detection.src.control.analytics.internals.utils.transformers import (
+
+import pytest
+
+from federated_pneumonia_detection.src.control.analytics.internals.utils import (
     calculate_summary_statistics,
     find_best_epoch,
     transform_run_to_results,

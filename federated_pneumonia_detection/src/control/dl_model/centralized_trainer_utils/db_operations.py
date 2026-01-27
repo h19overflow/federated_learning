@@ -2,12 +2,11 @@
 
 import logging
 from datetime import datetime
-from typing import Optional,cast
-
+from typing import Optional, cast
 
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.control.analytics.internals.services.final_epoch_stats_service import (
+from federated_pneumonia_detection.src.control.analytics.internals.services.final_epoch_stats_service import (  # noqa: E501
     FinalEpochStatsService,
 )
 
@@ -58,7 +57,7 @@ def _get_final_epoch_cm(db, run_id: int):
     Delegates to FinalEpochStatsService.get_cm_centralized().
 
     Returns:
-        Dict with keys: true_positives, true_negatives, false_positives, false_negatives, epoch
+        Dict with keys: true_positives, true_negatives, false_positives, false_negatives, epoch  # noqa: E501
         or None if incomplete data
     """
     return FinalEpochStatsService.get_cm_centralized(db, run_id)

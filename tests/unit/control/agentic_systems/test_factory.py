@@ -6,13 +6,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.base_agent import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.base_agent import (  # noqa: E501
     BaseAgent,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (
-    ArxivAugmentedEngine,
-)
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.factory import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.factory import (  # noqa: E501
     AgentFactory,
     get_agent_factory,
 )
@@ -42,7 +39,7 @@ class TestAgentFactory:
             mock_constructor.assert_called_once()
 
             # Verify caching
-            agent2 = factory.get_chat_agent()
+            factory.get_chat_agent()
             mock_constructor.assert_called_once()  # Still only called once
 
     def test_get_chat_agent_caches_agent(self, mock_arxiv_engine):
@@ -209,7 +206,9 @@ class TestGetAgentFactoryReset:
         factory1 = get_agent_factory()
 
         # Reset the global singleton
-        import federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.factory as factory_module
+        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems import (  # noqa: E501
+            factory as factory_module,
+        )
 
         factory_module._agent_factory = None
 

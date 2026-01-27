@@ -4,7 +4,7 @@ Provides endpoint for running inference on individual chest X-ray images
 with optional AI-generated clinical interpretation.
 """
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile
 
 from federated_pneumonia_detection.src.api.deps import get_inference_service
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (

@@ -6,7 +6,7 @@ Tests image file validation logic including format, content type checks.
 import pytest
 from fastapi import HTTPException, UploadFile
 
-from federated_pneumonia_detection.src.control.model_inferance.internals.image_validator import (
+from federated_pneumonia_detection.src.control.model_inferance.internals.image_validator import (  # noqa: E501
     ImageValidator,
 )
 

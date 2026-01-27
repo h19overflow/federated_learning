@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
-from federated_pneumonia_detection.src.api.endpoints.experiments.utils.status_utils import (
+from federated_pneumonia_detection.src.api.endpoints.experiments.utils.status_utils import (  # noqa: E501
     LOGS_DIR,
     calculate_progress,
     find_experiment_log_file,
@@ -42,8 +42,8 @@ class TestFindExperimentLogFile:
 
     def test_find_experiment_log_file_not_found(self, tmp_path):
         """Test finding non-existent experiment log."""
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.status_utils.LOGS_DIR",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.status_utils.LOGS_DIR",  # noqa: E501
             tmp_path,
         ):
             result = find_experiment_log_file("nonexistent")
@@ -60,8 +60,8 @@ class TestFindExperimentLogFile:
         with open(log_file, "w") as f:
             json.dump(log_data, f)
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.status_utils.LOGS_DIR",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.status_utils.LOGS_DIR",  # noqa: E501
             logs_dir,
         ):
             result = find_experiment_log_file("2025_01_21")
@@ -70,8 +70,8 @@ class TestFindExperimentLogFile:
 
     def test_find_experiment_log_logs_dir_not_exists(self):
         """Test behavior when logs directory doesn't exist."""
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.status_utils.LOGS_DIR",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.status_utils.LOGS_DIR",  # noqa: E501
             Path("/nonexistent/path"),
         ):
             result = find_experiment_log_file("test")

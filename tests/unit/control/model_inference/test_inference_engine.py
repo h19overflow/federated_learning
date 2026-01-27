@@ -1,12 +1,13 @@
-import pytest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 import torch
 from PIL import Image
-from pathlib import Path
 from torchvision import transforms
 
 # Import the class under test
-from federated_pneumonia_detection.src.control.model_inferance.internals.inference_engine import (
+from federated_pneumonia_detection.src.control.model_inferance.internals.inference_engine import (  # noqa: E501
     InferenceEngine,
 )
 
@@ -24,7 +25,8 @@ def mock_lit_resnet(mock_model):
     """Fixture for mocking LitResNetEnhanced."""
     # LitResNetEnhanced is imported inside _load_model from its original location
     with patch(
-        "federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced.LitResNetEnhanced"
+        "federated_pneumonia_detection.src.control.dl_model.internals.model."
+        "lit_resnet_enhanced.LitResNetEnhanced"
     ) as mock:
         mock.load_from_checkpoint.return_value = mock_model
         yield mock

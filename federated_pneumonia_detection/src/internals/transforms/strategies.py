@@ -58,7 +58,8 @@ class CLAHEStrategy(XRayTransformStrategy):
         self.clip_limit = clip_limit
 
     def apply(self, image: Image.Image) -> Image.Image:
-        # NOTE: This implementation currently returns the original image as cv2 is not available.
+        # NOTE: This implementation currently returns the original image as
+        # cv2 is not available.
         logging.warning("cv2 not installed, skipping adaptive histogram equalization")
         return image
 

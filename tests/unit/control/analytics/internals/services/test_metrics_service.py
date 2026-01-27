@@ -1,6 +1,6 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from federated_pneumonia_detection.src.control.analytics.internals.services.metrics_service import (
+
+from federated_pneumonia_detection.src.control.analytics.internals.services import (
     MetricsService,
 )
 

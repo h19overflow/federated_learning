@@ -85,19 +85,19 @@ async def execute_tool_async(
     logger = logging.getLogger(__name__)
 
     logger.debug(
-        f"[ToolExec] Searching for tool '{tool_name}' among {len(tools)} available tools",
+        f"[ToolExec] Searching for tool '{tool_name}' among {len(tools)} available tools",  # noqa: E501
     )
 
     for tool in tools:
         if tool.name == tool_name:
             try:
                 logger.debug(
-                    f"[ToolExec] Found tool '{tool_name}'. Invoking with args: {tool_args}",
+                    f"[ToolExec] Found tool '{tool_name}'. Invoking with args: {tool_args}",  # noqa: E501
                 )
                 result = await tool.ainvoke(tool_args)
                 result_preview = str(result)[:200] if result else "None"
                 logger.info(
-                    f"[ToolExec] Tool {tool_name} executed successfully. Result length: {len(str(result))}, Preview: {result_preview}",
+                    f"[ToolExec] Tool {tool_name} executed successfully. Result length: {len(str(result))}, Preview: {result_preview}",  # noqa: E501
                 )
                 return result, None
             except Exception as e:

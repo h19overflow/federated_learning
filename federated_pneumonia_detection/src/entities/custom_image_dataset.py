@@ -1,6 +1,7 @@
 """
 Custom PyTorch Dataset for X-ray image loading and processing.
-Handles image file loading, transformations, and label management with comprehensive error handling.
+Handles image file loading, transformations, and label management with
+comprehensive error handling.
 """
 
 from pathlib import Path
@@ -149,12 +150,12 @@ class CustomImageDataset(Dataset):
             RuntimeError: If image loading fails
         """
         if idx >= len(self.valid_indices) or idx < 0:
-            self.logger.error(
-                f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}",
+            error_msg = (
+                f"Index {idx} out of bounds for dataset of "
+                f"size {len(self.valid_indices)}"
             )
-            raise IndexError(
-                f"Index {idx} out of bounds for dataset of size {len(self.valid_indices)}",
-            )
+            self.logger.error(error_msg)
+            raise IndexError(error_msg)
 
         # Get the actual index from valid indices
         actual_idx = self.valid_indices[idx]

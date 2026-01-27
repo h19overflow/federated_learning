@@ -6,7 +6,7 @@ from flwr.serverapp import Grid, ServerApp
 
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation import (
+from federated_pneumonia_detection.src.control.federated_new_version.core.server_evaluation import (  # noqa: E501
     create_central_evaluate_fn,
 )
 from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (

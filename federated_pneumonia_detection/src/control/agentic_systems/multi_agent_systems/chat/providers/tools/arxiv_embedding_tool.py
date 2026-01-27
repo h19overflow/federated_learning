@@ -31,7 +31,7 @@ class EmbedArxivPaperInput(BaseModel):
     """Input schema for arxiv embedding tool."""
 
     paper_id: str = Field(
-        description="The arxiv paper ID to embed (e.g., '1706.03762' for 'Attention Is All You Need')",
+        description="The arxiv paper ID to embed (e.g., '1706.03762' for 'Attention Is All You Need')",  # noqa: E501
     )
 
 
@@ -63,7 +63,7 @@ async def _download_paper_via_mcp(paper_id: str) -> Dict[str, Any]:
     Returns:
         Dict with 'status', 'path', and optionally 'error'
     """
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (  # noqa: E501
         MCPManager,
     )
 
@@ -209,7 +209,7 @@ async def embed_arxiv_paper_async(paper_id: str) -> Dict[str, Any]:
     logger.info(f"[EmbedTool] File path from download: {file_path}")
     if not file_path:
         logger.error(
-            f"[EmbedTool] No 'resource_uri' or 'path' key in download_result. Keys present: {download_result.keys()}",
+            f"[EmbedTool] No 'resource_uri' or 'path' key in download_result. Keys present: {download_result.keys()}",  # noqa: E501
         )
         return {
             "success": False,
@@ -261,7 +261,7 @@ async def embed_arxiv_paper_async(paper_id: str) -> Dict[str, Any]:
         "success": True,
         "paper_id": paper_id,
         "chunks_embedded": len(documents),
-        "message": f"Successfully embedded paper {paper_id} with {len(documents)} chunks into the knowledge base.",
+        "message": f"Successfully embedded paper {paper_id} with {len(documents)} chunks into the knowledge base.",  # noqa: E501
     }
 
 

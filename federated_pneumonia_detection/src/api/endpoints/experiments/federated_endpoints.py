@@ -40,8 +40,10 @@ async def start_federated_training(
 
     **Parameters:**
     - `data_zip`: ZIP file containing Images/ directory and metadata CSV (required)
-    - `experiment_name`: Identifier for this training run (default: "pneumonia_federated")
-    - `csv_filename`: Metadata CSV filename inside archive (default: "stage2_train_metadata.csv")
+    - `experiment_name`: Identifier for this training run
+        (default: "pneumonia_federated")
+    - `csv_filename`: Metadata CSV filename inside archive
+        (default: "stage2_train_metadata.csv")
     - `num_server_rounds`: Number of federated learning rounds (default: 3)
 
     **Status Tracking:**
@@ -69,7 +71,7 @@ async def start_federated_training(
         )
 
         logger.info(
-            f"Federated training queued: {experiment_name} (rounds={num_server_rounds})",
+            f"Federated training queued: {experiment_name} (rounds={num_server_rounds})",  # noqa: E501
         )
 
         return {

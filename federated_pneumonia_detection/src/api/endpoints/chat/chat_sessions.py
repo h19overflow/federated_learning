@@ -11,7 +11,7 @@ from federated_pneumonia_detection.src.api.endpoints.schema import (
     CreateSessionRequest,
 )
 from federated_pneumonia_detection.src.boundary.models.chat_session import ChatSession
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.session_manager import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.session_manager import (  # noqa: E501
     SessionManager,
 )
 

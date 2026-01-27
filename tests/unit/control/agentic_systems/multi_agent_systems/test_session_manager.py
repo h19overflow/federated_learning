@@ -1,6 +1,8 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.session_manager import (
+
+import pytest
+
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.session_manager import (  # noqa: E501
     SessionManager,
 )
 

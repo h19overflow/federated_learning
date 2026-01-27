@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.router import (
-    classify_query,
+
+import pytest
+
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.router import (  # noqa: E501
     QueryClassification,
+    classify_query,
 )
 
 

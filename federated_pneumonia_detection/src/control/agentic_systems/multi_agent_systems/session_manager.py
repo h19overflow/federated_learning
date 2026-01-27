@@ -6,7 +6,6 @@ import logging
 import threading
 from typing import List, Optional, Tuple
 
-
 from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
     create_chat_session,
     delete_chat_session,
@@ -14,10 +13,10 @@ from federated_pneumonia_detection.src.boundary.CRUD.chat_history import (
     get_chat_session,
 )
 from federated_pneumonia_detection.src.boundary.models.chat_session import ChatSession
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history import (  # noqa: E501
     ChatHistoryManager,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.titles import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.titles import (  # noqa: E501
     generate_chat_title,
 )
 

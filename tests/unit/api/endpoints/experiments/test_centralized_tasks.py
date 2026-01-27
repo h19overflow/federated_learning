@@ -8,14 +8,14 @@ Tests cover:
 - Result processing
 """
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks import (
+from federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks import (  # noqa: E501
     run_centralized_training_task,
 )
-import os
 
 
 class TestRunCentralizedTrainingTask:
@@ -31,8 +31,8 @@ class TestRunCentralizedTrainingTask:
         source_path = str(tmp_path / "data")
         os.makedirs(source_path)
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",  # noqa: E501
             return_value=mock_centralized_trainer,
         ):
             result = run_centralized_training_task(
@@ -62,8 +62,8 @@ class TestRunCentralizedTrainingTask:
             },
         }
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",  # noqa: E501
             return_value=mock_trainer,
         ):
             result = run_centralized_training_task(
@@ -86,8 +86,8 @@ class TestRunCentralizedTrainingTask:
         mock_trainer = MagicMock()
         mock_trainer.train.side_effect = RuntimeError("Training failed")
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",  # noqa: E501
             return_value=mock_trainer,
         ):
             result = run_centralized_training_task(
@@ -119,8 +119,8 @@ class TestRunCentralizedTrainingTask:
             "best_model_path": str(tmp_path / "checkpoints" / "best.ckpt"),
         }
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",  # noqa: E501
             return_value=mock_centralized_trainer,
         ):
             result = run_centralized_training_task(
@@ -151,8 +151,8 @@ class TestRunCentralizedTrainingTask:
             "experiment_2025_01_21",
         ]
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",  # noqa: E501
             return_value=mock_trainer,
         ):
             for exp_name in experiment_names:
@@ -174,8 +174,8 @@ class TestRunCentralizedTrainingTask:
         mock_trainer = MagicMock()
         mock_trainer.train.side_effect = FileNotFoundError("CSV not found")
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",  # noqa: E501
             return_value=mock_trainer,
         ):
             result = run_centralized_training_task(
@@ -198,8 +198,8 @@ class TestRunCentralizedTrainingTask:
         mock_trainer = MagicMock()
         mock_trainer.train.side_effect = ValueError("Invalid configuration")
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",  # noqa: E501
             return_value=mock_trainer,
         ):
             result = run_centralized_training_task(
@@ -224,8 +224,8 @@ class TestRunCentralizedTrainingTask:
             "final_metrics": {},
         }
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",  # noqa: E501
             return_value=mock_trainer,
         ):
             result = run_centralized_training_task(
@@ -258,12 +258,15 @@ class TestRunCentralizedTrainingTask:
         # Create mock logger
         mock_logger = Mock()
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
-            return_value=mock_centralized_trainer,
-        ), patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.get_logger",
-            return_value=mock_logger,
+        with (
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",  # noqa: E501
+                return_value=mock_centralized_trainer,
+            ),
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.get_logger",  # noqa: E501
+                return_value=mock_logger,
+            ),
         ):
             run_centralized_training_task(
                 source_path=source_path,
@@ -274,6 +277,9 @@ class TestRunCentralizedTrainingTask:
             )
 
             # Check that training was logged via mock logger
-            log_messages = [str(call[0][0]) if call[0] else str(call[1]) if call[1] else "" for call in mock_logger.info.call_args_list]
+            log_messages = [
+                str(call[0][0]) if call[0] else str(call[1]) if call[1] else ""
+                for call in mock_logger.info.call_args_list
+            ]
             assert any("CENTRALIZED TRAINING" in msg for msg in log_messages)
             assert any("TRAINING COMPLETED" in msg for msg in log_messages)

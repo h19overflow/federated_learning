@@ -1,12 +1,13 @@
-import pytest
 from unittest.mock import MagicMock, patch
-import sys
+
+import pytest
 
 
 @pytest.fixture
 def mock_db_session():
     """Mock database session for chat tests."""
     from sqlalchemy.orm import Session
+
     mock_session = MagicMock(spec=Session)
     mock_session.query.return_value = MagicMock()
     mock_session.add.return_value = None
@@ -78,16 +79,16 @@ def client(mock_agent_factory, mock_session_manager, mock_db_session):
     """FastAPI TestClient with mocks."""
     from fastapi.testclient import TestClient
 
-    # Import app here to avoid top-level side effects
-    from federated_pneumonia_detection.src.api.main import app
-
     # Mock dependencies using dependency_overrides where possible
     from federated_pneumonia_detection.src.api.deps import (
         get_db,
-        get_query_engine,
-        get_mcp_manager,
         get_inference_service,
+        get_mcp_manager,
+        get_query_engine,
     )
+
+    # Import app here to avoid top-level side effects
+    from federated_pneumonia_detection.src.api.main import app
 
     mock_query_engine = MagicMock()
     app.dependency_overrides[get_db] = lambda: mock_db_session

@@ -1,8 +1,9 @@
 import pytest
 from pydantic import TypeAdapter, ValidationError
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.contracts import (
-    ChatInput,
+
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.contracts import (  # noqa: E501
     AgentEvent,
+    ChatInput,
 )
 
 

@@ -219,7 +219,7 @@ class MaliciousPromptMiddleware(BaseHTTPMiddleware):
             content={
                 "type": "error",
                 "code": "SECURITY_POLICY_VIOLATION",
-                "message": "Security Policy Violation: Your query contains patterns identified as malicious or out of scope.",
+                "message": "Security Policy Violation: Your query contains patterns identified as malicious or out of scope.",  # noqa: E501
                 "detail": reason,
             },
         )

@@ -15,11 +15,11 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate
 
-from federated_pneumonia_detection.src.control.report_generation.internals.sections import (
+from federated_pneumonia_detection.src.control.report_generation.internals.sections import (  # noqa: E501
     build_batch_report,
     build_single_report,
 )
-from federated_pneumonia_detection.src.control.report_generation.internals.styles import (
+from federated_pneumonia_detection.src.control.report_generation.internals.styles import (  # noqa: E501
     get_styles,
 )
 

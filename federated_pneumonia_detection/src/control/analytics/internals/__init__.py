@@ -10,17 +10,13 @@ Backward Compatibility:
 
 # Services (from services/ subdirectory) - These are the CONCRETE implementations
 # NOTE: We do NOT import from .definitions to avoid Protocol name conflicts
-from .services import (
-    BackfillService,
-    ExportService,
-    FinalEpochStatsService,
-    MetricsService,
-    RankingService,
-    SummaryService,
+# Exporters (from exporters/ subdirectory)
+from .exporters import (
+    CSVExporter,
+    DataExporter,
+    JSONExporter,
+    TextReportExporter,
 )
-
-# Infrastructure (from infrastructure/ subdirectory)
-from .infrastructure import CacheProvider
 
 # Extractors (from extractors/ subdirectory)
 from .extractors import (
@@ -29,12 +25,15 @@ from .extractors import (
     MetricExtractor,
 )
 
-# Exporters (from exporters/ subdirectory)
-from .exporters import (
-    CSVExporter,
-    DataExporter,
-    JSONExporter,
-    TextReportExporter,
+# Infrastructure (from infrastructure/ subdirectory)
+from .infrastructure import CacheProvider
+from .services import (
+    BackfillService,
+    ExportService,
+    FinalEpochStatsService,
+    MetricsService,
+    RankingService,
+    SummaryService,
 )
 
 # Utils (from utils/ subdirectory)

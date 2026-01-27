@@ -14,10 +14,10 @@ def calculate_summary_statistics(cm: Dict[str, int]) -> Dict[str, float]:
     """Calculate derived metrics from confusion matrix values.
 
     Args:
-        cm: Dict with keys: true_positives, true_negatives, false_positives, false_negatives
+        cm: Dict with keys: true_positives, true_negatives, false_positives, false_negatives  # noqa: E501
 
     Returns:
-        Dict with calculated statistics: sensitivity, specificity, precision_cm, accuracy_cm, f1_cm
+        Dict with calculated statistics: sensitivity, specificity, precision_cm, accuracy_cm, f1_cm  # noqa: E501
 
     Raises:
         ValueError: If any confusion matrix value is negative or total samples is zero
@@ -64,7 +64,7 @@ def transform_run_to_results(
 
     Args:
         run: Database Run object with related metrics
-        persisted_stats: Optional pre-computed final epoch stats to use instead of calculating
+        persisted_stats: Optional pre-computed final epoch stats to use instead of calculating  # noqa: E501
 
     Returns:
         Dictionary containing transformed run data with training history, final metrics,
@@ -142,7 +142,7 @@ def transform_run_to_results(
         )
 
     # Extract final metrics from the LAST epoch (highest epoch number)
-    # IMPORTANT: Do this AFTER metrics_by_epoch is fully populated to avoid out-of-order issues
+    # IMPORTANT: Do this AFTER metrics_by_epoch is fully populated to avoid out-of-order issues  # noqa: E501
     last_epoch_data = (
         metrics_by_epoch[max(metrics_by_epoch.keys())] if metrics_by_epoch else {}
     )

@@ -4,7 +4,7 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 
-from federated_pneumonia_detection.src.control.report_generation.internals.constants import (
+from federated_pneumonia_detection.src.control.report_generation.internals.constants import (  # noqa: E501
     BRAND_COLOR,
     DANGER_COLOR,
     SUCCESS_COLOR,

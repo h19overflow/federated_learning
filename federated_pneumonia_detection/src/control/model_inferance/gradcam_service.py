@@ -17,7 +17,7 @@ from federated_pneumonia_detection.src.control.model_inferance.gradcam import (
     GradCAM,
     heatmap_to_base64,
 )
-from federated_pneumonia_detection.src.control.model_inferance.inference_service import (
+from federated_pneumonia_detection.src.control.model_inferance.inference_service import (  # noqa: E501
     InferenceService,
 )
 

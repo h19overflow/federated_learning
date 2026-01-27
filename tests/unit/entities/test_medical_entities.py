@@ -1,6 +1,7 @@
 """
 Unit tests for medical entities (CustomImageDataset and ResNetWithCustomHead).
-Focuses on achieving 100% code coverage through exhaustive testing of all methods and edge cases.
+Focuses on achieving 100% code coverage through exhaustive testing of all
+methods and edge cases.
 """
 
 from pathlib import Path

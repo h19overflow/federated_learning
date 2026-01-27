@@ -14,12 +14,12 @@ from federated_pneumonia_detection.src.api.endpoints.chat.chat_utils import (
     sse_pack,
 )
 from federated_pneumonia_detection.src.api.endpoints.schema import ChatMessage
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems import (  # noqa: E501
     AgentEventType,
     ChatInput,
     get_agent_factory,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.session_manager import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.session_manager import (  # noqa: E501
     SessionManager,
 )
 
@@ -57,7 +57,7 @@ async def query_chat_stream(message: ChatMessage, request: Request):
         )
 
         try:
-            # Use pre-initialized factory from app.state (fallback to on-demand creation)
+            # Use pre-initialized factory from app.state (fallback to on-demand creation)  # noqa: E501
             agent_factory = getattr(request.app.state, "agent_factory", None)
             if agent_factory is None:
                 logger.warning(

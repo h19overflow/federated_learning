@@ -1,13 +1,14 @@
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
 import sys
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # Mock the missing module before importing MCPManager
 mock_mcp_client = MagicMock()
 sys.modules["langchain_mcp_adapters"] = MagicMock()
 sys.modules["langchain_mcp_adapters.client"] = mock_mcp_client
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (  # noqa: E501, E402
     MCPManager,
 )
 

@@ -72,10 +72,10 @@ def run_federated_training_task(
         # CRITICAL: Update pyproject.toml BEFORE starting Flower
         # This ensures Flower reads the correct config values from the TOML file
         task_logger.info("\n[CONFIG] Synchronizing config to pyproject.toml...")
-        from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
+        from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (  # noqa: E501
             read_configs_to_toml,
         )
-        from federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment import (
+        from federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment import (  # noqa: E501
             update_flwr_config,
         )
 
@@ -154,7 +154,7 @@ def run_federated_training_task(
             for line in iter(process.stdout.readline, ""):
                 if line:
                     stripped_line = line.rstrip()
-                    # Clean up double logging: remove log level if present in the captured line
+                    # Clean up double logging: remove log level if present in the captured line  # noqa: E501
                     # e.g. "INFO - message" -> "message"
                     for level in ["INFO", "WARNING", "ERROR", "DEBUG", "CRITICAL"]:
                         # Check for "LEVEL - " format

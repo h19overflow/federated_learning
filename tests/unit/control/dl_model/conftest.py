@@ -1,9 +1,9 @@
+from unittest.mock import MagicMock
+
+import numpy as np
+import pandas as pd
 import pytest
 import torch
-import pandas as pd
-import numpy as np
-from unittest.mock import MagicMock
-from pathlib import Path
 from PIL import Image
 
 

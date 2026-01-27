@@ -15,11 +15,11 @@ from flwr.app import ArrayRecord, MetricRecord
 from torchmetrics import AUROC, ConfusionMatrix, F1Score, Precision, Recall
 
 from federated_pneumonia_detection.config.config_manager import ConfigManager
-from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
-    LitResNetEnhanced,
-)
-from federated_pneumonia_detection.src.control.dl_model.internals.data.xray_data_module import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.xray_data_module import (  # noqa: E501
     XRayDataModule,
+)
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (  # noqa: E501
+    LitResNetEnhanced,
 )
 
 logger = getLogger(__name__)
@@ -44,7 +44,7 @@ def create_central_evaluate_fn(
     def central_evaluate(server_round: int, arrays: ArrayRecord) -> MetricRecord:
         """Evaluate the aggregated global model on server-side test dataset."""
         logger.info(
-            f"[Server Evaluation] Starting centralized evaluation for round {server_round}",
+            f"[Server Evaluation] Starting centralized evaluation for round {server_round}",  # noqa: E501
         )
 
         # 1. Load and prepare model
@@ -70,7 +70,7 @@ def create_central_evaluate_fn(
             f"Loss: {avg_loss:.4f}, Acc: {accuracy:.4f}, "
             f"Prec: {metrics['precision']:.4f}, Rec: {metrics['recall']:.4f}, "
             f"F1: {metrics['f1']:.4f}, AUROC: {metrics['auroc']:.4f}, "
-            f"CM(TP/TN/FP/FN): {metrics['tp']}/{metrics['tn']}/{metrics['fp']}/{metrics['fn']}",
+            f"CM(TP/TN/FP/FN): {metrics['tp']}/{metrics['tn']}/{metrics['fp']}/{metrics['fn']}",  # noqa: E501
         )
 
         # 7. Return metrics

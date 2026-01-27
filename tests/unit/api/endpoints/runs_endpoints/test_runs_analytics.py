@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock
+
 from federated_pneumonia_detection.src.api.deps import get_analytics
 
 

@@ -1,11 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 from sqlalchemy.orm import Session
 
-from federated_pneumonia_detection.src.control.analytics.internals.extractors.centralized import (
+from federated_pneumonia_detection.src.control.analytics.internals.extractors import (
     CentralizedMetricExtractor,
-)
-from federated_pneumonia_detection.src.control.analytics.internals.extractors.federated import (
     FederatedMetricExtractor,
 )
 

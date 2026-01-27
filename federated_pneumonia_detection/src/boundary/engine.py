@@ -2,7 +2,7 @@
 Database engine and session management with connection pooling.
 
 Provides a singleton SQLAlchemy engine with QueuePool, pre-ping for stale connections,
-and automatic recycling. Migration-aware: use create_tables() for dev or Alembic for production.
+and automatic recycling. Migration-aware: use create_tables() for dev or Alembic for production.  # noqa: E501
 """
 
 import logging
@@ -12,6 +12,7 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
+
 from federated_pneumonia_detection.config.settings import get_settings
 
 from .models import Base
@@ -28,7 +29,7 @@ SessionLocal = None
 
 
 def _get_engine():
-    """Create global SQLAlchemy engine with QueuePool (5 connections, 10 overflow, 1hr recycle)."""
+    """Create global SQLAlchemy engine with QueuePool (5 connections, 10 overflow, 1hr recycle)."""  # noqa: E501
     global _engine, SessionLocal
 
     if _engine is not None:
@@ -65,7 +66,7 @@ def _get_engine():
 
 
 def create_tables(force: bool = False):
-    """Create and verify all database tables. Respects USE_ALEMBIC env var (production mode)."""
+    """Create and verify all database tables. Respects USE_ALEMBIC env var (production mode)."""  # noqa: E501
     engine = get_engine()
     use_alembic = os.getenv("USE_ALEMBIC", "false").lower() == "true"
 
@@ -96,7 +97,7 @@ def create_tables(force: bool = False):
 
         if not all_exist:
             raise ValueError(
-                "Database schema is incomplete. Run 'alembic upgrade head' to apply migrations.",
+                "Database schema is incomplete. Run 'alembic upgrade head' to apply migrations.",  # noqa: E501
             )
 
         return engine
@@ -137,7 +138,7 @@ def create_tables(force: bool = False):
 
 
 def get_session():
-    """Create a new database session (borrows connection from pool, call .close() to return)."""
+    """Create a new database session (borrows connection from pool, call .close() to return)."""  # noqa: E501
     try:
         # Initialize engine if not already created
         if SessionLocal is None:

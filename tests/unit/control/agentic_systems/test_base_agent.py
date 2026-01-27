@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.base_agent import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.base_agent import (  # noqa: E501
     BaseAgent,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.contracts import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.contracts import (  # noqa: E501
     ChatInput,
 )
 

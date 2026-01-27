@@ -48,7 +48,7 @@ class InferenceEngine:
 
     def _load_model(self) -> None:
         """Load the model from checkpoint."""
-        from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
+        from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (  # noqa: E501
             LitResNetEnhanced,
         )
 
@@ -118,7 +118,8 @@ class InferenceEngine:
 
         inference_time = (time.time() - start_time) * 1000
         logger.debug(
-            f"Inference: {predicted_class} ({confidence:.4f}) in {inference_time:.2f}ms",
+            f"Inference: {predicted_class} ({confidence:.4f}) "
+            f"in {inference_time:.2f}ms",
         )
 
         return predicted_class, confidence, pneumonia_prob, normal_prob

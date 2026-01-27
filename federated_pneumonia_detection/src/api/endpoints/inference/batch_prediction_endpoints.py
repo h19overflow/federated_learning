@@ -6,7 +6,7 @@ with aggregated results and summary statistics.
 
 from typing import List
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile
 
 from federated_pneumonia_detection.src.api.deps import get_inference_service
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
@@ -27,7 +27,7 @@ async def predict_batch(
 ) -> BatchInferenceResponse:
     """Run pneumonia detection on multiple chest X-ray images.
 
-    Processes images sequentially and returns aggregated results with summary statistics.
+    Processes images sequentially and returns aggregated results with summary statistics.  # noqa: E501
     """
     service.check_ready_or_raise()
     return await service.predict_batch(files=files)

@@ -11,12 +11,11 @@ Tests cover:
 import os
 import tempfile
 import zipfile
-from unittest.mock import MagicMock, patch, AsyncMock
-
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling import (
+from federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling import (  # noqa: E501
     prepare_zip,
 )
 
@@ -133,22 +132,24 @@ class TestPrepareZip:
             mock_upload.read = AsyncMock(return_value=f.read())
 
         # Track temp directories created
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.tempfile.mkdtemp",
-            return_value="/tmp/fake_temp_dir",
-        ) as mock_mkdtemp:
-            with patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.os.path.exists",
+        with (
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.tempfile.mkdtemp",  # noqa: E501
+                return_value="/tmp/fake_temp_dir",
+            ),
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.os.path.exists",  # noqa: E501
                 return_value=True,
-            ):
-                with patch(
-                    "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.shutil.rmtree",
-                ) as mock_rmtree:
-                    with pytest.raises(Exception):
-                        await prepare_zip(mock_upload, experiment_logger, "test_exp")
+            ),
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.shutil.rmtree",  # noqa: E501
+            ) as mock_rmtree,
+        ):
+            with pytest.raises(Exception):
+                await prepare_zip(mock_upload, experiment_logger, "test_exp")
 
-                    # Verify cleanup was attempted
-                    mock_rmtree.assert_called_once_with("/tmp/fake_temp_dir")
+            # Verify cleanup was attempted
+            mock_rmtree.assert_called_once_with("/tmp/fake_temp_dir")
 
     @pytest.mark.asyncio
     async def test_prepare_zip_handles_multiple_items_in_root(

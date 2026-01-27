@@ -1,14 +1,16 @@
-import pytest
-from unittest.mock import MagicMock
 from io import BytesIO
-from PIL import Image
+from unittest.mock import MagicMock
+
+import pytest
 from fastapi.testclient import TestClient
-from federated_pneumonia_detection.src.api.main import app
+from PIL import Image
+
 from federated_pneumonia_detection.src.api.deps import (
     get_inference_service,
     get_query_engine,
 )
-from federated_pneumonia_detection.src.control.model_inferance.inference_service import (
+from federated_pneumonia_detection.src.api.main import app
+from federated_pneumonia_detection.src.control.model_inferance.inference_service import (  # noqa: E501
     InferenceService,
 )
 

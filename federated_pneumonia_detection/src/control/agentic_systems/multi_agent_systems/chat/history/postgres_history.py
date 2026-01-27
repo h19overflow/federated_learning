@@ -74,7 +74,7 @@ class ChatHistoryManager:
             # Generate deterministic UUID from string using UUID5
             clean_session_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, session_id))
             logger.info(
-                f"[HistoryManager] Mapped session_id '{session_id}' to UUID '{clean_session_id}'",
+                f"[HistoryManager] Mapped session_id '{session_id}' to UUID '{clean_session_id}'",  # noqa: E501
             )
 
         history = PostgresChatMessageHistory(

@@ -28,7 +28,7 @@ class QueryEngine:
         Args:
             max_history: Maximum number of conversation turns to keep in memory
         """
-        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history import (
+        from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history import (  # noqa: E501
             ChatHistoryManager,
         )
 
@@ -55,7 +55,7 @@ class QueryEngine:
             raise e
         try:
             logger.info(
-                "[QueryEngine] Initializing ChatGoogleGenerativeAI (gemini-3-flash-preview)...",
+                "[QueryEngine] Initializing ChatGoogleGenerativeAI (gemini-3-flash-preview)...",  # noqa: E501
             )
             self.llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview")
             logger.info("[QueryEngine] LLM initialized successfully")
@@ -169,7 +169,7 @@ class QueryEngine:
                 "Format your response using Markdown for better readability:\n"
                 "- Use **bold** for key terms and important metrics\n"
                 "- Use bullet points or numbered lists for multiple items\n"
-                "- Use `code` formatting for technical values, percentages, or numbers\n"
+                "- Use `code` formatting for technical values, percentages, or numbers\n"  # noqa: E501
                 "- Use ### headings to organize longer responses\n"
                 "- Use tables when comparing multiple metrics or values\n"
                 "- Keep responses well-structured and scannable\n\n"
@@ -177,21 +177,21 @@ class QueryEngine:
 
             if include_history:
                 system_prompt = (
-                    "You are a helpful AI assistant specializing in federated learning and medical imaging. "
-                    "Use the given context and conversation history to answer the question accurately.\n\n"
+                    "You are a helpful AI assistant specializing in federated learning and medical imaging. "  # noqa: E501
+                    "Use the given context and conversation history to answer the question accurately.\n\n"  # noqa: E501
                     f"{markdown_instructions}"
-                    "If you don't know the answer, clearly state that you don't have enough information.\n"
-                    "Provide detailed, informative responses while keeping them well-organized.\n\n"
+                    "If you don't know the answer, clearly state that you don't have enough information.\n"  # noqa: E501
+                    "Provide detailed, informative responses while keeping them well-organized.\n\n"  # noqa: E501
                     "Previous conversation:\n{history}\n\n"
                     "Context:\n{context}"
                 )
             else:
                 system_prompt = (
-                    "You are a helpful AI assistant specializing in federated learning and medical imaging. "
+                    "You are a helpful AI assistant specializing in federated learning and medical imaging. "  # noqa: E501
                     "Use the given context to answer the question accurately.\n\n"
                     f"{markdown_instructions}"
-                    "If you don't know the answer, clearly state that you don't have enough information.\n"
-                    "Provide detailed, informative responses while keeping them well-organized.\n\n"
+                    "If you don't know the answer, clearly state that you don't have enough information.\n"  # noqa: E501
+                    "Provide detailed, informative responses while keeping them well-organized.\n\n"  # noqa: E501
                     "Context:\n{context}"
                 )
             prompt = ChatPromptTemplate.from_messages(
@@ -284,7 +284,7 @@ class QueryEngine:
         """
         try:
             logger.info(
-                f"[QueryEngine] Starting stream for session {session_id}, query: '{query[:50]}...'",
+                f"[QueryEngine] Starting stream for session {session_id}, query: '{query[:50]}...'",  # noqa: E501
             )
 
             # Retrieve documents synchronously (BM25 + PGVector ensemble)
@@ -299,7 +299,7 @@ class QueryEngine:
             history_context = self.format_history_for_context(session_id)
             if history_context:
                 logger.info(
-                    f"[QueryEngine] Found conversation history for session {session_id}",
+                    f"[QueryEngine] Found conversation history for session {session_id}",  # noqa: E501
                 )
             else:
                 logger.info(f"[QueryEngine] No history found for session {session_id}")
@@ -339,7 +339,7 @@ class QueryEngine:
                         yield {"type": "token", "content": content}
 
             logger.info(
-                f"[QueryEngine] Streaming completed. Generated {chunk_count} chunks. Response length: {len(full_response)}",
+                f"[QueryEngine] Streaming completed. Generated {chunk_count} chunks. Response length: {len(full_response)}",  # noqa: E501
             )
 
             history_query = original_query if original_query is not None else query

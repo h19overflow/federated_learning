@@ -111,9 +111,11 @@ class ClinicalInterpreter:
         self,
         prediction: InferencePrediction,
     ) -> tuple[str, str]:
-        """Determine risk level and false negative risk based on prediction class and confidence.
+        """Determine risk level and false negative risk.
 
-        Uses dictionary dispatch pattern to map (class, confidence_range) to (risk_level, fn_risk).
+        Based on prediction class and confidence.
+        Uses dictionary dispatch pattern to map (class, confidence_range)
+        to (risk_level, fn_risk).
 
         Args:
             prediction: The inference prediction
@@ -186,7 +188,9 @@ class ClinicalInterpreter:
         return recommendations
 
     def _get_confidence_explanation(self, confidence: float) -> str:
-        """Get confidence explanation based on confidence score using dictionary dispatch.
+        """Get confidence explanation based on confidence score.
+
+        Uses dictionary dispatch pattern.
 
         Args:
             confidence: The confidence score (0.0 to 1.0)

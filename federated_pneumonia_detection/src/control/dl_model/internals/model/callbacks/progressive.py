@@ -46,5 +46,5 @@ class ProgressiveUnfreezeCallback(pl.Callback):
             if hasattr(pl_module, "progressive_unfreeze"):
                 pl_module.progressive_unfreeze(self.layers_per_unfreeze)
                 self.logger.info(
-                    f"Epoch {current_epoch}: Unfroze {self.layers_per_unfreeze} more layers",
+                    f"Epoch {current_epoch}: Unfroze {self.layers_per_unfreeze} more layers",  # noqa: E501
                 )

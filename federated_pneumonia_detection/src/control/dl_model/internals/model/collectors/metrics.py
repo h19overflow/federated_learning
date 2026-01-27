@@ -9,10 +9,10 @@ from sqlalchemy.orm import Session
 
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.engine import get_session
-from federated_pneumonia_detection.src.control.dl_model.internals.data.metrics_file_persister import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.metrics_file_persister import (  # noqa: E501
     MetricsFilePersister,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (
+from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (  # noqa: E501
     MetricsWebSocketSender,
 )
 
@@ -66,7 +66,7 @@ class MetricsCollectorCallback(pl.Callback):
 
         if self.federated_mode and self.client_id is not None:
             self.logger.info(
-                f"[MetricsCollector] Initialized in FEDERATED mode for client_id={self.client_id}, round={self.current_round}",
+                f"[MetricsCollector] Initialized in FEDERATED mode for client_id={self.client_id}, round={self.current_round}",  # noqa: E501
             )
         else:
             self.logger.info("[MetricsCollector] Initialized in CENTRALIZED mode")
@@ -113,7 +113,7 @@ class MetricsCollectorCallback(pl.Callback):
                 if self.federated_mode and self.client_id is not None:
                     self.db_client_id = self._ensure_client_exists(db, self.run_id)
                     self.logger.info(
-                        f"[on_train_start] Federated client created: db_client_id={self.db_client_id}",
+                        f"[on_train_start] Federated client created: db_client_id={self.db_client_id}",  # noqa: E501
                     )
 
                 db.commit()  # COMMIT the transaction so other sessions can see it
@@ -235,7 +235,7 @@ class MetricsCollectorCallback(pl.Callback):
         # Save metrics in multiple formats
         self._save_metrics()
         self.logger.info(
-            f"Metrics saved to {self.save_dir} - Total epochs: {len(self.epoch_metrics)}",
+            f"Metrics saved to {self.save_dir} - Total epochs: {len(self.epoch_metrics)}",  # noqa: E501
         )
 
         # Send training completion to frontend with run_id and summary
@@ -260,7 +260,7 @@ class MetricsCollectorCallback(pl.Callback):
             )
         elif self.federated_mode:
             self.logger.info(
-                f"[Federated Mode] Client training complete for round {self.current_round}. "
+                f"[Federated Mode] Client training complete for round {self.current_round}. "  # noqa: E501
                 "Server will send final training_end event when all rounds complete.",
             )
 
@@ -403,7 +403,7 @@ class MetricsCollectorCallback(pl.Callback):
 
         if existing_client:
             self.logger.debug(
-                f"Using existing client_id={existing_client.id} for {client_identifier}",
+                f"Using existing client_id={existing_client.id} for {client_identifier}",  # noqa: E501
             )
             return existing_client.id
 
@@ -456,7 +456,7 @@ class MetricsCollectorCallback(pl.Callback):
                 }
                 self.logger.info(
                     f"[persist_to_database] Persisting federated metrics: "
-                    f"run_id={run_id}, client_id={self.db_client_id}, round={self.current_round}",
+                    f"run_id={run_id}, client_id={self.db_client_id}, round={self.current_round}",  # noqa: E501
                 )
 
             # Delegate metric persistence to CRUD layer with federated context
@@ -474,10 +474,10 @@ class MetricsCollectorCallback(pl.Callback):
                         db,
                         run_id,
                         status="completed",
-                        # end_time is set by centralized_trainer.complete_run() - not here to avoid race condition
+                        # end_time is set by centralized_trainer.complete_run() - not here to avoid race condition  # noqa: E501
                     )
                     self.logger.info(
-                        f"Updated run {run_id} with end_time={self.training_end_time.isoformat()}",
+                        f"Updated run {run_id} with end_time={self.training_end_time.isoformat()}",  # noqa: E501
                     )
                 except Exception as e:
                     self.logger.warning(f"Failed to update run end_time: {e}")

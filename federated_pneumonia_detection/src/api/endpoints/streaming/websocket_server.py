@@ -5,7 +5,7 @@ Provides real-time metrics broadcasting from training to frontend clients.
 Runs in a background thread, independent of the main FastAPI event loop.
 
 Usage:
-    from federated_pneumonia_detection.src.api.endpoints.streaming.websocket_server import (
+    from federated_pneumonia_detection.src.api.endpoints.streaming.websocket_server import (  # noqa: E501
         start_websocket_server_thread,
     )
 
@@ -72,7 +72,7 @@ def _run_websocket_server() -> None:
                         message_type = data.get("type", "unknown")
 
                         logger.debug(
-                            f"Broadcasting {message_type} to {len(connected_clients)} clients",
+                            f"Broadcasting {message_type} to {len(connected_clients)} clients",  # noqa: E501
                         )
 
                         await _broadcast_to_clients(
@@ -93,7 +93,7 @@ def _run_websocket_server() -> None:
                         continue
                     except Exception as e:
                         logger.warning(
-                            f"Unexpected error processing WebSocket message: {e}, continuing",
+                            f"Unexpected error processing WebSocket message: {e}, continuing",  # noqa: E501
                         )
                         continue
 
@@ -104,7 +104,7 @@ def _run_websocket_server() -> None:
             finally:
                 connected_clients.discard(websocket)
                 logger.debug(
-                    f"WebSocket client removed. Total clients: {len(connected_clients)}",
+                    f"WebSocket client removed. Total clients: {len(connected_clients)}",  # noqa: E501
                 )
 
         async def _broadcast_to_clients(
@@ -136,7 +136,7 @@ def _run_websocket_server() -> None:
     except ImportError:
         logger.warning(
             "WebSocket server failed to start: Missing required library. "
-            "Install with: pip install websockets (metrics streaming will be unavailable)",
+            "Install with: pip install websockets (metrics streaming will be unavailable)",  # noqa: E501
         )
     except OSError as e:
         logger.warning(

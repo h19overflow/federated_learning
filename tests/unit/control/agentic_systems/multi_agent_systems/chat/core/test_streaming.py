@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.streaming import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.core.streaming import (  # noqa: E501
     SSEEventType,
     create_sse_event,
     execute_tool_async,

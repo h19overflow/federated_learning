@@ -4,24 +4,24 @@ Verifies that a checkpoint saved by LitResNetEnhanced can be successfully
 loaded and used by InferenceEngine.
 """
 
+from unittest.mock import MagicMock, patch
+
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-from PIL import Image
-import numpy as np
 
 # Fix for PyTorch 2.6+ weights_only=True default
 from lightning_fabric.utilities.data import AttributeDict
+from PIL import Image
 
 torch.serialization.add_safe_globals([AttributeDict])
 
-# Import the classes to test
-from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
+# Import the classes to test  # noqa: E402
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (  # noqa: E501, E402
     LitResNetEnhanced,
 )
-from federated_pneumonia_detection.src.control.model_inferance.internals.inference_engine import (
+from federated_pneumonia_detection.src.control.model_inferance.internals.inference_engine import (  # noqa: E501, E402
     InferenceEngine,
 )
 
@@ -34,8 +34,8 @@ class MockResNetWithCustomHead(nn.Module):
 
     def __init__(self, *args, **kwargs):
         super().__init__()
-        # Structure must match what's expected in state_dict if we were using real keys,
-        # but since we create the state_dict from this mock, it just needs to be consistent.
+        # Structure must match what's expected in state_dict if using real keys,
+        # but since we create the state_dict from mock, it just needs consistency.
         self.features = nn.Sequential(
             nn.Conv2d(3, 16, 3, padding=1), nn.AdaptiveAvgPool2d((1, 1)), nn.Flatten()
         )
@@ -71,7 +71,11 @@ def mock_config():
         "experiment.epochs": 10,
         "experiment.use_torch_compile": False,
     }
-    config.get.side_effect = lambda key, default=None: config_values.get(key, default)
+
+    def _get_config_value(key, default=None):
+        return config_values.get(key, default)
+
+    config.get.side_effect = _get_config_value
     return config
 
 
@@ -93,7 +97,7 @@ def test_model_loading_integration(tmp_path, mock_config):
     # We patch ResNetWithCustomHead to use our lightweight mock
     # We patch ConfigManager in its original module to affect the inline import
     with (
-        patch(
+        patch(  # noqa: E501
             "federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced.ResNetWithCustomHead",
             MockResNetWithCustomHead,
         ),
@@ -115,7 +119,7 @@ def test_model_loading_integration(tmp_path, mock_config):
     # 2. Execution: Load the checkpoint into InferenceEngine
     # We must patch again because InferenceEngine will re-instantiate LitResNetEnhanced
     with (
-        patch(
+        patch(  # noqa: E501
             "federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced.ResNetWithCustomHead",
             MockResNetWithCustomHead,
         ),
@@ -137,7 +141,7 @@ def test_model_loading_integration(tmp_path, mock_config):
     assert engine.model is not None, "Engine should have a loaded model"
     assert not engine.model.training, "Model should be in eval mode"
 
-    # Verify result structure: (predicted_class, confidence, pneumonia_prob, normal_prob)
+    # Result structure: (predicted_class, confidence, pneumonia_prob, normal_prob)
     assert isinstance(result, tuple)
     assert len(result) == 4
     assert result[0] in ["PNEUMONIA", "NORMAL"]
@@ -156,6 +160,5 @@ def test_model_loading_integration(tmp_path, mock_config):
 
 if __name__ == "__main__":
     # Allow running the test directly for quick verification
-    import sys
 
     pytest.main([__file__])

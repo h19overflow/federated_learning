@@ -42,10 +42,13 @@ async def start_centralized_training(
 
     **Parameters:**
     - `data_zip`: ZIP file containing Images/ directory and metadata CSV (required)
-    - `checkpoint_dir`: Where to save model checkpoints (default: "results/centralized/checkpoints")
+    - `checkpoint_dir`: Where to save model checkpoints
+        (default: "results/centralized/checkpoints")
     - `logs_dir`: Where to save training logs (default: "results/centralized/logs")
-    - `experiment_name`: Identifier for this training run (default: "pneumonia_centralized")
-    - `csv_filename`: Metadata CSV filename inside archive (default: "stage2_train_metadata.csv")
+    - `experiment_name`: Identifier for this training run
+        (default: "pneumonia_centralized")
+    - `csv_filename`: Metadata CSV filename inside archive
+        (default: "stage2_train_metadata.csv")
     **Status Tracking:**
     Monitor training progress through:
     - Log files at `{logs_dir}/`

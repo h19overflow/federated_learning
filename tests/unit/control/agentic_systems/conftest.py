@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 
 @pytest.fixture
@@ -23,7 +24,7 @@ def mock_vector_store():
 @pytest.fixture
 def sample_chat_input():
     """Sample ChatInput for testing."""
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.contracts import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.contracts import (  # noqa: E501
         ChatInput,
     )
 
@@ -33,7 +34,7 @@ def sample_chat_input():
 @pytest.fixture
 def mock_arxiv_engine():
     """Mock for ArxivAugmentedEngine."""
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.base_agent import (
+    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.base_agent import (  # noqa: E501
         BaseAgent,
     )
 

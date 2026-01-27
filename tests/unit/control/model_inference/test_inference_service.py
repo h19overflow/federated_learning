@@ -1,16 +1,16 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import HTTPException, UploadFile
 from PIL import Image
-import io
 
-from federated_pneumonia_detection.src.control.model_inferance.inference_service import (
-    InferenceService,
-)
 from federated_pneumonia_detection.src.api.endpoints.schema.inference_schemas import (
-    InferenceResponse,
     BatchInferenceResponse,
+    InferenceResponse,
     PredictionClass,
+)
+from federated_pneumonia_detection.src.control.model_inferance.inference_service import (  # noqa: E501
+    InferenceService,
 )
 
 
@@ -65,23 +65,28 @@ def inference_service(
 ):
     with (
         patch(
-            "federated_pneumonia_detection.src.control.model_inferance.inference_service.ImageValidator",
+            "federated_pneumonia_detection.src.control.model_inferance."
+            "inference_service.ImageValidator",
             return_value=mock_validator,
         ),
         patch(
-            "federated_pneumonia_detection.src.control.model_inferance.inference_service.ImageProcessor",
+            "federated_pneumonia_detection.src.control.model_inferance."
+            "inference_service.ImageProcessor",
             return_value=mock_processor,
         ),
         patch(
-            "federated_pneumonia_detection.src.control.model_inferance.inference_service.BatchStatistics",
+            "federated_pneumonia_detection.src.control.model_inferance."
+            "inference_service.BatchStatistics",
             return_value=mock_batch_stats,
         ),
         patch(
-            "federated_pneumonia_detection.src.control.model_inferance.inference_service.ObservabilityLogger",
+            "federated_pneumonia_detection.src.control.model_inferance."
+            "inference_service.ObservabilityLogger",
             return_value=mock_logger,
         ),
         patch(
-            "federated_pneumonia_detection.src.control.model_inferance.inference_service._get_engine_singleton",
+            "federated_pneumonia_detection.src.control.model_inferance."
+            "inference_service._get_engine_singleton",
             return_value=mock_engine,
         ),
     ):
@@ -146,7 +151,8 @@ class TestInferenceService:
 
         # Execute & Assert
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.inference_service._get_engine_singleton",
+            "federated_pneumonia_detection.src.control.model_inferance."
+            "inference_service._get_engine_singleton",
             return_value=None,
         ):
             with pytest.raises(HTTPException) as excinfo:
@@ -230,7 +236,8 @@ class TestInferenceService:
 
         # Execute
         with patch(
-            "federated_pneumonia_detection.src.control.model_inferance.inference_service._get_engine_singleton",
+            "federated_pneumonia_detection.src.control.model_inferance."
+            "inference_service._get_engine_singleton",
             return_value=None,
         ):
             info = inference_service.get_info()

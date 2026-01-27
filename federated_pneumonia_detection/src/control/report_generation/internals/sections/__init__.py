@@ -1,21 +1,21 @@
 """Report section builders for PDF generation."""
 
-from federated_pneumonia_detection.src.control.report_generation.internals.sections.appendix import (
+from federated_pneumonia_detection.src.control.report_generation.internals.sections.appendix import (  # noqa: E501
     create_appendix_page,
 )
-from federated_pneumonia_detection.src.control.report_generation.internals.sections.batch_report import (
+from federated_pneumonia_detection.src.control.report_generation.internals.sections.batch_report import (  # noqa: E501
     build_batch_report,
 )
-from federated_pneumonia_detection.src.control.report_generation.internals.sections.executive_summary import (
+from federated_pneumonia_detection.src.control.report_generation.internals.sections.executive_summary import (  # noqa: E501
     create_executive_summary,
 )
-from federated_pneumonia_detection.src.control.report_generation.internals.sections.header import (
+from federated_pneumonia_detection.src.control.report_generation.internals.sections.header import (  # noqa: E501
     create_header,
 )
-from federated_pneumonia_detection.src.control.report_generation.internals.sections.results_table import (
+from federated_pneumonia_detection.src.control.report_generation.internals.sections.results_table import (  # noqa: E501
     create_results_table,
 )
-from federated_pneumonia_detection.src.control.report_generation.internals.sections.single_report import (
+from federated_pneumonia_detection.src.control.report_generation.internals.sections.single_report import (  # noqa: E501
     build_single_report,
 )
 

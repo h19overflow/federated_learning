@@ -8,7 +8,7 @@ from uuid import UUID
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.history.postgres_history import (  # noqa: E501
     ChatHistoryManager,
 )
 
@@ -89,7 +89,7 @@ class TestChatHistoryManager:
             manager = ChatHistoryManager()
             uuid_session_id = str(UUID("12345678-1234-5678-1234-567812345678"))
 
-            history = manager._get_postgres_history(uuid_session_id)
+            manager._get_postgres_history(uuid_session_id)
 
             # Should use UUID directly
             mock_history_class.assert_called_once()
@@ -111,7 +111,7 @@ class TestChatHistoryManager:
             manager = ChatHistoryManager()
             string_session_id = "session_123"
 
-            history = manager._get_postgres_history(string_session_id)
+            manager._get_postgres_history(string_session_id)
 
             # Should convert string to UUID
             mock_history_class.assert_called_once()
@@ -380,10 +380,10 @@ class TestChatHistoryManagerIntegration:
             )
 
             # Get history
-            history = manager.get_history("session_1")
+            manager.get_history("session_1")
 
             # Format context
-            context = manager.format_for_context("session_1")
+            manager.format_for_context("session_1")
 
             # Clear history
             manager.clear_history("session_1")

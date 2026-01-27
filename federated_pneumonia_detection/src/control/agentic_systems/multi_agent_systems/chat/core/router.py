@@ -1,4 +1,4 @@
-"""Query Router - Classifies queries as basic conversation or tool-augmented research."""
+"""Query Router - Classifies queries as basic conversation or tool-augmented research."""  # noqa: E501
 
 import logging
 from typing import Literal
@@ -16,7 +16,7 @@ class QueryClassification(BaseModel):
     """Structured classification response with constrained mode field."""
 
     mode: Literal["research", "basic"] = Field(
-        description="Query mode: 'research' requires tools (search, retrieval), 'basic' is conversational",
+        description="Query mode: 'research' requires tools (search, retrieval), 'basic' is conversational",  # noqa: E501
     )
 
 

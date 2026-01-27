@@ -1,7 +1,6 @@
-import pytest
-
-
-def test_predict_valid_image(api_client_with_db, mock_inference_engine, dummy_image_bytes):
+def test_predict_valid_image(
+    api_client_with_db, mock_inference_engine, dummy_image_bytes
+):
     """
     Positive test: Upload a dummy image and check for successful prediction.
     Ensures the endpoint correctly interacts with the InferenceService and engine.

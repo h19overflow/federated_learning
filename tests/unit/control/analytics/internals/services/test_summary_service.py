@@ -1,11 +1,13 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from federated_pneumonia_detection.src.control.analytics.internals.services.summary_service import (
-    SummaryService,
-)
+
+import pytest
+
 from federated_pneumonia_detection.src.boundary.models import (
     RunMetric,
     ServerEvaluation,
+)
+from federated_pneumonia_detection.src.control.analytics.internals.services import (
+    SummaryService,
 )
 
 
@@ -182,8 +184,10 @@ def test_get_final_epoch_stats_federated(
         "final_epoch_stats": {"sensitivity": 0.88, "specificity": 0.85}
     }
 
-    # Mock the query chain: db.query(ServerEvaluation).filter(...).order_by(...).first()
-    mock_session.query.return_value.filter.return_value.order_by.return_value.first.return_value = last_eval
+    # Mock the query chain:
+    # db.query(ServerEvaluation).filter(...).order_by(...).first()
+    query_chain = mock_session.query.return_value
+    query_chain.filter.return_value.order_by.return_value.first.return_value = last_eval
 
     # Execute
     stats = summary_service._get_final_epoch_stats(sample_federated_run, mock_session)

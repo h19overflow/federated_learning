@@ -23,7 +23,7 @@ from federated_pneumonia_detection.src.api.endpoints.schema.error_schemas import
 logger = logging.getLogger(__name__)
 
 
-class APIException(Exception):
+class APIException(Exception):  # noqa: N818
     """Base exception class for API errors.
 
     All application-specific exceptions should inherit from this class.
@@ -106,7 +106,7 @@ async def api_exception_handler(request: Request, exc: APIException) -> JSONResp
         JSONResponse with structured error format
     """
     logger.error(
-        f"APIException: {exc.code.value} - {exc.message} | Path: {request.url.path} | Details: {exc.details}"
+        f"APIException: {exc.code.value} - {exc.message} | Path: {request.url.path} | Details: {exc.details}"  # noqa: E501
     )
 
     error_detail = ErrorDetail(
@@ -175,7 +175,7 @@ async def pydantic_validation_exception_handler(
 ) -> JSONResponse:
     """Handle Pydantic ValidationError instances.
 
-    Handles validation errors that occur in Pydantic models outside of request body parsing.
+    Handles validation errors that occur in Pydantic models outside of request body parsing.  # noqa: E501
 
     Args:
         request: FastAPI request object

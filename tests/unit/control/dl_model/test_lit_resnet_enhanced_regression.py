@@ -1,12 +1,13 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 import torch
 import torch.nn as nn
-from unittest.mock import MagicMock, patch, ANY
-import torchmetrics
-from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (
+
+from federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced import (  # noqa: E501
     LitResNetEnhanced,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.model.losses import (
+from federated_pneumonia_detection.src.control.dl_model.internals.model.losses import (  # noqa: E501
     FocalLoss,
     FocalLossWithLabelSmoothing,
 )
@@ -46,7 +47,7 @@ class TestLitResNetEnhancedRegression:
     # --- 1. Metric Initialization and Updates ---
 
     def test_metrics_initialization(self, mock_config, mock_resnet_head):
-        """Regression: Ensure all required metrics are initialized with correct tasks."""
+        """Ensure all required metrics are initialized with correct tasks."""
         model = LitResNetEnhanced(config=mock_config)
 
         # Check training metrics

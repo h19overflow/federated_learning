@@ -45,8 +45,8 @@ class TestDataProcessingFunctions:
         """Test load_metadata with config_or_constants=None explicitly."""
         with patch(
             "federated_pneumonia_detection.config.config_manager.ConfigManager",
-        ) as MockConfig:
-            instance = MockConfig.return_value
+        ) as mock_config:
+            instance = mock_config.return_value
             # Ensure it returns something valid for the rest of the function
             instance.get.side_effect = lambda k, default=None: {
                 "columns.patient_id": "patientId",
@@ -170,7 +170,8 @@ class TestDataProcessingFunctions:
 
     def test_sample_dataframe_success(self):
         """Test stratified sampling of dataframe."""
-        # Use a larger dataset to avoid rounding edge cases where sample size might be slightly off
+        # Use larger dataset to avoid rounding edge cases where sample size
+        # might be slightly off
         df = pd.DataFrame({"Target": [0] * 10 + [1] * 10})
         sampled = sample_dataframe(df, sample_fraction=0.5, target_column="Target")
         assert len(sampled) == 10
@@ -243,8 +244,8 @@ class TestDataProcessingFunctions:
         """Test load_and_split_data without explicit config."""
         with patch(
             "federated_pneumonia_detection.config.config_manager.ConfigManager",
-        ) as MockConfig:
-            instance = MockConfig.return_value
+        ) as mock_config:
+            instance = mock_config.return_value
             instance.get.side_effect = lambda k, default=None: {
                 "paths.base_path": temp_data_structure["base_path"],
                 "paths.metadata_filename": "Train_metadata.csv",
@@ -265,7 +266,7 @@ class TestDataProcessingFunctions:
         sample_config,
     ):
         """Test load_and_split_data with deprecated SystemConstants."""
-        # Use a larger dataset to avoid stratification issues
+        # Use larger dataset to avoid stratification issues
         df_large = SampleDataFactory.create_sample_metadata(num_samples=100)
         # Create a real temp data structure with these rows
         with TempDataStructure(metadata_df=df_large) as paths:
@@ -278,11 +279,12 @@ class TestDataProcessingFunctions:
                 FILENAME_COLUMN = "filename"
                 IMAGE_EXTENSION = ".png"
 
-            # We need sample_config too because the code uses it for experiment params even with constants
+            # We need sample_config too because code uses it for experiment
+            # params even with constants
             with patch(
                 "federated_pneumonia_detection.config.config_manager.ConfigManager",
-            ) as MockConfig:
-                MockConfig.return_value = sample_config
+            ) as mock_config:
+                mock_config.return_value = sample_config
                 train, val = load_and_split_data(MockConstants())
                 assert train is not None
 
@@ -295,8 +297,8 @@ class TestDataProcessingFunctions:
         """Test image path validation without explicit config."""
         with patch(
             "federated_pneumonia_detection.config.config_manager.ConfigManager",
-        ) as MockConfig:
-            instance = MockConfig.return_value
+        ) as mock_config:
+            instance = mock_config.return_value
             instance.get.side_effect = lambda k, default=None: {
                 "paths.base_path": temp_data_structure["base_path"],
                 "paths.main_images_folder": "Images",
@@ -357,8 +359,8 @@ class TestDataProcessingFunctions:
         # No config
         with patch(
             "federated_pneumonia_detection.config.config_manager.ConfigManager",
-        ) as MockConfig:
-            MockConfig.return_value = sample_config
+        ) as mock_config:
+            mock_config.return_value = sample_config
             path = get_image_directory_path()
             assert path is not None
 

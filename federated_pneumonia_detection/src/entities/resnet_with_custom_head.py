@@ -63,7 +63,8 @@ class ResNetWithCustomHead(nn.Module):
             num_classes: Number of output classes (1 for binary classification)
             dropout_rate: Optional dropout rate override
             fine_tune_layers_count: Optional fine-tuning layers override
-            custom_head_sizes: Optional custom head architecture [2048, 256, 64, num_classes]
+            custom_head_sizes: Optional custom head architecture
+                [2048, 256, 64, num_classes]
 
         Raises:
             ValueError: If configuration parameters are invalid

@@ -91,7 +91,7 @@ def generate_chat_title(query: str) -> str:
 
         agent = _get_title_agent()
 
-        prompt = f"""Summarize the following query into exactly 3-4 words for a chat session title.
+        prompt = f"""Summarize the following query into exactly 3-4 words for a chat session title.  # noqa: E501
 Rules:
 - Use title case
 - Be descriptive and specific

@@ -1,10 +1,11 @@
-import pytest
+from unittest.mock import MagicMock
+
 from fastapi import HTTPException
+
 from federated_pneumonia_detection.src.api.deps import get_inference_service
-from federated_pneumonia_detection.src.control.model_inferance.inference_service import (
+from federated_pneumonia_detection.src.control.model_inferance.inference_service import (  # noqa: E501
     InferenceService,
 )
-from unittest.mock import MagicMock
 
 
 def test_model_not_loaded(api_client_with_db, dummy_image_bytes):

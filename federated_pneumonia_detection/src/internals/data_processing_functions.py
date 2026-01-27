@@ -316,7 +316,8 @@ def load_and_split_data(
         )
 
         logger.info(
-            f"Data processing completed: {len(train_df)} train, {len(val_df)} validation samples",
+            f"Data processing completed: {len(train_df)} train, "
+            f"{len(val_df)} validation samples"
         )
         return train_df, val_df
 

@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.base_agent import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.base_agent import (  # noqa: E501
     BaseAgent,
 )
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (  # noqa: E501
     ArxivAugmentedEngine,
 )
 
 if TYPE_CHECKING:
-    from fastapi import FastAPI
+    pass
 
 
 class AgentFactory:

@@ -15,7 +15,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks import (
+from federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks import (  # noqa: E501
     run_federated_training_task,
 )
 
@@ -33,8 +33,8 @@ def mock_federated_modules():
     mock_toml_adjustment.update_flwr_config = Mock()
 
     modules_to_mock = {
-        "federated_pneumonia_detection.src.control.federated_new_version.core.utils": mock_utils,
-        "federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment": mock_toml_adjustment,
+        "federated_pneumonia_detection.src.control.federated_new_version.core.utils": mock_utils,  # noqa: E501
+        "federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment": mock_toml_adjustment,  # noqa: E501
     }
 
     # Add mocks to sys.modules
@@ -67,12 +67,12 @@ class TestRunFederatedTrainingTask:
         csv_path.write_text("file,label\nimg.jpg,0\n")
 
         with (
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
                 return_value=mock_config_manager,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",  # noqa: E501
                 return_value={
                     "POSTGRES_DB_URI": "test",
                     "POSTGRES_DB": "test",
@@ -80,20 +80,20 @@ class TestRunFederatedTrainingTask:
                     "POSTGRES_PASSWORD": "test",
                 },
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",  # noqa: E501
                 return_value=True,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",  # noqa: E501
                 Path,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",  # noqa: E501
                 return_value=mock_subprocess_popen,
             ),
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",  # noqa: E501
                 return_value={"num_server_rounds": 3},
             ),
         ):
@@ -120,8 +120,8 @@ class TestRunFederatedTrainingTask:
         images_dir.mkdir(parents=True)
         # No CSV file
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
             return_value=mock_config_manager,
         ):
             result = run_federated_training_task(
@@ -148,8 +148,8 @@ class TestRunFederatedTrainingTask:
 
         # No Images directory
 
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+        with patch(  # noqa: E501
+            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
             return_value=mock_config_manager,
         ):
             result = run_federated_training_task(
@@ -177,12 +177,12 @@ class TestRunFederatedTrainingTask:
         csv_path.write_text("file,label\n")
 
         with (
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
                 return_value=mock_config_manager,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",  # noqa: E501
                 return_value={
                     "POSTGRES_DB_URI": "test",
                     "POSTGRES_DB": "test",
@@ -190,20 +190,20 @@ class TestRunFederatedTrainingTask:
                     "POSTGRES_PASSWORD": "test",
                 },
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",  # noqa: E501
                 return_value=True,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",  # noqa: E501
                 Path,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",  # noqa: E501
                 return_value=mock_subprocess_popen,
             ),
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",  # noqa: E501
                 return_value={},
             ),
         ):
@@ -244,12 +244,12 @@ class TestRunFederatedTrainingTask:
         mock_process.stdout = None
 
         with (
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
                 return_value=mock_config_manager,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",  # noqa: E501
                 return_value={
                     "POSTGRES_DB_URI": "test",
                     "POSTGRES_DB": "test",
@@ -257,20 +257,20 @@ class TestRunFederatedTrainingTask:
                     "POSTGRES_PASSWORD": "test",
                 },
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",  # noqa: E501
                 return_value=True,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",  # noqa: E501
                 Path,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",  # noqa: E501
                 return_value=mock_process,
             ),
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",  # noqa: E501
                 return_value={},
             ),
         ):
@@ -298,19 +298,19 @@ class TestRunFederatedTrainingTask:
         csv_path.write_text("file,label\n")
 
         with (
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
                 return_value=mock_config_manager,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",  # noqa: E501
                 side_effect=lambda *args: any(
                     str(arg).endswith("Images") or str(arg).endswith("metadata.csv")
                     for arg in args
                 ),
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",  # noqa: E501
                 Path,
             ),
         ):
@@ -339,12 +339,12 @@ class TestRunFederatedTrainingTask:
         csv_path.write_text("file,label\n")
 
         with (
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
                 return_value=mock_config_manager,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",  # noqa: E501
                 return_value={
                     "POSTGRES_DB_URI": "test",
                     "POSTGRES_DB": "test",
@@ -352,24 +352,24 @@ class TestRunFederatedTrainingTask:
                     "POSTGRES_PASSWORD": "test",
                 },
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",  # noqa: E501
                 return_value=True,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",  # noqa: E501
                 Path,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",  # noqa: E501
                 return_value=mock_subprocess_popen,
             ),
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",  # noqa: E501
                 return_value={},
             ),
         ):
-            result = run_federated_training_task(
+            run_federated_training_task(
                 source_path=str(source_path),
                 experiment_name="test_federated",
                 csv_filename="metadata.csv",
@@ -395,12 +395,12 @@ class TestRunFederatedTrainingTask:
         mock_configs = {"num_server_rounds": 3, "max_epochs": 2}
 
         with (
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
                 return_value=mock_config_manager,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",  # noqa: E501
                 return_value={
                     "POSTGRES_DB_URI": "test",
                     "POSTGRES_DB": "test",
@@ -408,24 +408,24 @@ class TestRunFederatedTrainingTask:
                     "POSTGRES_PASSWORD": "test",
                 },
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",  # noqa: E501
                 return_value=True,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",  # noqa: E501
                 Path,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",  # noqa: E501
                 return_value=mock_subprocess_popen,
             ),
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",  # noqa: E501
                 return_value=mock_configs,
             ) as mock_read_configs,
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment.update_flwr_config",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment.update_flwr_config",  # noqa: E501
             ) as mock_update_flwr,
         ):
             run_federated_training_task(
@@ -453,12 +453,12 @@ class TestRunFederatedTrainingTask:
         csv_path.write_text("file,label\n")
 
         with (
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
                 return_value=mock_config_manager,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",  # noqa: E501
                 return_value={
                     "POSTGRES_DB_URI": "test",
                     "POSTGRES_DB": "test",
@@ -466,24 +466,24 @@ class TestRunFederatedTrainingTask:
                     "POSTGRES_PASSWORD": "test",
                 },
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",  # noqa: E501
                 return_value=True,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",  # noqa: E501
                 Path,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",  # noqa: E501
                 return_value=mock_subprocess_popen,
             ),
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",  # noqa: E501
                 return_value=None,
             ),
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment.update_flwr_config",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment.update_flwr_config",  # noqa: E501
             ) as mock_update_flwr,
         ):
             result = run_federated_training_task(
@@ -520,28 +520,28 @@ class TestRunFederatedTrainingTask:
         }
 
         with (
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
                 return_value=mock_config_manager,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",  # noqa: E501
                 return_value=test_env,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",  # noqa: E501
                 return_value=True,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",  # noqa: E501
                 Path,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",  # noqa: E501
                 return_value=mock_subprocess_popen,
             ) as mock_popen,
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",  # noqa: E501
                 return_value={},
             ),
         ):
@@ -563,55 +563,62 @@ class TestRunFederatedTrainingTask:
         mock_config_manager,
         mock_subprocess_popen,
         tmp_path,
-        caplog,
     ):
         """Test warning when required environment variables are missing."""
-        import logging
-
-        caplog.set_level(
-            logging.WARNING,
-            logger="federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks",
-        )
-
         source_path = tmp_path / "data"
         images_dir = source_path / "Images"
         images_dir.mkdir(parents=True)
         csv_path = source_path / "metadata.csv"
         csv_path.write_text("file,label\n")
 
+        # Mock environment without required variables
+        incomplete_env = {"SOME_OTHER_VAR": "value"}
+
         with (
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
                 return_value=mock_config_manager,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",
-                return_value={},
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.os.environ.copy",  # noqa: E501
+                return_value=incomplete_env,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",  # noqa: E501
                 return_value=True,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",  # noqa: E501
                 Path,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.subprocess.Popen",  # noqa: E501
                 return_value=mock_subprocess_popen,
             ),
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",  # noqa: E501
+                return_value={},
+            ),
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.task_logger",  # noqa: E501
+            ) as mock_logger,
         ):
-            run_federated_training_task(
+            result = run_federated_training_task(
                 source_path=str(source_path),
                 experiment_name="test_federated",
                 csv_filename="metadata.csv",
                 num_server_rounds=3,
             )
 
-            # Check for warning about missing env vars using caplog
-            log_messages = [record.message for record in caplog.records]
+            # Should complete and log warning about missing env vars
+            assert result["status"] == "completed"
+            # Verify warning was called about missing environment variables
+            warning_calls = [str(call) for call in mock_logger.warning.call_args_list]
             assert any(
-                "[WARN] Missing environment variables:" in msg for msg in log_messages
+                "Missing environment variables" in call for call in warning_calls
+            ), (
+                f"Expected warning about missing env vars. "
+                f"Logger warning calls: {warning_calls}"
             )
 
     @pytest.mark.unit
@@ -628,20 +635,20 @@ class TestRunFederatedTrainingTask:
         csv_path.write_text("file,label\n")
 
         with (
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.ConfigManager",  # noqa: E501
                 return_value=mock_config_manager,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path.exists",  # noqa: E501
                 return_value=True,
             ),
-            patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.federated_tasks.Path",  # noqa: E501
                 Path,
             ),
-            patch(
-                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",
+            patch(  # noqa: E501
+                "federated_pneumonia_detection.src.control.federated_new_version.core.utils.read_configs_to_toml",  # noqa: E501
                 side_effect=RuntimeError("Unexpected error"),
             ),
         ):

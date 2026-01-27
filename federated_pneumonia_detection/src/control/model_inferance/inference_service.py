@@ -141,7 +141,8 @@ class InferenceService:
     ) -> InferenceResponse:
         """Run inference on a single image.
 
-        Handles validation, image reading, and prediction. Returns timing and response data.
+        Handles validation, image reading, and prediction.
+        Returns timing and response data.
 
         Args:
             file: Uploaded image file
@@ -156,7 +157,8 @@ class InferenceService:
 
         image = await self.processor.read_from_upload(file)
         logger.info(
-            f"Processing image: {file.filename}, size: {image.size}, mode: {image.mode}",
+            f"Processing image: {file.filename}, size: {image.size}, "
+            f"mode: {image.mode}",
         )
 
         try:

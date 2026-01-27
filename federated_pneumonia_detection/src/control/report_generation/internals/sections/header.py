@@ -8,7 +8,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import HRFlowable, Paragraph, Spacer, Table, TableStyle
 
-from federated_pneumonia_detection.src.control.report_generation.internals.constants import (
+from federated_pneumonia_detection.src.control.report_generation.internals.constants import (  # noqa: E501
     BRAND_COLOR,
 )
 

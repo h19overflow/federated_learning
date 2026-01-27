@@ -1,7 +1,7 @@
 """
 Database cleanup script for development/testing.
 
-This script provides utilities to clean up database records or reset the database schema.
+This script provides utilities to clean up database records or reset the database schema.  # noqa: E501
 Use with caution - this will delete data permanently!
 """
 
@@ -108,7 +108,7 @@ def reset_database() -> None:
     This completely resets the database schema and all data.
     """
     if not confirm_action(
-        "This will DROP ALL TABLES and RECREATE them. All data will be permanently lost.",
+        "This will DROP ALL TABLES and RECREATE them. All data will be permanently lost.",  # noqa: E501
     ):
         logger.info("Operation cancelled by user")
         return
@@ -162,7 +162,7 @@ def delete_runs_by_mode(training_mode: str) -> None:
     """
     if training_mode not in ["centralized", "federated"]:
         logger.error(
-            f"Invalid training_mode: {training_mode}. Must be 'centralized' or 'federated'",
+            f"Invalid training_mode: {training_mode}. Must be 'centralized' or 'federated'",  # noqa: E501
         )
         return
 

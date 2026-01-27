@@ -11,7 +11,6 @@ from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
-
 # Type definitions
 
 

@@ -1,10 +1,12 @@
-import pytest
 from unittest.mock import MagicMock
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.factory import (
-    AgentFactory,
-)
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (
+
+import pytest
+
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (  # noqa: E501
     ArxivAugmentedEngine,
+)
+from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.factory import (  # noqa: E501
+    AgentFactory,
 )
 
 
@@ -13,8 +15,8 @@ def test_agent_factory_create_agent():
     factory = AgentFactory()
 
     # Test research agent
-    # Note: We might need to mock ArxivAugmentedEngine if it tries to init LLM
-    # But for now let's see if we can just check the type if it's already initialized or mock it.
+    # Note: We might need to mock ArxivAugmentedEngine if it tries
+    # to init LLM. But for now let's check the type if initialized.
 
     # Mocking the internal _research_agent to avoid actual initialization
     mock_agent = MagicMock(spec=ArxivAugmentedEngine)

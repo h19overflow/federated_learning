@@ -3,11 +3,12 @@ Unit tests for GradCAM component.
 Tests gradient-weighted class activation mapping generation.
 """
 
+from unittest.mock import Mock
+
 import numpy as np
 import pytest
 import torch
 import torch.nn as nn
-from unittest.mock import Mock
 from PIL import Image
 
 from federated_pneumonia_detection.src.control.model_inferance.gradcam import (
@@ -124,7 +125,7 @@ class TestGradCAM:
     def test_hooks_removed_on_deletion(self, mock_model):
         """Test hooks are removed when object is deleted."""
         gradcam = GradCAM(mock_model)
-        hooks_before = len(gradcam.hooks)
+        assert len(gradcam.hooks) > 0
 
         del gradcam
 

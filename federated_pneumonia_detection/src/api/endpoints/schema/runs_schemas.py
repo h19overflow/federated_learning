@@ -85,9 +85,9 @@ class AnalyticsSummaryResponse(BaseModel):
 
     Attributes:
         total_runs: Total number of runs across all modes.
-        success_rate: Proportion of filtered runs relative to all runs with same status (0-1).
-                     This is NOT a success/completion rate, but a filtering ratio showing
-                     what fraction of all status-matching runs passed through additional filters.
+        success_rate: Proportion of filtered runs relative to all runs with same status (0-1).  # noqa: E501
+                     This is NOT a success/completion rate, but a filtering ratio showing  # noqa: E501
+                     what fraction of all status-matching runs passed through additional filters.  # noqa: E501
         centralized: Aggregated metrics for centralized training.
         federated: Aggregated metrics for federated training.
         top_runs: Top performing runs by accuracy.
@@ -97,7 +97,7 @@ class AnalyticsSummaryResponse(BaseModel):
     success_rate: float = Field(
         ge=0,
         le=1,
-        description="Proportion of filtered runs to total status-matching runs (filtered_count / all_status_count)",
+        description="Proportion of filtered runs to total status-matching runs (filtered_count / all_status_count)",  # noqa: E501
     )
     centralized: ModeMetrics = Field(description="Centralized mode metrics")
     federated: ModeMetrics = Field(description="Federated mode metrics")
