@@ -160,9 +160,22 @@ def transform_run_to_results(
     # Extract confusion matrix values from last epoch
     # Use persisted stats if available, otherwise calculate on-the-fly
     confusion_matrix_obj = None
-    if persisted_stats:
-        # Use pre-computed stats - only include the stats, not raw CM values
-        confusion_matrix_obj = persisted_stats.copy()
+    if persisted_stats and last_epoch_data:
+        # Use pre-computed stats but also include raw CM values from last epoch
+        tp = last_epoch_data.get("val_cm_tp")
+        tn = last_epoch_data.get("val_cm_tn")
+        fp = last_epoch_data.get("val_cm_fp")
+        fn = last_epoch_data.get("val_cm_fn")
+
+        # Include both raw CM values and pre-computed stats
+        if all(v is not None for v in [tp, tn, fp, fn]):
+            confusion_matrix_obj = {
+                "true_positives": int(tp),
+                "true_negatives": int(tn),
+                "false_positives": int(fp),
+                "false_negatives": int(fn),
+                **persisted_stats,  # Add pre-computed stats
+            }
     elif last_epoch_data:
         tp = last_epoch_data.get("val_cm_tp")
         tn = last_epoch_data.get("val_cm_tn")

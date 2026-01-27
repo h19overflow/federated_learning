@@ -168,63 +168,51 @@ class SummaryService:
             - runs: List of run summary dictionaries
             - total: Total number of runs matching filters
         """
-        # Build cache key from all parameters
-        cache_filters = {
-            "status": status,
-            "training_mode": training_mode,
-            "sort_by": sort_by,
-            "sort_order": sort_order,
-        }
-        key = cache_key("list_runs_with_summaries", (limit, offset), cache_filters)
+        # Use CRUD method for filtered, sorted, paginated list
+        runs, total_count = self._run_crud.list_with_filters(
+            db,
+            status=status,
+            training_mode=training_mode,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            limit=limit,
+            offset=offset,
+        )
 
-        def _compute() -> dict[str, Any]:
-            # Use CRUD method for filtered, sorted, paginated list
-            runs, total_count = self._run_crud.list_with_filters(
-                db,
-                status=status,
-                training_mode=training_mode,
-                sort_by=sort_by,
-                sort_order=sort_order,
-                limit=limit,
-                offset=offset,
-            )
+        # Build summaries for all runs
+        summaries = []
+        for run in runs:
+            try:
+                summary = self._build_run_summary(run, db)
+                summaries.append(summary)
+            except Exception as e:
+                logger.error(
+                    f"Failed to build summary for run {run.id}: {e}",
+                    exc_info=True,
+                )
+                # Graceful degradation: append minimal summary with error indicator
+                summaries.append(
+                    {
+                        "id": run.id,
+                        "training_mode": run.training_mode,
+                        "status": run.status,
+                        "start_time": run.start_time.isoformat()
+                        if run.start_time
+                        else None,
+                        "end_time": run.end_time.isoformat()
+                        if run.end_time
+                        else None,
+                        "best_val_recall": 0.0,
+                        "best_val_accuracy": 0.0,
+                        "metrics_count": 0,
+                        "run_description": None,
+                        "federated_info": None,
+                        "final_epoch_stats": None,
+                        "error": "Summary unavailable",
+                    }
+                )
 
-            # Build summaries for all runs
-            summaries = []
-            for run in runs:
-                try:
-                    summary = self._build_run_summary(run, db)
-                    summaries.append(summary)
-                except Exception as e:
-                    logger.error(
-                        f"Failed to build summary for run {run.id}: {e}",
-                        exc_info=True,
-                    )
-                    # Graceful degradation: append minimal summary with error indicator
-                    summaries.append(
-                        {
-                            "id": run.id,
-                            "training_mode": run.training_mode,
-                            "status": run.status,
-                            "start_time": run.start_time.isoformat()
-                            if run.start_time
-                            else None,
-                            "end_time": run.end_time.isoformat()
-                            if run.end_time
-                            else None,
-                            "best_val_recall": 0.0,
-                            "best_val_accuracy": 0.0,
-                            "metrics_count": 0,
-                            "run_description": None,
-                            "federated_info": None,
-                            "final_epoch_stats": None,
-                            "error": "Summary unavailable",
-                        }
-                    )
-
-            return {"runs": summaries, "total": total_count}
-
-        return self._cache.get_or_set(key, _compute)
+        return {"runs": summaries, "total": total_count}
 
     # Internal helper methods
 

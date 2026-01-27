@@ -1,23 +1,22 @@
 /**
  * Hook for managing real-time training observability metrics.
  * Subscribes to batch_metrics and epoch_end WebSocket events.
- * Subscribes to batch_metrics and epoch_end WebSocket events.
  * Implements throttling (500ms) and data windowing (max 200 points).
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { TrainingProgressWebSocket } from "@/services/websocket";
 import type { BatchMetricsData, BatchMetricsDataPoint, EpochEndData } from "@/types/api";
-import type { BatchMetricsData, BatchMetricsDataPoint, EpochEndData } from "@/types/api";
 
 const MAX_DATA_POINTS = 200;
 const THROTTLE_MS = 500; // 2 Hz updates
 
-interface ConfusionMatrixValues {
-  truePositives: number | null;
-  trueNegatives: number | null;
-  falsePositives: number | null;
-  falseNegatives: number | null;
+export interface ConfusionMatrixData {
+  tp: number | null;
+  tn: number | null;
+  fp: number | null;
+  fn: number | null;
+  epoch?: number;
 }
 
 interface UseTrainingMetricsReturn {
@@ -26,7 +25,7 @@ interface UseTrainingMetricsReturn {
   currentAccuracy: number | null;
   currentF1: number | null;
   isReceiving: boolean;
-  confusionMatrix: ConfusionMatrixValues;
+  confusionMatrix: ConfusionMatrixData | null;
   reset: () => void;
 }
 

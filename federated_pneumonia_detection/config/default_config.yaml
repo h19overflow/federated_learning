@@ -14,17 +14,13 @@ experiment:
   device: auto
   dropout_rate: 0.3
   early_stopping_patience: 3
-  early_stopping_patience: 3
   edge_enhancement: false
   edge_strength: 1.0
-  epochs: 2
-  file-path: C:\Users\User\AppData\Local\Temp\tmp3y_ie5eq\extracted\sample\stage2_train_metadata.csv
-  epochs: 2
+  epochs: 1
   file-path: C:\Users\User\AppData\Local\Temp\tmpalthk471\extracted\sample\stage2_train_metadata.csv
   fine_tune_layers_count: 5
   freeze_backbone: true
   gradient_sample_interval: 20
-  image-dir: C:\Users\User\AppData\Local\Temp\tmp3y_ie5eq\extracted\sample\Images
   image-dir: C:\Users\User\AppData\Local\Temp\tmpalthk471\extracted\sample\Images
   learning_rate: 0.001
   local_epochs: 1
