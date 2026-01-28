@@ -1,8 +1,8 @@
 from contextlib import contextmanager
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Any, Dict, Generic, List, Optional, Sequence, Type, TypeVar
 
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Load, Session
 
 from federated_pneumonia_detection.src.boundary.engine import Base, get_session
 
@@ -45,14 +45,29 @@ class BaseCRUD(Generic[ModelType]):
         skip: int = 0,
         limit: int = 100,
         filters: Optional[Dict[str, Any]] = None,
+        eager_loads: Optional[Sequence[Load]] = None,
     ) -> List[ModelType]:
-        """Get multiple records with optional filtering."""
+        """Get multiple records with optional filtering and eager loading.
+
+        Args:
+            db: Database session
+            skip: Number of records to skip (default: 0)
+            limit: Maximum number of records to return (default: 100)
+            filters: Optional dictionary of field=value filters
+            eager_loads: Optional sequence of SQLAlchemy Load objects for eager loading
+
+        Returns:
+            List of model instances
+        """
         query = db.query(self.model)
 
         if filters:
             for key, value in filters.items():
                 if hasattr(self.model, key):
                     query = query.filter(getattr(self.model, key) == value)
+
+        if eager_loads:
+            query = query.options(*eager_loads)
 
         return query.offset(skip).limit(limit).all()
 

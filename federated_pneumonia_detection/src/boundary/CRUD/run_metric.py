@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 from federated_pneumonia_detection.src.boundary.models import RunMetric
@@ -17,7 +17,16 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
 
     def get_by_run(self, db: Session, run_id: int) -> List[RunMetric]:
         """Get all metrics for a specific run."""
-        return db.query(self.model).filter(self.model.run_id == run_id).all()
+        return (
+            db.query(self.model)
+            .options(
+                joinedload(self.model.run),
+                joinedload(self.model.client),
+                joinedload(self.model.round),
+            )
+            .filter(self.model.run_id == run_id)
+            .all()
+        )
 
     def get_by_metric_name(
         self,
@@ -28,6 +37,11 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
         """Get specific metric for a run."""
         return (
             db.query(self.model)
+            .options(
+                joinedload(self.model.run),
+                joinedload(self.model.client),
+                joinedload(self.model.round),
+            )
             .filter(self.model.run_id == run_id, self.model.metric_name == metric_name)
             .order_by(self.model.step)
             .all()
@@ -42,6 +56,11 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
         """Get metrics for a specific dataset type."""
         return (
             db.query(self.model)
+            .options(
+                joinedload(self.model.run),
+                joinedload(self.model.client),
+                joinedload(self.model.round),
+            )
             .filter(
                 self.model.run_id == run_id,
                 self.model.dataset_type == dataset_type,
@@ -67,6 +86,11 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
         """Get all metrics at a specific step."""
         return (
             db.query(self.model)
+            .options(
+                joinedload(self.model.run),
+                joinedload(self.model.client),
+                joinedload(self.model.round),
+            )
             .filter(self.model.run_id == run_id, self.model.step == step)
             .all()
         )
@@ -120,6 +144,11 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
         """Get metrics filtered by name and dataset type."""
         return (
             db.query(self.model)
+            .options(
+                joinedload(self.model.run),
+                joinedload(self.model.client),
+                joinedload(self.model.round),
+            )
             .filter(
                 self.model.run_id == run_id,
                 self.model.metric_name == metric_name,

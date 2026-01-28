@@ -2,6 +2,7 @@ import datetime
 from typing import List, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import selectinload
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.models import Client
@@ -65,7 +66,12 @@ class ClientCRUD:
     def get_clients_by_run_id(self, run_id: int) -> List[Client]:
         """Get all clients for a specific run"""
         with get_session() as session:
-            clients = session.query(Client).filter(Client.run_id == run_id).all()
+            clients = (
+                session.query(Client)
+                .options(selectinload(Client.rounds))
+                .filter(Client.run_id == run_id)
+                .all()
+            )
             for client_instance in clients:
                 session.expunge(client_instance)
             return clients

@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import desc
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 from federated_pneumonia_detection.src.boundary.models import ServerEvaluation
@@ -78,7 +78,11 @@ class ServerEvaluationCRUD(BaseCRUD[ServerEvaluation]):
         Returns:
             List of ServerEvaluation instances
         """
-        query = db.query(ServerEvaluation).filter(ServerEvaluation.run_id == run_id)
+        query = (
+            db.query(ServerEvaluation)
+            .options(joinedload(ServerEvaluation.run))
+            .filter(ServerEvaluation.run_id == run_id)
+        )
 
         if order_by_round:
             query = query.order_by(ServerEvaluation.round_number)

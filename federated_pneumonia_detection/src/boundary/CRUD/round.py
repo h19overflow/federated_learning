@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 
 from federated_pneumonia_detection.src.boundary.engine import get_session
 from federated_pneumonia_detection.src.boundary.models import Client, Round
@@ -66,6 +67,7 @@ class RoundCRUD:
         with get_session() as session:
             rounds = (
                 session.query(Round)
+                .options(joinedload(Round.client))
                 .filter(Round.client_id == client_id)
                 .order_by(Round.round_number)
                 .all()
@@ -79,7 +81,10 @@ class RoundCRUD:
         """Get all client rounds for a specific round number (global round view)"""
         with get_session() as session:
             rounds = (
-                session.query(Round).filter(Round.round_number == round_number).all()
+                session.query(Round)
+                .options(joinedload(Round.client))
+                .filter(Round.round_number == round_number)
+                .all()
             )
             for round_instance in rounds:
                 session.expunge(round_instance)
@@ -92,6 +97,7 @@ class RoundCRUD:
             rounds = (
                 session.query(Round)
                 .join(Client)
+                .options(joinedload(Round.client))
                 .filter(Client.run_id == run_id)
                 .order_by(Round.round_number, Round.client_id)
                 .all()

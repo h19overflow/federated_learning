@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from federated_pneumonia_detection.src.boundary.CRUD.base import BaseCRUD
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.models import (
+    Client,
     Run,
     RunMetric,
     ServerEvaluation,
@@ -27,7 +28,7 @@ class RunCRUD(BaseCRUD[Run]):
             db.query(self.model)
             .options(
                 selectinload(Run.metrics),
-                selectinload(Run.clients),
+                selectinload(Run.clients).selectinload(Client.rounds),
                 selectinload(Run.server_evaluations),
             )
             .filter(self.model.experiment_id == experiment_id)
@@ -40,7 +41,7 @@ class RunCRUD(BaseCRUD[Run]):
             db.query(self.model)
             .options(
                 selectinload(Run.metrics),
-                selectinload(Run.clients),
+                selectinload(Run.clients).selectinload(Client.rounds),
                 selectinload(Run.server_evaluations),
             )
             .filter(self.model.status == status)
@@ -53,7 +54,7 @@ class RunCRUD(BaseCRUD[Run]):
             db.query(self.model)
             .options(
                 selectinload(Run.metrics),
-                selectinload(Run.clients),
+                selectinload(Run.clients).selectinload(Client.rounds),
                 selectinload(Run.server_evaluations),
             )
             .filter(self.model.training_mode == training_mode)
@@ -168,7 +169,7 @@ class RunCRUD(BaseCRUD[Run]):
             db.query(self.model)
             .options(
                 selectinload(Run.metrics),
-                selectinload(Run.clients),
+                selectinload(Run.clients).selectinload(Client.rounds),
                 selectinload(Run.server_evaluations),
             )
             .filter(self.model.status == status)
@@ -202,7 +203,7 @@ class RunCRUD(BaseCRUD[Run]):
             db.query(self.model)
             .options(
                 selectinload(Run.metrics),
-                selectinload(Run.clients),
+                selectinload(Run.clients).selectinload(Client.rounds),
                 selectinload(Run.server_evaluations),
             )
             .filter(self.model.status == "completed")
@@ -221,7 +222,7 @@ class RunCRUD(BaseCRUD[Run]):
             db.query(self.model)
             .options(
                 selectinload(Run.metrics),
-                selectinload(Run.clients),
+                selectinload(Run.clients).selectinload(Client.rounds),
                 selectinload(Run.server_evaluations),
             )
             .filter(self.model.status == "failed")
@@ -318,9 +319,12 @@ class RunCRUD(BaseCRUD[Run]):
         else:
             query = query.order_by(sort_column.asc())
 
-        # Eager load metrics and clients to prevent N+1 queries
+        # Eager load metrics and clients with nested rounds to prevent N+1 queries
         runs = (
-            query.options(selectinload(Run.metrics), selectinload(Run.clients))
+            query.options(
+                selectinload(Run.metrics),
+                selectinload(Run.clients).selectinload(Client.rounds),
+            )
             .limit(limit)
             .offset(offset)
             .all()

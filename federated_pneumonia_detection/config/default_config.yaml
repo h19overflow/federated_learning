@@ -17,11 +17,11 @@ experiment:
   edge_enhancement: false
   edge_strength: 1.0
   epochs: 2
-  file-path: C:\Users\User\AppData\Local\Temp\tmp9np3tfyh\extracted\sample\stage2_train_metadata.csv
+  file-path: C:\Users\User\AppData\Local\Temp\tmp5fugnvce\extracted\sample\stage2_train_metadata.csv
   fine_tune_layers_count: 5
   freeze_backbone: true
   gradient_sample_interval: 20
-  image-dir: C:\Users\User\AppData\Local\Temp\tmp9np3tfyh\extracted\sample\Images
+  image-dir: C:\Users\User\AppData\Local\Temp\tmp5fugnvce\extracted\sample\Images
   learning_rate: 0.001
   local_epochs: 1
   lower_percentile: 5.0
