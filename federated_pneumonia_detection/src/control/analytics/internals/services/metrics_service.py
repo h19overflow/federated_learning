@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy.orm import Session
 
+from federated_pneumonia_detection.src.boundary.CRUD.client import client_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
 from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
 from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
@@ -46,6 +47,7 @@ class MetricsService:
         run_crud_obj: Any = run_crud,
         run_metric_crud_obj: Any = run_metric_crud,
         server_evaluation_crud_obj: Any = server_evaluation_crud,
+        client_crud_obj: Any = client_crud,
     ):
         """Initialize MetricsService with dependencies.
 
@@ -54,11 +56,13 @@ class MetricsService:
             run_crud_obj: RunCRUD instance (injected for testability).
             run_metric_crud_obj: RunMetricCRUD instance.
             server_evaluation_crud_obj: ServerEvaluationCRUD instance.
+            client_crud_obj: ClientCRUD instance.
         """
         self._cache = cache
         self._run_crud = run_crud_obj
         self._run_metric_crud = run_metric_crud_obj
         self._server_evaluation_crud = server_evaluation_crud_obj
+        self._client_crud = client_crud_obj
 
     def get_run_metrics(self, db: Session, run_id: int) -> dict[str, Any]:
         """Get all metrics for a specific run in analytics format.
@@ -174,6 +178,79 @@ class MetricsService:
             raise ValueError(f"No metrics found for run {run_id}")
 
         return detail
+
+    def get_client_metrics(self, db: Session, run_id: int) -> dict[str, Any]:
+        """Get per-client metrics for a federated training run.
+
+        Aggregates metrics by client, providing granular training progress data
+        for each participant in federated learning.
+
+        Args:
+            db: Database session.
+            run_id: Run identifier.
+
+        Returns:
+            Dictionary containing:
+            - run_id: Run identifier
+            - is_federated: Whether this is a federated run
+            - clients: List of client data with training history
+            - aggregated_metrics: Server-aggregated metrics per round
+
+        Raises:
+            ValueError: If run not found or not a federated run.
+        """
+        key = cache_key("get_client_metrics", (run_id,), {})
+
+        def _compute() -> dict[str, Any]:
+            run = self._run_crud.get_with_metrics(db, run_id)
+            if not run:
+                raise ValueError(f"Run {run_id} not found")
+
+            if run.training_mode != "federated":
+                return {
+                    "run_id": run_id,
+                    "is_federated": False,
+                    "clients": [],
+                    "aggregated_metrics": [],
+                }
+
+            # Get clients for this run
+            clients = self._client_crud.get_clients_by_run(db, run_id)
+            client_id_to_identifier = {c.id: c.client_identifier for c in clients}
+
+            # Get metrics grouped by client
+            grouped_metrics = self._run_metric_crud.get_by_run_grouped_by_client(
+                db, run_id
+            )
+
+            # Get aggregated metrics
+            aggregated = self._run_metric_crud.get_aggregated_metrics_by_run(db, run_id)
+
+            # Transform client metrics
+            clients_data = []
+            for client_id, metrics in grouped_metrics.items():
+                client_data = self._transform_client_metrics(
+                    client_id,
+                    client_id_to_identifier.get(client_id, f"client_{client_id}"),
+                    metrics,
+                )
+                clients_data.append(client_data)
+
+            # Sort clients by identifier for consistent ordering
+            clients_data.sort(key=lambda x: x["client_identifier"])
+
+            # Transform aggregated metrics
+            aggregated_data = self._transform_aggregated_metrics(aggregated)
+
+            return {
+                "run_id": run_id,
+                "is_federated": True,
+                "num_clients": len(clients_data),
+                "clients": clients_data,
+                "aggregated_metrics": aggregated_data,
+            }
+
+        return self._cache.get_or_set(key, _compute)
 
     # Internal helper methods
 
@@ -375,3 +452,117 @@ class MetricsService:
             "federated": empty_stats,
             "top_runs": [],
         }
+
+    def _transform_client_metrics(
+        self,
+        client_id: int,
+        client_identifier: str,
+        metrics: list,
+    ) -> dict[str, Any]:
+        """Transform raw RunMetric objects into client data structure.
+
+        Args:
+            client_id: Database client ID.
+            client_identifier: Human-readable client identifier (e.g., 'client_0').
+            metrics: List of RunMetric objects for this client.
+
+        Returns:
+            Dictionary containing client training history grouped by step/epoch.
+        """
+        # Group metrics by step to create training history
+        steps_data: dict[int, dict[str, Any]] = {}
+
+        for metric in metrics:
+            step = metric.step
+            if step not in steps_data:
+                steps_data[step] = {"step": step}
+
+            # Store metric value using metric name as key
+            steps_data[step][metric.metric_name] = metric.metric_value
+
+            # Add round info if available
+            if metric.round and metric.round.round_number is not None:
+                steps_data[step]["round"] = metric.round.round_number
+
+        # Convert to sorted list
+        training_history = sorted(steps_data.values(), key=lambda x: x["step"])
+
+        # Calculate summary stats
+        best_metrics = self._calculate_client_best_metrics(training_history)
+
+        return {
+            "client_id": client_id,
+            "client_identifier": client_identifier,
+            "total_steps": len(training_history),
+            "training_history": training_history,
+            "best_metrics": best_metrics,
+        }
+
+    def _transform_aggregated_metrics(self, metrics: list) -> list[dict[str, Any]]:
+        """Transform aggregated (server-side) metrics into per-round structure.
+
+        Args:
+            metrics: List of RunMetric objects with context='aggregated'.
+
+        Returns:
+            List of dictionaries, one per round, containing aggregated metrics.
+        """
+        # Group by step (round)
+        rounds_data: dict[int, dict[str, Any]] = {}
+
+        for metric in metrics:
+            step = metric.step
+            if step not in rounds_data:
+                rounds_data[step] = {"round": step}
+
+            rounds_data[step][metric.metric_name] = metric.metric_value
+
+        return sorted(rounds_data.values(), key=lambda x: x["round"])
+
+    def _calculate_client_best_metrics(
+        self,
+        training_history: list[dict[str, Any]],
+    ) -> dict[str, Optional[float]]:
+        """Extract best metric values from client training history.
+
+        Args:
+            training_history: List of step-wise metric dictionaries.
+
+        Returns:
+            Dictionary with best values for standard metrics.
+        """
+        best = {
+            "best_val_accuracy": None,
+            "best_val_precision": None,
+            "best_val_recall": None,
+            "best_val_f1": None,
+            "best_val_auroc": None,
+            "lowest_val_loss": None,
+        }
+
+        for entry in training_history:
+            if val_acc := entry.get("val_acc"):
+                if best["best_val_accuracy"] is None or val_acc > best["best_val_accuracy"]:
+                    best["best_val_accuracy"] = val_acc
+
+            if val_prec := entry.get("val_precision"):
+                if best["best_val_precision"] is None or val_prec > best["best_val_precision"]:
+                    best["best_val_precision"] = val_prec
+
+            if val_rec := entry.get("val_recall"):
+                if best["best_val_recall"] is None or val_rec > best["best_val_recall"]:
+                    best["best_val_recall"] = val_rec
+
+            if val_f1 := entry.get("val_f1"):
+                if best["best_val_f1"] is None or val_f1 > best["best_val_f1"]:
+                    best["best_val_f1"] = val_f1
+
+            if val_auroc := entry.get("val_auroc"):
+                if best["best_val_auroc"] is None or val_auroc > best["best_val_auroc"]:
+                    best["best_val_auroc"] = val_auroc
+
+            if val_loss := entry.get("val_loss"):
+                if best["lowest_val_loss"] is None or val_loss < best["lowest_val_loss"]:
+                    best["lowest_val_loss"] = val_loss
+
+        return best

@@ -254,3 +254,70 @@ class ServerEvaluationResponse(BaseModel):
         description="Server evaluations",
     )
     summary: Dict[str, Any] = Field(default={}, description="Summary statistics")
+
+
+class ClientBestMetrics(BaseModel):
+    """Best metrics achieved by a single client during training.
+
+    Attributes:
+        best_val_accuracy: Best validation accuracy achieved.
+        best_val_precision: Best validation precision achieved.
+        best_val_recall: Best validation recall achieved.
+        best_val_f1: Best validation F1-score achieved.
+        best_val_auroc: Best validation AUROC achieved.
+        lowest_val_loss: Lowest validation loss achieved.
+    """
+
+    best_val_accuracy: Optional[float] = Field(None, ge=0, le=1)
+    best_val_precision: Optional[float] = Field(None, ge=0, le=1)
+    best_val_recall: Optional[float] = Field(None, ge=0, le=1)
+    best_val_f1: Optional[float] = Field(None, ge=0, le=1)
+    best_val_auroc: Optional[float] = Field(None, ge=0, le=1)
+    lowest_val_loss: Optional[float] = Field(None, ge=0)
+
+
+class ClientMetricsData(BaseModel):
+    """Per-client training metrics data.
+
+    Attributes:
+        client_id: Database client ID.
+        client_identifier: Human-readable identifier (e.g., 'client_0').
+        total_steps: Number of training steps recorded.
+        training_history: List of per-step metric dictionaries.
+        best_metrics: Best metrics achieved during training.
+    """
+
+    client_id: int = Field(gt=0, description="Client database ID")
+    client_identifier: str = Field(description="Human-readable client name")
+    total_steps: int = Field(ge=0, description="Number of training steps")
+    training_history: List[Dict[str, Any]] = Field(
+        default=[],
+        description="Per-step training metrics",
+    )
+    best_metrics: ClientBestMetrics = Field(description="Best metrics summary")
+
+
+class ClientMetricsResponse(BaseModel):
+    """Response model for GET /{run_id}/client-metrics endpoint.
+
+    Provides granular per-client training data for federated learning runs.
+
+    Attributes:
+        run_id: Run identifier.
+        is_federated: Whether this is a federated training run.
+        num_clients: Number of participating clients.
+        clients: List of per-client metric data.
+        aggregated_metrics: Server-aggregated metrics per round.
+    """
+
+    run_id: int = Field(gt=0, description="Run identifier")
+    is_federated: bool = Field(description="Federated training flag")
+    num_clients: int = Field(ge=0, default=0, description="Number of clients")
+    clients: List[ClientMetricsData] = Field(
+        default=[],
+        description="Per-client training data",
+    )
+    aggregated_metrics: List[Dict[str, Any]] = Field(
+        default=[],
+        description="Server-aggregated metrics per round",
+    )

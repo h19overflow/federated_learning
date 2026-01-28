@@ -10,6 +10,7 @@ from fastapi import APIRouter
 
 from . import (
     runs_analytics,
+    runs_client_metrics,
     runs_download,
     runs_federated_rounds,
     runs_list,
@@ -27,5 +28,6 @@ router.include_router(runs_download.router)
 router.include_router(runs_federated_rounds.router)
 router.include_router(runs_server_evaluation.router)
 router.include_router(runs_analytics.router)
+router.include_router(runs_client_metrics.router)
 
 __all__ = ["router"]

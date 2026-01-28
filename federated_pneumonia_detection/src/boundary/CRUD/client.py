@@ -109,3 +109,27 @@ class ClientCRUD:
             except SQLAlchemyError:
                 session.rollback()
                 raise
+
+    def get_clients_by_run(
+        self,
+        db,
+        run_id: int,
+    ) -> List[Client]:
+        """Get all clients for a run using injected session.
+
+        Args:
+            db: SQLAlchemy session (injected).
+            run_id: Run ID to fetch clients for.
+
+        Returns:
+            List of Client objects for the run.
+        """
+        return (
+            db.query(Client)
+            .filter(Client.run_id == run_id)
+            .order_by(Client.id)
+            .all()
+        )
+
+
+client_crud = ClientCRUD()

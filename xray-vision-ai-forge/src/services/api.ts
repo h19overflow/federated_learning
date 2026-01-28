@@ -402,6 +402,35 @@ export const resultsApi = {
   },
 
   /**
+   * Get per-client training metrics for a federated run
+   */
+  async getClientMetrics(runId: number): Promise<{
+    run_id: number;
+    is_federated: boolean;
+    num_clients: number;
+    clients: Array<{
+      client_id: number;
+      client_identifier: string;
+      total_steps: number;
+      training_history: Array<Record<string, number>>;
+      best_metrics: {
+        best_val_accuracy: number | null;
+        best_val_precision: number | null;
+        best_val_recall: number | null;
+        best_val_f1: number | null;
+        best_val_auroc: number | null;
+        lowest_val_loss: number | null;
+      };
+    }>;
+    aggregated_metrics: Array<Record<string, number>>;
+  }> {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/runs/${runId}/client-metrics`,
+    );
+    return handleResponse(response);
+  },
+
+  /**
    * Get experiment metrics only (lighter weight than full results)
    */
   async getExperimentMetrics(

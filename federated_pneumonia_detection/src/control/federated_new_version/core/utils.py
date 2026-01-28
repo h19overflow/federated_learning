@@ -481,21 +481,23 @@ def read_configs_to_toml() -> dict:
             "experiment.local_epochs not found",
         )
 
-    if config_manager.has_key("experiment.options.num-supernodes"):
+    if config_manager.has_key("experiment.num_clients"):
+        flwr_configs["num_supernodes"] = config_manager.get("experiment.num_clients")
+        print(
+            f"[Config Reader] [OK] num-supernodes (from num_clients): {flwr_configs['num_supernodes']}"
+        )
+    elif config_manager.has_key("experiment.options.num-supernodes"):
         flwr_configs["num_supernodes"] = config_manager.get(
             "experiment.options.num-supernodes",
         )
-        print(f"[Config Reader] [OK] num-supernodes: {flwr_configs['num_supernodes']}")
-    elif config_manager.has_key("experiment.num_clients"):
-        flwr_configs["num_supernodes"] = config_manager.get("experiment.num_clients")
         print(
-            f"[Config Reader] [OK] num-supernodes (from num_clients): "
+            f"[Config Reader] [OK] num-supernodes (from num-supernodes): "
             f"{flwr_configs['num_supernodes']}",
         )
     else:
         print(
-            "[Config Reader] [WARN] experiment.options.num-supernodes or "
-            "experiment.num_clients not found",
+            "[Config Reader] [WARN] experiment.num_clients or "
+            "experiment.options.num-supernodes not found",
         )
 
     print(f"[Config Reader] Final configs to write to pyproject.toml: {flwr_configs}")

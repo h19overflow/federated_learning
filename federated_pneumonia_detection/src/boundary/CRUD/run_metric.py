@@ -158,6 +158,68 @@ class RunMetricCRUD(BaseCRUD[RunMetric]):
             .all()
         )
 
+    def get_by_run_grouped_by_client(
+        self,
+        db: Session,
+        run_id: int,
+    ) -> Dict[int, List[RunMetric]]:
+        """Get metrics for a federated run grouped by client_id.
+
+        Args:
+            db: Database session.
+            run_id: Run ID to fetch metrics for.
+
+        Returns:
+            Dictionary mapping client_id to list of RunMetric objects.
+            Only includes metrics with non-null client_id.
+        """
+        metrics = (
+            db.query(self.model)
+            .options(
+                joinedload(self.model.client),
+                joinedload(self.model.round),
+            )
+            .filter(
+                self.model.run_id == run_id,
+                self.model.client_id.isnot(None),
+            )
+            .order_by(self.model.client_id, self.model.step)
+            .all()
+        )
+
+        grouped: Dict[int, List[RunMetric]] = {}
+        for metric in metrics:
+            client_id = metric.client_id
+            if client_id not in grouped:
+                grouped[client_id] = []
+            grouped[client_id].append(metric)
+
+        return grouped
+
+    def get_aggregated_metrics_by_run(
+        self,
+        db: Session,
+        run_id: int,
+    ) -> List[RunMetric]:
+        """Get aggregated (server-side) metrics for a federated run.
+
+        Args:
+            db: Database session.
+            run_id: Run ID to fetch metrics for.
+
+        Returns:
+            List of RunMetric objects with context='aggregated'.
+        """
+        return (
+            db.query(self.model)
+            .filter(
+                self.model.run_id == run_id,
+                self.model.context == "aggregated",
+            )
+            .order_by(self.model.step)
+            .all()
+        )
+
     def create_final_epoch_stats(
         self,
         db: Session,

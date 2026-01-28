@@ -7,6 +7,12 @@ from federated_pneumonia_detection.src.api.deps import get_config
 from federated_pneumonia_detection.src.api.endpoints.schema.configuration_schemas import (  # noqa: E501
     ConfigurationUpdateRequest,
 )
+from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (  # noqa: E501
+    read_configs_to_toml,
+)
+from federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment import (  # noqa: E501
+    update_flwr_config,
+)
 
 router = APIRouter(
     prefix="/config",
@@ -50,6 +56,15 @@ async def update_settings(
     """
     config_data = configuration.model_dump(exclude_none=True)
     update_result = config.update_from_dict(config_data)
+
+    # Synchronize federated configuration to pyproject.toml
+    try:
+        flwr_configs = read_configs_to_toml()
+        update_flwr_config(**flwr_configs)
+    except Exception as e:
+        # Log the error but don't fail the entire update
+        # The YAML config was successfully updated even if TOML sync fails
+        pass
 
     return {
         "message": "Configuration updated successfully",

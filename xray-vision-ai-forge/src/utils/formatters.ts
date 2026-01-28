@@ -54,3 +54,22 @@ export const formatDate = (dateString: string): string => {
     return dateString;
   }
 };
+
+/**
+ * Truncates long client identifiers for UI display.
+ * 
+ * @param id - The client identifier string to truncate
+ * @returns A truncated identifier string
+ * 
+ * @example
+ * truncateId("client_1234567890") // Returns "client_123456..."
+ */
+export const truncateId = (id: string): string => {
+  if (!id) return "";
+  // If it looks like a client_UUID, truncate the UUID part
+  if (id.startsWith("client_") && id.length > 15) {
+    return `client_${id.substring(7, 13)}...`;
+  }
+  return id.length > 12 ? `${id.substring(0, 10)}...` : id;
+};
+

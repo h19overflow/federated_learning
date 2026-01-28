@@ -82,6 +82,31 @@ interface ServerEvaluationData {
   summary: any;
 }
 
+interface ClientBestMetrics {
+  best_val_accuracy: number | null;
+  best_val_precision: number | null;
+  best_val_recall: number | null;
+  best_val_f1: number | null;
+  best_val_auroc: number | null;
+  lowest_val_loss: number | null;
+}
+
+interface ClientMetricsEntry {
+  client_id: number;
+  client_identifier: string;
+  total_steps: number;
+  training_history: Array<Record<string, number>>;
+  best_metrics: ClientBestMetrics;
+}
+
+interface ClientMetricsData {
+  run_id: number;
+  is_federated: boolean;
+  num_clients: number;
+  clients: ClientMetricsEntry[];
+  aggregated_metrics: Array<Record<string, number>>;
+}
+
 export const useResultsVisualization = ({
   config,
   runId,
@@ -99,6 +124,8 @@ export const useResultsVisualization = ({
     useState<ComparisonResults | null>(null);
   const [serverEvaluation, setServerEvaluation] =
     useState<ServerEvaluationData | null>(null);
+  const [clientMetrics, setClientMetrics] =
+    useState<ClientMetricsData | null>(null);
 
   const showComparison = config.trainingMode === "both";
 
@@ -132,6 +159,24 @@ export const useResultsVisualization = ({
               serverEvalErr,
             );
             // Non-critical error, continue without server evaluation
+          }
+
+          // Fetch per-client metrics for federated runs
+          try {
+            const clientData = await api.results.getClientMetrics(runId);
+            if (clientData.is_federated && clientData.num_clients > 0) {
+              setClientMetrics(clientData);
+              console.log(
+                "[useResultsVisualization] Client metrics loaded:",
+                clientData,
+              );
+            }
+          } catch (clientMetricsErr: any) {
+            console.warn(
+              "[useResultsVisualization] Failed to fetch client metrics:",
+              clientMetricsErr,
+            );
+            // Non-critical error, continue without client metrics
           }
         } else if (config.trainingMode === "both") {
           setCentralizedResults(results);
@@ -455,6 +500,66 @@ export const useResultsVisualization = ({
     ] as ConfusionMatrix2D;
   }, [serverEvaluation]);
 
+  // Client metrics data transformations
+  const clientMetricsChartData = useMemo(() => {
+    if (!clientMetrics?.clients || clientMetrics.clients.length === 0) return [];
+
+    // Transform client data for comparison charts
+    return clientMetrics.clients.map((client) => ({
+      clientId: client.client_id,
+      clientIdentifier: client.client_identifier,
+      accuracy: client.best_metrics.best_val_accuracy || 0,
+      precision: client.best_metrics.best_val_precision || 0,
+      recall: client.best_metrics.best_val_recall || 0,
+      f1: client.best_metrics.best_val_f1 || 0,
+      auroc: client.best_metrics.best_val_auroc || 0,
+      loss: client.best_metrics.lowest_val_loss || 0,
+    }));
+  }, [clientMetrics]);
+
+  const clientTrainingHistories = useMemo(() => {
+    if (!clientMetrics?.clients || clientMetrics.clients.length === 0) return {};
+
+    // Return training history keyed by client identifier
+    const histories: Record<string, TrainingHistoryData[]> = {};
+
+    for (const client of clientMetrics.clients) {
+      histories[client.client_identifier] = client.training_history.map(
+        (entry, index) => ({
+          epoch: entry.step ?? index,
+          trainLoss: entry.train_loss ?? 0,
+          valLoss: entry.val_loss ?? 0,
+          trainAcc: entry.train_acc ?? 0,
+          valAcc: entry.val_acc ?? 0,
+          valPrecision: entry.val_precision,
+          valRecall: entry.val_recall,
+          valF1: entry.val_f1,
+          valAuroc: entry.val_auroc,
+        }),
+      );
+    }
+
+    return histories;
+  }, [clientMetrics]);
+
+  const aggregatedRoundMetrics = useMemo(() => {
+    if (
+      !clientMetrics?.aggregated_metrics ||
+      clientMetrics.aggregated_metrics.length === 0
+    )
+      return [];
+
+    return clientMetrics.aggregated_metrics.map((roundData) => ({
+      round: roundData.round,
+      accuracy: roundData.val_accuracy ?? 0,
+      precision: roundData.val_precision ?? 0,
+      recall: roundData.val_recall ?? 0,
+      f1: roundData.val_f1 ?? 0,
+      auroc: roundData.val_auroc ?? 0,
+      loss: roundData.val_loss ?? 0,
+    }));
+  }, [clientMetrics]);
+
   return {
     // State
     activeTab,
@@ -495,6 +600,12 @@ export const useResultsVisualization = ({
     serverEvaluationChartData,
     serverEvaluationLatestMetrics,
     serverEvaluationConfusionMatrix,
+
+    // Per-client metrics data (federated)
+    clientMetrics,
+    clientMetricsChartData,
+    clientTrainingHistories,
+    aggregatedRoundMetrics,
 
     // Utilities
     getConfusionMatrixColor,
