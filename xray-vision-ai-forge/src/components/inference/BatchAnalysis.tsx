@@ -36,7 +36,7 @@ const BatchAnalysis: React.FC<BatchAnalysisProps> = ({
   onBatchTryAnother,
 }) => {
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <motion.div
         className="content-card batch-upload-area"
         initial={{ opacity: 0, y: 20 }}

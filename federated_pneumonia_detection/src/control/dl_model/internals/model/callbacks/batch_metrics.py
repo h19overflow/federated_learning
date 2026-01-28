@@ -4,6 +4,7 @@ Samples and sends batch metrics at configurable intervals.
 """
 
 import logging
+from datetime import datetime
 from typing import Optional
 
 import pytorch_lightning as pl
@@ -120,17 +121,22 @@ class BatchMetricsCallback(pl.Callback):
 
         # Send batch metrics via WebSocket
         if self.websocket_sender:
-            self.websocket_sender.send_batch_metrics(
-                step=trainer.global_step,
-                batch_idx=batch_idx,
-                loss=loss_value,
-                accuracy=accuracy,
-                recall=recall,
-                f1=f1,
-                epoch=trainer.current_epoch,
-                client_id=self.client_id,
-                round_num=self.round_num,
-            )
+            payload = {
+                "step": trainer.global_step,
+                "batch_idx": batch_idx,
+                "loss": loss_value,
+                "accuracy": accuracy,
+                "recall": recall,
+                "f1": f1,
+                "epoch": trainer.current_epoch,
+                "timestamp": datetime.now().timestamp(),
+            }
+            if self.client_id is not None:
+                payload["client_id"] = self.client_id
+            if self.round_num is not None:
+                payload["round_num"] = self.round_num
+
+            self.websocket_sender.send_metrics(payload, "batch_metrics")
 
             self.logger.debug(
                 f"[BatchMetrics] Sent batch {batch_idx} metrics: "

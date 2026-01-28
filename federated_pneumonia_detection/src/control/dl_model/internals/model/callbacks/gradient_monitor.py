@@ -66,12 +66,15 @@ class GradientMonitorCallback(pl.Callback):
 
         # Send gradient statistics
         if self.websocket_sender:
-            self.websocket_sender.send_gradient_stats(
-                step=trainer.global_step,
-                total_norm=total_norm,
-                layer_norms=layer_norms,
-                max_norm=max_norm,
-                min_norm=min_norm,
+            self.websocket_sender.send_metrics(
+                {
+                    "step": trainer.global_step,
+                    "total_norm": total_norm,
+                    "layer_norms": layer_norms,
+                    "max_norm": max_norm,
+                    "min_norm": min_norm,
+                },
+                "gradient_stats",
             )
 
         # Extract and send learning rate

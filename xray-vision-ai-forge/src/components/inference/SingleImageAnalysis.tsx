@@ -41,7 +41,7 @@ const SingleImageAnalysis: React.FC<SingleImageAnalysisProps> = ({
   onToggleHeatmap,
 }) => {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -10,7 +10,7 @@ import torch
 from pytorch_lightning.callbacks import EarlyStopping
 
 if TYPE_CHECKING:
-    from federated_pneumonia_detection.src.internals.metrics_websocket_sender import (
+    from federated_pneumonia_detection.src.control.dl_model.internals.data.websocket_metrics_sender import (
         MetricsWebSocketSender,
     )
 
@@ -112,11 +112,15 @@ class EarlyStoppingSignalCallback(pl.Callback):
             )
 
             # Send early stopping notification
-            self.websocket_sender.send_early_stopping_triggered(
-                epoch=current_epoch,
-                best_metric_value=float(best_value) if best_value else 0.0,
-                metric_name=metric_name,
-                patience=self.early_stop_callback.patience,
+            self.websocket_sender.send_metrics(
+                {
+                    "epoch": current_epoch,
+                    "best_metric_value": float(best_value) if best_value else 0.0,
+                    "metric_name": metric_name,
+                    "patience": self.early_stop_callback.patience,
+                    "reason": f"Early stopping triggered at epoch {current_epoch} with best {metric_name}={best_value:.4f}",
+                },
+                "early_stopping",
             )
 
             self.logger.info(

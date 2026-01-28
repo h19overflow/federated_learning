@@ -177,10 +177,13 @@ def _initialize_websocket_sender(
     logger.info(
         f"Broadcasting training mode: {num_clients} clients, {num_rounds} rounds",
     )
-    ws_sender.send_training_mode(
-        is_federated=True,
-        num_rounds=num_rounds,
-        num_clients=num_clients,
+    ws_sender.send_metrics(
+        {
+            "is_federated": True,
+            "num_rounds": num_rounds,
+            "num_clients": num_clients,
+        },
+        "training_mode",
     )
 
     return ws_sender

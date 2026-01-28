@@ -149,10 +149,8 @@ def prepare_trainer_and_callbacks_pl(
             f"[Trainer Setup] Federated mode with client_id={client_id}, round={round_number}",  # noqa: E501
         )
 
-    # Compute class weights
     class_weights = compute_class_weights_for_pl(train_df_for_weights, class_column)
 
-    # ModelCheckpoint callback - save best model based on validation recall
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir,
         filename=f"{model_filename}_{{epoch:02d}}_{{val_recall:.3f}}",
@@ -163,7 +161,6 @@ def prepare_trainer_and_callbacks_pl(
         auto_insert_metric_name=False,
         verbose=True,
     )
-    # EarlyStopping callback - stop training when validation recall stops improving
     early_stop_callback = EarlyStopping(
         monitor="val_recall",
         mode="max",
@@ -178,7 +175,6 @@ def prepare_trainer_and_callbacks_pl(
         f"[EarlyStopping] Monitoring 'val_recall' with patience={patience}, min_delta={min_delta}",  # noqa: E501
     )
 
-    # Learning rate monitor
     lr_monitor = LearningRateMonitor(
         logging_interval="epoch",
         log_momentum=True,

@@ -204,12 +204,15 @@ class MetricsCollectorCallback(pl.Callback):
 
         # Send metrics to frontend via WebSocket
         if self.ws_sender:
-            self.ws_sender.send_epoch_end(
-                epoch=trainer.current_epoch,
-                phase="val",
-                metrics=val_metrics,
-                client_id=self.client_id if self.federated_mode else None,
-                round_num=self.current_round if self.federated_mode else None,
+            self.ws_sender.send_metrics(
+                {
+                    "epoch": trainer.current_epoch,
+                    "phase": "val",
+                    "metrics": val_metrics,
+                    "client_id": self.client_id if self.federated_mode else None,
+                    "round_number": self.current_round if self.federated_mode else None,
+                },
+                "epoch_end",
             )
 
     def on_fit_end(self, trainer, pl_module):
@@ -330,11 +333,14 @@ class MetricsCollectorCallback(pl.Callback):
             eval_metrics: Metrics from evaluation phase
         """
         if self.ws_sender:
-            self.ws_sender.send_round_end(
-                round_num=round_num,
-                total_rounds=total_rounds,
-                fit_metrics=fit_metrics,
-                eval_metrics=eval_metrics,
+            self.ws_sender.send_metrics(
+                {
+                    "round": round_num,
+                    "total_rounds": total_rounds,
+                    "fit_metrics": fit_metrics or {},
+                    "eval_metrics": eval_metrics or {},
+                },
+                "round_end",
             )
 
     def _ensure_run_exists(self, db: Session) -> int:

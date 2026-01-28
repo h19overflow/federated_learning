@@ -181,10 +181,13 @@ class ConfigurableFedAvg(FedAvg):
 
             total_rounds = getattr(self, "total_rounds", 0)
 
-            self.ws_sender.send_round_metrics(
-                round_num=server_round,
-                total_rounds=total_rounds,
-                metrics=round_metrics,
+            self.ws_sender.send_metrics(
+                {
+                    "round": server_round,
+                    "total_rounds": total_rounds,
+                    "metrics": round_metrics,
+                },
+                "round_metrics",
             )
 
             # Persist client-aggregated metrics to database

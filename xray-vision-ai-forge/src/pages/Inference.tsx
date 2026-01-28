@@ -74,7 +74,7 @@ const Inference = () => {
       <main className="flex-1 overflow-y-auto bg-hero-gradient">
         <HeroSection mode={mode} onModeChange={handleModeSwitch} />
 
-        <section className="pb-20 px-6">
+        <section className="py-16 px-8">
           <div className="max-w-7xl mx-auto">
             <AnimatePresence mode="wait">
               {mode === "single" ? (
