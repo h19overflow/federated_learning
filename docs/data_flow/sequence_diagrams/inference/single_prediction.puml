@@ -1,0 +1,259 @@
+@startuml SinglePrediction
+
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor #333333
+    LifeLineBorderColor #333333
+    LifeLineBackgroundColor #f0f0f0
+    ParticipantBorderColor #333333
+    ParticipantBackgroundColor #e0e0e0
+}
+
+autonumber
+
+title Inference API - Single Prediction Flow
+
+caption POST /api/inference/predict
+
+box "API Layer"
+    participant "Client" as Client
+    participant "PredictionEndpoint" as API
+    participant "deps.py" as Deps
+end box
+
+box "Control Layer"
+    participant "InferenceService" as Svc
+    participant "InferenceEngine" as Engine
+    participant "ImageValidator" as Validator
+    participant "ImageProcessor" as Processor
+end box
+
+box "Model Layer"
+    participant "LitResNetEnhanced" as Model
+    participant "Transforms" as Transforms
+end box
+
+box "Observability"
+    participant "ObservabilityLogger" as Logger
+end box
+
+box "Schema"
+    participant "InferenceResponse" as Response
+end box
+
+== Step 1: Request Validation & Service Readiness Check ==
+
+note right of API
+    **File: single_prediction_endpoint.py lines 18-28**
+    Entry point for single prediction endpoint
+    Route: POST /api/inference/predict
+end note
+
+Client -> API: POST /api/inference/predict (UploadFile)
+activate Client
+activate API
+
+API -> Deps: Depends(get_inference_service)
+activate Deps
+
+Deps -> Svc: get_inference_service()
+activate Svc
+
+Svc -> Svc: Lazy init singleton
+activate Svc #LightBlue
+note right of Svc
+    **File: inference_service.py lines 62-68**
+    Lazy initialization of InferenceService singleton
+end note
+Svc --> Svc: InferenceService instance
+deactivate Svc
+
+Svc --> Deps: InferenceService instance
+deactivate Svc
+
+Deps --> API: service
+deactivate Deps
+
+API -> Svc: check_ready_or_raise()
+activate Svc
+
+Svc -> Svc: is_ready()
+activate Svc #LightBlue
+Svc -> Engine: engine property (lazy load)
+activate Engine
+
+Engine -> Engine: _get_engine_singleton()
+activate Engine #LightBlue
+note right of Engine
+    **File: inference_engine.py lines 29-47**
+    Initialize InferenceEngine with model loading
+end note
+Engine --> Engine: InferenceEngine instance
+deactivate Engine
+
+Engine --> Svc: InferenceEngine instance
+deactivate Engine
+
+Svc --> Svc: OK or HTTP 503
+deactivate Svc
+
+Svc --> API: Service ready
+deactivate Svc
+
+== Step 2: Image Validation & Processing ==
+
+API -> Svc: predict_single(file)
+activate Svc
+
+Svc -> Validator: validate_or_raise(file)
+activate Validator
+
+Validator -> Validator: Check content_type in [image/png, image/jpeg, image/jpg]
+note right of Validator
+    **File: image_validator.py lines 13-23**
+    Validate file type: PNG or JPEG only
+end note
+
+Validator --> Svc: None or HTTPException(400)
+deactivate Validator
+
+Svc -> Svc: check_ready_or_raise()
+activate Svc #LightBlue
+Svc --> Svc: Service ready
+deactivate Svc
+
+Svc -> Processor: read_from_upload(file)
+activate Processor
+
+Processor -> Processor: file.read() → BytesIO
+activate Processor #LightBlue
+note right of Processor
+    **File: image_processor.py lines 13-29**
+    Read upload file into BytesIO buffer
+end note
+
+Processor -> Processor: Image.open(BytesIO)
+Processor --> Processor: PIL.Image
+deactivate Processor
+
+Processor --> Svc: PIL.Image
+deactivate Processor
+
+== Step 3: Model Inference Execution ==
+
+Svc -> Svc: predict(image)
+activate Svc #LightBlue
+note right of Svc
+    **File: inference_service.py lines 70-74, 164-173**
+    Orchestrate prediction pipeline
+end note
+
+Svc -> Engine: predict(image)
+activate Engine
+
+Engine -> Engine: preprocess(image)
+activate Engine #LightBlue
+
+Engine -> Transforms: transforms.Compose (Resize, CenterCrop, Normalize)
+activate Transforms
+note right of Transforms
+    **File: inference_engine.py lines 88-94**
+    Transform pipeline:
+    - Resize(256)
+    - CenterCrop(224)
+    - ToTensor()
+    - Normalize(mean, std)
+end note
+
+Transforms --> Engine: torch.Tensor (1, 3, 224, 224)
+deactivate Transforms
+
+deactivate Engine
+
+Engine -> Model: model(input_tensor)
+activate Model
+note right of Model
+    **File: inference_engine.py lines 95-125**
+    Forward pass through LitResNetEnhanced
+end note
+Model --> Engine: logits
+deactivate Model
+
+Engine -> Engine: torch.sigmoid(logits)
+activate Engine #LightBlue
+Engine -> Engine: Classify (PNEUMONIA if ≥0.5)
+
+note right of Engine
+    **Data Transformation:**
+    Input: Logits (raw model output)
+    → sigmoid activation → probabilities
+    → threshold @ 0.5 → class label
+end note
+
+Engine --> Engine: (class, confidence, pneumonia_prob, normal_prob)
+deactivate Engine
+
+Engine --> Svc: Prediction tuple
+deactivate Engine
+
+Svc -> Svc: create_prediction(...)
+activate Svc #LightBlue
+Svc --> Svc: InferencePrediction DTO
+deactivate Svc
+
+deactivate Svc
+
+== Step 4: Response Assembly & Observability Logging ==
+
+Svc -> Svc: Calculate processing_time_ms
+activate Svc #LightBlue
+
+Svc -> Svc: Get model_version from engine
+deactivate Svc
+
+Svc -> Logger: log_single(...)
+activate Logger
+
+Logger -> Logger: Structured logging
+activate Logger #LightBlue
+note right of Logger
+    **Observability:**
+    Log predicted_class, confidence, processing_time
+end note
+
+Logger --> Logger: Log entry written
+deactivate Logger
+deactivate Logger
+
+Svc -> Response: InferenceResponse(
+activate Response
+
+note right of Response
+    **File: inference_schemas.py lines 66-82**
+    Pydantic response model
+end note
+
+Svc -> Response: success=True,
+Svc -> Response: prediction=prediction,
+Svc -> Response: model_version=model_version,
+Svc -> Response: processing_time_ms=time
+
+Response --> Svc: Response DTO
+deactivate Response
+
+Svc --> API: InferenceResponse
+deactivate Svc
+
+API --> Client: JSON Response
+note right of API
+    **Response Data:**
+    - success: bool
+    - prediction: InferencePrediction
+    - model_version: str
+    - processing_time_ms: float
+end note
+deactivate API
+deactivate Client
+
+@enduml

@@ -1,0 +1,202 @@
+@startuml
+
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor Black
+    ActorBorderColor Black
+    LifeLineBorderColor Black
+    LifeLineBackgroundColor White
+    ParticipantBorderColor Black
+    ParticipantBackgroundColor White
+    ParticipantFontSize 12
+    ArrowFontSize 11
+}
+
+title Client Metrics Sequence Diagram
+
+autonumber
+
+participant "ResultsVisualization.tsx" as C
+participant "useResultsVisualization.ts" as H
+participant "api.ts" as A
+participant "runs_client_metrics.py" as E
+participant "MetricsService\nmetrics_service.py" as S
+participant "RunCRUD\nrun.py" as CR1
+participant "ClientCRUD\nclient.py" as CR2
+participant "RunMetricCRUD\nrun_metric.py" as CR3
+participant "Database" as D
+participant "ClientMetricsTab.tsx" as CM
+
+== Step 1: Component to API Request ==
+
+C -> H: useResultsVisualization({config, runId})
+note right of H
+    Hook receives config & runId
+end note
+
+activate H
+
+alt Federated Mode
+    H -> A: getClientMetrics(runId)
+    note right of A
+        File: api.ts lines 138-143
+    end note
+    
+    activate A
+    A -> E: GET /api/runs/{runId}/client-metrics
+    note right of E
+        HTTP request to backend
+    end note
+    activate E
+else Centralized Mode
+    note right of H
+        Skip - not applicable for centralized
+    end note
+end
+
+== Step 2: Backend Processing ==
+
+E -> S: analytics.metrics.get_client_metrics(db, runId)
+note right of S
+    File: metrics_service.py lines 180-250
+end note
+
+activate S
+
+S -> S: Check cache
+
+alt Cache Miss
+    S -> CR1: run_crud.get_with_metrics(db, runId)
+    activate CR1
+    CR1 -> D: SELECT * FROM runs WHERE id = ?
+    activate D
+    D --> CR1: Run record
+    deactivate D
+    CR1 --> S: Run ORM
+    deactivate CR1
+    
+    S -> CR2: client_crud.get_clients_by_run(db, runId)
+    activate CR2
+    CR2 -> D: SELECT * FROM clients WHERE run_id = ?
+    activate D
+    D --> CR2: Client records
+    deactivate D
+    CR2 --> S: List[Client]
+    deactivate CR2
+    
+    S -> CR3: run_metric_crud.get_by_run_grouped_by_client(db, runId)
+    activate CR3
+    CR3 -> D: SELECT * FROM run_metrics WHERE run_id = ? AND client_id IS NOT NULL
+    note right of D
+        Per-client metrics from run_metrics table
+    end note
+    activate D
+    D --> CR3: Per-client metrics
+    deactivate D
+    CR3 --> S: Dict[client_id, metrics]
+    deactivate CR3
+    
+    S -> CR3: run_metric_crud.get_aggregated_metrics_by_run(db, runId)
+    activate CR3
+    CR3 -> D: SELECT * FROM run_metrics WHERE run_id = ? AND context = 'aggregated'
+    note right of D
+        Server-aggregated metrics
+    end note
+    activate D
+    D --> CR3: Aggregated metrics
+    deactivate D
+    CR3 --> S: List[RunMetric]
+    deactivate CR3
+end
+
+S -> S: Process client data
+note right of S
+    File: metrics_service.py lines 109-124
+    Transform metrics for each client:
+    - client_id, client_identifier
+    - training_history (transformed)
+    - best_metrics (extracted)
+end note
+
+S --> E: ClientMetricsResponse
+note right of S
+    Return:
+    {
+        "run_id": run_id,
+        "num_clients": len(clients_data),
+        "clients": clients_data,
+        "aggregated_metrics": transformed_aggregated
+    }
+end note
+deactivate S
+
+E --> A: Response
+
+== Step 3: Transform & Response ==
+
+A --> H: ClientMetricsResponse
+deactivate E
+deactivate A
+
+H -> H: Transform to component props
+note right of H
+    File: useResultsVisualization.ts lines 155-200
+    Data transformation logic
+end note
+
+H -> H: Build clientMetricsChartData
+note right of H
+    Map clients to chart format
+    Extract best_metrics for visualization
+end note
+
+H -> H: Build clientTrainingHistories
+note right of H
+    Record<string, TrainingHistoryData[]>
+    Key = client_identifier
+end note
+
+H -> H: Build aggregatedRoundMetrics
+note right of H
+    Array of per-round aggregated metrics
+end note
+
+H --> C: clientMetrics + transformed props
+deactivate H
+
+C -> CM: Render ClientMetricsTab
+note right of CM
+    File: ClientMetricsTab.tsx lines 51-87
+    Props received:
+    - clientMetricsChartData
+    - clientTrainingHistories
+    - aggregatedRoundMetrics
+    - numClients
+end note
+
+activate CM
+
+CM -> CM: Render client summary cards
+note right of CM
+    Lines 159-167
+end note
+
+CM -> CM: Render performance comparison bar chart
+note right of CM
+    Lines 170-213
+end note
+
+CM -> CM: Render per-client training history charts
+note right of CM
+    Lines 216-238
+end note
+
+CM -> CM: Render aggregated round metrics line chart
+note right of CM
+    Lines 241-307
+end note
+
+deactivate CM
+
+@enduml

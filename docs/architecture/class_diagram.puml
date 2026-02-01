@@ -1,0 +1,741 @@
+@startuml SystemClassDiagram
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 10
+skinparam classFontSize 12
+skinparam classFontStyle bold
+skinparam shadowing false
+skinparam nodesep 30
+skinparam ranksep 25
+skinparam packageFontSize 13
+skinparam packageFontStyle bold
+skinparam roundCorner 6
+skinparam linetype ortho
+
+' ============================================
+'  API LAYER
+' ============================================
+package "API Layer" #fff3e0 {
+
+  class ExperimentsRouter <<FastAPI Router>> {
+    +post_centralized_train(data_zip, checkpoint_dir, logs_dir, experiment_name)
+    +post_federated_train(config)
+    +get_run_by_id(run_id)
+    +get_run_metrics(run_id)
+    -prepare_zip(file: UploadFile): str
+    -queue_background_task(func, args)
+  }
+
+  class InferenceRouter <<FastAPI Router>> {
+    +post_predict(file: UploadFile): InferenceResponse
+    +post_predict_batch(files: List): BatchInferenceResponse
+    +post_heatmap(file: UploadFile, colormap, alpha): HeatmapResponse
+    +post_heatmap_batch(files: List): BatchHeatmapResponse
+    +get_health(): HealthResponse
+    -validate_image(file: UploadFile)
+  }
+
+  class ChatRouter <<FastAPI Router Aggregator>> {
+    +include_router(sessions_router)
+    +include_router(status_router)
+    +include_router(stream_router)
+    +include_router(history_router)
+  }
+
+  class ChatSessionsRouter <<FastAPI Router>> {
+    +get_sessions(): List[ChatSession]
+    +post_create_session(title, initial_query): SessionResponse
+    +delete_session(session_id)
+  }
+
+  class ChatStreamRouter <<FastAPI Router>> {
+    +post_stream(message, session_id, arxiv_enabled): StreamResponse
+    -prepare_enhanced_query(query, run_id)
+  }
+
+  class ChatHistoryRouter <<FastAPI Router>> {
+    +get_history(session_id, limit, offset): ChatHistory
+  }
+
+  class ChatStatusRouter <<FastAPI Router>> {
+    +get_arxiv_status(): ArxivStatusResponse
+  }
+
+  class RunsRouter <<FastAPI Router Aggregator>> {
+    +include_router(runs_list)
+    +include_router(runs_metrics)
+    +include_router(runs_download)
+    +include_router(runs_federated_rounds)
+    +include_router(runs_server_evaluation)
+    +include_router(runs_analytics)
+    +include_router(runs_client_metrics)
+  }
+
+  class WebSocketManager <<Singleton>> {
+    -active_connections: Dict
+    +connect(websocket: WebSocket, client_id: str)
+    +disconnect(client_id: str)
+    +broadcast(message: dict, room: str)
+    +send_personal(message: dict, client_id: str)
+  }
+
+  class MaliciousPromptMiddleware <<Middleware>> {
+    -_detect_instruction_bypass(query): bool
+    -_detect_data_exfiltration(query): bool
+    -_detect_identity_hijacking(query): bool
+    -_detect_delimiter_injection(query): bool
+    -_detect_code_injection(query): bool
+    +dispatch(request, call_next)
+  }
+
+  class RequestIDMiddleware <<Middleware>> {
+    +dispatch(request, call_next)
+    -_extract_or_generate_request_id(): str
+  }
+}
+
+' ============================================
+'  CONTROL LAYER
+' ============================================
+package "Control Layer - Business Logic" #f3e5f5 {
+
+  class CentralizedTrainer <<Orchestrator>> {
+    -config: TrainingConfig
+    -logger: Logger
+    -checkpoint_dir: str
+    -logs_dir: str
+    +train(source_path: str, experiment_name: str, run_id: int): dict
+    -create_training_run(source_path, experiment_name): int
+    -extract_data(source_path): tuple
+    -prepare_dataset(csv_path, image_dir): tuple
+    -create_data_module(train_df, val_df): XRayDataModule
+    -build_model_and_callbacks(experiment_name, run_id): tuple
+    -build_trainer(callbacks): Trainer
+    -execute_training(trainer, model, data_module)
+    -mark_training_complete(run_id)
+    -collect_results(run_id, experiment_name): dict
+  }
+
+  class ServerApp <<Federated Server>> {
+    +main(): None
+    -_initialize_database_run(): int
+    -_build_global_model(): ResNetWithCustomHead
+    -_build_training_configs(): tuple
+    -_initialize_strategy(): CustomStrategy
+    -_persist_server_evaluations(run_id, results)
+    -send_metrics(metrics)
+  }
+
+  class ClientApp <<Federated Client>> {
+    +train(config: FitConfig): ArrayRecord
+    -_load_trainer_and_config()
+    -_get_partition_data(partition_id)
+  }
+
+  class CustomStrategy <<FedAvg Strategy>> {
+    +aggregate_fit(results): Parameters
+    +aggregate_evaluate(results): dict
+    -_weighted_average(weights, num_examples): Parameters
+  }
+
+  package "Trainer Utils" #e8d5f5 {
+    class DataPrepUtils <<Utility>> {
+      +prepare_dataset(csv_path, image_dir, config): tuple
+      +validate_data_structure(csv_path, image_dir)
+      +split_train_val(df, val_split): tuple
+      -check_missing_images(df, image_dir): list
+    }
+
+    class ModelSetupUtils <<Utility>> {
+      +build_model(config): LitResNetEnhanced
+      +build_callbacks(checkpoint_dir, run_id, config, ws_manager): list
+      +build_optimizer(model, config): Optimizer
+      +build_loss_fn(config): LossFunction
+    }
+
+    class DBOperationsUtils <<Utility>> {
+      +create_training_run(source_path, experiment_name, mode): int
+      +update_run_status(run_id, status)
+      +complete_training_run(run_id)
+      +save_final_metrics(run_id, metrics)
+    }
+
+    class ResultsUtils <<Utility>> {
+      +collect_training_results(run_id, experiment_name): dict
+      +parse_metrics_csv(metrics_file): DataFrame
+      +get_best_checkpoint(checkpoint_dir): str
+      +calculate_confusion_matrix_stats(run_id): dict
+    }
+  }
+
+  class InferenceService <<Service>> {
+    -engine: InferenceEngine
+    -logger: Logger
+    -config: InferenceConfig
+    +predict_single(file: UploadFile): InferenceResponse
+    +predict_batch(files: List): BatchInferenceResponse
+    +is_ready(): bool
+    +get_info(): dict
+    -validate_image(file: UploadFile)
+    -log_prediction(result, processing_time)
+  }
+
+  class InferenceEngine <<Singleton>> {
+    -model: ResNetWithCustomHead
+    -device: device
+    -transform: Compose
+    -is_loaded: bool
+    +load_model(checkpoint_path)
+    +predict(image: Image): dict
+    +predict_batch(images: List): list
+    +generate_gradcam(image: Image, target_layer): ndarray
+    -preprocess_image(image: Image): Tensor
+    -postprocess_output(logits: Tensor): dict
+  }
+
+  class GradCAMService <<Service>> {
+    -engine: InferenceEngine
+    +generate_heatmap(image, colormap, alpha): dict
+    +generate_batch_heatmaps(images, colormap, alpha): list
+    -apply_colormap(heatmap, colormap): ndarray
+    -overlay_heatmap(image, heatmap, alpha): ndarray
+    -encode_image_base64(image): str
+  }
+
+  class ArxivAugmentedEngine <<BaseAgent>> {
+    -llm: ChatGoogleGenerativeAI
+    -_history_manager: ChatHistoryManager
+    -_rag_tool: RAGTool
+    -_query_engine: QueryEngine
+    +query_stream(query, session_id, arxiv_enabled): AsyncGenerator
+    +query(chat_input): Dict
+    +add_to_history(session_id, user_msg, ai_msg)
+    +get_history(session_id): List
+  }
+
+  class SessionManager <<Singleton>> {
+    +list_sessions(): List[ChatSession]
+    +create_session(title, initial_query): ChatSession
+    +ensure_session(session_id, query)
+    +delete_session(session_id): bool
+    +clear_history(session_id)
+    +get_session_history(session_id): List
+  }
+
+  class MCPManager <<Singleton>> {
+    -arxiv_client: ArxivClient
+    +initialize(): None
+    +shutdown(): None
+    +is_available: bool
+    +get_tools(): List
+  }
+
+  class AgentFactory <<Singleton>> {
+    +get_chat_agent(): BaseAgent
+    +create_agent(agent_type): BaseAgent
+  }
+
+  class AnalyticsFacade <<Facade>> {
+    -metrics_service: MetricsService
+    -summary_service: SummaryService
+    -ranking_service: RankingService
+    -export_service: ExportService
+    -backfill_service: BackfillService
+    +get_run_summary(session, run_id): Result
+    +get_analytics_summary(session, filters): Result
+  }
+
+  class MetricsService <<Service>> {
+    -cache: CacheProvider
+    -run_crud: RunCRUD
+    -metric_crud: RunMetricCRUD
+    +get_run_metrics(db, run_id): dict
+    +get_analytics_summary(db, filters): dict
+    +get_run_detail(db, run_id): dict
+    +get_client_metrics(db, run_id): dict
+    -_get_metric_extractor(run): MetricExtractor
+  }
+
+  class MetricExtractor <<Strategy ABC>> {
+    +extract_final_metrics(db, run): dict
+    +extract_training_history(db, run): list
+  }
+
+  class FederatedMetricExtractor <<Strategy>> {
+    +extract_final_metrics(db, run): dict
+    +extract_training_history(db, run): list
+  }
+
+  class CentralizedMetricExtractor <<Strategy>> {
+    +extract_final_metrics(db, run): dict
+    +extract_training_history(db, run): list
+  }
+}
+
+' ============================================
+'  ENTITY LAYER
+' ============================================
+package "Entity Layer - Core Models" #e8f5e9 {
+
+  class ResNetWithCustomHead <<PyTorch Module>> {
+    -backbone: ResNet50
+    -global_pool: AdaptiveAvgPool2d
+    -dense1: Linear
+    -relu: ReLU
+    -dropout: Dropout
+    -dense2: Linear
+    -sigmoid: Sigmoid
+    +forward(x: Tensor): Tensor
+    +freeze_backbone()
+    +unfreeze_backbone()
+    +get_feature_maps(x: Tensor): Tensor
+    +set_dropout_rate(rate: float)
+    +get_model_info(): dict
+  }
+
+  class LitResNetEnhanced <<LightningModule>> {
+    -model: ResNetWithCustomHead
+    -criterion: LossFunction
+    -optimizer: Optimizer
+    -scheduler: LRScheduler
+    -train_metrics: MetricCollection
+    -val_metrics: MetricCollection
+    -unfreeze_schedule: dict
+    +forward(x: Tensor): Tensor
+    +training_step(batch, batch_idx): Tensor
+    +validation_step(batch, batch_idx): Tensor
+    +test_step(batch, batch_idx): Tensor
+    +configure_optimizers(): dict
+    +on_train_epoch_start()
+    -_progressive_unfreeze(epoch)
+    -_log_metrics(phase, metrics)
+  }
+
+  class XRayDataModule <<LightningDataModule>> {
+    -train_df: DataFrame
+    -val_df: DataFrame
+    -test_df: DataFrame
+    -image_dir: str
+    -batch_size: int
+    -num_workers: int
+    -train_dataset: CustomImageDataset
+    -val_dataset: CustomImageDataset
+    +setup(stage: str)
+    +train_dataloader(): DataLoader
+    +val_dataloader(): DataLoader
+    +test_dataloader(): DataLoader
+    +get_class_weights(): Tensor
+  }
+
+  class CustomImageDataset <<PyTorch Dataset>> {
+    -df: DataFrame
+    -image_dir: str
+    -transform: Compose
+    -valid_indices: list
+    +__len__(): int
+    +__getitem__(idx: int): tuple
+    +get_class_distribution(): dict
+    +get_memory_usage_estimate(): dict
+    -_validate_images(): list
+    -_load_image(filepath: str): Image
+  }
+
+  package "Callbacks" #c8e6c9 {
+    class MetricsCollectorCallback <<Lightning Callback>> {
+      -run_id: int
+      -checkpoint_dir: str
+      -ws_manager: WebSocketManager
+      -metrics_file: str
+      -epoch_metrics: List[Dict]
+      +on_train_start(trainer, pl_module)
+      +on_train_epoch_end(trainer, pl_module)
+      +on_validation_epoch_end(trainer, pl_module)
+      +on_fit_end(trainer, pl_module)
+      -_persist_to_db(metrics: dict)
+      -_persist_to_file(metrics: dict)
+      -_broadcast_to_websocket(metrics: dict)
+    }
+
+    class BatchMetricsCallback <<Lightning Callback>> {
+      -sample_interval: int
+      -ws_manager: WebSocketManager
+      +on_train_batch_end(trainer, pl_module, outputs, batch, batch_idx)
+      -_calculate_batch_metrics(outputs: dict): dict
+      -_broadcast_metrics(metrics: dict)
+    }
+
+    class GradientMonitorCallback <<Lightning Callback>> {
+      -sample_interval: int
+      -ws_manager: WebSocketManager
+      +on_before_optimizer_step(trainer, pl_module)
+      -_calculate_gradient_norms(model): dict
+      -_broadcast_gradients(norms: dict)
+    }
+
+    class EarlyStoppingSignalCallback <<Lightning Callback>> {
+      -ws_manager: WebSocketManager
+      +setup(trainer, pl_module)
+      +on_train_end(trainer, pl_module)
+      -_signal_early_stopping(epoch, best_score)
+    }
+
+    class HighestValRecallCallback <<Lightning Callback>> {
+      -highest_recall: float
+      +on_validation_epoch_end(trainer, pl_module)
+      -_update_best_recall(current_recall)
+    }
+  }
+
+  class MetricsHandler <<Utility>> {
+    -num_classes: int
+    -train_metrics: MetricCollection
+    -val_metrics: MetricCollection
+    -test_metrics: MetricCollection
+    +update(stage, preds, targets)
+    +log(stage, pl_module, loss)
+    +get_confusion_matrix_metrics(): dict
+    +reset_confusion_matrix()
+  }
+
+  class StepLogic <<Utility>> {
+    -metrics_handler: MetricsHandler
+    +execute_step(pl_module, batch, stage): Tensor
+  }
+}
+
+' ============================================
+'  FACTORIES
+' ============================================
+package "Factories" #e3f2fd {
+
+  class OptimizerFactory <<Factory>> {
+    +create_configuration(params, config, monitor_metric, use_cosine_scheduler): dict
+    +create_adamw(model, lr, weight_decay): AdamW
+    +create_adam(model, lr): Adam
+    +create_sgd(model, lr, momentum): SGD
+  }
+
+  class LossFactory <<Factory>> {
+    +create_loss_function(class_weights, use_focal_loss, alpha, gamma, label_smoothing): nn.Module
+    +calculate_loss(loss_fn, logits, targets): Tensor
+  }
+
+  class CallbacksSetup <<Factory>> {
+    +prepare_trainer_and_callbacks_pl(config, checkpoint_dir, run_id, ws_manager): tuple
+    -_create_model_checkpoint(dir, monitor): ModelCheckpoint
+    -_create_early_stopping(patience): EarlyStopping
+    -_create_metrics_collector(run_id, ws_manager): MetricsCollectorCallback
+    -_create_batch_metrics(ws_manager): BatchMetricsCallback
+    -_create_gradient_monitor(ws_manager): GradientMonitorCallback
+    -_create_lr_monitor(): LearningRateMonitor
+  }
+}
+
+' ============================================
+'  BOUNDARY LAYER
+' ============================================
+package "Boundary Layer - Persistence & I/O" #fff9c4 {
+
+  class BaseCRUD <<Generic CRUD>> {
+    -session_factory: AsyncSessionFactory
+    +create(**kwargs): Model
+    +get(id): Model
+    +get_multi(skip, limit, filters, eager_loads): list
+    +update(id, **kwargs)
+    +delete(id)
+    +count(filters): int
+    +exists(id): bool
+    +bulk_create(objects)
+    +get_db_session(): ContextManager
+  }
+
+  class RunCRUD <<CRUD Operations>> {
+    +get_by_experiment(experiment_id): Run
+    +get_by_status(status): list
+    +get_by_training_mode(mode): list
+    +update_status(id, status)
+    +complete_run(run_id, status)
+    +persist_metrics(run_id, epoch_metrics, federated_context)
+    +list_with_filters(status, mode, sort_by, sort_order, limit, offset): list
+    +batch_get_final_metrics(run_ids): dict
+    +batch_get_federated_final_stats(run_ids): dict
+    -_resolve_federated_context(): tuple
+    -_determine_dataset_type(metric_name): str
+    -_transform_epoch_to_metrics(epoch_data): list
+  }
+
+  class RunMetricCRUD <<CRUD Operations>> {
+    +get_by_run(run_id): list
+    +get_by_metric_name(run_id, name): list
+    +get_by_dataset_type(run_id, dataset_type): list
+    +get_latest_by_metric(run_id, name): RunMetric
+    +get_best_metric(run_id, name, maximize): RunMetric
+    +get_metric_stats(run_id, name): dict
+    +get_by_run_grouped_by_client(run_id): dict
+    +create_final_epoch_stats(run_id, stats_dict, final_epoch)
+  }
+
+  class ClientCRUD <<CRUD Operations>> {
+    +create_client(run_id, client_identifier, client_config): Client
+    +get_client_by_id(client_id): Client
+    +get_client_by_identifier(run_id, identifier): Client
+    +get_clients_by_run_id(run_id): list
+    +set_client_config(client_id, configs)
+    +delete_client(client_id)
+  }
+
+  class RoundCRUD <<CRUD Operations>> {
+    +create_round(client_id, round_number, metadata): Round
+    +get_round_by_id(round_id): Round
+    +get_round_by_client_and_number(client_id, number): Round
+    +get_rounds_by_client_id(client_id): list
+    +get_all_rounds_by_run(run_id): list
+    +start_round(round_id)
+    +complete_round(round_id)
+    +update_round_metadata(round_id, metadata)
+    +get_or_create_round(db_session, client_id, round_number): Round
+  }
+
+  class ServerEvaluationCRUD <<CRUD Operations>> {
+    +create_evaluation(db, run_id, round_number, metrics, num_samples): ServerEvaluation
+    +get_by_run(run_id, order_by_round): list
+    +get_by_round(run_id, round_number): ServerEvaluation
+    +get_latest(run_id): ServerEvaluation
+    +get_best_by_metric(run_id, metric_name): ServerEvaluation
+    +get_summary_stats(run_id): dict
+    +update_final_epoch_stats(run_id, stats_dict)
+    -_extract_core_metrics(metrics): dict
+    -_extract_confusion_matrix(metrics): dict
+    -_extract_additional_metrics(metrics): dict
+  }
+
+  class ChatSessionCRUD <<Functional CRUD>> {
+    +create_chat_session(title, session_id): ChatSession
+    +get_chat_session(session_id): ChatSession
+    +get_all_chat_sessions(): list
+    +update_chat_session_title(session_id, title)
+    +delete_chat_session(session_id)
+  }
+
+  class DataSourceExtractor <<Utility>> {
+    +extract_and_validate(source_path: str): tuple
+    +extract_zip(zip_path: str, dest: str): str
+    +validate_structure(data_dir: str): bool
+    -_check_csv_exists(data_dir: str): str
+    -_check_images_dir_exists(data_dir: str): str
+  }
+
+  class FileManager <<Utility>> {
+    +save_checkpoint(model, path: str)
+    +load_checkpoint(path: str): dict
+    +list_checkpoints(dir: str): list
+    +get_best_checkpoint(dir: str, metric: str): str
+    +cleanup_old_checkpoints(dir: str, keep: int)
+  }
+
+  class ConfigManager <<Utility>> {
+    +load_config(path: str): dict
+    +validate_config(config: dict): bool
+    +merge_configs(base: dict, override: dict): dict
+    -_parse_yaml(path: str): dict
+  }
+
+  class QueryEngine <<RAG Service>> {
+    -embeddings: HuggingFaceEmbeddings
+    -vector_store: PGVector
+    +query(query_str): list
+  }
+
+  class ChatHistoryManager <<History Service>> {
+    -session_factory: AsyncSessionFactory
+    -max_history: int
+    +get_history(session_id): List[Tuple]
+    +add_to_history(session_id, user_msg, ai_msg)
+    +clear_history(session_id)
+  }
+}
+
+' ============================================
+'  DATABASE MODELS
+' ============================================
+package "Database Models" #fce4ec {
+
+  class Run <<SQLAlchemy Model>> {
+    +id: int <<PK>>
+    +run_description: str
+    +training_mode: str
+    +status: str
+    +start_time: datetime
+    +end_time: datetime
+    +wandb_id: str
+    +source_path: str
+    +metrics: Relationship[RunMetric]
+    +clients: Relationship[Client]
+    +server_evaluations: Relationship[ServerEvaluation]
+  }
+
+  class RunMetric <<SQLAlchemy Model>> {
+    +id: int <<PK>>
+    +run_id: int <<FK>>
+    +client_id: int <<FK>>
+    +round_id: int <<FK>>
+    +metric_name: str
+    +metric_value: float
+    +step: int
+    +dataset_type: str
+    +context: str
+    +run: Relationship[Run]
+    +client: Relationship[Client]
+    +round: Relationship[Round]
+  }
+
+  class ServerEvaluation <<SQLAlchemy Model>> {
+    +id: int <<PK>>
+    +run_id: int <<FK>>
+    +round_number: int
+    +loss: float
+    +accuracy: float
+    +precision: float
+    +recall: float
+    +f1_score: float
+    +auroc: float
+    +true_positives: int
+    +true_negatives: int
+    +false_positives: int
+    +false_negatives: int
+    +num_samples: int
+    +evaluation_time: datetime
+    +additional_metrics: JSON
+    +run: Relationship[Run]
+  }
+
+  class Client <<SQLAlchemy Model>> {
+    +id: int <<PK>>
+    +run_id: int <<FK>>
+    +client_identifier: str
+    +created_at: datetime
+    +client_config: JSON
+    +run: Relationship[Run]
+    +rounds: Relationship[Round]
+  }
+
+  class Round <<SQLAlchemy Model>> {
+    +id: int <<PK>>
+    +client_id: int <<FK>>
+    +round_number: int
+    +start_time: datetime
+    +end_time: datetime
+    +round_metadata: JSON
+    +client: Relationship[Client]
+  }
+
+  class ChatSession <<SQLAlchemy Model>> {
+    +id: str <<PK>>
+    +title: str
+    +created_at: datetime
+    +updated_at: datetime
+  }
+}
+
+' ============================================
+'  RELATIONSHIPS - API -> Control
+' ============================================
+ExperimentsRouter --> CentralizedTrainer : delegates training
+ExperimentsRouter --> ServerApp : delegates federated
+ExperimentsRouter --> WebSocketManager : broadcasts status
+InferenceRouter --> InferenceService : requests inference
+InferenceRouter --> GradCAMService : generates heatmaps
+ChatRouter --> ChatSessionsRouter : aggregates
+ChatRouter --> ChatStreamRouter : aggregates
+ChatRouter --> ChatHistoryRouter : aggregates
+ChatRouter --> ChatStatusRouter : aggregates
+ChatStreamRouter --> AgentFactory : gets agent
+ChatSessionsRouter --> SessionManager : manages sessions
+ChatHistoryRouter --> QueryEngine : retrieves history
+ChatHistoryRouter --> AgentFactory : gets agent
+ChatStatusRouter --> MCPManager : checks status
+RunsRouter --> AnalyticsFacade : requests analytics
+
+' ============================================
+'  RELATIONSHIPS - Control Internal
+' ============================================
+CentralizedTrainer --> DataPrepUtils : prepares dataset
+CentralizedTrainer --> ModelSetupUtils : builds model
+CentralizedTrainer --> DBOperationsUtils : manages DB
+CentralizedTrainer --> ResultsUtils : collects results
+CentralizedTrainer --> XRayDataModule : creates data module
+CentralizedTrainer --> LitResNetEnhanced : executes training
+
+ServerApp --> CustomStrategy : uses strategy
+ClientApp --> CentralizedTrainer : local training
+
+InferenceService --> InferenceEngine : delegates
+GradCAMService --> InferenceEngine : uses gradients
+
+AgentFactory --> ArxivAugmentedEngine : creates
+ArxivAugmentedEngine --> QueryEngine : retrieves documents
+ArxivAugmentedEngine --> ChatHistoryManager : manages history
+ArxivAugmentedEngine --> MCPManager : uses arxiv tools
+SessionManager --> ChatSessionCRUD : persists sessions
+
+AnalyticsFacade --> MetricsService : delegates
+MetricsService --> MetricExtractor : uses strategy
+MetricExtractor <|-- FederatedMetricExtractor : implements
+MetricExtractor <|-- CentralizedMetricExtractor : implements
+
+' ============================================
+'  RELATIONSHIPS - Control -> Boundary
+' ============================================
+DataPrepUtils --> DataSourceExtractor : extracts data
+ModelSetupUtils --> OptimizerFactory : creates optimizer
+ModelSetupUtils --> LossFactory : creates loss
+ModelSetupUtils --> CallbacksSetup : creates callbacks
+DBOperationsUtils --> RunCRUD : CRUD ops
+DBOperationsUtils --> RunMetricCRUD : metrics CRUD
+ResultsUtils --> FileManager : loads checkpoints
+ResultsUtils --> ConfigManager : loads config
+InferenceEngine --> FileManager : loads model
+ServerApp --> RunCRUD : creates run
+ServerApp --> ServerEvaluationCRUD : persists evals
+MetricsService --> RunCRUD : queries runs
+MetricsService --> RunMetricCRUD : queries metrics
+MetricsService --> ServerEvaluationCRUD : queries evals
+FederatedMetricExtractor --> ServerEvaluationCRUD : queries
+CentralizedMetricExtractor --> RunMetricCRUD : queries
+
+' ============================================
+'  RELATIONSHIPS - Entity Internal
+' ============================================
+LitResNetEnhanced --> ResNetWithCustomHead : wraps
+LitResNetEnhanced --> MetricsHandler : uses
+LitResNetEnhanced --> StepLogic : uses
+XRayDataModule --> CustomImageDataset : creates
+MetricsCollectorCallback --> RunCRUD : persists run
+MetricsCollectorCallback --> RunMetricCRUD : persists metrics
+MetricsCollectorCallback --> ClientCRUD : creates client
+MetricsCollectorCallback --> RoundCRUD : creates round
+MetricsCollectorCallback --> WebSocketManager : broadcasts
+BatchMetricsCallback --> WebSocketManager : broadcasts
+GradientMonitorCallback --> WebSocketManager : broadcasts
+EarlyStoppingSignalCallback --> WebSocketManager : broadcasts
+
+' ============================================
+'  RELATIONSHIPS - Boundary -> DB Models
+' ============================================
+BaseCRUD <|-- RunCRUD : extends
+BaseCRUD <|-- RunMetricCRUD : extends
+BaseCRUD <|-- ServerEvaluationCRUD : extends
+BaseCRUD <|-- ClientCRUD : extends
+BaseCRUD <|-- RoundCRUD : extends
+RunCRUD --> Run : operates on
+RunMetricCRUD --> RunMetric : operates on
+ServerEvaluationCRUD --> ServerEvaluation : operates on
+ClientCRUD --> Client : operates on
+RoundCRUD --> Round : operates on
+ChatSessionCRUD --> ChatSession : operates on
+Run "1" --> "*" RunMetric : has many
+Run "1" --> "*" ServerEvaluation : has many
+Run "1" --> "*" Client : has many
+Client "1" --> "*" Round : has many
+
+@enduml

@@ -1,0 +1,580 @@
+@startuml
+!theme plain
+
+skinparam sequence {
+    ArrowColor Black
+    ActorBorderColor Black
+    LifeLineBorderColor Black
+    ParticipantBorderColor Black
+    ParticipantBackgroundColor WhiteSmoke
+    ParticipantHeaderBackgroundColor LightGray
+    ParticipantFontSize 14
+    NoteBackgroundColor LightYellow
+    NoteFontSize 12
+}
+
+skinparam wrapWidth 300
+skinparam maxMessageSize 500
+
+autonumber
+
+' ============================================================================
+' TITLE & METADATA
+' ============================================================================
+title Database Persistence Patterns - Metrics Collection
+
+' Description: CRUD operations, query patterns, and persistence strategies
+' Purpose: Document database interaction patterns for metrics storage
+' ============================================================================
+
+' ============================================================================
+' PATTERN 1: Bulk Metric Persistence (Centralized)
+' ============================================================================
+box "Pattern 1: Bulk Metric Persistence (Centralized)" #LightBlue
+    participant "MetricsCollector\nCallback" as CB order 10
+    participant "run_crud" as RunCRUD order 20
+    participant "_transform_epoch_to\nmetrics" as Transform order 30
+    participant "run_metric_crud" as RunMetricCRUD order 40
+    participant "Database" as DB order 50
+end box
+
+activate CB #LightGreen
+CB -> CB: on_fit_end() triggered
+note right of CB
+    Training complete, have all epoch_metrics[]
+end note
+
+CB -> CB: persist_to_database()
+note right of CB
+    File: metrics.py lines 436-498
+    Main persistence method
+end note
+
+CB -> RunCRUD: persist_metrics(run_id, epoch_metrics, federated_context=None)
+note right of RunCRUD
+    File: run.py lines 234-280
+    Entry point for metric persistence
+end note
+
+activate RunCRUD #LightPink
+RunCRUD -> RunCRUD: Validate inputs
+note right of RunCRUD
+    Check run_id exists in database
+end note
+
+loop For each epoch in epoch_metrics
+    RunCRUD -> Transform: _transform_epoch_to_metrics(run_id, epoch, epoch_data)
+    note right of Transform
+        File: run.py lines 489-535
+        Data transformation layer
+    end note
+
+    activate Transform #Wheat
+    Transform -> Transform: Extract all numeric fields
+    note right of Transform
+        Numeric fields extracted:
+        - train_loss
+        - val_acc, val_f1, etc.
+    end note
+
+    Transform -> Transform: _determine_dataset_type(metric_name)
+    note right of Transform
+        Inference rules:
+        - "train_*" → "train"
+        - "val_*" → "validation"
+        - "test_*" → "test"
+        - others → "other"
+    end note
+
+    Transform --> RunCRUD: List[metric_dict]
+    note right of RunCRUD
+        Structure: [
+            {run_id, metric_name, metric_value,
+            step, dataset_type, context},
+            ...
+        ]
+    end note
+    deactivate Transform
+end
+
+RunCRUD -> RunCRUD: Flatten all metric_dicts
+note right of RunCRUD
+    metrics_to_create = [m1, m2, ..., mN]
+    All epochs combined into single list
+end note
+
+RunCRUD -> RunMetricCRUD: bulk_create(db, metrics_to_create)
+note right of RunMetricCRUD
+    Inherited from base.py lines 109-118
+    Single transaction for performance
+end note
+
+activate RunMetricCRUD #LightSteelBlue
+RunMetricCRUD -> DB: db.add_all([RunMetric(**m) for m in metrics_to_create])
+
+activate DB #LightGray
+RunMetricCRUD -> DB: db.flush()
+note right of DB
+    Single transaction
+    All rows written to database
+end note
+
+DB --> RunMetricCRUD: Rows inserted (with IDs assigned)
+RunMetricCRUD --> RunCRUD: Success
+deactivate RunMetricCRUD
+
+RunCRUD --> CB: Metrics persisted
+deactivate RunCRUD
+
+CB -> DB: db.commit()
+note right of CB
+    Commit transaction
+    All changes persisted
+end note
+
+deactivate CB
+deactivate DB
+
+' ============================================================================
+' PATTERN 2: Eager Loading (Prevent N+1 Queries)
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Pattern 2: Eager Loading (Prevent N+1 Queries)" #LightGreen
+    participant "API Endpoint" as API order 10
+    participant "run_crud" as RunCRUD order 20
+    participant "Database\n(SQLAlchemy)" as DB order 30
+end box
+
+activate API #AliceBlue
+API -> RunCRUD: get_with_metrics(db, run_id)
+note right of RunCRUD
+    File: run.py lines 77-88
+    Eager loading pattern
+end note
+
+activate RunCRUD #LightPink
+RunCRUD -> DB: db.query(Run).options(selectinload(Run.metrics)).filter(Run.id == run_id)
+note right of DB
+    Single query with JOIN
+    Uses SQLAlchemy's selectinload()
+    Prevents N+1 query problem
+end note
+
+activate DB #LightGray
+DB --> RunCRUD: Run object with .metrics pre-loaded
+note right of RunCRUD
+    No additional queries when
+    accessing run.metrics
+end note
+
+deactivate DB
+
+RunCRUD --> API: run (with metrics attached)
+deactivate RunCRUD
+
+API -> API: for metric in run.metrics
+note right of API
+    Iterate over metrics
+    No N+1 - metrics already loaded
+    in initial query
+end note
+
+deactivate API
+
+' ============================================================================
+' PATTERN 3: Federated Context Resolution
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Pattern 3: Federated Context Resolution" #LightYellow
+    participant "MetricsCollector\nCallback" as CB order 10
+    participant "run_crud" as RunCRUD order 20
+    participant "client_crud" as ClientCRUD order 30
+    participant "round_crud" as RoundCRUD order 40
+    participant "Database" as DB order 50
+end box
+
+note over CB
+    Federated training in progress
+    client_id=5, round_number=3
+end note
+
+activate CB #LightGreen
+CB -> CB: _ensure_client_exists(db, run_id)
+note right of CB
+    File: metrics.py lines 384-434
+    Ensures client entity exists
+end note
+
+CB -> ClientCRUD: get_or_create(db, run_id, client_id)
+activate ClientCRUD #LightCoral
+
+ClientCRUD -> DB: SELECT * FROM clients WHERE run_id=X AND client_id=5
+activate DB #LightGray
+
+alt Client exists
+    DB --> ClientCRUD: client
+else Client not found
+    ClientCRUD -> DB: INSERT INTO clients (run_id, client_id, client_name)
+    note right of DB
+        Creates new client record
+    end note
+    DB --> ClientCRUD: new client
+end
+
+deactivate DB
+
+ClientCRUD --> CB: client (with db_client_id)
+deactivate ClientCRUD
+
+CB -> CB: self.db_client_id = client.id
+note right of CB
+    Store for later metric tagging
+    Links metrics to specific client
+end note
+
+deactivate CB
+
+note over CB
+    Later, when persisting metrics...
+end note
+
+activate CB #LightGreen
+CB -> RunCRUD: persist_metrics(db, run_id, epoch_metrics, federated_context={client_id, round_number})
+activate RunCRUD #LightPink
+
+RunCRUD -> RunCRUD: _resolve_federated_context(db, federated_context)
+note right of RunCRUD
+    File: run.py lines 431-468
+    Resolves Flower IDs to DB IDs
+end note
+
+RunCRUD -> DB: SELECT id FROM clients WHERE client_id=5
+activate DB #LightGray
+DB --> RunCRUD: client_db_id
+deactivate DB
+
+RunCRUD -> DB: SELECT id FROM rounds WHERE round_number=3 AND run_id=X
+activate DB #LightGray
+DB --> RunCRUD: round_db_id
+deactivate DB
+
+RunCRUD --> RunCRUD: (client_db_id, round_db_id)
+
+RunCRUD -> RunCRUD: _transform_epoch_to_metrics(..., client_id=client_db_id, round_id=round_db_id)
+note right of RunCRUD
+    All metrics tagged with
+    client_id and round_id FKs
+end note
+
+deactivate RunCRUD
+deactivate CB
+
+' ============================================================================
+' PATTERN 4: Querying Metrics by Context
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Pattern 4: Querying Metrics by Context" #LightCoral
+    participant "API Endpoint" as API order 10
+    participant "run_metric_crud" as RunMetricCRUD order 20
+    participant "Database" as DB order 30
+end box
+
+note over API
+    Query: Get all client metrics for run 123
+end note
+
+activate API #AliceBlue
+API -> RunMetricCRUD: get_by_run_grouped_by_client(db, run_id=123)
+note right of RunMetricCRUD
+    File: run_metric.py lines 161-197
+    Grouped metrics retrieval
+end note
+
+activate RunMetricCRUD #LightSteelBlue
+RunMetricCRUD -> DB: SELECT * FROM run_metrics
+    WHERE run_id=123 AND client_id IS NOT NULL
+    ORDER BY client_id, step
+activate DB #LightGray
+
+DB --> RunMetricCRUD: List[RunMetric]
+deactivate DB
+
+RunMetricCRUD -> RunMetricCRUD: Group by client_id
+note right of RunMetricCRUD
+    Result structure:
+    {
+        client_1: [metrics],
+        client_2: [metrics],
+        ...
+    }
+end note
+
+RunMetricCRUD --> API: Dict[client_id, List[RunMetric]]
+deactivate RunMetricCRUD
+deactivate API
+
+note over API
+    Query: Get server aggregated metrics only
+end note
+
+activate API #AliceBlue
+API -> RunMetricCRUD: get_aggregated_metrics_by_run(db, run_id=123)
+note right of RunMetricCRUD
+    File: run_metric.py lines 199-221
+    Server-side aggregated metrics
+end note
+
+activate RunMetricCRUD #LightSteelBlue
+RunMetricCRUD -> DB: SELECT * FROM run_metrics
+    WHERE run_id=123 AND context='aggregated'
+    ORDER BY step
+activate DB #LightGray
+
+DB --> RunMetricCRUD: List[RunMetric]
+deactivate DB
+
+RunMetricCRUD --> API: Server evaluation metrics
+deactivate RunMetricCRUD
+deactivate API
+
+note over API
+    Query: Get validation metrics only
+end note
+
+activate API #AliceBlue
+API -> RunMetricCRUD: get_by_dataset_type(db, run_id=123, dataset_type="validation")
+note right of RunMetricCRUD
+    File: run_metric.py lines 50-69
+    Dataset-specific metrics
+end note
+
+activate RunMetricCRUD #LightSteelBlue
+RunMetricCRUD -> DB: SELECT * FROM run_metrics
+    WHERE run_id=123 AND dataset_type='validation'
+    ORDER BY step
+activate DB #LightGray
+
+DB --> RunMetricCRUD: List[RunMetric]
+deactivate DB
+
+RunMetricCRUD --> API: Validation metrics only
+deactivate RunMetricCRUD
+deactivate API
+
+' ============================================================================
+' PATTERN 5: Final Epoch Stats Calculation
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Pattern 5: Final Epoch Stats Calculation" #AliceBlue
+    participant "db_operations.py" as DBOps order 10
+    participant "run_crud" as RunCRUD order 20
+    participant "run_metric_crud" as RunMetricCRUD order 30
+    participant "Database" as DB order 40
+end box
+
+activate DBOps #LightBlue
+DBOps -> RunCRUD: complete_run(db, run_id, status="completed")
+note right of RunCRUD
+    File: run.py lines 107-147
+    Finalizes training run
+end note
+
+activate RunCRUD #LightPink
+RunCRUD -> DB: UPDATE runs SET status='completed', end_time=NOW() WHERE id=run_id
+activate DB #LightGray
+DB --> RunCRUD: Run updated
+deactivate DB
+
+RunCRUD -> RunMetricCRUD: create_final_epoch_stats(db, run_id)
+note right of RunMetricCRUD
+    File: run_metric.py lines 223-274
+    Calculates final statistics
+end note
+
+activate RunMetricCRUD #LightSteelBlue
+RunMetricCRUD -> DB: SELECT * FROM run_metrics
+    WHERE run_id=run_id AND step=(SELECT MAX(step)...)
+activate DB #LightGray
+
+note right of DB
+    Get latest epoch metrics
+    from the run
+end note
+
+DB --> RunMetricCRUD: latest_metrics
+deactivate DB
+
+RunMetricCRUD -> RunMetricCRUD: Extract confusion matrix values
+note right of RunMetricCRUD
+    Extract from latest epoch:
+    - cm_tp (True Positives)
+    - cm_tn (True Negatives)
+    - cm_fp (False Positives)
+    - cm_fn (False Negatives)
+end note
+
+RunMetricCRUD -> RunMetricCRUD: Calculate derived metrics
+note right of RunMetricCRUD
+    Formulas applied:
+    - precision = TP / (TP + FP)
+    - recall = TP / (TP + FN)
+    - f1 = 2 * (prec * rec) / (prec + rec)
+    - accuracy = (TP + TN) / (TP + TN + FP + FN)
+end note
+
+RunMetricCRUD -> DB: INSERT INTO run_metrics VALUES
+    (run_id, 'final_precision_cm', precision, ...),
+    (run_id, 'final_recall_cm', recall, ...),
+    (run_id, 'final_f1_cm', f1, ...),
+    (run_id, 'final_accuracy_cm', accuracy, ...),
+    (run_id, 'final_auroc_cm', auroc, ...)
+activate DB #LightGray
+
+DB --> RunMetricCRUD: Final stats persisted
+deactivate DB
+
+RunMetricCRUD --> RunCRUD: Stats calculated
+deactivate RunMetricCRUD
+
+RunCRUD --> DBOps: Run completed
+deactivate RunCRUD
+
+DBOps --> DBOps: Success
+deactivate DBOps
+
+' ============================================================================
+' PATTERN 6: Session Management & Error Handling
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Pattern 6: Session Management & Error Handling" #Wheat
+    participant "Calling\nFunction" as Caller order 10
+    participant "CRUD\nClass" as CRUD order 20
+    participant "DB\nSession" as Session order 30
+    participant "Database" as DB order 40
+end box
+
+activate Caller #AliceBlue
+Caller -> CRUD: operation(args)
+activate CRUD #LightGreen
+
+CRUD -> CRUD: with get_db_session() as db:
+note right of CRUD
+    Context manager entered
+    File: base.py lines 18-28
+end note
+
+CRUD -> Session: get_session() (from engine)
+activate Session #LightYellow
+Session --> CRUD: db
+
+CRUD -> DB: db.query(...) / db.add(...) / db.commit()
+activate DB #LightGray
+
+alt Success
+    DB --> CRUD: Operation successful
+    deactivate DB
+    
+    Session -> Session: db.close()
+    note right of Session
+        Connection returned to pool
+    end note
+    
+    CRUD --> Caller: result
+else Error (SQLAlchemyError)
+    DB --> CRUD: Exception raised
+    deactivate DB
+    
+    CRUD -> Session: db.rollback()
+    note right of Session
+        Rollback transaction
+        Changes not persisted
+    end note
+    
+    Session -> Session: db.close()
+    CRUD --> Caller: Raise exception
+end
+
+deactivate Session
+deactivate CRUD
+deactivate Caller
+
+' ============================================================================
+' LEGEND & FILE REFERENCES
+' ============================================================================
+newpage
+
+legend
+    **File Reference Guide**
+    
+    | Pattern | File | Key Lines | Purpose |
+    |---------|------|-----------|---------|
+    | Bulk Persistence | run.py, base.py | 234-280, 109-118 | Single-transaction metric storage |
+    | Eager Loading | run.py | 77-88, 334-372 | N+1 query prevention |
+    | Federated Context | run.py, metrics.py | 431-468, 384-434 | Client/round resolution |
+    | Query by Context | run_metric.py | 161-221 | Filtered metric retrieval |
+    | Final Stats | run.py, run_metric.py | 107-147, 223-274 | Confusion matrix calculations |
+    | Session Management | base.py, db_operations.py | 18-28, 14-50 | Connection lifecycle |
+    
+    **Database Query Optimization Checklist**
+    
+    | Optimization | Pattern | File Reference |
+    |--------------|---------|----------------|
+    | Bulk Insert | Use bulk_create() instead of loop with create() | base.py:109-118 |
+    | Eager Loading | Use selectinload() for relationships | run.py:77-88 |
+    | Index Usage | Filter by indexed columns (run_id, client_id, round_id) | All CRUD files |
+    | Connection Pooling | Always close sessions in finally block | base.py:18-28 |
+    | Transaction Grouping | Group related inserts in single transaction | run.py:234-280 |
+    | Avoid N+1 | Fetch related entities in single query | run.py:77-88 |
+    
+    **Context Field Values**
+    
+    | Context Value | Meaning | Used By |
+    |---------------|---------|---------|
+    | "epoch_end" | Metric collected at end of epoch | MetricsCollectorCallback |
+    | "batch" | Metric collected at batch level | BatchMetricsCallback |
+    | "aggregated" | Server-side aggregated metric (federated) | Server evaluation |
+    | "final_epoch" | Final confusion matrix stats | FinalEpochStatsService |
+    
+    **Dataset Type Inference Rules**
+    
+    | Metric Name | Dataset Type |
+    |-------------|--------------|
+    | train_loss | "train" |
+    | val_accuracy | "validation" |
+    | test_f1 | "test" |
+    | final_precision_cm | "other" |
+    | cm_tp | "other" |
+    
+    **Transformation Logic**
+    
+    File: run.py lines 470-487 (_determine_dataset_type)
+    ```python
+    def _determine_dataset_type(self, metric_name: str) -> str:
+        """Infer dataset type from metric name prefix."""
+        if metric_name.startswith("train_"):
+            return "train"
+        elif metric_name.startswith("val_"):
+            return "validation"
+        elif metric_name.startswith("test_"):
+            return "test"
+        else:
+            return "other"
+    ```
+endlegend
+
+@enduml

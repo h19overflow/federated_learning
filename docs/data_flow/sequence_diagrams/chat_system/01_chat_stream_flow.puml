@@ -1,0 +1,152 @@
+@startuml
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor #333333
+    ArrowThickness 2
+    ActorBackgroundColor #F0F0F0
+    ActorBorderColor #333333
+    ParticipantBackgroundColor #FFFFFF
+    ParticipantBorderColor #333333
+    ParticipantFontSize 12
+    ParticipantFontStyle bold
+    LifeLineBackgroundColor #F0F0F0
+    LifeLineBorderColor #999999
+    BoxPadding 10
+    MessagePadding 15
+}
+
+skinparam note {
+    BackgroundColor #FFFFCC
+    BorderColor #999999
+    FontSize 11
+}
+
+title Chat Streaming Flow - Step 4: SSE Response Formatting & Delivery
+
+' Participants
+participant API as "**API**\nchat_stream.py" #FFF3E0
+participant Utils as "**Utils**\nchat_utils.py" #FCE4EC
+participant Frontend as "**Frontend**\nReact Frontend" #E3F2FD
+
+autonumber
+
+== Step 4: SSE Response Formatting & Delivery ==
+
+note over API
+    **All events yielded from generate() function**
+end note
+
+' File: chat_utils.py lines 12-14
+API -> Utils: sse_pack(event_dict)
+activate Utils
+
+note right of Utils
+    **File:** chat_utils.py lines 12-14
+end note
+
+Utils -> Utils: json.dumps(event_dict)
+
+note right of Utils
+    **Data Transformation:**
+    Dictionary → JSON string → SSE format
+end note
+
+Utils --> API: "data: {...}\n\n"
+deactivate Utils
+
+' File: chat_stream.py lines 83-91
+API -> Frontend: StreamingResponse(generate(), media_type="text/event-stream")
+
+activate API
+
+note right of API
+    **File:** chat_stream.py lines 83-91
+    **Response Headers:**
+    - Cache-Control: no-cache
+    - Connection: keep-alive
+    - X-Accel-Buffering: no
+end note
+
+note over Frontend
+    **EventSource connection**
+    receives SSE events
+end note
+
+Frontend -> Frontend: Parse SSE events
+note right of Frontend
+    **Data Parsing:**
+    event.data = JSON.parse(...)
+end note
+
+alt Event type: "session"
+    Frontend -> Frontend: Store session_id
+    note right of Frontend
+        **Action:** Save session_id for future requests
+    end note
+    
+else Event type: "token"
+    Frontend -> Frontend: Append content to UI
+    note right of Frontend
+        **Action:** Append token to message display
+    end note
+    
+else Event type: "tool_call"
+    Frontend -> Frontend: Show tool usage indicator
+    note right of Frontend
+        **Action:** Display tool usage badge
+    end note
+    
+else Event type: "status"
+    Frontend -> Frontend: Update status indicator
+    note right of Frontend
+        **Action:** Show processing status
+    end note
+    
+else Event type: "done"
+    Frontend -> Frontend: Mark message complete
+    note right of Frontend
+        **Action:** Finalize message display
+    end note
+    
+else Event type: "error"
+    Frontend -> Frontend: Display error
+    note right of Frontend
+        **Action:** Show error message
+    end note
+end
+
+deactivate API
+
+== SSE Event Types Summary ==
+
+note right of Frontend
+    **Event Types:**
+    
+    | Type | Trigger | Payload | Frontend Action |
+    |------|---------|---------|----------------|
+    | session | Session initialization | {type, session_id} | Store session_id |
+    | token | LLM streams token | {type, content} | Append to display |
+    | tool_call | Tool invocation | {type, tool, args} | Show tool badge |
+    | status | Processing update | {type, message} | Update status |
+    | done | Stream complete | {type} | Mark complete |
+    | error | Error occurred | {type, message} | Display error |
+end note
+
+== File Reference ==
+
+note right of Frontend
+    **Key Files:**
+    
+    | Layer | File | Key Lines |
+    |-------|------|-----------|
+    | API Endpoint | chat_stream.py | 34-91 |
+    | Session Manager | session_manager.py | 69-79 |
+    | Query Enhancement | chat_utils.py | 38-320 |
+    | Agent Factory | factory.py | 18-88 |
+    | Chat Agent | research_engine.py | 35-198 |
+    | Streaming Logic | research_stream.py | (delegated) |
+    | SSE Utilities | chat_utils.py | 12-19 |
+end note
+
+@enduml

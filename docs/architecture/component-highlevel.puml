@@ -1,0 +1,173 @@
+@startuml ComponentHighLevel
+skinparam componentStyle rectangle
+skinparam defaultFontSize 11
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam nodesep 140
+skinparam ranksep 110
+skinparam linetype ortho
+skinparam arrowThickness 1.5
+skinparam packageFontSize 14
+skinparam packageFontStyle bold
+
+' ============================
+'  USER & CLIENT
+' ============================
+actor User as user
+
+package "Client Device\n(Web Browser)" #e3f2fd {
+  component [Dashboard UI\n(React)] as dashboard
+  component [Chat Interface] as chat_ui
+  component [Real-time Monitor\n(WebSocket)] as ws_client
+}
+
+' ============================
+'  API LAYER
+' ============================
+package "API Layer" #fff3e0 {
+  component [Training API] as api_training
+  component [Inference API] as api_inference
+  component [Analytics API] as api_analytics
+  component [Chat API] as api_chat
+  component [WebSocket Manager] as api_ws
+}
+
+' ============================
+'  CONTROL LAYER (TRAINING)
+' ============================
+package "Training Control Layer" #fce4ec {
+  
+  component [Training Coordinator\n(Centralized)] as ctrl_central
+  component [FL Server\n(Flower)] as ctrl_server
+  component [FL Client\n(Flower)] as ctrl_client
+  
+  note right of ctrl_server
+    **FL Server manages:**
+    - Client coordination
+    - Model aggregation
+    - Strategy execution
+  end note
+}
+
+' ============================
+'  DL MODEL LAYER (SHARED)
+' ============================
+package "Deep Learning Layer\n(Shared Components)" #f3e5f5 {
+  component [LitResNet Model\n(PyTorch Lightning)] as lit_model
+  component [XRay Data Module\n(Data Pipeline)] as data_module
+  component [Training Utilities\n(Callbacks, Optimizers)] as training_utils
+  
+  note right of lit_model
+    **LitResNetEnhanced**
+    - ResNet50 backbone
+    - Custom classifier head
+    - Lightning Module
+  end note
+}
+
+' ============================
+'  INFERENCE LAYER
+' ============================
+package "Inference Layer" #e1f5fe {
+  component [Inference Service\n(Predictions)] as svc_inference
+  component [Grad-CAM\n(Heatmaps)] as svc_gradcam
+}
+
+' ============================
+'  AGENTIC AI LAYER
+' ============================
+package "Agentic AI Layer\n(LangChain-based)" #fff9c4 {
+  component [Chat Agent\n(LLM + Tools)] as agent_chat
+  component [RAG Pipeline\n(Retrieval + Generation)] as agent_rag
+  component [Session Manager\n(Chat History)] as agent_sessions
+  component [ArXiv Tool\n(Research Search)] as agent_tools
+  
+  note right of agent_rag
+    **RAG Pipeline:**
+    - PGVector store
+    - HuggingFace embeddings
+    - Context-aware responses
+  end note
+}
+
+' ============================
+'  PERSISTENCE LAYER
+' ============================
+package "Data Persistence Layer" #e0f2f1 {
+  component [Database Manager\n(SQLAlchemy)] as db_manager
+  component [File Manager\n(Checkpoints, Logs)] as file_manager
+}
+
+' ============================
+'  STORAGE LAYER
+' ============================
+database "PostgreSQL\n(Runs, Sessions, Chat)" as db_postgres
+storage "File Storage\n(Models, Results)" as file_storage
+
+' ============================
+'  CONNECTIONS - User Flow
+' ============================
+user --> dashboard : Interacts
+user --> chat_ui : Converses
+
+' ============================
+'  CONNECTIONS - Client to API
+' ============================
+dashboard --> api_training : HTTPS
+api_training --> api_ws : broadcasts
+dashboard --> api_inference : HTTPS
+dashboard --> api_analytics : HTTPS
+chat_ui --> api_chat : HTTPS
+ws_client <--> api_ws : WebSocket
+
+' ============================
+'  CONNECTIONS - API to Control
+' ============================
+api_training --> ctrl_central : "Centralized mode"
+api_training --> ctrl_server : "Federated mode"
+ctrl_server --> ctrl_client : "Distributes to clients"
+
+' ============================
+'  CONNECTIONS - Control to DL
+' ============================
+ctrl_central --> lit_model : trains
+ctrl_central --> data_module : prepares
+ctrl_client --> lit_model : local training
+ctrl_client --> data_module : local data
+ctrl_server --> lit_model : global model
+
+' ============================
+'  CONNECTIONS - DL Internal
+' ============================
+lit_model <--> training_utils : uses
+data_module --> lit_model : feeds
+
+' ============================
+'  CONNECTIONS - Inference
+' ============================
+api_inference --> svc_inference
+svc_inference --> lit_model : loads weights
+svc_inference --> svc_gradcam
+data_module --> svc_inference : test data
+
+' ============================
+'  CONNECTIONS - Agentic AI
+' ============================
+api_chat --> agent_chat
+agent_chat --> agent_rag : queries context
+agent_chat --> agent_sessions : manages
+agent_rag --> agent_tools : searches
+agent_rag --> db_postgres : retrieves docs
+agent_sessions --> db_manager : persists
+
+' ============================
+'  CONNECTIONS - Persistence
+' ============================
+ctrl_central --> db_manager : logs runs
+ctrl_server --> db_manager : logs FL runs
+db_manager --> db_postgres
+db_manager --> file_manager
+file_manager --> file_storage : Checkpoints
+file_manager --> file_storage : Results
+
+@enduml

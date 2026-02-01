@@ -1,0 +1,285 @@
+@startuml GradCAMHeatmap
+
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor #333333
+    LifeLineBorderColor #333333
+    LifeLineBackgroundColor #f0f0f0
+    ParticipantBorderColor #333333
+    ParticipantBackgroundColor #e0e0e0
+}
+
+autonumber
+
+title Inference API - GradCAM Heatmap Flow
+
+caption POST /api/inference/heatmap | POST /api/inference/heatmap-batch
+
+box "API Layer"
+    participant "Client" as Client
+    participant "GradCAMEndpoint" as API
+    participant "deps.py" as Deps
+end box
+
+box "Control Layer"
+    participant "InferenceService" as Svc
+    participant "GradCAMService" as GradCAMSvc
+    participant "InferenceEngine" as Engine
+end box
+
+box "ML Model"
+    participant "LitResNetEnhanced" as Model
+    participant "GradCAM" as CAM
+end box
+
+box "Schema"
+    participant "HeatmapResult" as HeatmapResult
+    participant "BatchHeatmapItem" as BatchItem
+    participant "HeatmapResponse" as HeatmapResponse
+    participant "BatchHeatmapResponse" as BatchResponse
+end box
+
+== Step 1: Single Heatmap Generation ==
+
+note right of API
+    **File: gradcam_endpoints.py lines 28-65**
+    Entry point for single heatmap generation
+    Route: POST /api/inference/heatmap
+end note
+
+Client -> API: POST /api/inference/heatmap (file, colormap, alpha)
+activate Client
+activate API
+
+API -> Deps: Depends(get_inference_service)
+activate Deps
+Deps --> API: service
+deactivate Deps
+
+API -> Deps: Depends(get_gradcam_service)
+activate Deps
+Deps -> GradCAMSvc: GradCAMService(service)
+activate GradCAMSvc
+GradCAMSvc --> Deps: gradcam_service
+deactivate GradCAMSvc
+Deps --> API: gradcam_service
+deactivate Deps
+
+API -> Svc: check_ready_or_raise()
+activate Svc
+Svc --> API: Service ready
+deactivate Svc
+
+API -> Svc: validator.validate_or_raise(file)
+activate Svc
+Svc --> API: Valid
+deactivate Svc
+
+API -> Svc: processor.read_from_upload(file, convert_rgb=True)
+activate Svc
+
+Svc --> API: PIL.Image (RGB)
+deactivate Svc
+
+API -> GradCAMSvc: generate_single_heatmap(image, filename, colormap, alpha)
+activate GradCAMSvc
+
+note right of GradCAMSvc
+    **File: gradcam_service.py**
+    Internal GradCAM processing
+end note
+
+GradCAMSvc -> GradCAMSvc: generate_single_heatmap(...)
+activate GradCAMSvc #LightBlue
+
+GradCAMSvc -> Engine: Access model via service.engine
+activate Engine
+Engine --> GradCAMSvc: model instance
+deactivate Engine
+
+GradCAMSvc -> CAM: Initialize GradCAM(model, target_layer)
+activate CAM
+
+CAM -> CAM: cam(input_tensor, targets)
+activate CAM #LightBlue
+
+CAM -> Model: Forward pass with hooks
+activate Model
+Model --> CAM: Feature maps & gradients
+deactivate Model
+
+CAM -> CAM: Compute weighted activation map
+activate CAM #LightBlue
+note right of CAM
+    **GradCAM Algorithm:**
+    1. Capture feature maps (target layer)
+    2. Capture gradients (backprop from class)
+    3. Global Average Pooling on gradients
+    4. Weighted combination of feature maps
+    5. ReLU activation
+end note
+CAM --> CAM: Activation map
+deactivate CAM
+
+CAM -> CAM: Resize to image dimensions
+activate CAM #LightBlue
+CAM --> CAM: Resized heatmap
+deactivate CAM
+
+CAM --> GradCAMSvc: heatmap array
+deactivate CAM
+deactivate CAM
+
+GradCAMSvc -> GradCAMSvc: Apply colormap (jet/hot/viridis)
+activate GradCAMSvc #LightBlue
+note right of GradCAMSvc
+    **Data Transformations:**
+    - Resize heatmap to original dimensions
+    - Normalize to 0-255
+    - Apply colormap (jet, hot, or viridis)
+end note
+GradCAMSvc --> GradCAMSvc: Colored heatmap
+deactivate GradCAMSvc
+
+GradCAMSvc -> GradCAMSvc: Overlay on original image (alpha blend)
+activate GradCAMSvc #LightBlue
+GradCAMSvc --> GradCAMSvc: Overlay image
+deactivate GradCAMSvc
+
+GradCAMSvc -> GradCAMSvc: Convert to base64
+activate GradCAMSvc #LightBlue
+GradCAMSvc --> GradCAMSvc: Base64 strings
+deactivate GradCAMSvc
+
+GradCAMSvc --> GradCAMSvc: HeatmapResult
+deactivate GradCAMSvc
+
+GradCAMSvc --> API: HeatmapResult
+deactivate GradCAMSvc
+
+alt Generation failed
+    API --> Client: HTTPException(500)
+else Success
+    API -> API: HeatmapResponse(...)
+    activate API #LightBlue
+    note right of API
+        **File: inference_schemas.py lines 179-194**
+        Response with base64 images
+    end note
+    API --> API: Response constructed
+deactivate API
+    
+    API --> Client: JSON with base64 images
+    note right of API
+        **Response Data:**
+        - success: bool
+        - filename: string
+        - heatmap_base64: string
+        - original_image_base64: string
+        - processing_time_ms: float
+    end note
+end
+
+deactivate API
+deactivate Client
+
+== Step 2: Batch Heatmap Generation ==
+
+note right of API
+    **File: gradcam_endpoints.py lines 68-114**
+    Entry point for batch heatmap generation
+    Route: POST /api/inference/heatmap-batch
+end note
+
+Client -> API: POST /api/inference/heatmap-batch (files, colormap, alpha)
+activate Client
+activate API
+
+API -> API: batch_start_time = time.time()
+activate API #LightBlue
+API --> API: Start time recorded
+deactivate API
+
+API -> Svc: check_ready_or_raise()
+activate Svc
+Svc --> API: Service ready
+deactivate Svc
+
+loop For each file
+    API -> Svc: validator.validate_or_raise(file)
+    activate Svc
+    
+    alt Validation fails
+        Svc --> API: Validation error
+        deactivate Svc
+        API -> API: Append (None, filename) to images
+        activate API #LightBlue
+        API --> API: Invalid image recorded
+deactivate API
+    else Valid
+        Svc --> API: Valid
+deactivate Svc
+        
+        API -> Svc: processor.read_from_upload(file, convert_rgb=True)
+        activate Svc
+        Svc --> API: PIL.Image
+        deactivate Svc
+        
+        API -> API: Append (image, filename) to images
+        activate API #LightBlue
+        API --> API: Valid image recorded
+deactivate API
+    end
+end
+
+API -> GradCAMSvc: generate_batch_heatmaps(images, colormap, alpha)
+activate GradCAMSvc
+
+note right of GradCAMSvc
+    **Internal Processing:**
+    Similar to single heatmap but for each valid image
+end note
+
+GradCAMSvc -> BatchItem: List[BatchHeatmapItem]
+activate BatchItem
+
+note right of BatchItem
+    **File: inference_schemas.py lines 197-214**
+    Batch heatmap item schema
+end note
+
+BatchItem --> GradCAMSvc: List of results
+deactivate BatchItem
+
+GradCAMSvc --> API: List[BatchHeatmapItem]
+deactivate GradCAMSvc
+
+API -> API: Calculate total_processing_time_ms
+activate API #LightBlue
+API --> API: Total processing time
+deactivate API
+
+API -> API: BatchHeatmapResponse(...)
+activate API #LightBlue
+
+note right of API
+    **File: inference_schemas.py lines 217-228**
+    Batch heatmap response
+end note
+
+API --> API: Response constructed
+deactivate API
+
+API --> Client: JSON Response
+note right of API
+    **Query Parameters:**
+    - colormap: string (default: "jet")
+      Options: jet, hot, viridis
+    - alpha: float (default: 0.4)
+      Range: 0.1 - 0.9
+end note
+deactivate API
+deactivate Client
+
+@enduml

@@ -1,0 +1,597 @@
+@startuml
+!theme plain
+
+skinparam sequence {
+    ArrowColor Black
+    ActorBorderColor Black
+    LifeLineBorderColor Black
+    ParticipantBorderColor Black
+    ParticipantBackgroundColor WhiteSmoke
+    ParticipantHeaderBackgroundColor LightGray
+    ParticipantFontSize 14
+    NoteBackgroundColor LightYellow
+    NoteFontSize 12
+}
+
+skinparam wrapWidth 300
+skinparam maxMessageSize 500
+
+autonumber
+
+' ============================================================================
+' TITLE & METADATA
+' ============================================================================
+title Federated Server - Aggregation & Metrics Collection Flow
+
+' Description: Flower server-side aggregation with central evaluation
+' Entry Point: server_app.py:55 -> @app.main(grid, context)
+' Pattern: Flower ServerApp with FedAvg strategy + central evaluation
+' ============================================================================
+
+' ============================================================================
+' STEP 1: Server Initialization & Run Creation
+' ============================================================================
+box "Step 1: Server Initialization & Run Creation" #LightBlue
+    participant "Flower\nFramework" as Flower order 10
+    participant "server_app.py" as ServerApp order 20
+    participant "utils.py" as Utils order 30
+    participant "run_crud" as RunCRUD order 40
+    participant "Database" as DB order 50
+    participant "WebSocketSender" as WS order 60
+end box
+
+activate Flower #LightGreen
+Flower -> ServerApp: main(grid, context)
+note right of ServerApp
+    File: server_app.py lines 55-144
+    Server main entry point
+end note
+
+activate ServerApp #AliceBlue
+ServerApp -> ServerApp: Extract num_rounds, num_clients
+note right of ServerApp
+    File: server_app.py lines 57-64
+    num_rounds = context.run_config["num-server-rounds"]
+    num_clients = len(list(grid.get_node_ids()))
+end note
+
+ServerApp -> Utils: _initialize_database_run()
+note right of Utils
+    Create federated run in database
+end note
+
+activate Utils #Wheat
+Utils -> RunCRUD: create(training_mode="federated", status="in_progress")
+note right of RunCRUD
+    File: run.py (create method)
+    Initializes federated training run
+end note
+
+activate RunCRUD #LightPink
+RunCRUD -> DB: INSERT INTO runs
+note right of DB
+    Record created with:
+    - training_mode: "federated"
+    - status: "in_progress"
+    - start_time: NOW()
+end note
+
+activate DB #LightGray
+DB --> RunCRUD: run_id
+deactivate DB
+
+RunCRUD --> Utils: run_id
+deactivate RunCRUD
+
+Utils --> ServerApp: run_id
+deactivate Utils
+
+ServerApp -> Utils: _setup_config_manager()
+activate Utils #Wheat
+Utils --> ServerApp: (config_manager, experiment_seed, analysis_run_id)
+deactivate Utils
+
+ServerApp -> Utils: _build_training_configs(config_manager, num_clients, run_id, seed)
+note right of Utils
+    Create train_config, eval_config
+    with run_id embedded for client tracking
+end note
+
+activate Utils #Wheat
+Utils --> ServerApp: (train_config, eval_config)
+deactivate Utils
+
+ServerApp -> Utils: _build_global_model(config_manager)
+note right of Utils
+    Initialize ResNet50 + convert to ArrayRecord
+end note
+
+activate Utils #Wheat
+Utils --> ServerApp: (global_model, arrays)
+deactivate Utils
+
+ServerApp -> Utils: _initialize_websocket_sender(num_clients, num_rounds)
+activate Utils #Wheat
+Utils --> ServerApp: ws_sender
+deactivate Utils
+
+ServerApp -> WS: send_metrics("training_start")
+note right of WS
+    Payload: {run_id, experiment_name,
+    total_rounds, training_mode="federated"}
+end note
+
+activate WS #LightCoral
+WS -> WS: Broadcast training start
+WS --> ServerApp: Event sent
+deactivate WS
+deactivate ServerApp
+deactivate Flower
+
+' ============================================================================
+' STEP 2: Central Evaluation Function Setup
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Step 2: Central Evaluation Function Setup" #LightGreen
+    participant "server_app.py" as ServerApp order 10
+    participant "server_evaluation.py" as Eval order 20
+    participant "centralized_trainer_utils" as DataPrep order 30
+    participant "PyTorch\nModel" as Model order 40
+end box
+
+activate ServerApp #AliceBlue
+ServerApp -> Eval: create_central_evaluate_fn(config_manager, csv_path, image_dir)
+note right of Eval
+    File: server_evaluation.py lines 15-150
+    Creates evaluation closure
+end note
+
+activate Eval #Wheat
+Eval -> Eval: Define central_evaluate_fn(round_number, arrays, config)
+note right of Eval
+    Closure capturing:
+    - config_manager
+    - csv_path, image_dir
+    - Full test dataset
+end note
+
+Eval -> DataPrep: prepare_dataset(csv_path, image_dir)
+note right of DataPrep
+    Load test set (NOT partitioned)
+    Full dataset for server evaluation
+end note
+
+activate DataPrep #LightYellow
+DataPrep --> Eval: (train_df, val_df)
+deactivate DataPrep
+
+Eval -> DataPrep: create_data_module(train_df, val_df)
+activate DataPrep #LightYellow
+DataPrep --> Eval: data_module
+deactivate DataPrep
+
+Eval -> Model: Create model + load weights from arrays
+activate Model #LightCoral
+note right of Model
+    Model initialized with
+    aggregated weights
+end note
+
+Eval --> ServerApp: central_evaluate_fn
+note right of ServerApp
+    Function ready for
+    strategy.start()
+end note
+
+deactivate Model
+deactivate Eval
+deactivate ServerApp
+
+' ============================================================================
+' STEP 3: Strategy Initialization & Federated Rounds
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Step 3: Strategy Initialization & Federated Rounds" #LightYellow
+    participant "server_app.py" as ServerApp order 10
+    participant "utils.py" as Utils order 20
+    participant "custom_strategy.py" as Strategy order 30
+    participant "Flower\nGrid" as Grid order 40
+    participant "Client\nNodes" as Clients order 50
+end box
+
+activate ServerApp #AliceBlue
+ServerApp -> Utils: _initialize_strategy(train_config, eval_config, run_id, num_rounds)
+activate Utils #Wheat
+
+Utils -> Strategy: FederatedCustomStrategy(train_config, eval_config, run_id, num_rounds)
+note right of Strategy
+    Extends FedAvg with custom callbacks
+end note
+
+activate Strategy #LightGreen
+Strategy --> Utils: strategy
+Strategy -> Strategy: Initialize aggregation parameters
+
+Utils --> ServerApp: strategy
+deactivate Utils
+
+ServerApp -> Strategy: start(grid, initial_arrays, num_rounds, evaluate_fn)
+note right of Strategy
+    Execute federated training
+    Main orchestration loop
+end note
+
+Strategy -> Grid: Select clients for this round
+activate Grid #LightPink
+
+Grid -> Clients: Send global model + train_config
+note right of Clients
+    config contains:
+    - run_id
+    - round_number
+    - training parameters
+end note
+
+activate Clients #LightBlue
+Clients -> Clients: Local training (client_app.py:train)
+note right of Clients
+    See 02_federated_client_flow.puml
+    for client-side details
+end note
+
+Clients --> Grid: Return model updates + metrics
+note right of Clients
+    ArrayRecord(state_dict)
+    MetricRecord({num_examples, metrics})
+end note
+
+deactivate Clients
+
+Grid --> Strategy: Collect client results
+deactivate Grid
+
+Strategy -> Strategy: aggregate_fit(results)
+note right of Strategy
+    FedAvg weighted by num_examples:
+    Σ(weights * num_examples) / Σ(num_examples)
+end note
+
+Strategy -> Strategy: evaluate_fn(round, aggregated_arrays)
+note right of Strategy
+    Central evaluation on server test set
+    Provides unbiased assessment
+end note
+
+Strategy -> Strategy: _persist_round_metrics(round, fit_metrics, eval_metrics)
+note right of Strategy
+    Save to database:
+    - Round record
+    - Aggregated client metrics
+    - Server evaluation results
+end note
+
+Strategy --> ServerApp: result (FederatedStrategyResult)
+deactivate Strategy
+deactivate ServerApp
+
+' ============================================================================
+' STEP 4: Metrics Aggregation & Persistence
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Step 4: Metrics Aggregation & Persistence" #LightCoral
+    participant "FederatedCustom\nStrategy" as Strategy order 10
+    participant "utils.py" as Utils order 20
+    participant "run_crud" as RunCRUD order 30
+    participant "run_metric_crud" as RunMetricCRUD order 40
+    participant "round_crud" as RoundCRUD order 50
+    participant "Database" as DB order 60
+    participant "WebSocketSender" as WS order 70
+end box
+
+activate Strategy #LightGreen
+
+note over Strategy
+    After each round completes
+    Aggregating client results
+end note
+
+Strategy -> Strategy: aggregate_fit(results)
+note right of Strategy
+    Weighted average calculation:
+    Σ(weights * num_examples) / Σ(num_examples)
+end note
+
+Strategy -> Strategy: aggregate_evaluate(results)
+note right of Strategy
+    Weighted average of client evaluation metrics
+end note
+
+Strategy -> RoundCRUD: create(run_id, round_number, server_metrics, aggregated_client_metrics)
+note right of RoundCRUD
+    File: round.py (RoundCRUD)
+    Creates round record
+end note
+
+activate RoundCRUD #LightSteelBlue
+RoundCRUD -> DB: INSERT INTO rounds
+note right of DB
+    Round record with:
+    - run_id (FK)
+    - round_number
+    - server_metrics (JSON)
+    - aggregated_client_metrics (JSON)
+end note
+
+activate DB #LightGray
+DB --> RoundCRUD: round_id
+deactivate DB
+
+RoundCRUD --> Strategy: round_id
+deactivate RoundCRUD
+
+Strategy -> Utils: _persist_server_evaluations(run_id, evaluate_metrics_serverapp)
+note right of Utils
+    Persist central evaluation results
+end note
+
+activate Utils #Wheat
+Utils -> Utils: _convert_metric_record_to_dict(evaluate_metrics_serverapp)
+note right of Utils
+    Extract metrics per round:
+    - loss, accuracy, recall, f1, auroc
+end note
+
+Utils -> RunCRUD: persist_metrics(run_id, server_eval_metrics, context="aggregated")
+activate RunCRUD #LightPink
+
+RunCRUD -> RunCRUD: _transform_epoch_to_metrics()
+note right of RunCRUD
+    Transform round metrics to DB format
+    Round number becomes step
+end note
+
+RunCRUD -> RunMetricCRUD: bulk_create(metrics_list)
+note right of RunMetricCRUD
+    Each metric tagged with:
+    - run_id
+    - round_id (FK)
+    - context="aggregated"
+    - dataset_type="test"
+end note
+
+activate RunMetricCRUD #LightYellow
+RunMetricCRUD -> DB: db.add_all(metrics_list)
+RunMetricCRUD -> DB: db.flush() + db.commit()
+DB --> RunMetricCRUD: Persisted
+deactivate DB
+
+RunMetricCRUD --> RunCRUD: Success
+deactivate RunMetricCRUD
+
+RunCRUD --> Utils: Success
+deactivate RunCRUD
+
+Utils --> Strategy: Persistence complete
+deactivate Utils
+
+Strategy -> WS: send_metrics("round_metrics")
+note right of WS
+    Payload: {round, total_rounds,
+    fit_metrics, eval_metrics}
+end note
+
+activate WS #LightBlue
+WS -> WS: Broadcast round completion
+WS --> Strategy: Event sent
+deactivate WS
+deactivate Strategy
+
+' ============================================================================
+' STEP 5: Training Completion & Final Stats
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Step 5: Training Completion & Final Stats" #AliceBlue
+    participant "FederatedCustom\nStrategy" as Strategy order 10
+    participant "server_app.py" as ServerApp order 20
+    participant "utils.py" as Utils order 30
+    participant "run_crud" as RunCRUD order 40
+    participant "Database" as DB order 50
+    participant "WebSocketSender" as WS order 60
+end box
+
+activate Strategy #LightGreen
+Strategy --> ServerApp: result (FederatedStrategyResult)
+
+activate ServerApp #AliceBlue
+ServerApp -> ServerApp: _update_run_status(run_id, "completed")
+note right of ServerApp
+    File: server_app.py lines 146-165
+end note
+
+ServerApp -> RunCRUD: complete_run(run_id, status="completed")
+note right of RunCRUD
+    File: run.py lines 107-147
+end note
+
+activate RunCRUD #LightPink
+RunCRUD -> DB: UPDATE runs SET status='completed', end_time=NOW()
+
+RunCRUD -> RunCRUD: Compute final confusion matrix stats
+note right of RunCRUD
+    Calculates from all rounds:
+    - Best epoch/recall
+    - Confusion matrix values
+end note
+
+activate DB #LightGray
+DB --> RunCRUD: Run completed
+deactivate DB
+
+RunCRUD --> ServerApp: Run completed
+deactivate RunCRUD
+
+ServerApp -> Utils: _convert_metric_record_to_dict(result.train_metrics_clientapp)
+activate Utils #Wheat
+Utils --> ServerApp: train_metrics_dict
+deactivate Utils
+
+ServerApp -> Utils: _convert_metric_record_to_dict(result.evaluate_metrics_clientapp)
+activate Utils #Wheat
+Utils --> ServerApp: eval_metrics_dict
+deactivate Utils
+
+ServerApp -> Utils: _convert_metric_record_to_dict(result.evaluate_metrics_serverapp)
+activate Utils #Wheat
+Utils --> ServerApp: server_eval_metrics_dict
+deactivate Utils
+
+ServerApp -> ServerApp: Merge all metrics into all_results
+note right of ServerApp
+    File: server_app.py lines 101-111
+    Combines:
+    - train_metrics_clientapp
+    - evaluate_metrics_clientapp
+    - evaluate_metrics_serverapp
+end note
+
+ServerApp -> ServerApp: Save to results_{run_id}.json
+note right of ServerApp
+    File: server_app.py lines 113-118
+    JSON export of all metrics
+end note
+
+ServerApp -> Utils: _persist_metrics_if_available(result, run_id)
+activate Utils #Wheat
+Utils -> Utils: _persist_server_evaluations(run_id, result.evaluate_metrics_serverapp)
+Utils --> ServerApp: Persistence complete
+deactivate Utils
+
+ServerApp -> ServerApp: _extract_best_metrics(result)
+note right of ServerApp
+    File: server_app.py lines 187-216
+    Find best epoch by recall
+end note
+
+ServerApp -> ServerApp: _calculate_training_duration(run_id)
+note right of ServerApp
+    File: server_app.py lines 219-248
+    end_time - start_time
+end note
+
+ServerApp -> WS: send_metrics("training_end")
+note right of WS
+    Payload: {run_id, status="completed",
+    experiment_name, total_epochs,
+    training_mode="federated",
+    best_epoch, best_val_recall,
+    training_duration}
+end note
+
+activate WS #LightBlue
+WS -> WS: Broadcast training completion
+WS --> ServerApp: Event sent
+deactivate WS
+
+deactivate ServerApp
+deactivate Strategy
+
+' ============================================================================
+' LEGEND & FILE REFERENCES
+' ============================================================================
+newpage
+
+legend
+    **File Reference Guide**
+    
+    | Layer | File | Key Lines | Purpose |
+    |-------|------|-----------|---------|
+    | Server Entry | server_app.py | 55-144 (main), 146-248 (helpers) | Server initialization and orchestration |
+    | Strategy | custom_strategy.py | aggregate_fit, aggregate_evaluate | FedAvg with custom callbacks |
+    | Server Evaluation | server_evaluation.py | 15-150 (create_central_evaluate_fn) | Central test set evaluation |
+    | Utils | utils.py | Initialization, persistence, conversion | Helper functions |
+    | Run CRUD | run.py | 107-147 (complete), 234-280 (persist), 431-468 (context) | Run management |
+    | Round CRUD | round.py | Create round with aggregated metrics | Round tracking |
+    | RunMetric CRUD | run_metric.py | Bulk create with round_id, context="aggregated" | Metric storage |
+    
+    **Database Schema (Federated Entities)**
+    
+    **Run Table**
+    - id - Primary key
+    - training_mode - "federated"
+    - status - "in_progress" → "completed" | "failed"
+    - start_time, end_time - Timestamps
+    - experiment_name, source_path
+    
+    **Client Table**
+    - id - Primary key
+    - run_id - Foreign key to Run
+    - client_id - Integer (Flower node_id % num_partitions)
+    - client_name - String identifier
+    - Relationship: run.clients (one-to-many)
+    
+    **Round Table**
+    - id - Primary key
+    - run_id - Foreign key to Run
+    - round_number - Integer (1 to num_rounds)
+    - server_metrics - JSON (central evaluation results)
+    - aggregated_client_metrics - JSON (weighted average of client metrics)
+    - Relationship: run.server_evaluations (one-to-many)
+    
+    **RunMetric Table (Federated Context)**
+    - id - Primary key
+    - run_id - Foreign key to Run
+    - metric_name - String
+    - metric_value - Float
+    - step - Integer (epoch/round number)
+    - dataset_type - "train" | "validation" | "test" | "other"
+    - context - "epoch_end" | "aggregated" | "final_epoch"
+    - client_id - Optional FK to Client (for client-specific metrics)
+    - round_id - Optional FK to Round (links to federated round)
+    
+    **Metrics Flow Summary**
+    
+    1. CLIENT TRAINING METRICS (per client, per round)
+       - Collected by MetricsCollectorCallback on clients
+       - Persisted to DB with client_id, round_id
+       - Returned to server in MetricRecord
+    
+    2. SERVER AGGREGATED FIT METRICS (per round)
+       - Weighted average of client training metrics
+       - Computed by Strategy.aggregate_fit()
+       - Stored in Round.aggregated_client_metrics (JSON)
+    
+    3. SERVER CENTRAL EVALUATION METRICS (per round)
+       - Evaluated on server's full test set
+       - Computed by central_evaluate_fn()
+       - Persisted to DB with context="aggregated"
+       - Stored in Round.server_metrics (JSON)
+    
+    4. FINAL RUN STATS (end of training)
+       - Best epoch, best recall, training duration
+       - Confusion matrix stats (TP, TN, FP, FN)
+       - Computed by RunCRUD.complete_run()
+    
+    **WebSocket Events (Server)**
+    
+    | Event Type | Trigger | Payload |
+    |------------|---------|---------|
+    | training_start | Server startup | {run_id, experiment_name, total_rounds, training_mode="federated"} |
+    | round_metrics | After each round aggregation | {round, total_rounds, fit_metrics, eval_metrics} |
+    | training_end | After all rounds complete | {run_id, status, best_epoch, best_val_recall, training_duration} |
+    
+    **Note**: Individual epoch_end and batch_metrics events are sent by clients, not the server.
+endlegend
+
+@enduml

@@ -1,0 +1,251 @@
+@startuml BatchPrediction
+
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor #333333
+    LifeLineBorderColor #333333
+    LifeLineBackgroundColor #f0f0f0
+    ParticipantBorderColor #333333
+    ParticipantBackgroundColor #e0e0e0
+}
+
+autonumber
+
+title Inference API - Batch Prediction Flow
+
+caption POST /api/inference/predict-batch
+
+box "API Layer"
+    participant "Client" as Client
+    participant "BatchEndpoint" as API
+end box
+
+box "Control Layer"
+    participant "InferenceService" as Svc
+    participant "process_single()" as ProcSingle
+    participant "ImageValidator" as Validator
+    participant "ImageProcessor" as Processor
+    participant "InferenceEngine" as Engine
+    participant "BatchStatistics" as Stats
+end box
+
+box "Schema"
+    participant "SingleImageResult" as SingleResult
+    participant "BatchSummaryStats" as Summary
+    participant "BatchInferenceResponse" as Response
+end box
+
+box "Observability"
+    participant "ObservabilityLogger" as Logger
+end box
+
+== Step 1: Request Validation & Batch Size Check ==
+
+note right of API
+    **File: batch_prediction_endpoints.py lines 20-33**
+    Entry point for batch prediction
+    Route: POST /api/inference/predict-batch
+end note
+
+Client -> API: POST /api/inference/predict-batch (List[UploadFile])
+activate Client
+activate API
+
+API -> Svc: predict_batch(files)
+activate Svc
+
+Svc -> Svc: check_ready_or_raise()
+activate Svc #LightBlue
+Svc --> Svc: Service ready
+deactivate Svc
+
+Svc -> Svc: Validate batch size ≤ 500
+activate Svc #LightBlue
+
+note right of Svc
+    **File: inference_service.py lines 219-224**
+    Maximum 500 images per batch
+end note
+
+alt Batch size > 500
+    Svc --> API: HTTPException(400)
+    API --> Client: Error: Max 500 images allowed
+else Valid batch
+    Svc --> Svc: Initialize results list
+end
+
+deactivate Svc
+
+== Step 2: Sequential Single Image Processing ==
+
+note right of Svc
+    **File: inference_service.py lines 226-230**
+    Process each image sequentially
+end note
+
+loop For each file in files
+    Svc -> ProcSingle: process_single(file)
+    activate ProcSingle
+    
+    ProcSingle -> ProcSingle: start_time = time.time()
+    activate ProcSingle #LightBlue
+    
+    ProcSingle -> Validator: validate(file)
+    activate Validator
+    
+    alt Validation fails
+        Validator --> ProcSingle: error message
+        deactivate Validator
+        
+        ProcSingle -> SingleResult: SingleImageResult(success=False, error=error)
+        activate SingleResult
+        SingleResult --> ProcSingle: Result with error
+deactivate SingleResult
+        
+    else Valid
+        Validator --> ProcSingle: None
+        deactivate Validator
+        
+        ProcSingle -> Processor: read_from_upload(file)
+        activate Processor
+        Processor --> ProcSingle: PIL.Image
+        deactivate Processor
+        
+        ProcSingle -> Engine: predict(image)
+        activate Engine
+        Engine --> ProcSingle: (class, confidence, pneumonia_prob, normal_prob)
+        deactivate Engine
+        
+        ProcSingle -> ProcSingle: create_prediction()
+        activate ProcSingle #LightBlue
+        ProcSingle --> ProcSingle: Prediction DTO
+deactivate ProcSingle
+        
+        ProcSingle -> ProcSingle: Calculate processing_time_ms
+        activate ProcSingle #LightBlue
+        ProcSingle --> ProcSingle: Processing time
+deactivate ProcSingle
+        
+        ProcSingle -> SingleResult: SingleImageResult(success=True, prediction=...)
+        activate SingleResult
+        SingleResult --> ProcSingle: Result with prediction
+deactivate SingleResult
+    end
+    
+    ProcSingle --> Svc: SingleImageResult
+    deactivate ProcSingle
+    
+    Svc -> Svc: Append to results
+    activate Svc #LightBlue
+    note right of Svc
+        **Logging:**
+        Batch processing: {filename}, success: {result.success}
+    end note
+    Svc --> Svc: Results updated
+deactivate Svc
+end
+
+== Step 3: Batch Statistics Calculation ==
+
+note right of Svc
+    **File: inference_service.py lines 232**
+    **File: batch_statistics.py lines 15-50**
+end note
+
+Svc -> Stats: calculate(results, total_images)
+activate Stats
+
+Stats -> Stats: Filter successful predictions
+activate Stats #LightBlue
+
+Stats -> Stats: Count NORMAL vs PNEUMONIA
+Stats -> Stats: Calculate avg_confidence
+Stats -> Stats: Calculate avg_processing_time_ms
+
+note right of Stats
+    **Data Transformations:**
+    - Filter successful predictions
+    - Count class distributions
+    - Calculate averages
+end note
+
+Stats -> Summary: BatchSummaryStats(
+activate Summary
+
+Stats -> Summary: total_images=total_images,
+Stats -> Summary: successful=successful_count,
+Stats -> Summary: failed=failed_count,
+Stats -> Summary: normal_count=normal_count,
+Stats -> Summary: pneumonia_count=pneumonia_count,
+Stats -> Summary: avg_confidence=avg_confidence,
+Stats -> Summary: avg_processing_time_ms=avg_time
+
+Summary --> Stats: summary
+deactivate Summary
+
+Stats --> Svc: summary
+deactivate Stats
+
+== Step 4: Batch Observability Logging & Response Assembly ==
+
+note right of Svc
+    **File: inference_service.py lines 234-250**
+end note
+
+Svc -> Svc: Calculate total_batch_time_ms
+activate Svc #LightBlue
+Svc --> Svc: Total time
+deactivate Svc
+
+Svc -> Svc: Get model_version
+activate Svc #LightBlue
+Svc --> Svc: Model version
+deactivate Svc
+
+Svc -> Logger: log_batch(summary, total_time_ms, model_version)
+activate Logger
+
+Logger -> Logger: Structured batch logging
+activate Logger #LightBlue
+note right of Logger
+    **Observability:**
+    Single log entry per batch with statistics
+end note
+Logger --> Logger: Log entry written
+deactivate Logger
+deactivate Logger
+
+Svc -> Response: BatchInferenceResponse(
+activate Response
+
+note right of Response
+    **File: inference_schemas.py lines 142-158**
+    Pydantic batch response model
+end note
+
+Svc -> Response: success=True,
+Svc -> Response: results=results,
+Svc -> Response: summary=summary,
+Svc -> Response: model_version=model_version,
+Svc -> Response: total_processing_time_ms=total_batch_time_ms
+
+Response --> Svc: Response DTO
+deactivate Response
+
+Svc --> API: BatchInferenceResponse
+deactivate Svc
+
+API --> Client: JSON Response
+note right of API
+    **Response Data:**
+    - success: bool
+    - results: List[SingleImageResult]
+    - summary: BatchSummaryStats
+    - model_version: str
+    - total_processing_time_ms: float
+end note
+deactivate API
+deactivate Client
+
+@enduml

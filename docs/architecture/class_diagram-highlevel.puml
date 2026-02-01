@@ -1,0 +1,168 @@
+@startuml ClassHighLevel
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 9
+skinparam classFontSize 11
+skinparam shadowing false
+skinparam nodesep 60
+skinparam ranksep 50
+skinparam packageFontSize 12
+skinparam packageFontStyle bold
+skinparam roundCorner 5
+skinparam linetype ortho
+skinparam arrowThickness 1.2
+
+' ============================================
+'  API LAYER
+' ============================================
+package "API" #fff3e0 {
+  class ExperimentsRouter <<FastAPI>>
+  class InferenceRouter <<FastAPI>>
+  class ChatRouter <<FastAPI>>
+  class WebSocketManager <<Singleton>>
+}
+
+' ============================================
+'  TRAINING CONTROL
+' ============================================
+package "Training Control" #fce4ec {
+  class CentralizedTrainer <<Orchestrator>> {
+    +train_centralized(config)
+    -prepare_dataset()
+    -execute_training()
+  }
+  
+  class ServerApp <<FL Server>> {
+    +run_federation(config)
+    +aggregate_weights()
+    -init_strategy()
+  }
+  
+  class ClientApp <<FL Client>> {
+    +train_local(data)
+    +get_parameters()
+    +set_parameters()
+  }
+  
+  class CustomStrategy <<Strategy>>
+}
+
+' ============================================
+'  DL MODEL (SHARED)
+' ============================================
+package "Deep Learning\n(Shared Components)" #e8f5e9 {
+  class LitResNetEnhanced <<Lightning>> {
+    +forward(x)
+    +training_step()
+    +validation_step()
+  }
+  
+  class XRayDataModule <<DataModule>> {
+    +setup()
+    +train_dataloader()
+    +val_dataloader()
+  }
+  
+  class CustomDataset <<Dataset>>
+  
+  class TrainingCallbacks <<Callbacks>>
+  class OptimizerFactory <<Factory>>
+}
+
+' ============================================
+'  INFERENCE
+' ============================================
+package "Inference" #e1f5fe {
+  class InferenceService <<Service>> {
+    +predict_single()
+    +predict_batch()
+    +generate_gradcam()
+  }
+  
+  class GradCAM <<Visualizer>>
+}
+
+' ============================================
+'  AGENTIC AI
+' ============================================
+package "Agentic AI" #fff9c4 {
+  class ChatAgent <<Agentic>> {
+    +query_stream()
+    +process_message()
+  }
+  
+  class RAGPipeline <<Pipeline>> {
+    +ingest(docs)
+    +query(q): context
+  }
+  
+  class ArXivTool <<Tool>>
+  class SessionManager <<Manager>>
+  class QueryEngine <<Retrieval>>
+}
+
+' ============================================
+'  PERSISTENCE
+' ============================================
+package "Persistence" #e0f2f1 {
+  class RunCRUD <<CRUD>>
+  class MetricCRUD <<CRUD>>
+  class FileManager <<Utility>>
+  class DBManager <<Manager>>
+}
+
+' ============================================
+'  DATABASE
+' ============================================
+package "Database" #f3e5f5 {
+  class Run <<Entity>>
+  class RunMetric <<Entity>>
+  class ChatSession <<Entity>>
+  class Message <<Entity>>
+}
+
+' ============================================
+'  RELATIONSHIPS
+' ============================================
+' API Flow
+ExperimentsRouter --> CentralizedTrainer : "Centralized"
+ExperimentsRouter --> ServerApp : "Federated"
+ExperimentsRouter --> WebSocketManager
+InferenceRouter --> InferenceService
+ChatRouter --> ChatAgent
+
+' Training Control Flow
+ServerApp --> ClientApp : "coordinates"
+ServerApp --> CustomStrategy : "uses"
+ClientApp --> CentralizedTrainer : "uses"
+
+' DL Model Flow (Shared)
+CentralizedTrainer --> LitResNetEnhanced : trains
+CentralizedTrainer --> XRayDataModule : prepares
+LitResNetEnhanced --> TrainingCallbacks
+LitResNetEnhanced --> OptimizerFactory
+XRayDataModule --> CustomDataset
+
+' Inference Flow
+InferenceService --> LitResNetEnhanced : loads
+InferenceService --> GradCAM
+
+' Agentic AI Flow
+ChatAgent --> RAGPipeline : queries
+ChatAgent --> SessionManager : manages
+RAGPipeline --> QueryEngine : retrieves
+RAGPipeline --> ArXivTool : searches
+SessionManager --> ChatSession : persists
+
+' Persistence Flow
+CentralizedTrainer --> RunCRUD : logs
+ServerApp --> RunCRUD : logs FL
+RunCRUD --> Run
+MetricCRUD --> RunMetric
+DBManager --> Run
+DBManager --> ChatSession
+
+' Database Relations
+Run "1" --> "*" RunMetric : has
+ChatSession "1" --> "*" Message : has
+
+@enduml

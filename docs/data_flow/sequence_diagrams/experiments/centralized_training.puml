@@ -1,0 +1,137 @@
+@startuml
+
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor Black
+    ActorBorderColor Black
+    LifeLineBorderColor Black
+    LifeLineBackgroundColor White
+    ParticipantBorderColor Black
+    ParticipantBackgroundColor White
+    ParticipantFontSize 12
+    ArrowFontSize 11
+}
+
+title Centralized Training Flow
+
+autonumber
+
+participant "Client\n(Frontend)" as Client
+participant "Endpoint\ncentralized_endpoints.py" as EP
+participant "FileHandler\nfile_handling.py" as FH
+participant "BackgroundTask\ncentralized_tasks.py" as BG
+participant "CentralizedTrainer\ncentralized_trainer.py" as CT
+participant "ConfigManager" as Config
+participant "FileSystem" as FS
+
+== Step 1: Upload & Validation ==
+
+Client -> EP: POST /api/experiments/centralized/train
+note right of EP
+    File: centralized_endpoints.py lines 22-28
+    Parse form data (data_zip, params)
+end note
+
+activate EP
+
+EP -> FH: prepare_zip(data_zip)
+note right of FH
+    File: file_handling.py lines 34-48
+    Create temp dir, save & extract ZIP
+end note
+
+activate FH
+
+FH -> FH: Handle nested directories
+note right of FH
+    File: file_handling.py lines 50-67
+    Detect Images/ directory and CSV metadata file
+end note
+
+FH --> EP: source_path
+deactivate FH
+
+EP -> EP: Add background task
+note right of EP
+    File: centralized_endpoints.py lines 59-67
+    background_tasks.add_task(
+        run_centralized_training_task,
+        source_path=source_path,
+        checkpoint_dir=checkpoint_dir,
+        logs_dir=logs_dir,
+        experiment_name=experiment_name,
+        csv_filename=csv_filename
+    )
+end note
+
+EP --> Client: {"message": "Training started", "status": "queued"}
+deactivate EP
+
+== Step 2: Background Task Execution ==
+
+BG -> BG: run_centralized_training_task()
+note right of BG
+    File: centralized_tasks.py lines 31-44
+    Initialize logger & trainer configuration
+end note
+
+activate BG
+
+BG -> Config: Load default_config.yaml
+activate Config
+Config --> BG: Config data
+deactivate Config
+
+BG -> CT: CentralizedTrainer(config_path, dirs)
+note right of CT
+    File: centralized_trainer.py
+    Initialize model, optimizer, scheduler
+end note
+
+activate CT
+
+BG -> CT: train(source_path, experiment_name)
+note right of CT
+    File: centralized_trainer.py
+    Load dataset, train epochs,
+    validate & save checkpoints
+end note
+
+CT --> BG: results (final_metrics)
+deactivate CT
+
+BG -> BG: Log final metrics
+note right of BG
+    File: centralized_tasks.py lines 54-61
+    Log training completion and results
+end note
+
+deactivate BG
+
+== Step 3: Response & Tracking ==
+
+loop Monitor Progress
+    Client -> FS: Poll logs_dir
+    activate FS
+    FS --> Client: Log entries (training progress, loss curves)
+    deactivate FS
+    
+    Client -> FS: Check checkpoint_dir
+    activate FS
+    FS --> Client: Checkpoint files (.ckpt)
+    deactivate FS
+end
+
+note right of Client
+    Response Format:
+    {
+      "message": "Centralized training started successfully",
+      "experiment_name": "pneumonia_centralized",
+      "checkpoint_dir": "results/centralized/checkpoints",
+      "logs_dir": "results/centralized/logs",
+      "status": "queued"
+    }
+end note
+
+@enduml

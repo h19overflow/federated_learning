@@ -1,0 +1,142 @@
+@startuml
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor #333333
+    ArrowThickness 2
+    ActorBackgroundColor #F0F0F0
+    ActorBorderColor #333333
+    ParticipantBackgroundColor #FFFFFF
+    ParticipantBorderColor #333333
+    ParticipantFontSize 12
+    ParticipantFontStyle bold
+    LifeLineBackgroundColor #F0F0F0
+    LifeLineBorderColor #999999
+    BoxPadding 10
+    MessagePadding 15
+}
+
+skinparam note {
+    BackgroundColor #FFFFCC
+    BorderColor #999999
+    FontSize 11
+}
+
+title Chat Streaming Flow - SSE Token-by-Token Response
+
+' API and Entry Point Information
+note right of Frontend
+    **API:** POST /api/chat/query/stream
+    **Entry Point:** chat_stream.py:34 → query_chat_stream()
+    **Pattern:** Server-Sent Events (SSE) with AsyncGenerator
+end note
+
+' Participants
+participant Frontend as "**Frontend**\nReact Frontend" #E3F2FD
+participant API as "**API**\nchat_stream.py" #FFF3E0
+participant SessionMgr as "**SessionMgr**\nSessionManager" #E8F5E9
+participant Utils as "**Utils**\nchat_utils.py" #FCE4EC
+participant DB as "**DB**\nDatabase" #F3E5F5
+
+autonumber
+
+== Step 1: Request Reception & Session Initialization ==
+
+Frontend -> API: POST /chat/query/stream
+activate API
+
+note right of Frontend
+    **Request Body:**
+    {
+        query,
+        session_id?,
+        run_id?,
+        arxiv_enabled
+    }
+end note
+
+' File: chat_stream.py lines 44-82
+API -> API: async def generate()
+note right of API
+    **File:** chat_stream.py lines 44-82
+    **Function:** AsyncGenerator function
+end note
+activate API
+
+' File: chat_stream.py line 45
+API -> API: session_id = message.session_id or uuid.uuid4()
+note right of API
+    **File:** chat_stream.py line 45
+    **Action:** Generate session if not provided
+end note
+
+' File: chat_stream.py line 46
+API -> Frontend: yield sse_pack({type: "session", session_id})
+note right of API
+    **File:** chat_stream.py line 46
+    **Action:** First SSE event
+end note
+
+' File: session_manager.py lines 69-79
+API -> SessionMgr: ensure_session(session_id, query)
+activate SessionMgr
+
+note right of SessionMgr
+    **File:** session_manager.py lines 69-79
+end note
+
+SessionMgr -> DB: get_chat_session(session_id)
+activate DB
+DB --> SessionMgr: session result
+
+deactivate DB
+
+alt Session doesn't exist
+    SessionMgr -> DB: create_chat_session(title=query[:50]..., session_id)
+    activate DB
+    DB --> SessionMgr: session created
+    deactivate DB
+else Session exists
+    DB --> SessionMgr: existing session
+end
+
+SessionMgr --> API: Session ensured
+deactivate SessionMgr
+
+' File: chat_utils.py lines 38-50
+API -> Utils: prepare_enhanced_query(query, run_id)
+activate Utils
+
+note right of Utils
+    **File:** chat_utils.py lines 38-50
+end note
+
+alt run_id provided
+    Utils -> Utils: enhance_query_with_run_context(query, run_id)
+    note right of Utils
+        **Action:** Fetch run metrics, build context
+    end note
+    
+    Utils -> DB: Fetch run, metrics, server_evaluations
+    activate DB
+    DB --> Utils: run_context
+    deactivate DB
+    
+    Utils --> API: query + run_context
+    
+    note right of Utils
+        **Data Transformation:**
+        Original: "What was the best recall?"
+        Enhanced: Query with training run context
+        including metrics, federated details, etc.
+    end note
+else No run_id
+    Utils --> API: original query
+end
+
+deactivate Utils
+
+' Continue to Step 2
+note over API: Continue to Agent Factory Initialization...
+
+@enduml

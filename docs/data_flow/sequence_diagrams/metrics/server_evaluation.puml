@@ -1,0 +1,176 @@
+@startuml
+
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor Black
+    ActorBorderColor Black
+    LifeLineBorderColor Black
+    LifeLineBackgroundColor White
+    ParticipantBorderColor Black
+    ParticipantBackgroundColor White
+    ParticipantFontSize 12
+    ArrowFontSize 11
+}
+
+title Server Evaluation Sequence Diagram
+
+autonumber
+
+participant "ResultsVisualization.tsx" as C
+participant "useResultsVisualization.ts" as H
+participant "api.ts" as A
+participant "runs_server_evaluation.py" as E
+participant "RunCRUD\nrun.py" as CR1
+participant "ServerEvalCRUD\nserver_evaluation.py" as CR2
+participant "Database" as D
+participant "ServerEvaluationTab.tsx" as T
+
+== Step 1: Component to API Request ==
+
+C -> H: useResultsVisualization({config, runId})
+note right of H
+    Hook receives config & runId
+end note
+
+activate H
+
+alt Federated Mode
+    H -> A: getServerEvaluation(runId)
+    note right of A
+        File: api.ts lines 130-135
+    end note
+    
+    activate A
+    A -> E: GET /api/runs/{runId}/server-evaluation
+    note right of E
+        HTTP request to backend
+    end note
+    activate E
+else Centralized Mode
+    note right of H
+        Skip - not applicable for centralized
+    end note
+end
+
+== Step 2: Backend Processing ==
+
+E -> CR1: run_crud.get(db, runId)
+activate CR1
+
+CR1 -> D: SELECT * FROM runs WHERE id = ?
+activate D
+D --> CR1: Run record
+deactivate D
+
+CR1 --> E: Run ORM
+deactivate CR1
+
+E -> E: Check run.training_mode == "federated"
+
+alt Not Federated
+    E --> A: Return empty response
+    note right of E
+        {"has_server_evaluation": false}
+    end note
+else Is Federated
+    E -> CR2: server_eval_crud.get_by_run(db, runId)
+    note right of CR2
+        File: server_evaluation.py lines 35-50
+    end note
+    
+    activate CR2
+    CR2 -> D: SELECT * FROM server_evaluations WHERE run_id = ? ORDER BY round_number
+    note right of D
+        Table: server_evaluations
+        Ordered by round_number ASC
+    end note
+    
+    activate D
+    D --> CR2: Evaluation records
+deactivate D
+    
+    CR2 --> E: List[ServerEvaluation]
+    deactivate CR2
+    
+    E -> CR2: server_eval_crud.get_summary_stats(db, runId)
+    note right of CR2
+        File: server_evaluation.py lines 80-120
+    end note
+    
+    activate CR2
+    CR2 -> CR2: Calculate summary statistics
+    note right of CR2
+        - Exclude round 0 (pre-training)
+        - Calculate best accuracy
+        - Calculate best recall
+        - Get latest metrics
+    end note
+    
+    CR2 --> E: Summary dict
+    note right of CR2
+        Return:
+        {
+            "total_rounds": len(evaluations),
+            "best_accuracy": {"value": ..., "round": ...},
+            "best_recall": {"value": ..., "round": ...},
+            ...
+        }
+    end note
+    deactivate CR2
+end
+
+E --> A: ServerEvaluationResponse
+note right of E
+    {
+        "run_id": run_id,
+        "has_server_evaluation": true,
+        "evaluations": [...],
+        "summary": summary
+    }
+end note
+deactivate E
+
+== Step 3: Transform & Response ==
+
+A --> H: ServerEvaluationResponse
+deactivate A
+
+H -> H: Transform to component props
+note right of H
+    File: useResultsVisualization.ts lines 125-150
+end note
+
+H -> H: Build serverEvaluationChartData
+note right of H
+    Map evaluations to chart format
+end note
+
+H -> H: Extract serverEvaluationLatestMetrics
+note right of H
+    From summary.latest_metrics
+end note
+
+H -> H: Build serverEvaluationConfusionMatrix
+note right of H
+    From latest evaluation record
+end note
+
+H --> C: serverEvaluation + transformed props
+note right of C
+    Props:
+    - serverEvaluation
+    - serverEvaluationChartData
+    - serverEvaluationLatestMetrics
+    - serverEvaluationConfusionMatrix
+end note
+deactivate H
+
+alt has_server_evaluation
+    C -> T: Render ServerEvaluationTab
+    note right of T
+        With chart data & metrics
+    end note
+end
+
+@enduml

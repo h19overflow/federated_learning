@@ -1,0 +1,205 @@
+@startuml HealthCheck
+
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor #333333
+    LifeLineBorderColor #333333
+    LifeLineBackgroundColor #f0f0f0
+    ParticipantBorderColor #333333
+    ParticipantBackgroundColor #e0e0e0
+}
+
+autonumber
+
+title Inference API - Health Check Flow
+
+caption GET /api/inference/health
+
+box "API Layer"
+    participant "Client/Monitor" as Client
+    participant "HealthEndpoint" as API
+end box
+
+box "Control Layer"
+    participant "InferenceService" as Svc
+    participant "InferenceEngine" as Engine
+end box
+
+box "External"
+    participant "torch" as Torch
+end box
+
+box "Schema"
+    participant "HealthCheckResponse" as Response
+end box
+
+== Step 1: Service Status Retrieval ==
+
+note right of API
+    **File: health_endpoints.py lines 22-36**
+    Entry point for health check
+    Route: GET /api/inference/health
+end note
+
+Client -> API: GET /api/inference/health
+activate Client
+activate API
+
+API -> Svc: get_info()
+activate Svc
+
+note right of Svc
+    **File: inference_service.py lines 252-267**
+    Service health information collection
+end note
+
+alt Engine not initialized
+    Svc -> Svc: self.engine is None
+    activate Svc #LightBlue
+    
+    note right of Svc
+        **Health Status:**
+        Service unhealthy - model not loaded
+    end note
+    
+    Svc --> Svc: {
+    Svc --> Svc: "status": "unhealthy",
+    Svc --> Svc: "model_loaded": False,
+    Svc --> Svc: "gpu_available": False,
+    Svc --> Svc: "model_version": None
+    Svc --> Svc: }
+    
+    deactivate Svc
+    
+else Engine available
+    Svc -> Engine: get_info()
+    activate Engine
+    
+    note right of Engine
+        **File: inference_engine.py lines 127-139**
+        Engine health information collection
+    end note
+    
+    Engine -> Engine: Collect device info
+    activate Engine #LightBlue
+    
+    Engine -> Torch: cuda.is_available()
+    activate Torch
+    Torch --> Engine: gpu_available: bool
+    deactivate Torch
+    
+    Engine -> Engine: self.model_version
+    activate Engine #LightBlue
+    Engine --> Engine: Model version string
+deactivate Engine
+    
+    Engine -> Engine: self.device
+    activate Engine #LightBlue
+    Engine --> Engine: Device info
+deactivate Engine
+    
+    Engine -> Engine: self.checkpoint_path
+    activate Engine #LightBlue
+    Engine --> Engine: Checkpoint path
+deactivate Engine
+    
+    Engine --> Engine: {
+    Engine --> Engine: "model_version": self.model_version,
+    Engine --> Engine: "device": self.device,
+    Engine --> Engine: "gpu_available": torch.cuda.is_available(),
+    Engine --> Engine: "checkpoint_path": str(self.checkpoint_path)
+    Engine --> Engine: }
+    
+    deactivate Engine
+    
+    Engine --> Svc: engine_info dict
+    deactivate Engine
+    
+    Svc --> Svc: {
+    Svc --> Svc: "status": "healthy",
+    Svc --> Svc: "model_loaded": True,
+    Svc --> Svc: "gpu_available": info["gpu_available"],
+    Svc --> Svc: "model_version": info["model_version"]
+    Svc --> Svc: }
+    
+    note right of Svc
+        **Health Status:**
+        Service healthy - model loaded and ready
+    end note
+end
+
+Svc --> API: Health info dict
+deactivate Svc
+
+API -> API: HealthCheckResponse(**info)
+activate API #LightBlue
+
+note right of API
+    **File: inference_schemas.py lines 160-173**
+    Health check response schema
+end note
+
+API --> API: Response constructed
+deactivate API
+
+API --> Client: JSON Response
+note right of API
+    **Health Status States:**
+    
+    | Status | model_loaded | gpu_available | Meaning |
+    |--------|--------------|---------------|---------|
+    | healthy | True | True/False | Model loaded, ready |
+    | unhealthy | False | False | Model not loaded |
+    | degraded | (Future) | - | Model loaded with warnings |
+    
+    **Response Schema:**
+    - status: str ("healthy" | "unhealthy" | "degraded")
+    - model_loaded: bool
+    - gpu_available: bool
+    - model_version: Optional[str]
+end note
+deactivate API
+deactivate Client
+
+== Step 2: Engine Information Collection (Alternative Path) ==
+
+note right of Engine
+    **Alternative Detail View:**
+    **File: inference_engine.py lines 132-139**
+    Direct engine information retrieval
+end note
+
+Engine -> Engine: get_info()
+activate Engine
+
+Engine -> Torch: cuda.is_available()
+activate Torch
+Torch --> Engine: gpu_available: bool
+deactivate Torch
+
+Engine -> Engine: self.model_version
+activate Engine #LightBlue
+Engine --> Engine: Version info
+deactivate Engine
+
+Engine -> Engine: self.device
+activate Engine #LightBlue
+Engine --> Engine: Device (cuda/cpu)
+deactivate Engine
+
+Engine -> Engine: self.checkpoint_path
+activate Engine #LightBlue
+Engine --> Engine: Path string
+deactivate Engine
+
+Engine --> Engine: {
+Engine --> Engine: "model_version": self.model_version,
+Engine --> Engine: "device": self.device,
+Engine --> Engine: "gpu_available": torch.cuda.is_available(),
+Engine --> Engine: "checkpoint_path": str(self.checkpoint_path)
+Engine --> Engine: }
+
+deactivate Engine
+
+@enduml

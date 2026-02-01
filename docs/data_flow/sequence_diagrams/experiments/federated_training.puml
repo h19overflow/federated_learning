@@ -1,0 +1,202 @@
+@startuml
+
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor Black
+    ActorBorderColor Black
+    LifeLineBorderColor Black
+    LifeLineBackgroundColor White
+    ParticipantBorderColor Black
+    ParticipantBackgroundColor White
+    ParticipantFontSize 12
+    ArrowFontSize 11
+}
+
+title Federated Training Flow
+
+autonumber
+
+participant "Client\n(Frontend)" as Client
+participant "Endpoint\nfederated_endpoints.py" as EP
+participant "FileHandler\nfile_handling.py" as FH
+participant "BackgroundTask\nfederated_tasks.py" as Task
+participant "ConfigManager" as CM
+participant "core/utils.py" as Utils
+participant "toml_adjustment.py" as TOML
+participant "pyproject.toml" as FileTOML
+participant "Environment" as Env
+participant "PowerShell\nrf.ps1" as PS
+participant "Flower CLI" as Flwr
+participant "Flower Server" as Server
+participant "Flower Client" as FlowerClient
+
+== Step 1: Upload & Configuration Update ==
+
+Client -> EP: POST /api/experiments/federated/train
+note right of EP
+    File: federated_endpoints.py lines 20-26
+    Parse form data (data_zip, params)
+end note
+
+activate EP
+
+EP -> FH: prepare_zip(data_zip)
+note right of FH
+    File: file_handling.py lines 34-48
+    Extract ZIP to temp directory
+end note
+
+activate FH
+FH --> EP: source_path
+deactivate FH
+
+EP -> EP: Add background task
+note right of EP
+    File: federated_endpoints.py lines 65-71
+end note
+
+EP --> Client: {"status": "queued"}
+deactivate EP
+
+Task -> CM: Update default_config.yaml
+note right of CM
+    File: federated_tasks.py lines 49-70
+    Set file-path, image-dir, num-server-rounds
+end note
+
+activate CM
+CM -> CM: save()
+CM --> Task: Config updated
+deactivate CM
+
+== Step 2: TOML Synchronization (Critical) ==
+
+Task -> Utils: read_configs_to_toml()
+note right of Utils
+    File: core/utils.py
+    Extract Flower configs from default_config.yaml
+end note
+
+activate Utils
+Utils --> Task: flwr_configs dict
+deactivate Utils
+
+Task -> TOML: update_flwr_config(**flwr_configs)
+note right of TOML
+    File: toml_adjustment.py
+    Update [tool.flwr.app.config] section
+end note
+
+activate TOML
+TOML -> FileTOML: Write updated config
+note right of FileTOML
+    Flower reads configuration from pyproject.toml
+    CRITICAL: Must sync BEFORE starting Flower
+end note
+
+FileTOML --> TOML: Config written
+deactivate TOML
+
+== Step 3: Environment Setup & Subprocess Spawn ==
+
+Task -> Task: Locate rf.ps1 script
+note right of Task
+    File: federated_tasks.py lines 92-99
+    project_root / rf.ps1
+end note
+
+Task -> Env: Copy environment variables
+note right of Env
+    File: federated_tasks.py lines 111-127
+    Include DB credentials (POSTGRES_DB_URI, etc.)
+    Verify required environment variables
+end note
+
+activate Env
+
+Task -> PS: subprocess.Popen(ps_cmd, env=env)
+note right of PS
+    File: federated_tasks.py lines 129-148
+    Execute rf.ps1 with:
+    - Bypass execution policy
+    - Inherit env vars
+    Command: ["powershell", "-ExecutionPolicy", "Bypass", "-File", rf_script_path]
+end note
+
+PS --> Task: Process PID
+deactivate Env
+
+== Step 4: Output Streaming & Completion ==
+
+loop Stream Output
+    PS -> Task: stdout.readline()
+    activate PS
+    Task -> Task: Clean log level prefix
+    note right of Task
+        File: federated_tasks.py lines 159-167
+        Remove "INFO - ", "WARNING - ", etc.
+    end note
+    Task -> Task: log(f"[FLWR] {line}")
+    deactivate PS
+end
+
+PS -> Task: process.wait()
+note right of PS
+    Return exit code (0 = success)
+end note
+activate PS
+PS --> Task: return_code
+deactivate PS
+
+Task -> Task: Log completion status
+Task --> Task: Return results dict
+note right of Task
+    Return Value:
+    {
+        "message": "Federated training completed",
+        "experiment_name": experiment_name,
+        "status": "completed" if return_code == 0 else "failed",
+        "return_code": return_code,
+        "source_path": source_path,
+        "csv_filename": csv_filename
+    }
+end note
+
+== Step 5: Flower Execution (External Process) ==
+
+PS -> Flwr: Execute flower-superlink
+activate Flwr
+Flwr -> Server: Start server process
+note right of Server
+    Load pyproject.toml config
+end note
+activate Server
+deactivate Flwr
+
+PS -> Flwr: Execute flower-client-app (N times)
+activate Flwr
+Flwr -> FlowerClient: Start client processes
+note right of FlowerClient
+    Each client loads data partition
+end note
+activate FlowerClient
+deactivate Flwr
+
+loop num_server_rounds
+    FlowerClient -> Server: Send local updates (model weights)
+    Server -> Server: Aggregate using FedAvg
+    note right of Server
+        Federated Averaging algorithm
+        Combines client updates into global model
+    end note
+    Server -> FlowerClient: Broadcast global model
+end
+
+Server --> PS: Training complete
+deactivate Server
+deactivate FlowerClient
+
+PS -> PS: Exit with code 0/1
+
+@enduml

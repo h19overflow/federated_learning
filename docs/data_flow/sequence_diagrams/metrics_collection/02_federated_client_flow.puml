@@ -1,0 +1,544 @@
+@startuml
+!theme plain
+
+skinparam sequence {
+    ArrowColor Black
+    ActorBorderColor Black
+    LifeLineBorderColor Black
+    ParticipantBorderColor Black
+    ParticipantBackgroundColor WhiteSmoke
+    ParticipantHeaderBackgroundColor LightGray
+    ParticipantFontSize 14
+    NoteBackgroundColor LightYellow
+    NoteFontSize 12
+}
+
+skinparam wrapWidth 300
+skinparam maxMessageSize 500
+
+autonumber
+
+' ============================================================================
+' TITLE & METADATA
+' ============================================================================
+title Federated Client Training - Metrics Collection Flow
+
+' Description: Flower client training with local metrics collection
+' Entry Point: client_app.py:36 -> @app.train(msg, context)
+' Pattern: Flower ClientApp with local training on IID/non-IID partitions
+' ============================================================================
+
+' ============================================================================
+' STEP 1: Client Initialization & Partition Loading
+' ============================================================================
+box "Step 1: Client Initialization & Partition Loading" #LightBlue
+    participant "Flower\nFramework" as Flower order 10
+    participant "client_app.py" as ClientApp order 20
+    participant "utils.py" as Utils order 30
+    participant "IidPartitioner" as Partitioner order 40
+    participant "training_callbacks.py" as CB order 50
+end box
+
+activate Flower #LightGreen
+Flower -> ClientApp: train(msg, context)
+note right of ClientApp
+    File: client_app.py lines 36-179
+    Flower train message handler
+end note
+
+activate ClientApp #AliceBlue
+ClientApp -> ClientApp: Extract client_id, round_number
+note right of ClientApp
+    client_id = context.node_id
+    round_number = context.state.current_round
+end note
+
+ClientApp -> Utils: _get_partition_data(configs)
+note right of Utils
+    Load full dataset + create partitioner
+end note
+
+activate Utils #Wheat
+Utils -> Partitioner: IidPartitioner(num_partitions=N)
+
+activate Partitioner #LightPink
+Partitioner --> Utils: partitioner
+Utils --> ClientApp: (dataset, partitioner)
+deactivate Partitioner
+deactivate Utils
+
+ClientApp -> ClientApp: partition_id = client_id % num_partitions
+
+ClientApp -> Partitioner: load_partition(partition_id)
+note right of Partitioner
+    Retrieves data partition for this client
+end note
+
+activate Partitioner #LightPink
+Partitioner --> ClientApp: partition_df
+deactivate Partitioner
+
+ClientApp -> Utils: _prepare_partition_and_split(partition_df)
+note right of Utils
+    Train/val split with stratification
+    Ensures balanced classes
+end note
+
+activate Utils #Wheat
+Utils --> ClientApp: (train_df, val_df)
+deactivate Utils
+
+ClientApp -> ClientApp: Create XRayDataModule(train_df, val_df)
+note right of ClientApp
+    Data module configured with
+    local partition data
+end note
+
+ClientApp -> Utils: _build_model_components(is_federated=True, client_id, round_number, run_id)
+note right of Utils
+    Create model + callbacks chain
+end note
+
+activate Utils #Wheat
+Utils -> CB: prepare_trainer_and_callbacks_pl(client_id, round_number, run_id)
+note right of CB
+    File: training_callbacks.py lines 79-265
+    Federated mode enabled
+    Includes client_id in metrics
+end note
+
+activate CB #LightYellow
+CB --> Utils: (callbacks, metrics_collector)
+deactivate CB
+
+Utils --> ClientApp: (model, callbacks, metrics_collector)
+deactivate Utils
+deactivate ClientApp
+deactivate Flower
+
+' ============================================================================
+' STEP 2: Load Global Model & Local Training
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Step 2: Load Global Model & Local Training" #LightGreen
+    participant "client_app.py" as ClientApp order 10
+    participant "PyTorch\nModel" as Model order 20
+    participant "PyTorch Lightning\nTrainer" as PLTrainer order 30
+    participant "MetricsCollector\nCallback" as MetricsCB order 40
+    participant "BatchMetrics\nCallback" as BatchCB order 50
+    participant "Database\n(Client DB)" as DB order 60
+    participant "WebSocketSender" as WS order 70
+end box
+
+activate ClientApp #AliceBlue
+ClientApp -> ClientApp: global_state_dict = msg.content["arrays"].to_torch_state_dict()
+note right of ClientApp
+    File: client_app.py lines 110-111
+    Receive global model weights from server
+end note
+
+ClientApp -> Model: load_state_dict(global_state_dict)
+note right of Model
+    Initialize with global model
+    before local training
+end note
+
+activate Model #LightCoral
+
+ClientApp -> ClientApp: Log first param before training
+note right of ClientApp
+    File: client_app.py lines 113-118
+    Verify parameter state
+end note
+
+ClientApp -> PLTrainer: fit(model, data_module)
+note right of PLTrainer
+    Local training starts on partition
+end note
+
+activate PLTrainer #LightGreen
+PLTrainer -> MetricsCB: on_train_start()
+note right of MetricsCB
+    File: metrics.py lines 101-162
+    Initialize federated client tracking
+end note
+
+activate MetricsCB #LightYellow
+MetricsCB -> DB: _ensure_run_exists() + _ensure_client_exists()
+note right of DB
+    File: metrics.py lines 346-434
+    Create Client entity with client_id
+end note
+
+activate DB #LightGray
+DB --> MetricsCB: client_db_id
+deactivate DB
+
+MetricsCB -> WS: send_metrics("training_start")
+note right of WS
+    Payload: {run_id, client_id, round_number,
+    experiment_name, training_mode="federated"}
+end note
+
+activate WS #LightBlue
+WS -> WS: Broadcast client training start
+WS --> MetricsCB: Event sent
+deactivate WS
+deactivate MetricsCB
+
+loop Each Local Epoch
+    PLTrainer -> PLTrainer: Training batches on local partition
+    note right of PLTrainer
+        Local data only
+    end note
+
+    loop Every Nth batch
+        PLTrainer -> BatchCB: on_train_batch_end()
+        note right of BatchCB
+            File: batch_metrics.py
+        end note
+
+        activate BatchCB #Wheat
+        BatchCB -> WS: send_metrics("batch_metrics")
+        note right of WS
+            Payload: {step, batch_idx, loss,
+            client_id, round_num}
+        end note
+
+        activate WS #LightBlue
+        WS -> WS: Broadcast batch metrics
+        WS --> BatchCB: Event sent
+        deactivate WS
+        deactivate BatchCB
+    end
+
+    PLTrainer -> MetricsCB: on_train_epoch_end()
+    note right of MetricsCB
+        Collect training metrics
+    end note
+
+    activate MetricsCB #LightYellow
+    MetricsCB -> MetricsCB: _extract_metrics(stage="train")
+    note right of MetricsCB
+        train_loss, train_acc,
+        train_f1, train_recall
+    end note
+    deactivate MetricsCB
+
+    PLTrainer -> MetricsCB: on_validation_epoch_end()
+    note right of MetricsCB
+        Collect validation metrics
+    end note
+
+    activate MetricsCB #LightYellow
+    MetricsCB -> MetricsCB: _extract_metrics(stage="val")
+    note right of MetricsCB
+        val_loss, val_acc,
+        val_f1, val_auroc
+    end note
+
+    MetricsCB -> WS: send_metrics("epoch_end")
+    note right of WS
+        Payload: {epoch, phase="val", metrics,
+        client_id, round_number}
+    end note
+
+    activate WS #LightBlue
+    WS -> WS: Broadcast epoch metrics
+    WS --> MetricsCB: Event sent
+    deactivate WS
+    deactivate MetricsCB
+end
+
+PLTrainer --> ClientApp: Training complete
+
+ClientApp -> ClientApp: Log first param after training
+note right of ClientApp
+    File: client_app.py lines 128-136
+    Verify parameter updates
+end note
+
+deactivate Model
+deactivate PLTrainer
+deactivate ClientApp
+
+' ============================================================================
+' STEP 3: Collect Results & DB Persistence (Federated Context)
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Step 3: Collect Results & DB Persistence (Federated Context)" #LightYellow
+    participant "client_app.py" as ClientApp order 10
+    participant "results.py" as Results order 20
+    participant "MetricsCollector\nCallback" as MetricsCB order 30
+    participant "run_crud" as RunCRUD order 40
+    participant "run_metric_crud" as RunMetricCRUD order 50
+    participant "Database" as DB order 60
+    participant "Flower\nFramework" as Flower order 70
+end box
+
+activate ClientApp #AliceBlue
+ClientApp -> Results: collect_training_results()
+note right of Results
+    File: results.py lines 15-63
+    Aggregate training artifacts
+end note
+
+activate Results #Wheat
+Results -> MetricsCB: Get metrics_history
+note right of MetricsCB
+    Complete metrics from all epochs
+end note
+
+Results --> ClientApp: results_dict
+deactivate Results
+
+ClientApp -> ClientApp: filter_list_of_dicts(metrics_history, selected_metrics)
+note right of ClientApp
+    File: client_app.py lines 149-163
+    Extract: epoch, train_loss, train_acc,
+    val_loss, val_acc, val_f1, val_auroc
+end note
+
+ClientApp -> ClientApp: Add num_examples to metrics
+note right of ClientApp
+    File: client_app.py line 165
+    metrics_history["num-examples"] = len(train_df)
+    Used for FedAvg weighting
+end note
+
+ClientApp -> MetricsCB: persist_to_database()
+note right of MetricsCB
+    File: metrics.py lines 436-498
+end note
+
+activate MetricsCB #LightYellow
+MetricsCB -> MetricsCB: Prepare federated_context
+note right of MetricsCB
+    Context includes:
+    - client_id: self.db_client_id
+    - round_number: self.current_round
+end note
+
+MetricsCB -> RunCRUD: persist_metrics(run_id, epoch_metrics, federated_context)
+note right of RunCRUD
+    File: run.py lines 234-280
+end note
+
+activate RunCRUD #LightPink
+RunCRUD -> RunCRUD: _resolve_federated_context()
+note right of RunCRUD
+    File: run.py lines 431-468
+    Extract client_id, round_id from context
+end note
+
+RunCRUD -> RunCRUD: _transform_epoch_to_metrics()
+note right of RunCRUD
+    File: run.py lines 489-535
+    Include client_id, round_id in metrics
+    Data transformation:
+    Dict -> List[RunMetric]
+end note
+
+RunCRUD -> RunMetricCRUD: bulk_create(metrics_list)
+note right of RunMetricCRUD
+    Each metric tagged with:
+    - run_id
+    - client_id (FK)
+    - round_id (FK)
+end note
+
+activate RunMetricCRUD #LightSteelBlue
+RunMetricCRUD -> DB: db.add_all(metrics_list)
+
+activate DB #LightGray
+RunMetricCRUD -> DB: db.flush() + db.commit()
+DB --> RunMetricCRUD: Persisted
+deactivate DB
+
+RunMetricCRUD --> RunCRUD: Success
+deactivate RunMetricCRUD
+
+RunCRUD --> MetricsCB: Success
+deactivate RunCRUD
+
+MetricsCB --> ClientApp: Persistence complete
+deactivate MetricsCB
+
+ClientApp -> ClientApp: Create Message with model updates + metrics
+note right of ClientApp
+    File: client_app.py lines 171-179
+    Prepare response to server:
+    - ArrayRecord(model.state_dict())
+    - MetricRecord(metrics_history)
+end note
+
+ClientApp --> Flower: Return Message(content, reply_to=msg)
+note right of Flower
+    Send updated weights + metrics
+    back to server for aggregation
+end note
+
+deactivate ClientApp
+
+' ============================================================================
+' STEP 4: Client Evaluation (Optional)
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Step 4: Client Evaluation (Optional)" #LightCoral
+    participant "Flower\nFramework" as Flower order 10
+    participant "client_app.py" as ClientApp order 20
+    participant "PyTorch\nModel" as Model order 30
+    participant "PyTorch Lightning\nTrainer" as PLTrainer order 40
+    participant "utils.py" as Utils order 50
+end box
+
+activate Flower #LightGreen
+Flower -> ClientApp: evaluate(msg, context)
+note right of ClientApp
+    File: client_app.py lines 182-295
+    Evaluation message handler
+end note
+
+activate ClientApp #AliceBlue
+ClientApp -> ClientApp: Load evaluation configs
+note right of ClientApp
+    csv_path, image_dir from message
+end note
+
+ClientApp -> ClientApp: prepare_dataset()
+note right of ClientApp
+    Load full test set (NOT partitioned)
+    Server provides full validation data
+end note
+
+ClientApp -> ClientApp: create_data_module(train_df, val_df)
+note right of ClientApp
+    Create data module for evaluation
+end note
+
+ClientApp -> Utils: _build_model_components(is_federated=False)
+note right of Utils
+    Evaluation doesn't need
+    federated-specific callbacks
+end note
+
+activate Utils #Wheat
+Utils --> ClientApp: (model, callbacks, metrics_collector)
+deactivate Utils
+
+ClientApp -> Model: load_state_dict(global_state_dict)
+note right of Model
+    Load global model from server
+end note
+
+activate Model #LightCoral
+
+ClientApp -> PLTrainer: test(model, val_loader)
+note right of PLTrainer
+    Evaluate on local validation set
+end note
+
+activate PLTrainer #LightGreen
+PLTrainer --> ClientApp: result_dict
+deactivate PLTrainer
+
+ClientApp -> Utils: _extract_metrics_from_result(result_dict)
+note right of Utils
+    Extract: loss, accuracy, precision,
+    recall, f1, auroc, confusion matrix
+    (cm_tp, cm_tn, cm_fp, cm_fn)
+end note
+
+activate Utils #Wheat
+Utils --> ClientApp: (loss, acc, prec, rec, f1, auroc, cm_tp, cm_tn, cm_fp, cm_fn)
+deactivate Utils
+
+ClientApp -> Utils: _create_metric_record_dict()
+note right of Utils
+    Bundle metrics with num_examples
+end note
+
+activate Utils #Wheat
+Utils --> ClientApp: metric_dict
+deactivate Utils
+
+ClientApp -> ClientApp: Create MetricRecord(metric_dict)
+note right of ClientApp
+    Flower MetricRecord for serialization
+end note
+
+deactivate Model
+
+ClientApp --> Flower: Return Message(content={metrics})
+note right of Flower
+    Send evaluation metrics to server
+    Used in aggregate_evaluate()
+end note
+
+deactivate ClientApp
+deactivate Flower
+
+' ============================================================================
+' LEGEND & FILE REFERENCES
+' ============================================================================
+newpage
+
+legend
+    **File Reference Guide**
+    
+    | Layer | File | Key Lines | Purpose |
+    |-------|------|-----------|---------|
+    | Client Entry | client_app.py | 36-179 (train), 182-295 (evaluate) | Flower client handlers |
+    | Utils | utils.py | Partition, model build, metric extraction | Helper functions |
+    | Callbacks | training_callbacks.py | 79-265 | Federated mode callbacks |
+    | Metrics Collector | metrics.py | 101-162 (federated client init), 346-434 (DB client) | Metric collection |
+    | Batch Metrics | batch_metrics.py | 45-144 | Per-batch metrics with client_id |
+    | Run CRUD | run.py | 234-280 (persist with federated_context), 431-468 (resolve context) | Persistence |
+    | RunMetric CRUD | run_metric.py | Bulk create with client_id, round_id | Metric storage |
+    | Results | results.py | 15-63 | Collect training results |
+    
+    **Federated Context Propagation**
+    
+    | Component | Context Fields | Lines |
+    |-----------|---------------|-------|
+    | ClientApp | client_id = context.node_id | client_app.py:45 |
+    | | round_number = context.state.current_round | client_app.py:46-48 |
+    | MetricsCollectorCallback | self.client_id, self.current_round | metrics.py:90-91 |
+    | | self.db_client_id (from DB Client entity) | metrics.py:155-161 |
+    | RunCRUD.persist_metrics | federated_context = {client_id, round_number} | run.py:234-280 |
+    | RunMetricCRUD | Each metric tagged with client_id, round_id | run_metric.py (inherited) |
+    
+    **Key Differences from Centralized**
+    
+    | Aspect | Centralized | Federated Client |
+    |--------|-------------|------------------|
+    | Run Creation | API creates run | Server creates run, passes run_id in config |
+    | Client Entity | N/A | _ensure_client_exists() creates Client row |
+    | Metrics Context | federated_context=None | federated_context={client_id, round_number} |
+    | DB Persistence | All metrics under run_id | Metrics tagged with run_id, client_id, round_id |
+    | WebSocket Events | training_end sent by trainer | NO training_end (server sends it) |
+    | Model Return | N/A | Returns ArrayRecord(state_dict) to server |
+    | Num Examples | Total dataset size | Local partition size |
+    
+    **Metrics Returned to Server**
+    
+    | Metric | Purpose |
+    |--------|---------|
+    | num-examples | Weight for FedAvg aggregation |
+    | train_loss, train_acc, train_f1 | Training performance on local data |
+    | val_loss, val_acc, val_f1, val_auroc | Validation performance (if applicable) |
+    | epoch | Training progress indicator |
+    
+    **Aggregation**: Server uses num-examples to compute weighted average in custom_strategy.py:aggregate_fit()
+endlegend
+
+@enduml

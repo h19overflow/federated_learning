@@ -1,0 +1,519 @@
+@startuml
+!theme plain
+
+skinparam sequence {
+    ArrowColor Black
+    ActorBorderColor Black
+    LifeLineBorderColor Black
+    ParticipantBorderColor Black
+    ParticipantBackgroundColor WhiteSmoke
+    ParticipantHeaderBackgroundColor LightGray
+    ParticipantFontSize 14
+    NoteBackgroundColor LightYellow
+    NoteFontSize 12
+}
+
+skinparam wrapWidth 300
+skinparam maxMessageSize 500
+
+autonumber
+
+' ============================================================================
+' TITLE & METADATA
+' ============================================================================
+title Centralized Training - Metrics Collection Flow
+
+' Description: Training execution with comprehensive metrics collection
+' API: POST /api/experiments/centralized/train
+' Entry Point: centralized_tasks.py:11 -> CentralizedTrainer.train()
+' ============================================================================
+
+' ============================================================================
+' STEP 1: Initialize Training Run & Callbacks
+' ============================================================================
+box "Step 1: Initialize Training Run & Callbacks" #LightBlue
+    participant "centralized_tasks.py" as API order 10
+    participant "CentralizedTrainer" as Trainer order 20
+    participant "db_operations.py" as DB order 30
+    participant "run_crud" as RunCRUD order 40
+    participant "training_callbacks.py" as CB order 50
+    participant "WebSocketSender" as WS order 60
+end box
+
+activate API #AliceBlue
+API -> Trainer: run_centralized_training_task()
+note right of API
+    File: centralized_tasks.py lines 11-65
+    Entry point for centralized training
+end note
+
+activate Trainer #LightGreen
+Trainer -> DB: create_training_run()
+note right of DB
+    File: db_operations.py lines 14-50
+    Creates training run entry
+end note
+
+activate DB #LightYellow
+DB -> RunCRUD: create(source_path, experiment_name, training_mode="centralized")
+note right of RunCRUD
+    File: boundary/CRUD/run.py lines 30-36
+    Creates run record in database
+end note
+
+activate RunCRUD #LightPink
+RunCRUD -> RunCRUD: INSERT INTO runs
+RunCRUD --> DB: run_id
+DB --> Trainer: run_id
+DB -> DB: db.commit()
+
+Trainer -> CB: prepare_trainer_and_callbacks_pl(run_id, ws_sender)
+note right of CB
+    File: training_callbacks.py lines 79-265
+    Prepares PyTorch Lightning trainer and callback chain
+end note
+
+activate CB #Wheat
+CB -> CB: Create callback chain (8 callbacks)
+note right of CB
+    Callbacks initialized:
+    - ModelCheckpoint
+    - EarlyStopping
+    - MetricsCollector
+    - BatchMetrics (sample_interval=10)
+    - GradientMonitor (sample_interval=20)
+end note
+
+CB --> Trainer: (trainer, callbacks, metrics_collector)
+
+Trainer -> WS: send_metrics("training_start")
+note right of WS
+    Payload: {run_id, experiment_name,
+    max_epochs, training_mode="centralized"}
+    File: websocket_metrics_sender.py lines 35-106
+end note
+
+activate WS #LightCoral
+WS -> WS: Broadcast to connected frontend clients
+WS --> Trainer: Event sent
+
+deactivate WS
+deactivate CB
+deactivate RunCRUD
+deactivate DB
+deactivate Trainer
+deactivate API
+
+' ============================================================================
+' STEP 2: Training Loop - Epoch & Batch Metrics Collection
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Step 2: Training Loop - Epoch & Batch Metrics Collection" #LightGreen
+    participant "PyTorch Lightning\nTrainer" as PLTrainer order 10
+    participant "MetricsCollector\nCallback" as MetricsCB order 20
+    participant "BatchMetrics\nCallback" as BatchCB order 30
+    participant "GradientMonitor\nCallback" as GradCB order 40
+    participant "WebSocketSender" as WS order 50
+end box
+
+activate PLTrainer #AliceBlue
+
+loop Each Epoch
+    PLTrainer -> PLTrainer: Training batches
+    note right of PLTrainer
+        Training loop processes batches
+    end note
+
+    loop Every Nth batch (sample_interval=10)
+        PLTrainer -> BatchCB: on_train_batch_end()
+        note right of BatchCB
+            File: batch_metrics.py lines 45-144
+            Captures per-batch metrics
+        end note
+
+        activate BatchCB #LightYellow
+        BatchCB -> BatchCB: Extract batch loss, accuracy, recall, F1
+        note right of BatchCB
+            Metrics extracted:
+            - batch_loss
+            - batch_accuracy
+            - batch_recall
+            - batch_f1
+        end note
+
+        BatchCB -> WS: send_metrics("batch_metrics")
+        note right of WS
+            Payload: {step, batch_idx, loss,
+            accuracy, recall, f1, epoch}
+        end note
+
+        activate WS #LightCoral
+        WS -> WS: Broadcast batch metrics
+        WS --> BatchCB: Event sent
+        deactivate WS
+        deactivate BatchCB
+    end
+
+    loop Every Nth step (sample_interval=20)
+        PLTrainer -> GradCB: on_before_optimizer_step()
+        note right of GradCB
+            File: gradient_monitor.py lines 35-98
+            Monitors gradient flow
+        end note
+
+        activate GradCB #Wheat
+        GradCB -> GradCB: Compute layer gradient norms
+        note right of GradCB
+            Statistics computed:
+            - total_norm (global L2 norm)
+            - layer_norms (per-layer norms)
+            - max_norm, min_norm
+        end note
+
+        GradCB -> WS: send_metrics("gradient_stats")
+        note right of WS
+            Payload: {step, total_norm, layer_norms,
+            max_norm, min_norm}
+        end note
+
+        activate WS #LightCoral
+        WS -> WS: Broadcast gradient statistics
+        WS --> GradCB: Event sent
+        deactivate WS
+        deactivate GradCB
+    end
+
+    PLTrainer -> MetricsCB: on_train_epoch_end()
+    note right of MetricsCB
+        File: metrics.py lines 164-176
+        Collects epoch-level training metrics
+    end note
+
+    activate MetricsCB #LightGreen
+    MetricsCB -> MetricsCB: _extract_metrics(stage="train")
+    note right of MetricsCB
+        Metrics stored:
+        - train_loss
+        - train_acc
+        - train_f1
+        - train_recall
+    end note
+    deactivate MetricsCB
+
+    PLTrainer -> MetricsCB: on_validation_epoch_end()
+    note right of MetricsCB
+        File: metrics.py lines 178-216
+        Collects validation metrics
+    end note
+
+    activate MetricsCB #LightGreen
+    MetricsCB -> MetricsCB: _extract_metrics(stage="val")
+    note right of MetricsCB
+        Validation metrics extracted:
+        - val_loss
+        - val_acc
+        - val_precision
+        - val_recall
+        - val_f1
+        - val_auroc
+    end note
+
+    MetricsCB -> MetricsCB: Update best metrics
+    note right of MetricsCB
+        Tracks best_val_recall, best_val_loss
+        for early stopping and checkpointing
+    end note
+
+    MetricsCB -> WS: send_metrics("epoch_end")
+    note right of WS
+        Payload: {epoch, phase="val",
+        metrics, timestamp}
+    end note
+
+    activate WS #LightCoral
+    WS -> WS: Broadcast epoch metrics
+    WS --> MetricsCB: Event sent
+    deactivate WS
+    deactivate MetricsCB
+end
+
+deactivate PLTrainer
+
+' ============================================================================
+' STEP 3: Training Completion - DB Persistence & File Export
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Step 3: Training Completion - DB Persistence & File Export" #LightYellow
+    participant "PyTorch Lightning\nTrainer" as PLTrainer order 10
+    participant "MetricsCollector\nCallback" as MetricsCB order 20
+    participant "MetricsFile\nPersister" as FilePersister order 30
+    participant "run_crud" as RunCRUD order 40
+    participant "run_metric_crud" as RunMetricCRUD order 50
+    participant "Database" as DB order 60
+    participant "WebSocketSender" as WS order 70
+    participant "db_operations.py" as DBOps order 80
+end box
+
+activate PLTrainer #AliceBlue
+PLTrainer -> MetricsCB: on_fit_end()
+note right of MetricsCB
+    File: metrics.py lines 218-268
+    Training completion handler
+end note
+
+activate MetricsCB #LightGreen
+MetricsCB -> MetricsCB: Record training_end_time
+note right of MetricsCB
+    Calculates training duration
+end note
+
+MetricsCB -> FilePersister: save_metrics(epoch_metrics, metadata)
+note right of FilePersister
+    File: metrics_file_persister.py lines 27-53
+    Exports metrics to file system
+end note
+
+activate FilePersister #Wheat
+FilePersister -> FilePersister: df.to_csv(experiment_name.csv)
+note right of FilePersister
+    CSV export: All epoch metrics
+    Location: results/logs/
+end note
+
+FilePersister -> FilePersister: json.dump(metadata.json)
+note right of FilePersister
+    JSON export: Metadata and configuration
+    Location: results/logs/
+end note
+
+FilePersister --> MetricsCB: Files saved
+deactivate FilePersister
+
+MetricsCB -> MetricsCB: persist_to_database()
+note right of MetricsCB
+    File: metrics.py lines 436-498
+    Persists all epoch metrics to database
+end note
+
+MetricsCB -> RunCRUD: persist_metrics(run_id, epoch_metrics, federated_context=None)
+note right of RunCRUD
+    File: run.py lines 234-280
+    Main persistence entry point
+end note
+
+activate RunCRUD #LightPink
+RunCRUD -> RunCRUD: _transform_epoch_to_metrics()
+note right of RunCRUD
+    File: run.py lines 489-535
+    Data transformation:
+    Dict -> List[RunMetric]
+end note
+
+RunCRUD -> RunMetricCRUD: bulk_create(metrics_list)
+note right of RunMetricCRUD
+    Inherited from base.py lines 109-118
+    Bulk insert for performance
+end note
+
+activate RunMetricCRUD #LightSteelBlue
+RunMetricCRUD -> DB: db.add_all([RunMetric(**m) for m in metrics_list])
+
+activate DB #LightGray
+RunMetricCRUD -> DB: db.flush()
+note right of DB
+    Single transaction
+    All rows written
+end note
+
+DB --> RunMetricCRUD: Persisted
+RunMetricCRUD --> RunCRUD: Persistence complete
+deactivate RunMetricCRUD
+
+RunCRUD -> DB: db.commit()
+RunCRUD --> MetricsCB: Persistence complete
+deactivate RunCRUD
+
+MetricsCB -> WS: send_metrics("training_end")
+note right of WS
+    Payload: {run_id, status="completed",
+    best_epoch, best_val_recall}
+end note
+
+activate WS #LightCoral
+WS -> WS: Broadcast training completion
+WS --> MetricsCB: Event sent
+deactivate WS
+deactivate MetricsCB
+
+PLTrainer --> DBOps: Training finished
+
+activate DBOps #LightBlue
+DBOps -> RunCRUD: complete_run(run_id, status="completed")
+note right of RunCRUD
+    File: run.py lines 107-147
+    Finalizes run record
+end note
+
+activate RunCRUD #LightPink
+RunCRUD -> DB: UPDATE runs SET status='completed', end_time=NOW()
+
+RunCRUD -> RunCRUD: Calculate final confusion matrix stats
+note right of RunCRUD
+    Computes from latest epoch:
+    - cm_tp, cm_tn, cm_fp, cm_fn
+    - precision, recall, f1, auroc
+end note
+
+RunCRUD -> DB: INSERT final_* metrics
+DB --> RunCRUD: Stats persisted
+deactivate RunCRUD
+
+DBOps --> PLTrainer: Run completed
+deactivate DBOps
+deactivate PLTrainer
+
+' ============================================================================
+' STEP 4: Results Collection & Final Stats
+' ============================================================================
+newpage
+
+autonumber 1
+
+box "Step 4: Results Collection & Final Stats" #LightCoral
+    participant "CentralizedTrainer" as Trainer order 10
+    participant "results.py" as Results order 20
+    participant "db_operations.py" as DBOps order 30
+    participant "run_crud" as RunCRUD order 40
+    participant "Database" as DB order 50
+end box
+
+activate Trainer #AliceBlue
+Trainer -> Results: collect_training_results()
+note right of Results
+    File: results.py lines 15-63
+    Aggregates all training artifacts
+end note
+
+activate Results #Wheat
+Results -> Results: _extract_checkpoint_info()
+note right of Results
+    Retrieves:
+    - Best model path
+    - Best model score
+end note
+
+Results -> Results: _extract_trainer_state()
+note right of Results
+    Captures:
+    - Trainer stage value
+    - Current epoch
+end note
+
+Results -> Results: _collect_metrics_data()
+note right of Results
+    Collects:
+    - Full metrics history
+    - Best metrics
+    - Training metadata
+end note
+
+Results -> Results: _save_results_to_file()
+note right of Results
+    JSON export to results/ directory
+    Includes: checkpoint info, trainer state,
+    metrics history, metadata
+end note
+
+Results --> Trainer: results_dict
+deactivate Results
+
+Trainer -> DBOps: complete_training_run(run_id)
+note right of DBOps
+    File: db_operations.py lines 66-88
+    Final database operations
+end note
+
+activate DBOps #LightBlue
+DBOps -> RunCRUD: complete_run(run_id, status="completed")
+note right of RunCRUD
+    File: run.py lines 107-147
+end note
+
+activate RunCRUD #LightPink
+RunCRUD -> DB: UPDATE runs SET status='completed', end_time=NOW()
+
+RunCRUD -> RunCRUD: Calculate final epoch stats
+note right of RunCRUD
+    Confusion matrix statistics:
+    - TP: True Positives
+    - TN: True Negatives
+    - FP: False Positives
+    - FN: False Negatives
+    - Precision, Recall, F1, AUROC
+end note
+
+RunCRUD -> DB: INSERT final_* metrics
+activate DB #LightGray
+DB --> RunCRUD: Stats persisted
+deactivate DB
+
+RunCRUD --> DBOps: Run completed
+deactivate RunCRUD
+
+DBOps --> Trainer: Success
+deactivate DBOps
+deactivate Trainer
+
+' ============================================================================
+' LEGEND & FILE REFERENCES
+' ============================================================================
+newpage
+
+legend
+    **File Reference Guide**
+    
+    | Layer | File | Key Lines | Purpose |
+    |-------|------|-----------|---------|
+    | API Entry | centralized_tasks.py | 11-65 | Entry point for training API |
+    | Trainer | centralized_trainer.py | 25-150 | Training orchestration |
+    | DB Setup | db_operations.py | 14-50 (create), 66-88 (complete) | Database operations |
+    | Callbacks | training_callbacks.py | 79-265 | Callback orchestration |
+    | Metrics Collector | metrics.py | 101-268 | Lifecycle hooks |
+    | Batch Metrics | batch_metrics.py | 45-144 | Per-batch metrics |
+    | Gradient Monitor | gradient_monitor.py | 35-98 | Gradient tracking |
+    | WebSocket | websocket_metrics_sender.py | 35-106 | Real-time updates |
+    | File Persister | metrics_file_persister.py | 27-53 | File exports |
+    | Run CRUD | run.py | 107-147 (complete), 234-280 (persist) | Run management |
+    | RunMetric CRUD | run_metric.py | Inherited bulk_create | Metric storage |
+    | Results | results.py | 15-154 | Results aggregation |
+    
+    **Metric Types Collected**
+    
+    | Metric Name | Source | Frequency | Storage |
+    |-------------|--------|-----------|---------|
+    | train_loss | MetricsCollectorCallback | Per epoch | DB + CSV |
+    | train_acc, train_f1, train_recall | MetricsCollectorCallback | Per epoch | DB + CSV |
+    | val_loss, val_acc, val_precision | MetricsCollectorCallback | Per epoch | DB + CSV |
+    | val_recall, val_f1, val_auroc | MetricsCollectorCallback | Per epoch | DB + CSV |
+    | batch_loss, batch_accuracy | BatchMetricsCallback | Every 10th batch | WebSocket only |
+    | gradient_total_norm, layer_norms | GradientMonitorCallback | Every 20th step | WebSocket only |
+    | final_*_cm | FinalEpochStatsService | End of training | DB only |
+    
+    **WebSocket Event Types**
+    
+    | Event Type | Trigger | Payload |
+    |------------|---------|---------|
+    | training_start | on_train_start | {run_id, experiment_name, max_epochs, training_mode} |
+    | epoch_end | on_validation_epoch_end | {epoch, phase, metrics, timestamp} |
+    | batch_metrics | on_train_batch_end (sampled) | {step, batch_idx, loss, accuracy, recall, f1} |
+    | gradient_stats | on_before_optimizer_step (sampled) | {step, total_norm, layer_norms, max/min_norm} |
+    | training_end | on_fit_end | {run_id, status, best_epoch, best_val_recall} |
+endlegend
+
+@enduml

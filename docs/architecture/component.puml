@@ -1,0 +1,251 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam defaultFontSize 11
+skinparam packageStyle frame
+skinparam shadowing false
+skinparam nodesep 100
+skinparam ranksep 80
+skinparam packageFontSize 13
+skinparam packageFontStyle bold
+skinparam arrowThickness 1.2
+skinparam roundCorner 8
+skinparam linetype ortho
+
+' ============================
+'  FRONTEND LAYER
+' ============================
+package "Frontend Layer" #e1f5ff {
+  component [Web UI\n(React)\nTraining UI, Results, Predictions] as web_ui
+  component [WebSocket Client\n(JS Real-time metrics)] as ws_client
+
+' ============================
+'  API LAYER
+' ============================
+package "API Layer" #fff3e0 {
+  component [Experiments API\n(FastAPI) Training endpoints] as exp_api
+  component [Inference API\n(FastAPI) Prediction endpoints] as inf_api
+  component [Runs API\n(FastAPI) 7 sub-routers for analytics] as runs_api
+  component [Chat API\n(FastAPI) 4 sub-routers\nsessions, stream, history, status] as chat_api
+  component [Config API\n(FastAPI) System settings] as config_api
+  component [Reports API\n(FastAPI) PDF generation] as reports_api
+  component [WebSocket Manager\n(FastAPI WS) Broadcasts metrics] as ws_manager
+  component [Middleware Stack\nCORS, RequestID, Prompt Injection] as middleware
+}
+
+' ============================
+'  CONTROL LAYER
+' ============================
+package "Control Layer - Business Logic" #f3e5f5 {
+  component [CentralizedTrainer\n(Training orchestrator)] as cent_trainer
+  component [ServerApp\n(Federated server Flower)] as fed_server
+  component [ClientApp\n(Federated client Flower)] as fed_client
+  component [CustomStrategy\n(FedAvg aggregation)] as fed_strategy
+
+  component [InferenceService\n(Inference facade)] as inf_service
+  component [InferenceEngine\n(Model singleton)] as inf_engine
+  component [GradCAMService\n(Heatmap generator)] as gradcam_service
+
+  component [ArxivAugmentedEngine\n(Chat agent with RAG)] as chat_agent
+  component [SessionManager\n(Session singleton)] as session_manager
+  component [MCPManager\n(Arxiv MCP singleton)] as mcp_manager
+  component [AgentFactory\n(Agent factory singleton)] as agent_factory
+
+  component [AnalyticsFacade\n(Analytics facade)] as analytics_facade
+  component [MetricsService\n(Metrics extraction)] as metrics_service
+  component [SummaryService\n(Run summaries)] as summary_service
+  component [RankingService\n(Top-N rankings)] as ranking_service
+  component [ExportService\n(CSV/JSON export)] as export_service
+
+  package "Trainer Utils" #e8d5f5 {
+    component [DataPrepUtils] as data_prep
+    component [ModelSetupUtils] as model_setup
+    component [DBOperationsUtils] as db_ops
+    component [ResultsUtils] as results_utils
+  }
+
+  package "Metric Extractors" #e8d5f5 {
+    component [MetricExtractor\n(Strategy ABC)] as metric_extractor
+    component [FederatedMetricExtractor] as fed_extractor
+    component [CentralizedMetricExtractor] as cent_extractor
+  }
+}
+
+' ============================
+'  ENTITY LAYER
+' ============================
+package "Entity Layer - Core Models" #e8f5e9 {
+  component [ResNetWithCustomHead\n(PyTorch Binary classifier)] as resnet_model
+  component [LitResNetEnhanced\n(Lightning Training wrapper)] as lit_module
+  component [CustomImageDataset\n(PyTorch X-ray dataset)] as custom_dataset
+  component [XRayDataModule\n(Lightning DataLoader factory)] as xray_datamodule
+  package "Callbacks Suite" #c8e6c9 {
+    component [MetricsCallback\n(Logs per-batch metrics)] as cb_metrics
+    component [ProgressCallback\n(Tracks epoch progress)] as cb_progress
+    component [EarlyStopping\n(Prevents overfitting)] as cb_earlystop
+    component [ModelCheckpoint\n(Saves best models)] as cb_checkpoint
+    component [LearningRateMonitor\n(Tracks LR changes)] as cb_lr
+    component [DatabaseCallback\n(Persists to PostgreSQL)] as cb_db
+    component [WebSocketCallback\n(Broadcasts real-time)] as cb_ws
+    component [EpochEndCallback\n(End-of-epoch cleanup)] as cb_epoch
+  }
+  component [MetricsHandler\n(Metrics utility)] as metrics_handler
+  component [StepLogic\n(Step execution)] as step_logic
+}
+
+' ============================
+'  FACTORIES
+' ============================
+package "Factories" #e3f2fd {
+  component [OptimizerFactory\n(Optimizer + Scheduler)] as opt_factory
+  component [LossFactory\n(Focal/BCE loss)] as loss_factory
+  component [CallbacksSetup\n(Callback factory)] as callback_factory
+}
+
+' ============================
+'  BOUNDARY LAYER
+' ============================
+package "Boundary Layer - Persistence & I/O" #fff9c4 {
+  component [BaseCRUD\n(Generic CRUD)] as base_crud
+  component [RunCRUD\n(SQLAlchemy)] as run_crud
+  component [RunMetricCRUD\n(SQLAlchemy)] as metric_crud
+  component [ServerEvaluationCRUD\n(SQLAlchemy)] as eval_crud
+  component [ClientCRUD\n(SQLAlchemy)] as client_crud
+  component [RoundCRUD\n(SQLAlchemy)] as round_crud
+  component [ChatSessionCRUD\n(Functional CRUD)] as chat_session_crud
+  component [DataSourceExtractor\n(ZIP extraction)] as data_extractor
+  component [FileManager\n(Checkpoints/logs)] as file_manager
+  component [ConfigManager\n(YAML config)] as config_manager
+  component [QueryEngine\n(RAG PGVector)] as query_engine
+  component [ChatHistoryManager\n(PostgreSQL history)] as history_manager
+}
+
+' ============================
+'  STORAGE LAYER
+' ============================
+package "Storage Layer" #fce4ec {
+  database "PostgreSQL\nruns, metrics,\nevaluations, clients,\nrounds, chat" as postgres
+  database "File Storage\ncheckpoints,\nlogs, results" as file_storage
+  database "Vector DB\n(PGVector RAG)" as vector_db
+  database "LangChain PostgreSQL\n(Chat messages)" as langchain_db
+}
+
+' ── Frontend -> API ──
+web_ui --> exp_api : HTTP POST (train)
+web_ui --> inf_api : HTTP POST (predict)
+web_ui --> runs_api : HTTP GET (analytics)
+web_ui --> chat_api : HTTP POST (chat)
+web_ui --> config_api : HTTP GET/POST
+web_ui --> reports_api : HTTP POST
+ws_client --> ws_manager : WebSocket
+
+' ── Middleware ──
+exp_api ..> middleware : uses
+inf_api ..> middleware : uses
+runs_api ..> middleware : uses
+chat_api ..> middleware : uses
+
+' ── API -> Control ──
+exp_api --> cent_trainer : Async Task
+exp_api --> fed_server : Async Task
+inf_api --> inf_service
+inf_api --> gradcam_service
+chat_api --> agent_factory : gets agent
+chat_api --> session_manager : manages sessions
+chat_api --> mcp_manager : checks status
+runs_api --> analytics_facade
+config_api --> config_manager
+
+' ── Control -> Utils ──
+cent_trainer --> data_prep
+cent_trainer --> model_setup
+cent_trainer --> db_ops
+cent_trainer --> results_utils
+
+' ── Federated ──
+fed_server --> fed_strategy
+fed_server --> fed_client : coordinates
+fed_client --> cent_trainer : local training
+
+' ── Inference ──
+inf_service --> inf_engine
+gradcam_service --> inf_engine
+
+' ── Chat ──
+agent_factory --> chat_agent
+chat_agent --> query_engine
+chat_agent --> history_manager
+chat_agent --> mcp_manager
+session_manager --> chat_session_crud
+
+' ── Analytics ──
+analytics_facade --> metrics_service
+analytics_facade --> summary_service
+analytics_facade --> ranking_service
+analytics_facade --> export_service
+metrics_service --> metric_extractor
+metric_extractor <|-- fed_extractor
+metric_extractor <|-- cent_extractor
+
+' ── Control -> Entities ──
+cent_trainer --> lit_module
+cent_trainer --> xray_datamodule
+inf_engine --> resnet_model
+lit_module --> resnet_model
+lit_module --> metrics_handler
+lit_module --> step_logic
+lit_module --> cb_metrics
+lit_module --> cb_progress
+lit_module --> cb_earlystop
+lit_module --> cb_checkpoint
+lit_module --> cb_lr
+lit_module --> cb_db
+lit_module --> cb_ws
+lit_module --> cb_epoch
+xray_datamodule --> custom_dataset
+
+' ── Control -> Factories ──
+model_setup --> opt_factory
+model_setup --> loss_factory
+model_setup --> callback_factory
+
+' ── Control -> Boundary ──
+db_ops --> run_crud
+db_ops --> metric_crud
+fed_server --> eval_crud
+fed_server --> run_crud
+data_prep --> data_extractor
+cent_trainer --> file_manager
+cent_trainer --> config_manager
+metrics_service --> run_crud
+metrics_service --> metric_crud
+fed_extractor --> eval_crud
+cent_extractor --> metric_crud
+
+' ── Callbacks -> Boundary ──
+cb_metrics --> metric_crud : batch metrics
+cb_db --> run_crud : run status
+cb_db --> client_crud : client updates
+cb_db --> round_crud : round data
+cb_db --> metric_crud : epoch metrics
+cb_ws --> ws_manager : real-time updates
+cb_checkpoint --> file_manager : save checkpoints
+
+' ── CRUD Hierarchy ──
+base_crud <|-- run_crud
+base_crud <|-- metric_crud
+base_crud <|-- eval_crud
+base_crud <|-- client_crud
+base_crud <|-- round_crud
+
+' ── Boundary -> Storage ──
+run_crud --> postgres
+metric_crud --> postgres
+eval_crud --> postgres
+client_crud --> postgres
+round_crud --> postgres
+chat_session_crud --> postgres
+file_manager --> file_storage
+config_manager --> file_storage
+query_engine --> vector_db
+history_manager --> langchain_db
+@enduml

@@ -1,0 +1,202 @@
+@startuml
+
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor Black
+    ActorBorderColor Black
+    LifeLineBorderColor Black
+    LifeLineBackgroundColor White
+    ParticipantBorderColor Black
+    ParticipantBackgroundColor White
+    ParticipantFontSize 12
+    ArrowFontSize 11
+}
+
+title Run Metrics Sequence Diagram
+
+autonumber
+
+participant "ResultsVisualization.tsx" as C
+participant "useResultsVisualization.ts" as H
+participant "api.ts" as A
+participant "runs_analytics.py" as E
+participant "AnalyticsFacade\nfacade.py" as F
+participant "MetricsService\nmetrics_service.py" as S
+participant "RunCRUD\nrun.py" as CR
+participant "Database" as D
+participant "transformers.py" as T
+
+== Step 1: Component to API Request ==
+
+C -> H: useResultsVisualization({config, runId})
+note right of H
+    Hook receives runId from component props
+end note
+
+activate H
+
+H -> A: getRunMetrics(runId)
+note right of A
+    File: api.ts lines 120-125
+end note
+
+activate A
+
+A -> E: GET /api/runs/{runId}/metrics
+note right of E
+    HTTP request to backend
+end note
+activate E
+
+== Step 2: Backend Processing ==
+
+E -> F: analytics.metrics.get_run_metrics(db, runId)
+note right of F
+    File: facade.py lines 60-70
+end note
+
+activate F
+
+F -> S: metrics_service.get_run_metrics(db, runId)
+note right of S
+    File: metrics_service.py lines 80-110
+end note
+
+activate S
+
+S -> S: Check cache
+
+alt Cache Miss
+    S -> CR: run_crud.get_with_metrics(db, runId)
+    note right of CR
+        File: run.py lines 45-60
+        CRUD layer database operations
+    end note
+    
+    activate CR
+    
+    == Step 3: Database Queries ==
+    
+    CR -> D: SELECT * FROM runs WHERE id = ?
+    note right of D
+        Table: runs
+        Purpose: Get experiment metadata
+    end note
+    activate D
+    D --> CR: Run record
+    deactivate D
+    
+    CR -> D: SELECT * FROM run_metrics WHERE run_id = ?
+    note right of D
+        Table: run_metrics
+        Purpose: Per-epoch metrics (centralized mode)
+    end note
+    activate D
+    D --> CR: Metrics list
+    deactivate D
+    
+    CR -> D: SELECT * FROM server_evaluations WHERE run_id = ? ORDER BY round_number
+    note right of D
+        Table: server_evaluations (federated mode)
+        Purpose: Per-round server evaluation metrics
+    end note
+    activate D
+    D --> CR: Evaluations list
+    deactivate D
+    
+    CR --> S: Run object with related metrics
+    deactivate CR
+end
+
+S -> S: Get persisted stats
+activate S #LightBlue
+S --> S: persisted_stats
+
+== Step 4: Transform & Response ==
+
+S -> T: transform_run_to_results(run, persisted_stats)
+note right of T
+    File: transformers.py lines 50-120
+    Data transformation layer
+end note
+
+activate T
+
+T -> T: Check run.training_mode
+
+alt Federated Mode
+    T -> T: Read from run.server_evaluations
+    note right of T
+        Extract per-round evaluation metrics
+        from server_evaluations table
+    end note
+else Centralized Mode
+    T -> T: Read from run.metrics
+    note right of T
+        Extract per-epoch training metrics
+        from run_metrics table
+    end note
+end
+
+T -> T: Build training_history
+note right of T
+    Transform to chart-compatible format
+    for visualization components
+end note
+
+T -> T: Extract final_metrics
+note right of T
+    Get best/latest metrics from history
+end note
+
+T -> T: Build confusion_matrix
+note right of T
+    Format as 2D array for display
+end note
+
+T --> S: ExperimentResults dict
+note right of T
+    Return structured results:
+    {
+        training_history,
+        final_metrics,
+        confusion_matrix,
+        metadata
+    }
+end note
+deactivate T
+deactivate S
+
+S --> F: Results data
+deactivate S
+
+F --> E: Return results
+deactivate F
+
+E --> A: HTTP Response
+
+A --> H: RunMetricsResponse
+deactivate E
+deactivate A
+
+H -> H: Transform props
+note right of H
+    File: useResultsVisualization.ts lines 85-120
+    Transformations:
+    - trainingHistoryData (chart format)
+    - confusionMatrix (2D array)
+    - metricsChartData (bar chart data)
+end note
+
+H --> C: activeResults + transformed props
+note right of C
+    Props available:
+    - activeResults (experiment data)
+    - trainingHistoryData (for charts)
+    - confusionMatrix (for visualization)
+    - metricsChartData (for bar charts)
+end note
+deactivate H
+
+@enduml
