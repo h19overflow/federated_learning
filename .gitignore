@@ -126,7 +126,6 @@ wandb/
 
 # Logs
 *.log
-docs/
 
 # Security review reports
 REVIEW_REPORT.md
