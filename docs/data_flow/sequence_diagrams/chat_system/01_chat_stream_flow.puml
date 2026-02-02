@@ -1,152 +1,396 @@
 @startuml
 !define RECTANGLE class
 
-skinparam sequence {
-    ArrowColor #333333
-    ArrowThickness 2
-    ActorBackgroundColor #F0F0F0
-    ActorBorderColor #333333
-    ParticipantBackgroundColor #FFFFFF
-    ParticipantBorderColor #333333
-    ParticipantFontSize 12
-    ParticipantFontStyle bold
-    LifeLineBackgroundColor #F0F0F0
-    LifeLineBorderColor #999999
-    BoxPadding 10
-    MessagePadding 15
-}
+' =====================================================
+' Chat Streaming Flow - SSE Token-by-Token Response
+' API: POST /api/chat/query/stream
+' Entry Point: chat_stream.py:34 → query_chat_stream()
+' Pattern: Server-Sent Events (SSE) with AsyncGenerator
+' =====================================================
 
-skinparam note {
-    BackgroundColor #FFFFCC
-    BorderColor #999999
-    FontSize 11
-}
-
-title Chat Streaming Flow - Step 4: SSE Response Formatting & Delivery
-
-' Participants
-participant API as "**API**\nchat_stream.py" #FFF3E0
-participant Utils as "**Utils**\nchat_utils.py" #FCE4EC
-participant Frontend as "**Frontend**\nReact Frontend" #E3F2FD
+title Chat Streaming Flow - SSE Token-by-Token Response
 
 autonumber
 
-== Step 4: SSE Response Formatting & Delivery ==
+' Participant declarations
+participant "React Frontend" as Frontend
+participant "chat_stream.py" as API #LightBlue
+participant "SessionManager" as SessionMgr #LightGreen
+participant "chat_utils.py" as Utils #LightYellow
+participant "Database" as DB #LightGray
+participant "AgentFactory" as Factory #LightCoral
+participant "ArxivAugmentedEngine" as Agent #LightPink
+participant "ChatGoogleGenerativeAI" as LLM #LightCyan
+participant "RAG QueryEngine" as QueryEngine #LightGoldenRodYellow
+participant "stream_query()" as StreamFunc #LightSalmon
+participant "RAG Tool" as RAGTool #LightSteelBlue
+participant "Arxiv MCP Tools" as ArxivTool #LightSeaGreen
+participant "ChatHistoryManager" as History #LightSlateGray
+participant "SSE Client" as SSEClient #Lavender
 
-note over API
-    **All events yielded from generate() function**
+' =====================================================
+' Step 1: Request Reception & Session Initialization
+' File: chat_stream.py (lines 34-58)
+' File: chat_utils.py (sse_pack, prepare_enhanced_query)
+' File: session_manager.py (ensure_session, lines 69-79)
+' =====================================================
+
+note over Frontend, DB
+**Step 1: Request Reception & Session Initialization**
+File: chat_stream.py lines 34-58
+File: chat_utils.py: sse_pack, prepare_enhanced_query
+File: session_manager.py: ensure_session, lines 69-79
 end note
 
-' File: chat_utils.py lines 12-14
+Frontend -> API: POST /chat/query/stream
+activate API
+
+note right of Frontend
+{query, session_id?, run_id?, arxiv_enabled}
+end note
+
+API -> API: async def generate()
+note right of API
+lines 44-82
+AsyncGenerator function
+end note
+
+API -> API: session_id = message.session_id or uuid.uuid4()
+note right of API
+line 45
+Generate session if not provided
+end note
+
+API --> Frontend: yield sse_pack({type: "session", session_id})
+note right of API
+line 46
+First SSE event
+end note
+
+API -> SessionMgr: ensure_session(session_id, query)
+activate SessionMgr
+note right of SessionMgr
+lines 69-79
+end note
+
+SessionMgr -> DB: get_chat_session(session_id)
+activate DB
+
+alt Session doesn't exist
+    SessionMgr -> DB: create_chat_session(title=query[:50]..., session_id)
+    DB --> SessionMgr: session created
+else Session exists
+    DB --> SessionMgr: existing session
+end
+
+DB --> SessionMgr
+
+deactivate DB
+SessionMgr --> API: Session ensured
+deactivate SessionMgr
+
+API -> Utils: prepare_enhanced_query(query, run_id)
+activate Utils
+note right of Utils
+chat_utils.py:38-50
+end note
+
+alt run_id provided
+    Utils -> Utils: enhance_query_with_run_context(query, run_id)
+    note right of Utils
+    Fetch run metrics, build context
+    end note
+    
+    Utils -> DB: Fetch run, metrics, server_evaluations
+    activate DB
+    DB --> Utils: run_context
+    deactivate DB
+    
+    Utils --> API: query + run_context
+else No run_id
+    Utils --> API: original query
+end
+
+Utils --> API
+deactivate Utils
+
+' =====================================================
+' Step 2: Agent Factory & Chat Agent Initialization
+' File: chat_stream.py (lines 59-72)
+' File: factory.py (get_agent_factory, lines 74-87)
+' File: research_engine.py (ArxivAugmentedEngine, lines 35-83)
+' =====================================================
+
+note over API, QueryEngine
+**Step 2: Agent Factory & Chat Agent Initialization**
+File: chat_stream.py lines 59-72
+File: factory.py: get_agent_factory, lines 74-87
+File: research_engine.py: ArxivAugmentedEngine, lines 35-83
+end note
+
+API -> "app.state": getattr(request.app.state, "agent_factory", None)
+
+alt Cached factory exists
+    "app.state" --> API: agent_factory
+else No cached factory
+    API -> API: logger.warning("[STREAM] No cached factory in app.state, creating on-demand")
+    note right of API
+    lines 61-66
+    end note
+    
+    API -> Factory: get_agent_factory(app_state)
+    activate Factory
+    note right of Factory
+    factory.py:74-87
+    Singleton pattern
+    end note
+    Factory --> API: new AgentFactory
+    deactivate Factory
+end
+
+API -> Factory: get_chat_agent()
+activate Factory
+note right of Factory
+factory.py:31-47
+end note
+
+alt Agent not initialized
+    Factory -> Agent: ArxivAugmentedEngine(query_engine?)
+    activate Agent
+    note right of Agent
+    research_engine.py:38-83
+    end note
+    
+    Agent -> Agent: Initialize ChatHistoryManager
+    note right of Agent
+    line 51
+    end note
+    
+    Agent -> LLM: ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+    activate LLM
+    note right of Agent
+    lines 54-63
+    end note
+    LLM --> Agent: LLM initialized
+    deactivate LLM
+    
+    Agent -> QueryEngine: QueryEngine() or use injected
+    activate QueryEngine
+    note right of Agent
+    lines 66-77
+    end note
+    
+    alt QueryEngine initialization succeeds
+        QueryEngine --> Agent: query_engine
+        Agent -> Agent: create_rag_tool(query_engine)
+        note right of Agent
+        line 78
+        end note
+    else QueryEngine fails
+        Agent -> Agent: Set _rag_tool = None
+        note right of Agent
+        lines 80-82
+        Arxiv-only mode
+        end note
+    end
+    
+    QueryEngine --> Agent
+    deactivate QueryEngine
+    Agent --> Factory: agent instance
+    deactivate Agent
+else Agent already exists
+    Factory --> API: cached agent
+end
+
+Factory --> API: agent (ArxivAugmentedEngine)
+deactivate Factory
+
+' =====================================================
+' Step 3: Stream Execution - Token-by-Token Response
+' File: chat_stream.py (lines 74-81)
+' File: research_engine.py (stream method, lines 176-184)
+' File: research_stream.py (stream_query - delegated)
+' =====================================================
+
+note over API, SSEClient
+**Step 3: Stream Execution - Token-by-Token Response**
+File: chat_stream.py lines 74-81
+File: research_engine.py: stream method, lines 176-184
+File: research_stream.py: stream_query (delegated)
+end note
+
+API -> Agent: async for event in agent.stream(chat_input)
+activate Agent
+note right of API
+lines 75-77
+end note
+
+Agent -> StreamFunc: async for event in stream_query(llm, history_mgr, rag_tool, query, session_id, arxiv_enabled)
+activate StreamFunc
+note right of Agent
+research_engine.py:118-127
+end note
+
+StreamFunc -> StreamFunc: Build system prompt + conversation history
+note right of StreamFunc
+Get previous turns from history_mgr
+end note
+
+StreamFunc -> LLM: astream_events() with tools
+activate LLM
+note right of StreamFunc
+Bind RAG tool + Arxiv tools if enabled
+end note
+
+loop For each LLM event
+    alt Event: on_chat_model_stream
+        LLM -> StreamFunc: Token chunk
+        StreamFunc --> API: yield {type: "token", content: chunk}
+        API --> Frontend: data: {"type":"token","content":"..."}
+        note right of Frontend
+        SSE event received
+        end note
+        
+    else Event: on_tool_start
+        LLM -> RAGTool: invoke(query)
+        activate RAGTool
+        note right of LLM
+        Tool call detected
+        end note
+        
+        StreamFunc --> API: yield {type: "tool_call", tool: "rag_search", args: {...}}
+        API --> Frontend: data: {"type":"tool_call",...}
+        
+        RAGTool -> RAGTool: Query vector store
+        RAGTool --> LLM: Tool result
+        deactivate RAGTool
+        
+    else Event: on_tool_start (arxiv)
+        LLM -> ArxivTool: search_arxiv(query)
+        activate ArxivTool
+        StreamFunc --> API: yield {type: "tool_call", tool: "arxiv_search", args: {...}}
+        API --> Frontend: data: {"type":"tool_call",...}
+        
+        ArxivTool -> ArxivTool: Search arxiv papers
+        ArxivTool --> LLM: Papers found
+        deactivate ArxivTool
+        
+    else Event: on_chat_model_end
+        LLM -> StreamFunc: Final AI message
+        StreamFunc -> StreamFunc: Extract full response
+    end
+end
+
+deactivate LLM
+
+StreamFunc -> History: add_to_history(session_id, user_msg, ai_response)
+activate History
+note right of History
+Persist conversation turn
+end note
+History --> StreamFunc
+deactivate History
+
+StreamFunc --> API: yield {type: "done"}
+deactivate StreamFunc
+
+Agent --> API
+deactivate Agent
+
+API --> Frontend: data: {"type":"done"}
+
+API -> API: chunk_count check
+note right of API
+lines 79-81
+end note
+
+alt chunk_count == 0
+    API --> Frontend: data: {"type":"error","message":"No response generated"}
+end
+
+' =====================================================
+' Step 4: SSE Response Formatting & Delivery
+' File: chat_stream.py (lines 83-91)
+' File: chat_utils.py (sse_pack, lines 12-14)
+' =====================================================
+
+note over API, Frontend
+**Step 4: SSE Response Formatting & Delivery**
+File: chat_stream.py lines 83-91
+File: chat_utils.py: sse_pack, lines 12-14
+end note
+
+note over API
+All events yielded from generate()
+end note
+
 API -> Utils: sse_pack(event_dict)
 activate Utils
-
 note right of Utils
-    **File:** chat_utils.py lines 12-14
+lines 12-14
 end note
 
 Utils -> Utils: json.dumps(event_dict)
-
-note right of Utils
-    **Data Transformation:**
-    Dictionary → JSON string → SSE format
-end note
-
-Utils --> API: "data: {...}\n\n"
+Utils --> API: "data: {...}\\n\\n"
 deactivate Utils
 
-' File: chat_stream.py lines 83-91
-API -> Frontend: StreamingResponse(generate(), media_type="text/event-stream")
-
-activate API
-
+API --> Frontend: StreamingResponse(generate(), media_type="text/event-stream")
 note right of API
-    **File:** chat_stream.py lines 83-91
-    **Response Headers:**
-    - Cache-Control: no-cache
-    - Connection: keep-alive
-    - X-Accel-Buffering: no
+lines 83-91
 end note
 
+deactivate API
+
 note over Frontend
-    **EventSource connection**
-    receives SSE events
+EventSource connection
+receives SSE events
 end note
 
 Frontend -> Frontend: Parse SSE events
 note right of Frontend
-    **Data Parsing:**
-    event.data = JSON.parse(...)
+event.data = JSON.parse(...)
 end note
 
 alt Event type: "session"
     Frontend -> Frontend: Store session_id
-    note right of Frontend
-        **Action:** Save session_id for future requests
-    end note
-    
 else Event type: "token"
     Frontend -> Frontend: Append content to UI
-    note right of Frontend
-        **Action:** Append token to message display
-    end note
-    
 else Event type: "tool_call"
     Frontend -> Frontend: Show tool usage indicator
-    note right of Frontend
-        **Action:** Display tool usage badge
-    end note
-    
-else Event type: "status"
-    Frontend -> Frontend: Update status indicator
-    note right of Frontend
-        **Action:** Show processing status
-    end note
-    
 else Event type: "done"
     Frontend -> Frontend: Mark message complete
-    note right of Frontend
-        **Action:** Finalize message display
-    end note
-    
 else Event type: "error"
     Frontend -> Frontend: Display error
-    note right of Frontend
-        **Action:** Show error message
-    end note
 end
 
-deactivate API
+' =====================================================
+' Data Transformation Notes
+' =====================================================
 
-== SSE Event Types Summary ==
-
-note right of Frontend
-    **Event Types:**
-    
-    | Type | Trigger | Payload | Frontend Action |
-    |------|---------|---------|----------------|
-    | session | Session initialization | {type, session_id} | Store session_id |
-    | token | LLM streams token | {type, content} | Append to display |
-    | tool_call | Tool invocation | {type, tool, args} | Show tool badge |
-    | status | Processing update | {type, message} | Update status |
-    | done | Stream complete | {type} | Mark complete |
-    | error | Error occurred | {type, message} | Display error |
+note right of API #LightYellow
+**Data Transformations:**
+1. Session ID generation: str(uuid.uuid4())
+2. SSE Pack: json.dumps(event_dict) → "data: {...}\\n\\n"
+3. Query enhancement: Original query + run context
+4. Token streaming: Real-time character-by-character
 end note
 
-== File Reference ==
+note right of Utils #LightYellow
+**Query Enhancement Transformation:**
+Original: "What was the best recall achieved?"
+Enhanced: "What was the best recall achieved?
 
-note right of Frontend
-    **Key Files:**
-    
-    | Layer | File | Key Lines |
-    |-------|------|-----------|
-    | API Endpoint | chat_stream.py | 34-91 |
-    | Session Manager | session_manager.py | 69-79 |
-    | Query Enhancement | chat_utils.py | 38-320 |
-    | Agent Factory | factory.py | 18-88 |
-    | Chat Agent | research_engine.py | 35-198 |
-    | Streaming Logic | research_stream.py | (delegated) |
-    | SSE Utilities | chat_utils.py | 12-19 |
+[TRAINING RUN CONTEXT - Run #123]
+Training Mode: federated
+Status: completed
+METRICS SUMMARY:
+validation_recall:
+  - Best: 0.9200
+  - Average: 0.8600
+FEDERATED LEARNING DETAILS:
+Number of Clients: 5
+Server Evaluations: 10 rounds
+..."
 end note
 
 @enduml

@@ -1,0 +1,384 @@
+@startuml
+!define RECTANGLE class
+
+' =====================================================
+' Chat Session Management Flow
+' API Base: /api/chat/sessions
+' Files: chat_sessions.py, session_manager.py
+' Pattern: Singleton SessionManager + Database Persistence
+' =====================================================
+
+title Chat Session Management Flow
+
+autonumber
+
+' Participant declarations
+participant "React Frontend" as Frontend
+participant "chat_sessions.py" as API #LightBlue
+participant "SessionManager" as SessionMgr #LightGreen
+participant "chat_history CRUD" as CRUD #LightYellow
+participant "generate_chat_title" as TitleGen #LightCoral
+participant "ChatHistoryManager" as HistoryMgr #LightPink
+participant "Database" as DB #LightGray
+participant "Thread 1" as Thread1 #LightCyan
+participant "Thread 2" as Thread2 #LightGoldenRodYellow
+participant "Threading Lock" as Lock #LightSalmon
+
+' =====================================================
+' Step 1: List All Sessions
+' API: GET /api/chat/sessions
+' Entry Point: chat_sessions.py:24 → list_chat_sessions()
+' =====================================================
+
+note over Frontend, DB
+**Step 1: List All Sessions**
+API: GET /api/chat/sessions
+Entry Point: chat_sessions.py:24 → list_chat_sessions()
+end note
+
+Frontend -> API: GET /api/chat/sessions
+activate API
+
+API -> SessionMgr: list_sessions()
+activate SessionMgr
+note right of SessionMgr
+session_manager.py:54-56
+end note
+
+SessionMgr -> CRUD: get_all_chat_sessions()
+activate CRUD
+note right of CRUD
+boundary/CRUD/chat_history.py
+end note
+
+CRUD -> DB: SELECT * FROM chat_sessions ORDER BY updated_at DESC
+activate DB
+DB --> CRUD: List[ChatSession]
+deactivate DB
+
+CRUD --> SessionMgr: sessions
+deactivate CRUD
+
+SessionMgr --> API: sessions
+deactivate SessionMgr
+
+API -> API: [_to_schema(session) for session in sessions]
+note right of API
+line 28
+Convert to API schema
+end note
+
+loop For each session
+    API -> API: _to_schema(session)
+    note right of API
+    lines 53-60
+    end note
+    
+    API -> API: ChatSessionSchema(id, title, created_at, updated_at)
+end
+
+API --> Frontend: List[ChatSessionSchema]
+note right of Frontend
+[{id, title, created_at, updated_at}, ...]
+end note
+
+deactivate API
+
+' =====================================================
+' Step 2: Create New Session
+' API: POST /api/chat/sessions
+' Entry Point: chat_sessions.py:31 → create_new_chat_session()
+' =====================================================
+
+note over Frontend, DB
+**Step 2: Create New Session**
+API: POST /api/chat/sessions
+Entry Point: chat_sessions.py:31 → create_new_chat_session()
+end note
+
+Frontend -> API: POST /api/chat/sessions
+activate API
+note right of Frontend
+{title?: "...", initial_query?: "..."}
+end note
+
+API -> SessionMgr: create_session(title, initial_query)
+activate SessionMgr
+note right of SessionMgr
+session_manager.py:58-67
+end note
+
+alt title not provided AND initial_query provided
+    SessionMgr -> TitleGen: generate_chat_title(initial_query)
+    activate TitleGen
+    note right of TitleGen
+    providers/titles.py
+    LLM-based title generation
+    end note
+    
+    TitleGen -> TitleGen: Extract key phrases from query
+    TitleGen --> SessionMgr: generated_title (e.g., "Pneumonia Detection Analysis")
+    deactivate TitleGen
+    
+    SessionMgr -> SessionMgr: title = generated_title
+    note right of SessionMgr
+    line 65-66
+    end note
+else title provided
+    SessionMgr -> SessionMgr: Use provided title
+end
+
+SessionMgr -> CRUD: create_chat_session(title=title)
+activate CRUD
+note right of CRUD
+boundary/CRUD/chat_history.py
+end note
+
+CRUD -> DB: INSERT INTO chat_sessions (id, title, created_at, updated_at) VALUES (uuid, title, NOW(), NOW())
+activate DB
+DB --> CRUD: ChatSession
+deactivate DB
+
+CRUD --> SessionMgr: session
+deactivate CRUD
+
+SessionMgr --> API: session
+deactivate SessionMgr
+
+API -> API: _to_schema(session)
+note right of API
+line 40
+end note
+
+API --> Frontend: ChatSessionSchema
+note right of Frontend
+{id, title, created_at, updated_at}
+end note
+
+deactivate API
+
+' =====================================================
+' Step 3: Delete Session
+' API: DELETE /api/chat/sessions/{session_id}
+' Entry Point: chat_sessions.py:43 → delete_existing_chat_session()
+' =====================================================
+
+note over Frontend, DB
+**Step 3: Delete Session**
+API: DELETE /api/chat/sessions/{session_id}
+Entry Point: chat_sessions.py:43 → delete_existing_chat_session()
+end note
+
+Frontend -> API: DELETE /api/chat/sessions/abc-123
+activate API
+
+API -> SessionMgr: delete_session(session_id)
+activate SessionMgr
+note right of SessionMgr
+session_manager.py:81-83
+end note
+
+SessionMgr -> CRUD: delete_chat_session(session_id)
+activate CRUD
+note right of CRUD
+boundary/CRUD/chat_history.py
+end note
+
+CRUD -> DB: DELETE FROM chat_sessions WHERE id = 'abc-123'
+activate DB
+
+alt Session found and deleted
+    DB --> CRUD: 1 row affected
+    CRUD --> SessionMgr: True
+else Session not found
+    DB --> CRUD: 0 rows affected
+    CRUD --> SessionMgr: False
+end
+
+deactivate DB
+CRUD --> SessionMgr
+
+deactivate CRUD
+
+alt success == False
+    API --> Frontend: HTTPException(404, "Session not found")
+    note right of API
+    line 48
+    end note
+end
+
+SessionMgr --> API
+deactivate SessionMgr
+
+API -> SessionMgr: clear_history(session_id)
+activate SessionMgr
+note right of SessionMgr
+session_manager.py:85-87
+end note
+
+SessionMgr -> HistoryMgr: clear_history(session_id)
+activate HistoryMgr
+note right of HistoryMgr
+chat/history/postgres_history.py
+end note
+
+HistoryMgr -> DB: DELETE FROM chat_history WHERE session_id = 'abc-123'
+activate DB
+DB --> HistoryMgr: History cleared
+deactivate DB
+
+HistoryMgr --> SessionMgr: Cleared
+deactivate HistoryMgr
+
+SessionMgr --> API: Cleared
+deactivate SessionMgr
+
+API --> Frontend: {message: "Session abc-123 deleted"}
+note right of API
+line 50
+end note
+
+deactivate API
+
+' =====================================================
+' Step 4: Ensure Session (Auto-Creation During Chat)
+' Triggered By: chat_stream.py:48 during streaming
+' Entry Point: session_manager.py:69 → ensure_session()
+' =====================================================
+
+note over "chat_stream.py", DB
+**Step 4: Ensure Session (Auto-Creation During Chat)**
+Triggered By: chat_stream.py:48 during streaming
+Entry Point: session_manager.py:69 → ensure_session()
+end note
+
+note over "chat_stream.py"
+User sends chat message
+with session_id
+end note
+
+"chat_stream.py" -> SessionMgr: ensure_session(session_id, query)
+activate SessionMgr
+note right of SessionMgr
+session_manager.py:69-79
+end note
+
+SessionMgr -> CRUD: get_chat_session(session_id)
+activate CRUD
+
+CRUD -> DB: SELECT * FROM chat_sessions WHERE id = session_id
+activate DB
+
+alt Session exists
+    DB --> CRUD: ChatSession
+    CRUD --> SessionMgr: session
+    note right of SessionMgr
+    Session already exists, nothing to do
+    end note
+else Session doesn't exist
+    DB --> CRUD: None
+    CRUD --> SessionMgr: None
+    
+    SessionMgr -> CRUD: create_chat_session(title=query[:50]..., session_id=session_id)
+    note right of SessionMgr
+    line 74
+    end note
+    
+    CRUD -> DB: INSERT INTO chat_sessions (id, title, ...) VALUES (session_id, ...)
+    DB --> CRUD: New session
+    CRUD --> SessionMgr: session
+end
+
+deactivate DB
+CRUD --> SessionMgr
+deactivate CRUD
+
+SessionMgr --> "chat_stream.py": Session ensured
+deactivate SessionMgr
+
+' =====================================================
+' Singleton Pattern Implementation
+' File: session_manager.py (lines 26-52)
+' =====================================================
+
+note over Thread1, Lock
+**Singleton Pattern Implementation**
+File: session_manager.py lines 26-52
+end note
+
+Thread1 -> SessionMgr: get_instance()
+activate SessionMgr
+note right of SessionMgr
+lines 47-52
+end note
+
+alt _instance is None
+    SessionMgr -> Lock: Acquire lock
+    activate Lock
+    note right of Lock
+    line 34
+    end note
+    
+    alt _instance still None (double-check)
+        SessionMgr -> SessionMgr: Create new instance
+        note right of SessionMgr
+        __new__() lines 32-38
+        end note
+        
+        SessionMgr -> SessionMgr: __init__()
+        note right of SessionMgr
+        lines 40-45
+        end note
+        
+        SessionMgr -> SessionMgr: self._history_manager = ChatHistoryManager()
+        SessionMgr -> SessionMgr: self._initialized = True
+    end
+    
+    Lock -> Lock: Release lock
+    deactivate Lock
+end
+
+SessionMgr --> Thread1: SessionManager instance
+deactivate SessionMgr
+
+Thread2 -> SessionMgr: get_instance()
+activate SessionMgr
+note right of SessionMgr
+_instance already exists
+end note
+
+SessionMgr --> Thread2: Same SessionManager instance
+deactivate SessionMgr
+
+' =====================================================
+' Data Transformation Notes
+' =====================================================
+
+note right of API #LightYellow
+**Data Transformations:**
+1. Session to Schema: ChatSession → ChatSessionSchema
+   - id: str(session.id)
+   - title: str(session.title)
+   - timestamps: isoformat()
+2. Title Generation: query → LLM-extracted phrases
+3. Delete Response: bool → HTTP 404 or success message
+end note
+
+note right of SessionMgr #LightYellow
+**Singleton Instance Creation:**
+Double-check locking pattern ensures:
+- Thread-safe singleton initialization
+- Lazy loading on first access
+- ChatHistoryManager initialized once
+end note
+
+note right of TitleGen #LightYellow
+**Title Generation Examples:**
+- Query: "What was the best recall in my federated training run with 5 clients?"
+  → Title: "Federated Training Recall Analysis"
+- Query: "Compare precision between centralized and federated modes"
+  → Title: "Precision Mode Comparison"
+- Fallback: query[:50]... if LLM fails
+end note
+
+@enduml

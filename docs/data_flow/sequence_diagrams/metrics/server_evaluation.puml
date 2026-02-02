@@ -1,176 +1,316 @@
 @startuml
-
 !define RECTANGLE class
 
 skinparam sequence {
     ArrowColor Black
-    ActorBorderColor Black
     LifeLineBorderColor Black
-    LifeLineBackgroundColor White
     ParticipantBorderColor Black
     ParticipantBackgroundColor White
-    ParticipantFontSize 12
-    ArrowFontSize 11
+    ActorBorderColor Black
+    ActorBackgroundColor White
+}
+
+skinparam note {
+    BackgroundColor LightYellow
+    BorderColor Black
 }
 
 title Server Evaluation Sequence Diagram
 
+/' ============================================
+   API: GET /api/runs/{runId}/server-evaluation
+   Component: ResultsVisualization.tsx (lines 35-37, 131-139)
+   
+   Overview: Retrieves server evaluation metrics for federated training runs.
+   Only applicable to federated mode. Returns per-round evaluation metrics,
+   summary statistics including best metrics per round, and confusion matrix data.
+   ============================================ '/
+
 autonumber
 
-participant "ResultsVisualization.tsx" as C
-participant "useResultsVisualization.ts" as H
-participant "api.ts" as A
-participant "runs_server_evaluation.py" as E
+/' Frontend Components '/
+participant "ResultsVisualization.tsx" as RV
+participant "useResultsVisualization.ts" as Hook
+participant "api.ts" as API
+
+/' Backend Components '/
+participant "runs_server_evaluation.py" as Endpoint
 participant "RunCRUD\nrun.py" as CR1
 participant "ServerEvalCRUD\nserver_evaluation.py" as CR2
-participant "Database" as D
-participant "ServerEvaluationTab.tsx" as T
+participant "Database" as DB
 
-== Step 1: Component to API Request ==
+/' UI Components '/
+participant "ServerEvaluationTab.tsx" as Tab
 
-C -> H: useResultsVisualization({config, runId})
-note right of H
+/' ============================================
+   STEP 1: Component to API Request
+   Files: ResultsVisualization.tsx (lines 35-37, 131-139)
+          useResultsVisualization.ts (line 55)
+          api.ts (lines 130-135)
+   ============================================ '/
+
+activate RV
+RV -> Hook: useResultsVisualization({config, runId})
+activate Hook
+
+note right of Hook
     Hook receives config & runId
+    from component props
 end note
-
-activate H
 
 alt Federated Mode
-    H -> A: getServerEvaluation(runId)
-    note right of A
-        File: api.ts lines 130-135
+    Hook -> API: getServerEvaluation(runId)
+    activate API
+    
+    note right of API
+        api.ts lines 130-135
+        API service function
     end note
     
-    activate A
-    A -> E: GET /api/runs/{runId}/server-evaluation
-    note right of E
+    API -> Endpoint: GET /api/runs/:runId/server-evaluation
+    activate Endpoint
+    
+    note right of Endpoint
         HTTP request to backend
     end note
-    activate E
+    
 else Centralized Mode
-    note right of H
-        Skip - not applicable for centralized
+    note right of Hook
+        Skip - server evaluation
+        not applicable to
+        centralized training
     end note
 end
 
-== Step 2: Backend Processing ==
+/' Key Code: ResultsVisualization.tsx
+   // Lines 35-37
+   serverEvaluation,              // ← From getServerEvaluation
+   serverEvaluationChartData,     // ← Transformed  
+   serverEvaluationLatestMetrics, // ← Transformed
+   serverEvaluationConfusionMatrix // ← Transformed
+   
+   // Lines 131-139 - Conditional render
+   {serverEvaluation?.has_server_evaluation && (
+     <ServerEvaluationTab ... />
+   )}
+'/
 
-E -> CR1: run_crud.get(db, runId)
+/' ============================================
+   STEP 2: Backend Processing
+   File: runs_server_evaluation.py (lines 30-50)
+   ============================================ '/
+
+Endpoint -> CR1: run_crud.get(db, runId)
 activate CR1
-
-CR1 -> D: SELECT * FROM runs WHERE id = ?
-activate D
-D --> CR1: Run record
-deactivate D
-
-CR1 --> E: Run ORM
+CR1 -> DB: SELECT * FROM runs WHERE id = ?
+activate DB
+DB --> CR1: Run record
+deactivate DB
+CR1 --> Endpoint: Run ORM
 deactivate CR1
 
-E -> E: Check run.training_mode == "federated"
+Endpoint -> Endpoint: Check run.training_mode == "federated"
 
 alt Not Federated
-    E --> A: Return empty response
-    note right of E
-        {"has_server_evaluation": false}
+    Endpoint --> API: Return empty response
+    
+    note right of Endpoint
+        Response: {"has_server_evaluation": False}
     end note
+    
 else Is Federated
-    E -> CR2: server_eval_crud.get_by_run(db, runId)
-    note right of CR2
-        File: server_evaluation.py lines 35-50
-    end note
-    
+    Endpoint -> CR2: server_eval_crud.get_by_run(db, runId)
     activate CR2
-    CR2 -> D: SELECT * FROM server_evaluations WHERE run_id = ? ORDER BY round_number
-    note right of D
-        Table: server_evaluations
-        Ordered by round_number ASC
+    
+    note right of CR2
+        server_evaluation.py
+        lines 35-50
     end note
     
-    activate D
-    D --> CR2: Evaluation records
-deactivate D
-    
-    CR2 --> E: List[ServerEvaluation]
+    CR2 -> DB: SELECT * FROM server_evaluations
+    activate DB
+    note right of DB
+        WHERE run_id = ?
+        ORDER BY round_number ASC
+    end note
+    DB --> CR2: Evaluation records
+    deactivate DB
+    CR2 --> Endpoint: List[ServerEvaluation]
     deactivate CR2
     
-    E -> CR2: server_eval_crud.get_summary_stats(db, runId)
-    note right of CR2
-        File: server_evaluation.py lines 80-120
-    end note
-    
+    Endpoint -> CR2: server_eval_crud.get_summary_stats(db, runId)
     activate CR2
-    CR2 -> CR2: Calculate summary statistics
-    note right of CR2
-        - Exclude round 0 (pre-training)
-        - Calculate best accuracy
-        - Calculate best recall
-        - Get latest metrics
-    end note
-    
-    CR2 --> E: Summary dict
-    note right of CR2
-        Return:
-        {
-            "total_rounds": len(evaluations),
-            "best_accuracy": {"value": ..., "round": ...},
-            "best_recall": {"value": ..., "round": ...},
-            ...
-        }
-    end note
+    CR2 --> Endpoint: Summary dict
     deactivate CR2
 end
 
-E --> A: ServerEvaluationResponse
-note right of E
-    {
-        "run_id": run_id,
-        "has_server_evaluation": true,
-        "evaluations": [...],
-        "summary": summary
-    }
+/' Key Code: runs_server_evaluation.py lines 30-50
+   @router.get("/{run_id}/server-evaluation")
+   async def get_server_evaluation(run_id: int, db: Session = Depends(get_db)):
+       run = run_crud.get(db, run_id)
+       
+       if run.training_mode != "federated":
+           return {"has_server_evaluation": False}
+       
+       evaluations = server_eval_crud.get_by_run(db, run_id, order_by_round=True)
+       summary = server_eval_crud.get_summary_stats(db, run_id)
+       
+       return {
+           "run_id": run_id,
+           "has_server_evaluation": True,
+           "evaluations": [...],
+           "summary": summary
+       }
+'/
+
+Endpoint --> API: ServerEvaluationResponse
+
+deactivate Endpoint
+
+/' ============================================
+   STEP 3: Database Queries Summary
+   File: server_evaluation.py (lines 35-50, 80-120)
+   ============================================ '/
+
+note over DB
+    **Database Queries:**
+    
+    | Query | Table | Purpose |
+    |-------|-------|---------|
+    | SELECT * FROM runs WHERE id = ? | runs | Verify run exists & check mode |
+    | SELECT * FROM server_evaluations WHERE run_id = ? ORDER BY round_number ASC | server_evaluations | Get all evaluations ordered |
+    | SELECT * FROM server_evaluations WHERE run_id = ? | server_evaluations | Get all for summary stats |
 end note
-deactivate E
 
-== Step 3: Transform & Response ==
+/' Key Code: server_evaluation.py lines 80-120 (Summary Stats)
+   def get_summary_stats(self, db: Session, run_id: int):
+       evaluations = self.get_by_run(db, run_id)
+       
+       # Exclude round 0 (initialization)
+       trained_evals = [e for e in evaluations if e.round_number > 0]
+       
+       # Calculate best metrics
+       best_accuracy = max(evals_for_best, key=lambda x: x.accuracy)
+       best_recall = max(evals_for_best, key=lambda x: x.recall)
+       
+       return {
+           "total_rounds": len(evaluations),
+           "best_accuracy": {"value": best_accuracy.accuracy, "round": best_accuracy.round_number},
+           "best_recall": {"value": best_recall.recall, "round": best_recall.round_number},
+           ...
+       }
+'/
 
-A --> H: ServerEvaluationResponse
-deactivate A
+/' ============================================
+   STEP 4: Transform & Response
+   File: useResultsVisualization.ts (lines 125-150)
+   ============================================ '/
 
-H -> H: Transform to component props
-note right of H
-    File: useResultsVisualization.ts lines 125-150
+API --> Hook: ServerEvaluationResponse
+
+deactivate API
+
+Hook -> Hook: Transform to component props
+
+note right of Hook
+    Lines 125-150
 end note
 
-H -> H: Build serverEvaluationChartData
-note right of H
+Hook -> Hook: Build serverEvaluationChartData
+
+note right of Hook
     Map evaluations to chart format
+    for line chart display
 end note
 
-H -> H: Extract serverEvaluationLatestMetrics
-note right of H
+/' Data Transformation:
+   Source: evaluations[]
+   Transformed To: Chart format
+   Component Prop: serverEvaluationChartData
+'/
+
+Hook -> Hook: Extract serverEvaluationLatestMetrics
+
+note right of Hook
     From summary.latest_metrics
+    Most recent evaluation metrics
 end note
 
-H -> H: Build serverEvaluationConfusionMatrix
-note right of H
-    From latest evaluation record
+/' Data Transformation:
+   Source: summary.latest_metrics
+   Transformed To: Metrics object
+   Component Prop: serverEvaluationLatestMetrics
+'/
+
+Hook -> Hook: Build serverEvaluationConfusionMatrix
+
+note right of Hook
+    From latest evaluation
+    2D array for matrix display
 end note
 
-H --> C: serverEvaluation + transformed props
-note right of C
-    Props:
-    - serverEvaluation
+/' Data Transformation:
+   Source: latest.confusion_matrix
+   Transformed To: 2D array
+   Component Prop: serverEvaluationConfusionMatrix
+'/
+
+Hook --> RV: serverEvaluation + transformed props
+
+deactivate Hook
+
+RV -> Tab: Render ServerEvaluationTab
+activate Tab
+
+note right of Tab
+    ServerEvaluationTab receives:
     - serverEvaluationChartData
     - serverEvaluationLatestMetrics
     - serverEvaluationConfusionMatrix
+    
+    Renders charts and metrics display
 end note
-deactivate H
 
-alt has_server_evaluation
-    C -> T: Render ServerEvaluationTab
-    note right of T
-        With chart data & metrics
-    end note
-end
+deactivate Tab
+
+deactivate RV
+
+/' ============================================
+   Transformations Summary
+   ============================================ '/
+
+note over Hook
+    **Transformations:**
+    
+    | Source | Transformed To | Component Prop |
+    |--------|----------------|----------------|
+    | evaluations | Chart format | serverEvaluationChartData |
+    | summary.latest_metrics | Metrics object | serverEvaluationLatestMetrics |
+    | latest.confusion_matrix | 2D array | serverEvaluationConfusionMatrix |
+end note
+
+/' ============================================
+   File References Summary
+   ============================================ '/
+
+note right
+    **File Reference Summary:**
+    
+    | Layer | File | Key Lines | Purpose |
+    |-------|------|-----------|---------|
+    | Component | ResultsVisualization.tsx | 35-37, 131-139 | Main results container |
+    | Component | ServerEvaluationTab.tsx | 1-50 | Server evaluation display |
+    | Hook | useResultsVisualization.ts | 55, 125-150 | Data fetching & transformation |
+    | API Service | api.ts | 130-135 | HTTP client methods |
+    | API Endpoint | runs_server_evaluation.py | 30-50 | API endpoint handler |
+    | CRUD | run.py | 25-35 | Run data access |
+    | CRUD | server_evaluation.py | 35-50, 80-120 | Server evaluation data access |
+    
+    **Summary Stats Calculation:**
+    - Exclude round 0 (initialization round)
+    - Calculate best accuracy and recall across rounds
+    - Track which round achieved best metrics
+    - Include total number of rounds
+end note
 
 @enduml

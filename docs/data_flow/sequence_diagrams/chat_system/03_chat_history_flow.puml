@@ -1,0 +1,317 @@
+@startuml
+!define RECTANGLE class
+
+' =====================================================
+' Chat History Retrieval Flow
+' API: GET /api/chat/history/{session_id}
+' Entry Point: chat_history.py:19 → get_chat_history()
+' Pattern: Paginated history retrieval with BaseAgent contract
+' =====================================================
+
+title Chat History Retrieval Flow
+
+autonumber
+
+' Participant declarations
+participant "React Frontend" as Frontend
+participant "chat_history.py" as API #LightBlue
+participant "deps.py" as Deps #LightGreen
+participant "app.state" as AppState #LightYellow
+participant "AgentFactory" as Factory #LightCoral
+participant "ArxivAugmentedEngine" as Agent #LightPink
+participant "ChatHistoryManager" as HistoryMgr #LightCyan
+participant "Database" as DB #LightGray
+participant "ChatHistoryResponse" as Schema #LightGoldenRodYellow
+
+' =====================================================
+' Step 1: Request Validation & QueryEngine Check
+' File: chat_history.py (lines 19-42)
+' File: deps.py (get_query_engine)
+' =====================================================
+
+note over Frontend, DB
+**Step 1: Request Validation & QueryEngine Check**
+File: chat_history.py lines 19-42
+File: deps.py (get_query_engine)
+end note
+
+Frontend -> API: GET /api/chat/history/{session_id}?limit=50&offset=0
+activate API
+note right of Frontend
+Default: limit=50, offset=0
+end note
+
+API -> Deps: get_query_engine()
+activate Deps
+note right of Deps
+deps.py
+end note
+
+Deps -> AppState: Check app.state.query_engine
+
+alt QueryEngine not initialized
+    AppState --> Deps: None
+    Deps --> API: None
+    
+    API --> Frontend: HTTPException(500, "QueryEngine not initialized properly")
+    note right of API
+    lines 38-42
+    end note
+else QueryEngine exists
+    AppState --> Deps: query_engine
+    Deps --> API: query_engine
+    
+    note over API
+    Continue to Step 2
+    end note
+end
+
+deactivate Deps
+
+' =====================================================
+' Step 2: Agent Factory Initialization
+' File: chat_history.py (lines 44-56)
+' File: factory.py (get_agent_factory)
+' =====================================================
+
+note over API, Factory
+**Step 2: Agent Factory Initialization**
+File: chat_history.py lines 44-56
+File: factory.py (get_agent_factory)
+end note
+
+API -> AppState: getattr(request.app.state, "agent_factory", None)
+note right of API
+lines 45-48
+end note
+
+alt Cached factory exists
+    AppState --> API: agent_factory
+else No cached factory
+    API -> API: logger.warning("[HISTORY] No cached factory, creating on-demand")
+    note right of API
+    lines 50-52
+    end note
+    
+    API -> Factory: get_agent_factory(app_state)
+    activate Factory
+    note right of Factory
+    factory.py:74-87
+    end note
+    
+    Factory --> API: new AgentFactory
+    deactivate Factory
+end
+
+API -> Factory: get_chat_agent()
+activate Factory
+note right of Factory
+factory.py:31-47
+end note
+
+Factory --> API: agent (ArxivAugmentedEngine)
+deactivate Factory
+
+' =====================================================
+' Step 3: History Retrieval & Pagination
+' File: chat_history.py (lines 58-68)
+' File: research_engine.py (history method, lines 195-197)
+' File: postgres_history.py (ChatHistoryManager.get_history)
+' =====================================================
+
+note over API, DB
+**Step 3: History Retrieval & Pagination**
+File: chat_history.py lines 58-68
+File: research_engine.py: history method, lines 195-197
+File: postgres_history.py: ChatHistoryManager.get_history
+end note
+
+API -> Agent: history(session_id)
+activate Agent
+note right of Agent
+research_engine.py:195-197
+end note
+
+Agent -> HistoryMgr: get_history(session_id)
+activate HistoryMgr
+note right of HistoryMgr
+postgres_history.py
+end note
+
+HistoryMgr -> DB: SELECT * FROM chat_history\nWHERE session_id = session_id\nORDER BY created_at ASC
+activate DB
+DB --> HistoryMgr: List of messages
+deactivate DB
+
+HistoryMgr -> HistoryMgr: Convert to [(user_msg, ai_response), ...]
+note right of HistoryMgr
+Tuple format
+end note
+
+HistoryMgr --> Agent: full_history: List[Tuple[str, str]]
+deactivate HistoryMgr
+
+Agent --> API: full_history
+deactivate Agent
+
+API -> API: total_count = len(full_history)
+note right of API
+line 60
+end note
+
+API -> API: paginated_history = full_history[offset : offset + limit]
+note right of API
+line 63
+Slice for pagination
+end note
+
+loop For each (user_msg, ai_msg) in paginated_history
+    API -> API: {"user": user_msg, "assistant": ai_msg}
+    note right of API
+    lines 65-68
+    end note
+end
+
+API -> API: formatted_history = [{"user": ..., "assistant": ...}, ...]
+
+' =====================================================
+' Step 4: Response Construction
+' File: chat_history.py (lines 70-76)
+' File: schema.py (ChatHistoryResponse)
+' =====================================================
+
+note over API, Schema
+**Step 4: Response Construction**
+File: chat_history.py lines 70-76
+File: schema.py (ChatHistoryResponse)
+end note
+
+API -> Schema: ChatHistoryResponse(history, session_id, total_count, limit, offset)
+activate Schema
+note right of Schema
+schema.py
+end note
+
+Schema -> Schema: Validate response schema
+
+Schema --> API: ChatHistoryResponse
+deactivate Schema
+
+API --> Frontend: {\n  "history": [{"user": "...", "assistant": "..."}, ...],\n  "session_id": "abc-123",\n  "total_count": 100,\n  "limit": 50,\n  "offset": 0\n}
+deactivate API
+
+' =====================================================
+' Error Handling
+' File: chat_history.py (lines 77-82)
+' =====================================================
+
+note over API, Agent
+**Error Handling**
+File: chat_history.py lines 77-82
+end note
+
+API -> Agent: history(session_id)
+activate Agent
+
+alt Exception occurs
+    Agent --> API: Exception raised
+    deactivate Agent
+    
+    API -> API: logger.error("Error retrieving history: %s", exc)
+    note right of API
+    line 78
+    end note
+    
+    API --> Frontend: HTTPException(500, "Error retrieving history: ...")
+    note right of API
+    lines 79-82
+    end note
+else Success
+    Agent --> API: full_history
+    deactivate Agent
+end
+
+' =====================================================
+' History Persistence Flow (Additional Context)
+' =====================================================
+
+note over "chat_stream.py", DB
+**History Persistence Flow** (During chat streaming)
+File: chat_stream.py
+end note
+
+note over "chat_stream.py"
+User query processed, response generated
+end note
+
+"chat_stream.py" -> Agent: (stream completed)
+activate Agent
+
+Agent -> Agent: Full response collected
+note right of Agent
+After all tokens streamed
+end note
+
+Agent -> HistoryMgr: add_to_history(session_id, user_message, ai_response)
+activate HistoryMgr
+note right of HistoryMgr
+postgres_history.py
+end note
+
+HistoryMgr -> DB: INSERT INTO chat_history (session_id, user_message, ai_response, created_at)\nVALUES (session_id, user_msg, ai_resp, NOW())
+activate DB
+DB --> HistoryMgr: History saved
+deactivate DB
+
+HistoryMgr --> Agent: Saved
+deactivate HistoryMgr
+
+Agent --> "chat_stream.py"
+deactivate Agent
+
+note over "chat_stream.py"
+History now available via GET /history/{session_id}
+end note
+
+' =====================================================
+' Data Transformation Notes
+' =====================================================
+
+note right of API #LightYellow
+**Data Transformations:**
+1. Request: Query params (limit=50, offset=0) → int
+2. History retrieval: DB rows → List[Tuple[str, str]]
+3. Pagination: full_history[offset:offset+limit] → Slice
+4. Format conversion: Tuple → {"user": str, "assistant": str}
+5. Response construction: Dict → ChatHistoryResponse schema
+6. History persistence: (session_id, user_msg, ai_msg) → DB INSERT
+end note
+
+note right of HistoryMgr #LightYellow
+**Database Schema:**
+ChatHistory Table:
+- id: Integer (1, 2, 3, ...)
+- session_id: UUID ("abc-123-def-456")
+- user_message: Text ("What was the best recall?")
+- ai_response: Text ("The best validation recall was 0.92...")
+- created_at: DateTime ("2026-02-01T10:30:00Z")
+end note
+
+note right of DB #LightYellow
+**Pagination Examples:**
+
+Small History (10 messages):
+- Request: limit=50, offset=0
+- Returns: All 10 messages
+
+Large History (150 messages):
+- Request 1: limit=50, offset=0 → messages 0-49
+- Request 2: limit=50, offset=50 → messages 50-99
+- Request 3: limit=50, offset=100 → messages 100-149
+
+Offset Beyond Total:
+- Request: limit=50, offset=100 on 30 messages
+- Returns: [] (empty, offset beyond total)
+end note
+
+@enduml

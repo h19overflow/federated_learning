@@ -1,157 +1,325 @@
 @startuml
-
 !define RECTANGLE class
 
 skinparam sequence {
     ArrowColor Black
-    ActorBorderColor Black
     LifeLineBorderColor Black
-    LifeLineBackgroundColor White
     ParticipantBorderColor Black
     ParticipantBackgroundColor White
-    ParticipantFontSize 12
-    ArrowFontSize 11
+    ActorBorderColor Black
+    ActorBackgroundColor White
+}
+
+skinparam note {
+    BackgroundColor LightYellow
+    BorderColor Black
 }
 
 title Federated Training Flow
 
+/' ============================================
+   API Endpoint: POST /api/experiments/federated/train
+   Entry Point: federated_endpoints.py:19-86 → federated_tasks.py:14-208
+   
+   Overview: Federated training distributes data across multiple clients and 
+   aggregates model updates using the Flower framework. The endpoint uploads 
+   training data, updates configuration files, and spawns a PowerShell script 
+   (rf.ps1) that orchestrates the federated learning process.
+   ============================================ '/
+
 autonumber
 
-participant "Client\n(Frontend)" as Client
+participant "Frontend" as Client
 participant "Endpoint\nfederated_endpoints.py" as EP
 participant "FileHandler\nfile_handling.py" as FH
+participant "ConfigManager\nconfig_manager.py" as CM
 participant "BackgroundTask\nfederated_tasks.py" as Task
-participant "ConfigManager" as CM
 participant "core/utils.py" as Utils
 participant "toml_adjustment.py" as TOML
-participant "pyproject.toml" as FileTOML
+participant "pyproject.toml" as File
 participant "Environment" as Env
 participant "PowerShell\nrf.ps1" as PS
 participant "Flower CLI" as Flwr
 participant "Flower Server" as Server
-participant "Flower Client" as FlowerClient
+participant "Flower Client" as ClientNode
 
-== Step 1: Upload & Configuration Update ==
+/' ============================================
+   STEP 1: Upload & Configuration Update
+   Files: federated_endpoints.py (lines 19-63)
+          file_handling.py (lines 17-77)
+          federated_tasks.py (lines 36-88)
+   ============================================ '/
 
-Client -> EP: POST /api/experiments/federated/train
-note right of EP
-    File: federated_endpoints.py lines 20-26
-    Parse form data (data_zip, params)
-end note
-
+activate Client
+Client -> EP: POST /train (data_zip, params)
 activate EP
 
-EP -> FH: prepare_zip(data_zip)
-note right of FH
-    File: file_handling.py lines 34-48
-    Extract ZIP to temp directory
+note over EP
+    Lines 20-26
+    Parse form data:
+    - data_zip (required): ZIP containing Images/ + metadata CSV
+    - experiment_name: pneumonia_federated
+    - csv_filename: stage2_train_metadata.csv
+    - num_server_rounds: 3 (Federated learning rounds)
 end note
 
+EP -> FH: prepare_zip(data_zip)
 activate FH
+
+note over FH
+    Lines 34-48
+    Extract ZIP to temp directory
+    Create temp dir, save & extract
+end note
+
 FH --> EP: source_path
+
 deactivate FH
 
 EP -> EP: Add background task
-note right of EP
-    File: federated_endpoints.py lines 65-71
+
+note over EP
+    Lines 65-71
+    Queue background task for execution
 end note
 
 EP --> Client: {"status": "queued"}
+
 deactivate EP
+deactivate Client
+
+/' Background task starts '/
+activate Task
 
 Task -> CM: Update default_config.yaml
-note right of CM
-    File: federated_tasks.py lines 49-70
-    Set file-path, image-dir, num-server-rounds
+activate CM
+
+note over CM
+    Lines 49-70
+    Set configuration parameters:
+    - experiment.file-path: csv_path
+    - experiment.image-dir: image_dir
+    - experiment.num-server-rounds: num_server_rounds
 end note
 
-activate CM
+/' Key Code: federated_tasks.py lines 60-63
+   config_manager.set("experiment.file-path", csv_path)
+   config_manager.set("experiment.image-dir", image_dir)
+   config_manager.set("experiment.num-server-rounds", num_server_rounds)
+   config_manager.save()
+'/
+
 CM -> CM: save()
-CM --> Task: Config updated
+CM --> Task: Configuration updated
 deactivate CM
 
-== Step 2: TOML Synchronization (Critical) ==
+/' ============================================
+   STEP 2: TOML Synchronization (Critical)
+   Files: federated_tasks.py (lines 72-88)
+          core/utils.py (function: read_configs_to_toml)
+          toml_adjustment.py (function: update_flwr_config)
+   
+   CRITICAL: Flower framework reads configuration from pyproject.toml
+   YAML config must be synced to TOML BEFORE starting Flower
+   Failure to sync causes Flower to use stale/incorrect parameters
+   ============================================ '/
 
 Task -> Utils: read_configs_to_toml()
-note right of Utils
-    File: core/utils.py
-    Extract Flower configs from default_config.yaml
+activate Utils
+
+note over Utils
+    Extract Flower configs
+    from default_config.yaml
 end note
 
-activate Utils
 Utils --> Task: flwr_configs dict
+
 deactivate Utils
 
 Task -> TOML: update_flwr_config(**flwr_configs)
-note right of TOML
-    File: toml_adjustment.py
-    Update [tool.flwr.app.config] section
-end note
-
 activate TOML
-TOML -> FileTOML: Write updated config
-note right of FileTOML
-    Flower reads configuration from pyproject.toml
-    CRITICAL: Must sync BEFORE starting Flower
+
+note over TOML
+    Update [tool.flwr.app.config]
+    section in pyproject.toml
 end note
 
-FileTOML --> TOML: Config written
+/' Key Code: federated_tasks.py lines 75-86
+   from federated_pneumonia_detection.src.control.federated_new_version.core.utils import (
+       read_configs_to_toml,
+   )
+   from federated_pneumonia_detection.src.control.federated_new_version.toml_adjustment import (
+       update_flwr_config,
+   )
+   
+   flwr_configs = read_configs_to_toml()
+   if flwr_configs:
+       task_logger.info(f"  Configs to sync: {flwr_configs}")
+       update_flwr_config(**flwr_configs)
+'/
+
+TOML -> File: Write updated config
+activate File
+
+note over File
+    Flower reads config
+    from this file
+end note
+
+File --> TOML: TOML updated
+deactivate File
 deactivate TOML
 
-== Step 3: Environment Setup & Subprocess Spawn ==
+/' Data Transformation Notes:
+   - YAML configuration extracted and converted to TOML format
+   - Flower-specific configs isolated from general config
+   - pyproject.toml [tool.flwr.app.config] section updated
+   '/
+
+/' ============================================
+   STEP 3: Environment Setup & Subprocess Spawn
+   Files: federated_tasks.py (lines 90-148)
+   ============================================ '/
 
 Task -> Task: Locate rf.ps1 script
-note right of Task
-    File: federated_tasks.py lines 92-99
+
+note over Task
+    Lines 92-99
     project_root / rf.ps1
+    Verify script exists
 end note
 
 Task -> Env: Copy environment variables
-note right of Env
-    File: federated_tasks.py lines 111-127
-    Include DB credentials (POSTGRES_DB_URI, etc.)
-    Verify required environment variables
-end note
-
 activate Env
 
-Task -> PS: subprocess.Popen(ps_cmd, env=env)
-note right of PS
-    File: federated_tasks.py lines 129-148
-    Execute rf.ps1 with:
-    - Bypass execution policy
-    - Inherit env vars
-    Command: ["powershell", "-ExecutionPolicy", "Bypass", "-File", rf_script_path]
+note over Env
+    Lines 111-127
+    Copy current environment (includes .env vars)
+    Include DB credentials
+    Verify required vars present:
+    - POSTGRES_DB_URI
+    - POSTGRES_DB
+    - POSTGRES_USER
+    - POSTGRES_PASSWORD
 end note
 
-PS --> Task: Process PID
+/' Key Code: federated_tasks.py lines 111-128
+   env = os.environ.copy()  # Copy current environment (includes .env vars)
+   
+   # Verify critical env vars are present
+   required_vars = [
+       "POSTGRES_DB_URI",
+       "POSTGRES_DB",
+       "POSTGRES_USER",
+       "POSTGRES_PASSWORD",
+   ]
+   missing_vars = [var for var in required_vars if var not in env]
+   if missing_vars:
+       task_logger.warning(f"[WARN] Missing environment variables: {missing_vars}")
+'/
+
+Env --> Task: Environment prepared
 deactivate Env
 
-== Step 4: Output Streaming & Completion ==
+Task -> PS: subprocess.Popen(ps_cmd, env=env)
+activate PS
+
+note over PS
+    Lines 129-148
+    Execute rf.ps1 with:
+    - Bypass execution policy
+    - Inherit environment variables
+    - Run from project root
+    
+    PowerShell Command:
+    powershell -ExecutionPolicy Bypass -File rf.ps1
+    
+    Subprocess Config:
+    - stdout=subprocess.PIPE
+    - stderr=subprocess.STDOUT
+    - text=True
+    - bufsize=1
+end note
+
+/' Key Code: federated_tasks.py lines 129-148
+   ps_cmd = [
+       "powershell",
+       "-ExecutionPolicy", "Bypass",
+       "-File", str(rf_script_path),
+   ]
+   
+   process = subprocess.Popen(
+       ps_cmd,
+       cwd=str(project_root),
+       stdout=subprocess.PIPE,
+       stderr=subprocess.STDOUT,
+       text=True,
+       bufsize=1,
+       env=env,  # CRITICAL: Pass environment to subprocess
+   )
+'/
+
+PS --> Task: Process PID
+
+/' ============================================
+   STEP 4: Output Streaming & Completion
+   Files: federated_tasks.py (lines 152-187)
+   ============================================ '/
 
 loop Stream Output
     PS -> Task: stdout.readline()
-    activate PS
+    activate PS #LightBlue
+    
     Task -> Task: Clean log level prefix
-    note right of Task
-        File: federated_tasks.py lines 159-167
-        Remove "INFO - ", "WARNING - ", etc.
+    
+    note over Task
+        Lines 159-167
+        Remove duplicate log level prefixes:
+        - "INFO - "
+        - "WARNING - "
+        - "ERROR - "
+        - "DEBUG - "
+        - "CRITICAL - "
     end note
+    
     Task -> Task: log(f"[FLWR] {line}")
+    
+    /' Key Code: federated_tasks.py lines 152-172
+       if process.stdout:
+           for line in iter(process.stdout.readline, ""):
+               if line:
+                   stripped_line = line.rstrip()
+                   # Remove duplicate log level prefixes
+                   for level in ["INFO", "WARNING", "ERROR", "DEBUG", "CRITICAL"]:
+                       if stripped_line.startswith(f"{level} - "):
+                           stripped_line = stripped_line[len(level) + 3:]
+                           break
+                   task_logger.info(f"[FLWR] {stripped_line}")
+       
+       return_code = process.wait()
+    '/
+    
     deactivate PS
 end
 
 PS -> Task: process.wait()
-note right of PS
-    Return exit code (0 = success)
+activate PS #LightGreen
+
+note over PS
+    Return exit code
+    0 = success
+    non-zero = failure
 end note
-activate PS
+
 PS --> Task: return_code
+deactivate PS
 deactivate PS
 
 Task -> Task: Log completion status
-Task --> Task: Return results dict
-note right of Task
+Task -> Task: Return results dict
+
+note over Task
+    Lines 180-187
     Return Value:
     {
         "message": "Federated training completed",
@@ -159,44 +327,149 @@ note right of Task
         "status": "completed" if return_code == 0 else "failed",
         "return_code": return_code,
         "source_path": source_path,
-        "csv_filename": csv_filename
+        "csv_filename": csv_filename,
     }
 end note
 
-== Step 5: Flower Execution (External Process) ==
+deactivate Task
+
+/' ============================================
+   STEP 5: Flower Execution (External Process)
+   Files: rf.ps1 (PowerShell orchestration script)
+          Flower framework (flwr CLI)
+   ============================================ '/
 
 PS -> Flwr: Execute flower-superlink
 activate Flwr
-Flwr -> Server: Start server process
-note right of Server
-    Load pyproject.toml config
-end note
 activate Server
+
+Flwr -> Server: Start server process
+
+note over Server
+    Load pyproject.toml config
+    from [tool.flwr.app.config]
+end note
+
+Server --> Flwr: Server ready
+deactivate Server
 deactivate Flwr
 
 PS -> Flwr: Execute flower-client-app (N times)
 activate Flwr
-Flwr -> FlowerClient: Start client processes
-note right of FlowerClient
-    Each client loads data partition
+activate ClientNode
+
+Flwr -> ClientNode: Start client processes (N clients)
+
+note over ClientNode
+    Each client loads
+    data partition
+    from source_path
 end note
-activate FlowerClient
+
+ClientNode --> Flwr: Clients ready
+deactivate ClientNode
 deactivate Flwr
 
 loop num_server_rounds
-    FlowerClient -> Server: Send local updates (model weights)
-    Server -> Server: Aggregate using FedAvg
-    note right of Server
-        Federated Averaging algorithm
-        Combines client updates into global model
+    activate ClientNode
+    activate Server
+    
+    ClientNode -> Server: Send local updates
+    note over Server
+        Receive model updates
+        from all clients
     end note
-    Server -> FlowerClient: Broadcast global model
+    
+    Server -> Server: Aggregate (FedAvg)
+    note over Server
+        Federated Averaging
+        algorithm combines
+        client updates
+    end note
+    
+    Server --> ClientNode: Broadcast global model
+    note over ClientNode
+        Receive updated
+        global model
+    end note
+    
+    deactivate ClientNode
+    deactivate Server
 end
 
 Server --> PS: Training complete
-deactivate Server
-deactivate FlowerClient
+activate Server
+activate PS
 
-PS -> PS: Exit with code 0/1
+note over PS
+    Exit with code 0/1
+    based on success/failure
+end note
+
+deactivate Server
+deactivate PS
+
+/' ============================================
+   Error Handling
+   ============================================ '/
+
+note over EP, Task #Pink
+    Error Handling:
+    
+    1. File not found
+       File: federated_tasks.py:189-196
+       Response: {"status": "failed", "error": str(e)}
+    
+    2. Config update failure
+       File: federated_tasks.py:198-207
+       Response: Log exception with traceback
+    
+    3. PowerShell script missing
+       File: federated_tasks.py:96-97
+       Action: Raise FileNotFoundError
+    
+    4. Missing environment vars
+       File: federated_tasks.py:123-126
+       Action: Warning logged, may fail later
+end note
+
+/' ============================================
+   File References Summary
+   ============================================ '/
+
+note right
+    **File Reference Summary:**
+    
+    | Layer | File | Key Lines | Purpose |
+    |-------|------|-----------|---------|
+    | API | federated_endpoints.py | 19-86 | Endpoint definition, validation |
+    | Utils | file_handling.py | 17-77 | ZIP extraction & path handling |
+    | Task | federated_tasks.py | 14-208 | Config update, TOML sync, subprocess orchestration |
+    | Config | default_config.yaml | N/A | Primary configuration source |
+    | TOML | pyproject.toml | N/A | Flower framework configuration |
+    | Script | rf.ps1 | N/A | PowerShell orchestration script |
+    | Core | core/utils.py | N/A | Config-to-TOML transformation |
+    | Adjustment | toml_adjustment.py | N/A | TOML file updater |
+    
+    **Configuration Flow:**
+    1. Update default_config.yaml (lines 60-63)
+    2. Extract Flower configs (lines 82)
+    3. Sync to pyproject.toml (lines 85)
+    4. Start Flower process (lines 140-148)
+    
+    **CRITICAL:** If step 3 is skipped, Flower uses stale config values.
+    
+    **Monitoring Points:**
+    1. Task Logs: [FLWR] prefixed lines streamed from PowerShell process
+    2. Return Code: 0 = success, non-zero = failure
+    3. Environment Validation: Missing DB vars logged as warnings
+    4. Config Sync: [OK] pyproject.toml updated successfully
+    
+    **Security Considerations:**
+    - Subprocess execution uses hardcoded command args (not user input)
+    - Bandit suppressions: B404 (subprocess import), B603 (hardcoded args)
+    - Environment variables copied from FastAPI process (.env)
+    - No user input directly injected into environment
+end note
 
 @enduml

@@ -1,0 +1,261 @@
+@startuml
+!define RECTANGLE class
+
+' =====================================================
+' Arxiv MCP Status Check Flow
+' API: GET /api/chat/arxiv/status
+' Entry Point: chat_status.py:21 → get_arxiv_status()
+' Pattern: Cached status with 5-minute TTL
+' =====================================================
+
+title Arxiv MCP Status Check Flow
+
+autonumber
+
+' Participant declarations
+participant "React Frontend" as Frontend
+participant "chat_status.py" as API #LightBlue
+participant "Module-level Cache" as Cache #LightGreen
+participant "deps.py" as Deps #LightYellow
+participant "MCPManager" as MCPMgr #LightCoral
+participant "Arxiv MCP Server" as MCPServer #LightPink
+
+' =====================================================
+' Step 1: Cache Check
+' File: chat_status.py (lines 21-33)
+' =====================================================
+
+note over Frontend, Cache
+**Step 1: Cache Check**
+File: chat_status.py lines 21-33
+end note
+
+Frontend -> API: GET /api/chat/arxiv/status
+activate API
+
+API -> API: current_time = time.time()
+note right of API
+line 26
+end note
+
+API -> Cache: Check _arxiv_status_cache
+note right of Cache
+lines 16-17
+Global variables
+end note
+
+alt Cache valid (< 5 min old)
+    API -> API: cache_age = current_time - _arxiv_status_cache_time
+    note right of API
+    line 31
+    end note
+    
+    API -> API: if cache_age < CACHE_TTL_SECONDS (300)
+    note right of API
+    lines 29-33
+    end note
+    
+    Cache --> API: _arxiv_status_cache (cached result)
+    
+    API --> Frontend: Cached result
+    note right of Frontend
+    No MCP call, instant response
+    end note
+else Cache miss or expired
+    note over API
+    Proceed to Step 2
+    end note
+end
+
+deactivate API
+
+' =====================================================
+' Step 2: MCP Manager Query (Cache Miss)
+' File: chat_status.py (lines 35-46)
+' File: deps.py (get_mcp_manager)
+' File: mcp_manager.py (MCPManager)
+' =====================================================
+
+note over API, MCPServer
+**Step 2: MCP Manager Query (Cache Miss)**
+File: chat_status.py lines 35-46
+File: deps.py (get_mcp_manager)
+File: mcp_manager.py (MCPManager class)
+end note
+
+note over API
+Cache miss or expired
+end note
+
+Frontend -> API: GET /api/chat/arxiv/status (continued)
+activate API
+
+API -> Deps: get_mcp_manager()
+activate Deps
+note right of Deps
+deps.py
+end note
+
+Deps -> MCPMgr: Return singleton instance
+activate MCPMgr
+note right of MCPMgr
+Initialized at app startup
+end note
+
+MCPMgr --> Deps: mcp_manager
+deactivate MCPMgr
+
+Deps --> API: mcp_manager
+deactivate Deps
+
+API -> MCPMgr: is_available
+activate MCPMgr
+note right of MCPMgr
+Property check
+end note
+
+MCPMgr -> MCPServer: Check connection status
+activate MCPServer
+note right of MCPServer
+stdio transport check
+end note
+
+alt MCP server connected
+    MCPServer --> MCPMgr: Connected
+    deactivate MCPServer
+    
+    MCPMgr --> API: True
+    
+    API -> MCPMgr: get_arxiv_tools()
+    note right of MCPMgr
+    Fetch available tools
+    end note
+    
+    MCPMgr -> MCPServer: List tools
+    activate MCPServer
+    MCPServer --> MCPMgr: [search_arxiv, get_paper_metadata, ...]
+    deactivate MCPServer
+    
+    MCPMgr --> API: List of tool names
+    deactivate MCPMgr
+    
+    API -> API: result = {\n  "available": True,\n  "tools": ["search_arxiv", ...],\n  "cached_at": datetime.utcnow().isoformat()\n}
+    note right of API
+    lines 38-46
+    end note
+    
+else MCP server disconnected
+    MCPServer --> MCPMgr: Not connected
+    deactivate MCPServer
+    
+    MCPMgr --> API: False
+    deactivate MCPMgr
+    
+    API -> API: result = {\n  "available": False,\n  "tools": [],\n  "cached_at": datetime.utcnow().isoformat()\n}
+end
+
+' =====================================================
+' Step 3: Cache Update & Response
+' File: chat_status.py (lines 48-52)
+' =====================================================
+
+note over API, Cache
+**Step 3: Cache Update & Response**
+File: chat_status.py lines 48-52
+end note
+
+API -> Cache: _arxiv_status_cache = result
+note right of Cache
+line 49
+Store result
+end note
+
+API -> Cache: _arxiv_status_cache_time = current_time
+note right of Cache
+line 50
+Store timestamp
+end note
+
+API --> Frontend: result
+note right of Frontend
+{\n  "available": true/false,\n  "tools": [...],\n  "cached_at": "2026-02-01T10:30:00Z"\n}
+end note
+
+deactivate API
+
+' =====================================================
+' Cache Lifetime Example
+' =====================================================
+
+participant "Time 0:00" as T0
+participant "Time 0:01" as T1
+participant "Time 0:06" as T6
+
+note over T0, Cache
+**Cache Lifetime Example**
+end note
+
+T0 -> Cache: Request 1: Cache miss
+activate Cache
+note right of Cache
+Query MCP, set cache
+end note
+
+T1 -> Cache: Request 2: Cache HIT
+note right of Cache
+Age: 1 min < 5 min TTL
+Return cached
+end note
+
+T6 -> Cache: Request 3: Cache EXPIRED
+note right of Cache
+Age: 6 min > 5 min TTL
+Query MCP, refresh cache
+end note
+
+deactivate Cache
+
+' =====================================================
+' Data Transformation Notes
+' =====================================================
+
+note right of API #LightYellow
+**Data Transformations:**
+1. Cache check: current_time - cache_time < 300 seconds
+2. MCP availability: is_available property → boolean
+3. Tool list: List[Tool] → [t.name for t in tools]
+4. Timestamp: datetime.utcnow() → ISO format string
+5. Cache storage: result dict → module-level variable
+end note
+
+note right of Cache #LightYellow
+**Cache Configuration:**
+- CACHE_TTL_SECONDS: 300 (5 minutes)
+- _arxiv_status_cache: Dict[str, Any] | None
+- _arxiv_status_cache_time: float
+- Cache hit latency: < 1ms
+- Cache miss latency: 50-200ms
+end note
+
+note right of MCPMgr #LightYellow
+**MCPManager Interface:**
+@property
+is_available: bool
+  → self._client is not None and self._session is not None
+
+get_arxiv_tools(): List[Tool]
+  → list(self._session.tools.values())
+  → Returns empty list if not available
+end note
+
+note right of MCPServer #LightYellow
+**Response Examples:**
+
+Available:
+{\n  "available": true,\n  "tools": ["search_arxiv", "get_paper_metadata", "download_pdf"],\n  "cached_at": "2026-02-01T10:30:00.000000"\n}
+
+Unavailable:
+{\n  "available": false,\n  "tools": [],\n  "cached_at": "2026-02-01T10:30:00.000000"\n}
+end note
+
+@enduml

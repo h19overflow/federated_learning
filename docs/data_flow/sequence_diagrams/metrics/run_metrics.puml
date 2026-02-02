@@ -1,202 +1,301 @@
 @startuml
-
 !define RECTANGLE class
 
 skinparam sequence {
     ArrowColor Black
-    ActorBorderColor Black
     LifeLineBorderColor Black
-    LifeLineBackgroundColor White
     ParticipantBorderColor Black
     ParticipantBackgroundColor White
-    ParticipantFontSize 12
-    ArrowFontSize 11
+    ActorBorderColor Black
+    ActorBackgroundColor White
+}
+
+skinparam note {
+    BackgroundColor LightYellow
+    BorderColor Black
 }
 
 title Run Metrics Sequence Diagram
 
+/' ============================================
+   API: GET /api/runs/{runId}/metrics
+   Component: ResultsVisualization.tsx (lines 30-39)
+   
+   Overview: Retrieves comprehensive metrics for a training run, supporting
+   both centralized and federated modes. Returns training history, final metrics,
+   confusion matrix, and chart data formatted for visualization.
+   ============================================ '/
+
 autonumber
 
-participant "ResultsVisualization.tsx" as C
-participant "useResultsVisualization.ts" as H
-participant "api.ts" as A
-participant "runs_analytics.py" as E
-participant "AnalyticsFacade\nfacade.py" as F
-participant "MetricsService\nmetrics_service.py" as S
+/' Frontend Components '/
+participant "ResultsVisualization.tsx" as RV
+participant "useResultsVisualization.ts" as Hook
+participant "api.ts" as API
+
+/' Backend Components '/
+participant "runs_analytics.py" as Endpoint
+participant "AnalyticsFacade\nfacade.py" as Facade
+participant "MetricsService\nmetrics_service.py" as Service
+participant "Transformers\ntransformers.py" as Transformers
 participant "RunCRUD\nrun.py" as CR
-participant "Database" as D
-participant "transformers.py" as T
+participant "Database" as DB
 
-== Step 1: Component to API Request ==
+/' ============================================
+   STEP 1: Component to API Request
+   Files: ResultsVisualization.tsx (lines 30-39)
+          useResultsVisualization.ts (line 45)
+          api.ts (lines 120-125)
+   ============================================ '/
 
-C -> H: useResultsVisualization({config, runId})
-note right of H
-    Hook receives runId from component props
+activate RV
+RV -> Hook: useResultsVisualization({config, runId})
+activate Hook
+
+note right of Hook
+    Hook receives runId
+    from component props
 end note
 
-activate H
+Hook -> API: getRunMetrics(runId)
+activate API
 
-H -> A: getRunMetrics(runId)
-note right of A
-    File: api.ts lines 120-125
+note right of API
+    api.ts lines 120-125
+    API service function
 end note
 
-activate A
+API -> Endpoint: GET /api/runs/:runId/metrics
+activate Endpoint
 
-A -> E: GET /api/runs/{runId}/metrics
-note right of E
+note right of Endpoint
     HTTP request to backend
 end note
-activate E
 
-== Step 2: Backend Processing ==
+/' Key Code: ResultsVisualization.tsx
+   // Lines 30-39
+   const {
+     activeResults,           // ← From getRunMetrics
+     trainingHistoryData,     // ← Transformed
+     confusionMatrix,         // ← Transformed
+     metricsChartData,        // ← Transformed
+   } = useResultsVisualization({ config, runId });
+'/
 
-E -> F: analytics.metrics.get_run_metrics(db, runId)
-note right of F
-    File: facade.py lines 60-70
+/' ============================================
+   STEP 2: Backend Processing
+   Files: runs_analytics.py (lines 40-50)
+          facade.py (lines 60-70)
+          metrics_service.py (lines 80-110)
+   ============================================ '/
+
+Endpoint -> Facade: analytics.metrics.get_run_metrics(db, runId)
+activate Facade
+
+note right of Facade
+    facade.py lines 60-70
+    Analytics facade interface
 end note
 
-activate F
+Facade -> Service: metrics_service.get_run_metrics(db, runId)
+activate Service
 
-F -> S: metrics_service.get_run_metrics(db, runId)
-note right of S
-    File: metrics_service.py lines 80-110
+note right of Service
+    metrics_service.py
+    lines 80-110
 end note
 
-activate S
-
-S -> S: Check cache
+Service -> Service: Check cache
 
 alt Cache Miss
-    S -> CR: run_crud.get_with_metrics(db, runId)
-    note right of CR
-        File: run.py lines 45-60
-        CRUD layer database operations
-    end note
-    
+    Service -> CR: run_crud.get_with_metrics(db, runId)
     activate CR
     
-    == Step 3: Database Queries ==
-    
-    CR -> D: SELECT * FROM runs WHERE id = ?
-    note right of D
-        Table: runs
-        Purpose: Get experiment metadata
+    note right of CR
+        CRUD layer data access
     end note
-    activate D
-    D --> CR: Run record
-    deactivate D
     
-    CR -> D: SELECT * FROM run_metrics WHERE run_id = ?
-    note right of D
-        Table: run_metrics
-        Purpose: Per-epoch metrics (centralized mode)
-    end note
-    activate D
-    D --> CR: Metrics list
-    deactivate D
-    
-    CR -> D: SELECT * FROM server_evaluations WHERE run_id = ? ORDER BY round_number
-    note right of D
-        Table: server_evaluations (federated mode)
-        Purpose: Per-round server evaluation metrics
-    end note
-    activate D
-    D --> CR: Evaluations list
-    deactivate D
-    
-    CR --> S: Run object with related metrics
+    CR --> Service: Run with metrics
     deactivate CR
 end
 
-S -> S: Get persisted stats
-activate S #LightBlue
-S --> S: persisted_stats
+/' Key Code: metrics_service.py lines 80-110
+   def get_run_metrics(self, db: Session, run_id: int):
+       key = cache_key("get_run_metrics", (run_id,), {})
+       
+       def _compute():
+           run = self._run_crud.get_with_metrics(db, run_id)
+           persisted_stats = self._get_persisted_stats(db, run)
+           return transform_run_to_results(run, persisted_stats)
+       
+       return self._cache.get_or_set(key, _compute)
+'/
 
-== Step 4: Transform & Response ==
+Service --> Facade: Run metrics data
 
-S -> T: transform_run_to_results(run, persisted_stats)
-note right of T
-    File: transformers.py lines 50-120
-    Data transformation layer
+deactivate Service
+
+Facade --> Endpoint: Results
+
+deactivate Facade
+
+/' ============================================
+   STEP 3: Database Queries
+   File: run.py (lines 45-60)
+   ============================================ '/
+
+CR -> DB: SELECT * FROM runs WHERE id = ?
+activate DB
+note right of DB
+    runs table
+    Get experiment metadata
+end note
+DB --> CR: Run record
+deactivate DB
+
+CR -> DB: SELECT * FROM run_metrics WHERE run_id = ?
+activate DB
+note right of DB
+    run_metrics table
+    Per-epoch metrics (centralized)
+end note
+DB --> CR: Metrics list
+deactivate DB
+
+CR -> DB: SELECT * FROM server_evaluations WHERE run_id = ?
+activate DB
+note right of DB
+    server_evaluations table
+    Per-round metrics (federated)
+    ORDER BY round_number
+end note
+DB --> CR: Evaluations list
+deactivate DB
+
+note over DB
+    **Database Queries:**
+    
+    | Table | Query | Purpose |
+    |-------|-------|---------|
+    | runs | SELECT * FROM runs WHERE id = ? | Get experiment metadata |
+    | run_metrics | SELECT * FROM run_metrics WHERE run_id = ? | Per-epoch metrics (centralized) |
+    | server_evaluations | SELECT * FROM server_evaluations WHERE run_id = ? ORDER BY round_number | Per-round metrics (federated) |
 end note
 
-activate T
+/' ============================================
+   STEP 4: Transform & Response
+   File: transformers.py (lines 50-120)
+   ============================================ '/
 
-T -> T: Check run.training_mode
+Service -> Transformers: transform_run_to_results(run, persisted_stats)
+activate Transformers
+
+note right of Transformers
+    transformers.py
+    lines 50-120
+end note
+
+Transformers -> Transformers: Check run.training_mode
 
 alt Federated Mode
-    T -> T: Read from run.server_evaluations
-    note right of T
-        Extract per-round evaluation metrics
-        from server_evaluations table
+    Transformers -> Transformers: Read from run.server_evaluations
+    note right of Transformers
+        Use server_evaluations
+        for federated runs
     end note
 else Centralized Mode
-    T -> T: Read from run.metrics
-    note right of T
-        Extract per-epoch training metrics
-        from run_metrics table
+    Transformers -> Transformers: Read from run.metrics
+    note right of Transformers
+        Use run_metrics
+        for centralized runs
     end note
 end
 
-T -> T: Build training_history
-note right of T
-    Transform to chart-compatible format
-    for visualization components
-end note
+Transformers -> Transformers: Build training_history
+Transformers -> Transformers: Extract final_metrics
+Transformers -> Transformers: Build confusion_matrix
 
-T -> T: Extract final_metrics
-note right of T
-    Get best/latest metrics from history
-end note
+Transformers --> Service: ExperimentResults dict
 
-T -> T: Build confusion_matrix
-note right of T
-    Format as 2D array for display
-end note
+deactivate Transformers
 
-T --> S: ExperimentResults dict
-note right of T
-    Return structured results:
-    {
-        training_history,
-        final_metrics,
-        confusion_matrix,
-        metadata
-    }
-end note
-deactivate T
-deactivate S
+Service --> API: Return results
 
-S --> F: Results data
-deactivate S
+API --> Hook: RunMetricsResponse
 
-F --> E: Return results
-deactivate F
+deactivate API
 
-E --> A: HTTP Response
+Hook -> Hook: Transform props
 
-A --> H: RunMetricsResponse
-deactivate E
-deactivate A
-
-H -> H: Transform props
-note right of H
-    File: useResultsVisualization.ts lines 85-120
+note right of Hook
+    Lines 85-120
+    
     Transformations:
-    - trainingHistoryData (chart format)
-    - confusionMatrix (2D array)
-    - metricsChartData (bar chart data)
+    - trainingHistoryData
+    - confusionMatrix
+    - metricsChartData
 end note
 
-H --> C: activeResults + transformed props
-note right of C
-    Props available:
-    - activeResults (experiment data)
-    - trainingHistoryData (for charts)
-    - confusionMatrix (for visualization)
-    - metricsChartData (for bar charts)
+/' Data Transformations:
+   Source: training_history
+   Transformed To: Chart format
+   Component Prop: trainingHistoryData
+   
+   Source: confusion_matrix
+   Transformed To: 2D array
+   Component Prop: confusionMatrix
+   
+   Source: metadata
+   Transformed To: Bar chart data
+   Component Prop: metricsChartData
+'/
+
+Hook --> RV: activeResults + transformed
+
+deactivate Hook
+
+deactivate RV
+
+/' ============================================
+   Transformations Summary
+   ============================================ '/
+
+note over Hook
+    **Transformations:**
+    
+    | Source | Transformed To | Component Prop |
+    |--------|----------------|----------------|
+    | training_history | Chart format | trainingHistoryData |
+    | confusion_matrix | 2D array | confusionMatrix |
+    | metadata | Bar chart data | metricsChartData |
 end note
-deactivate H
+
+/' ============================================
+   File References Summary
+   ============================================ '/
+
+note right
+    **File Reference Summary:**
+    
+    | Layer | File | Key Lines | Purpose |
+    |-------|------|-----------|---------|
+    | Component | ResultsVisualization.tsx | 30-39 | Main results container |
+    | Hook | useResultsVisualization.ts | 45, 85-120 | Data fetching & transformation |
+    | API Service | api.ts | 120-125 | HTTP client methods |
+    | API Endpoint | runs_analytics.py | 40-50 | API endpoint handler |
+    | Analytics | facade.py | 60-70 | Analytics facade |
+    | Service | metrics_service.py | 80-110 | Business logic & caching |
+    | Transformer | transformers.py | 50-120 | Data transformation |
+    | CRUD | run.py | 45-60 | Run data access with metrics |
+    
+    **Mode-Specific Data Sources:**
+    - Federated: server_evaluations table (per-round metrics)
+    - Centralized: run_metrics table (per-epoch metrics)
+    
+    **Caching Strategy:**
+    - Cache key: "get_run_metrics" + run_id
+    - Cache miss: Query database and transform
+    - Cache hit: Return cached results
+end note
 
 @enduml
