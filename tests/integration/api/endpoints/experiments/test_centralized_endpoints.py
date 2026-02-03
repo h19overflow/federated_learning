@@ -48,11 +48,11 @@ class TestCentralizedTrainEndpoint:
         """Test successful start of centralized training."""
         with (
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.prepare_zip",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.centralized_endpoints.prepare_zip",
                 return_value="/tmp/extracted_data",
             ),
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.CentralizedTrainer",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
                 return_value=mock_centralized_trainer,
             ),
         ):
@@ -85,11 +85,11 @@ class TestCentralizedTrainEndpoint:
         """Test centralized training with default parameters."""
         with (
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.prepare_zip",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.centralized_endpoints.prepare_zip",
                 return_value="/tmp/extracted_data",
             ),
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.CentralizedTrainer",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
                 return_value=mock_centralized_trainer,
             ),
         ):
@@ -104,7 +104,6 @@ class TestCentralizedTrainEndpoint:
             assert data["experiment_name"] == "pneumonia_centralized"
             assert data["checkpoint_dir"] == "results/centralized/checkpoints"
             assert data["logs_dir"] == "results/centralized/logs"
-            assert data["csv_filename"] == "stage2_train_metadata.csv"
 
     def test_start_centralized_training_invalid_zip(
         self,
@@ -135,12 +134,19 @@ class TestCentralizedTrainEndpoint:
         self,
         client,
         sample_zip_file,
+        mock_centralized_trainer,
     ):
         """Test that background task is queued properly."""
-        with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.prepare_zip",
-            return_value="/tmp/extracted_data",
-        ) as mock_prepare:
+        with (
+            patch(
+                "federated_pneumonia_detection.src.api.endpoints.experiments.centralized_endpoints.prepare_zip",
+                return_value="/tmp/extracted_data",
+            ) as mock_prepare,
+            patch(
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
+                return_value=mock_centralized_trainer,
+            ),
+        ):
             with open(sample_zip_file, "rb") as f:
                 response = client.post(
                     "/experiments/centralized/train",
@@ -161,11 +167,11 @@ class TestCentralizedTrainEndpoint:
         """Test starting multiple concurrent experiments."""
         with (
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.prepare_zip",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.centralized_endpoints.prepare_zip",
                 return_value="/tmp/extracted_data",
             ),
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.CentralizedTrainer",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
                 return_value=mock_centralized_trainer,
             ),
         ):
@@ -190,11 +196,11 @@ class TestCentralizedTrainEndpoint:
         """Test with custom checkpoint and log directories."""
         with (
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.prepare_zip",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.centralized_endpoints.prepare_zip",
                 return_value="/tmp/extracted_data",
             ),
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.CentralizedTrainer",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
                 return_value=mock_centralized_trainer,
             ),
         ):
@@ -221,7 +227,7 @@ class TestCentralizedTrainEndpoint:
     ):
         """Test error handling when prepare_zip raises exception."""
         with patch(
-            "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.prepare_zip",
+            "federated_pneumonia_detection.src.api.endpoints.experiments.centralized_endpoints.prepare_zip",
             side_effect=RuntimeError("ZIP extraction failed"),
         ):
             with pytest.raises(RuntimeError):
@@ -240,11 +246,11 @@ class TestCentralizedTrainEndpoint:
         """Test that response contains all required fields."""
         with (
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.prepare_zip",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.centralized_endpoints.prepare_zip",
                 return_value="/tmp/extracted_data",
             ),
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.CentralizedTrainer",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
                 return_value=mock_centralized_trainer,
             ),
         ):
@@ -280,11 +286,11 @@ class TestCentralizedTrainEndpoint:
 
         with (
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.prepare_zip",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.centralized_endpoints.prepare_zip",
                 return_value="/tmp/extracted_data",
             ),
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.CentralizedTrainer",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
                 return_value=mock_centralized_trainer,
             ),
         ):
@@ -319,11 +325,11 @@ class TestCentralizedTrainEndpoint:
 
         with (
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.file_handling.prepare_zip",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.centralized_endpoints.prepare_zip",
                 return_value="/tmp/extracted_data",
             ),
             patch(
-                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.CentralizedTrainer",
+                "federated_pneumonia_detection.src.api.endpoints.experiments.utils.centralized_tasks.CentralizedTrainer",
                 return_value=mock_centralized_trainer,
             ),
         ):

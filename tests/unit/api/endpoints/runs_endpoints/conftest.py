@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -48,8 +48,11 @@ def client(mock_facade, mock_run_crud):
     app.dependency_overrides[get_analytics] = override_get_analytics
     app.dependency_overrides[get_experiment_crud] = override_get_experiment_crud
 
-    with TestClient(app) as test_client:
-        yield test_client
+    # Patch initialize_services to prevent database connection attempts during app startup
+    # Patching where it is used in main.py
+    with patch("federated_pneumonia_detection.src.api.main.initialize_services"):
+        with TestClient(app) as test_client:
+            yield test_client
 
     # Clean up
     app.dependency_overrides.clear()

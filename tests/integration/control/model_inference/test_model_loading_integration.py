@@ -118,6 +118,8 @@ def test_model_loading_integration(tmp_path, mock_config):
 
     # 2. Execution: Load the checkpoint into InferenceEngine
     # We must patch again because InferenceEngine will re-instantiate LitResNetEnhanced
+    # We also patch torch.load to force weights_only=False for this test because
+    # the test checkpoint contains AttributeDict which requires safe_globals or unsafe load
     with (
         patch(  # noqa: E501
             "federated_pneumonia_detection.src.control.dl_model.internals.model.lit_resnet_enhanced.ResNetWithCustomHead",
@@ -126,6 +128,13 @@ def test_model_loading_integration(tmp_path, mock_config):
         patch(
             "federated_pneumonia_detection.config.config_manager.ConfigManager",
             return_value=mock_config,
+        ),
+        patch(
+            "torch.load",
+            side_effect=lambda f, **kwargs: torch.serialization.load(
+                f,
+                **{**kwargs, "weights_only": False},
+            ),
         ),
     ):
         # Initialize InferenceEngine

@@ -1,9 +1,5 @@
-"""
-Optimizers module exports.
-"""
-
-from .schedulers import CosineAnnealingWarmupScheduler
+from .factory import OptimizerFactory
 
 __all__ = [
-    "CosineAnnealingWarmupScheduler",
+    "OptimizerFactory",
 ]

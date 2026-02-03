@@ -10,34 +10,40 @@ Manages initialization and cleanup of:
 
 import logging
 
-from federated_pneumonia_detection.src.api.endpoints.streaming.websocket_server import (
-    start_websocket_server_thread,
+from federated_pneumonia_detection.src.api.services.internals.analytics import (
+    initialize_analytics_services as _init_analytics,
 )
-from federated_pneumonia_detection.src.boundary.CRUD.run import run_crud
-from federated_pneumonia_detection.src.boundary.CRUD.run_metric import run_metric_crud
-from federated_pneumonia_detection.src.boundary.CRUD.server_evaluation import (
-    server_evaluation_crud,
+from federated_pneumonia_detection.src.api.services.internals.chat import (
+    initialize_chat_services as _init_chat,
 )
-from federated_pneumonia_detection.src.boundary.engine import create_tables
-from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.factory import (  # noqa: E501
-    AgentFactory,
+from federated_pneumonia_detection.src.api.services.internals.chat import (
+    shutdown_chat_services as _shut_chat,
 )
-from federated_pneumonia_detection.src.control.analytics import AnalyticsFacade
-from federated_pneumonia_detection.src.control.analytics.internals import (
-    BackfillService,
-    CacheProvider,
-    ExportService,
-    MetricsService,
-    RankingService,
-    SummaryService,
+from federated_pneumonia_detection.src.api.services.internals.database import (
+    initialize_database as _init_db,
 )
-from federated_pneumonia_detection.src.control.dl_model.internals.data.wandb_inference_tracker import (  # noqa: E501
-    get_wandb_tracker,
+from federated_pneumonia_detection.src.api.services.internals.database import (
+    shutdown_database as _shut_db,
+)
+from federated_pneumonia_detection.src.api.services.internals.mcp import (
+    initialize_mcp_manager as _init_mcp,
+)
+from federated_pneumonia_detection.src.api.services.internals.mcp import (
+    shutdown_mcp_manager as _shut_mcp,
+)
+from federated_pneumonia_detection.src.api.services.internals.wandb import (
+    initialize_wandb_tracker as _init_wandb,
+)
+from federated_pneumonia_detection.src.api.services.internals.wandb import (
+    shutdown_wandb_tracker as _shut_wandb,
+)
+from federated_pneumonia_detection.src.api.services.internals.websocket import (
+    initialize_websocket_server as _init_ws,
 )
 
 logger = logging.getLogger(__name__)
 
-# Module-level singleton references (types imported lazily)
+# Module-level singleton references
 _mcp_manager = None
 _query_engine = None
 _agent_factory = None
@@ -61,22 +67,22 @@ async def initialize_services(app=None) -> None:
     global _mcp_manager, _query_engine, _agent_factory
 
     # 1. Database (critical)
-    _initialize_database()
+    _init_db()
 
     # 2. WebSocket server (optional, background thread)
-    start_websocket_server_thread()
+    _init_ws()
 
     # 3. MCP Manager (optional)
-    _mcp_manager = await _initialize_mcp_manager()
+    _mcp_manager = await _init_mcp()
 
     # 4. Chat services (optional - for performance optimization)
-    _query_engine, _agent_factory = await _initialize_chat_services(app)
+    _query_engine, _agent_factory = await _init_chat(app)
 
     # 5. Analytics services (optional - for performance optimization)
-    _initialize_analytics_services(app)
+    _init_analytics(app)
 
     # 6. W&B tracker (optional)
-    _initialize_wandb_tracker()
+    _init_wandb()
 
 
 async def shutdown_services(app=None) -> None:
@@ -95,399 +101,62 @@ async def shutdown_services(app=None) -> None:
     global _mcp_manager, _query_engine, _agent_factory
 
     # 1. Database
-    _shutdown_database()
+    _shut_db()
 
     # 2. Chat services (cleanup connection pools)
-    _shutdown_chat_services(app)
+    _shut_chat(app)
 
     # 3. MCP Manager
     if _mcp_manager is not None:
-        await _shutdown_mcp_manager(_mcp_manager)
+        await _shut_mcp(_mcp_manager)
 
     # 4. W&B tracker
-    _shutdown_wandb_tracker()
+    _shut_wandb()
+
+
+# --- Internal helper wrappers for legacy compatibility (if needed) ---
 
 
 def _initialize_database() -> None:
-    """Create database tables. Raises on failure (critical service)."""
-    try:
-        logger.info("Ensuring database tables exist...")
-        create_tables()
-        logger.info("Database tables verified/created")
-    except Exception as e:
-        logger.critical(f"DATABASE INITIALIZATION FAILED: {e}")
-        logger.critical("Cannot proceed with startup. Shutting down.")
-        raise
+    """Legacy wrapper for database initialization."""
+    _init_db()
 
 
 async def _initialize_mcp_manager():
-    """Initialize MCP manager for arxiv integration."""
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.arxiv_mcp import (  # noqa: E501
-        MCPManager,
-    )
-
-    mcp_manager = MCPManager.get_instance()
-
-    try:
-        await mcp_manager.initialize()
-        logger.info(
-            "MCP manager initialized successfully (arxiv integration available)",
-        )
-    except ConnectionError as e:
-        logger.warning(
-            f"MCP initialization failed - network issue: {e} "
-            "(arxiv search will be unavailable)",
-        )
-    except ImportError as e:
-        logger.warning(
-            f"MCP initialization failed - missing dependency: {e} "
-            "(arxiv search disabled)",
-        )
-    except Exception as e:
-        logger.warning(
-            f"MCP initialization failed (unexpected error): {e} "
-            "(arxiv search will be unavailable, but app continues)",
-        )
-
-    return mcp_manager
+    """Legacy wrapper for MCP manager initialization."""
+    return await _init_mcp()
 
 
 def _initialize_wandb_tracker() -> None:
-    """Initialize W&B inference tracker for experiment tracking."""
-    try:
-        tracker = get_wandb_tracker()
-        if tracker.initialize(
-            entity="projectontheside25-multimedia-university",
-            project="FYP2",
-            job_type="inference",
-        ):
-            logger.info(
-                "W&B inference tracker initialized (experiment tracking enabled)",
-            )
-        else:
-            logger.warning(
-                "W&B tracker rejected configuration (check credentials). "
-                "Experiment tracking will be unavailable.",
-            )
-    except ConnectionError as e:
-        logger.warning(
-            f"W&B connection failed: {e} "
-            "(experiment tracking disabled, but training continues)",
-        )
-    except ImportError as e:
-        logger.warning(
-            f"W&B not installed: {e} (install with: pip install wandb) "
-            "(experiment tracking disabled)",
-        )
-    except Exception as e:
-        logger.warning(
-            f"W&B initialization failed (unexpected): {e} "
-            "(experiment tracking will be unavailable)",
-        )
+    """Legacy wrapper for W&B tracker initialization."""
+    _init_wandb()
 
 
 def _shutdown_database() -> None:
-    """Dispose database connections."""
-    try:
-        from federated_pneumonia_detection.src.boundary.engine import dispose_engine
-
-        dispose_engine()
-        logger.info("Database connections disposed")
-    except Exception as e:
-        logger.warning(f"Error disposing database connections: {e}")
+    """Legacy wrapper for database shutdown."""
+    _shut_db()
 
 
 async def _shutdown_mcp_manager(mcp_manager) -> None:
-    """Shutdown MCP manager."""
-    try:
-        await mcp_manager.shutdown()
-        logger.info("MCP manager shutdown complete")
-    except Exception as e:
-        logger.warning(
-            f"MCP manager shutdown had issues: {e} "
-            "(this is non-fatal, app still shutting down)",
-        )
+    """Legacy wrapper for MCP manager shutdown."""
+    await _shut_mcp(mcp_manager)
 
 
 def _shutdown_wandb_tracker() -> None:
-    """Finish W&B tracking session."""
-    try:
-        tracker = get_wandb_tracker()
-        tracker.finish()
-        logger.info("W&B inference tracker shutdown complete")
-    except Exception as e:
-        logger.warning(
-            f"W&B tracker shutdown had issues: {e} "
-            "(this is non-fatal, app still shutting down)",
-        )
+    """Legacy wrapper for W&B tracker shutdown."""
+    _shut_wandb()
 
 
 async def _initialize_chat_services(app):
-    """
-    Initialize chat services (ArxivEngine, QueryEngine, and AgentFactory) at startup.
-
-    These services are heavy to initialize (LLMs, vector stores, BM25),
-    so initializing them once at startup significantly reduces first-message latency.
-
-    All services are optional - if initialization fails, endpoints will fall back
-    to lazy initialization or graceful degradation.
-
-    Args:
-        app: FastAPI app instance for storing services in app.state
-
-    Returns:
-        Tuple of (query_engine, agent_factory) - either initialized instances or None
-    """
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.agents.research_engine import (  # noqa: E501
-        ArxivAugmentedEngine,
-    )
-    from federated_pneumonia_detection.src.control.agentic_systems.multi_agent_systems.chat.providers.rag import (  # noqa: E501
-        QueryEngine,
-    )
-
-    arxiv_engine = None
-    query_engine = None
-    agent_factory = None
-
-    # Initialize QueryEngine first (needed by ArxivEngine)
-    try:
-        logger.info("[Startup] Initializing QueryEngine (RAG system)...")
-        query_engine = QueryEngine(max_history=10)
-        logger.info("[Startup] QueryEngine initialized successfully")
-    except Exception as e:
-        logger.warning(
-            f"[Startup] QueryEngine initialization failed: {e} "
-            "(RAG features unavailable, will fall back to lazy init)",
-        )
-
-    # Initialize ArxivEngine (main research engine)
-    try:
-        logger.info("[Startup] Initializing ArxivEngine (research engine)...")
-        arxiv_engine = ArxivAugmentedEngine(max_history=10, query_engine=query_engine)
-        logger.info("[Startup] ArxivEngine initialized successfully")
-    except Exception as e:
-        logger.warning(
-            f"[Startup] ArxivEngine initialization failed: {e} "
-            "(arxiv features unavailable, will fall back to lazy init)",
-        )
-
-    # Initialize AgentFactory (uses pre-initialized arxiv_engine for performance)
-    try:
-        logger.info("[Startup] Initializing AgentFactory...")
-
-        # Create a temporary app.state object to pass arxiv_engine
-        class TempState:
-            arxiv_engine: ArxivAugmentedEngine | None = None
-
-        temp_state = TempState()
-        temp_state.arxiv_engine = arxiv_engine
-
-        agent_factory = AgentFactory(app_state=temp_state)
-        logger.info("[Startup] AgentFactory initialized successfully")
-    except Exception as e:
-        logger.warning(
-            f"[Startup] AgentFactory initialization failed: {e} "
-            "(chat endpoints will create factory on-demand)",
-        )
-
-    # Store in app.state if available
-    if app is not None:
-        app.state.query_engine = query_engine
-        app.state.agent_factory = agent_factory
-        logger.info("[Startup] Chat services stored in app.state")
-
-    return query_engine, agent_factory
+    """Legacy wrapper for chat services initialization."""
+    return await _init_chat(app)
 
 
-def _initialize_analytics_services(app) -> AnalyticsFacade | None:
-    """
-    Initialize analytics services at startup for caching and performance.
-
-    Creates CacheProvider (TTL=600s) and all 5 analytics services.
-    Stored in app.state.analytics for endpoint access via dependency injection.
-
-    Args:
-        app: FastAPI app instance for storing services in app.state
-
-    Returns:
-        AnalyticsFacade instance or None if initialization fails catastrophically.
-        Returns a partial facade if some services fail initialization.
-    """
-    logger.info("[Startup] Initializing analytics services...")
-
-    # Track which services initialized successfully
-    services_status: dict[str, bool] = {}
-    cache: CacheProvider | None = None
-    metrics_service: MetricsService | None = None
-    summary_service: SummaryService | None = None
-    ranking_service: RankingService | None = None
-    export_service: ExportService | None = None
-    backfill_service: BackfillService | None = None
-
-    # CacheProvider is critical - if this fails, entire analytics subsystem fails
-    try:
-        cache = CacheProvider(ttl=600, maxsize=1000)
-        logger.info("[Startup/Analytics] CacheProvider initialized successfully")
-        services_status["cache"] = True
-    except Exception as e:
-        logger.error(f"[Startup/Analytics] CacheProvider initialization failed: {e}")
-        logger.warning(
-            "[Startup/Analytics] Cannot initialize analytics services without cache provider"  # noqa: E501
-        )
-        return None
-
-    # MetricsService - optional
-    try:
-        metrics_service = MetricsService(
-            cache=cache,
-            run_crud_obj=run_crud,
-            run_metric_crud_obj=run_metric_crud,
-            server_evaluation_crud_obj=server_evaluation_crud,
-        )
-        logger.info("[Startup/Analytics] MetricsService initialized successfully")
-        services_status["metrics"] = True
-    except Exception as e:
-        logger.warning(
-            f"[Startup/Analytics] MetricsService initialization failed: {e} (metrics endpoints will be degraded)"  # noqa: E501
-        )
-        services_status["metrics"] = False
-
-    # SummaryService - optional
-    try:
-        summary_service = SummaryService(
-            cache=cache,
-            run_crud_obj=run_crud,
-            run_metric_crud_obj=run_metric_crud,
-            server_evaluation_crud_obj=server_evaluation_crud,
-        )
-        logger.info("[Startup/Analytics] SummaryService initialized successfully")
-        services_status["summary"] = True
-    except Exception as e:
-        logger.warning(
-            f"[Startup/Analytics] SummaryService initialization failed: {e} (summary endpoints will be degraded)"  # noqa: E501
-        )
-        services_status["summary"] = False
-
-    # RankingService - optional
-    try:
-        ranking_service = RankingService(
-            cache=cache,
-            run_crud_obj=run_crud,
-        )
-        logger.info("[Startup/Analytics] RankingService initialized successfully")
-        services_status["ranking"] = True
-    except Exception as e:
-        logger.warning(
-            f"[Startup/Analytics] RankingService initialization failed: {e} (ranking endpoints will be degraded)"  # noqa: E501
-        )
-        services_status["ranking"] = False
-
-    # ExportService - optional
-    try:
-        export_service = ExportService(
-            cache=cache,
-            run_crud_obj=run_crud,
-            run_metric_crud_obj=run_metric_crud,
-        )
-        logger.info("[Startup/Analytics] ExportService initialized successfully")
-        services_status["export"] = True
-    except Exception as e:
-        logger.warning(
-            f"[Startup/Analytics] ExportService initialization failed: {e} (export endpoints will be degraded)"  # noqa: E501
-        )
-        services_status["export"] = False
-
-    # BackfillService - optional
-    try:
-        backfill_service = BackfillService(
-            run_crud_obj=run_crud,
-            server_evaluation_crud_obj=server_evaluation_crud,
-        )
-        logger.info("[Startup/Analytics] BackfillService initialized successfully")
-        services_status["backfill"] = True
-    except Exception as e:
-        logger.warning(
-            f"[Startup/Analytics] BackfillService initialization failed: {e} (backfill endpoints will be degraded)"  # noqa: E501
-        )
-        services_status["backfill"] = False
-
-    # Create facade with available services (at least cache must be working)
-    try:
-        facade = AnalyticsFacade(
-            metrics=metrics_service,
-            summary=summary_service,
-            ranking=ranking_service,
-            export=export_service,
-            backfill=backfill_service,
-        )
-        logger.info(
-            f"[Startup/Analytics] Analytics facade created with "
-            f"{sum(1 for v in services_status.values() if v)}/{len(services_status)} services available"  # noqa: E501
-        )
-
-        # Log unavailable services for visibility
-        unavailable = [
-            name
-            for name, available in services_status.items()
-            if not available and name != "cache"
-        ]
-        if unavailable:
-            logger.warning(
-                f"[Startup/Analytics] Unavailable services: {', '.join(unavailable)}. "
-                "Endpoints using these services will fall back to direct CRUD calls."
-            )
-
-        # Store in app.state
-        if app is not None:
-            app.state.analytics = facade
-            logger.info("[Startup] Analytics services initialized and cached")
-
-        return facade
-
-    except Exception as e:
-        logger.error(f"[Startup/Analytics] Failed to create analytics facade: {e}")
-        logger.warning("[Startup/Analytics] Analytics subsystem will be unavailable")
-        return None
+def _initialize_analytics_services(app):
+    """Legacy wrapper for analytics services initialization."""
+    return _init_analytics(app)
 
 
 def _shutdown_chat_services(app) -> None:
-    """
-    Shutdown chat services and cleanup connection pools.
-
-    The HistoryManager uses connection pooling which needs proper cleanup.
-
-    Args:
-        app: FastAPI app instance for accessing app.state
-    """
-    if app is None:
-        return
-
-    # Cleanup ArxivEngine (via agent_factory)
-    if hasattr(app.state, "agent_factory") and app.state.agent_factory is not None:
-        try:
-            # Access the engine through the factory's cached agent
-            if (
-                hasattr(app.state.agent_factory, "_research_agent")
-                and app.state.agent_factory._research_agent is not None
-            ):
-                engine = app.state.agent_factory._research_agent
-                if hasattr(engine, "_history_manager"):
-                    engine._history_manager.close()
-                    logger.info(
-                        "[Shutdown] ArxivEngine HistoryManager connection pool closed"
-                    )
-        except Exception as e:
-            logger.warning(f"[Shutdown] Error closing ArxivEngine via factory: {e}")
-
-    # Cleanup QueryEngine (includes HistoryManager)
-    if hasattr(app.state, "query_engine") and app.state.query_engine is not None:
-        try:
-            if hasattr(app.state.query_engine, "history_manager"):
-                app.state.query_engine.history_manager.close()
-                logger.info(
-                    "[Shutdown] QueryEngine HistoryManager connection pool closed"
-                )
-        except Exception as e:
-            logger.warning(f"[Shutdown] Error closing QueryEngine: {e}")
-
-    logger.info("[Shutdown] Chat services shutdown complete")
+    """Legacy wrapper for chat services shutdown."""
+    _shut_chat(app)
