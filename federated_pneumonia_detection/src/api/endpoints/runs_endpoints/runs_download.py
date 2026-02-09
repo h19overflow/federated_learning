@@ -50,6 +50,11 @@ async def download_metrics_csv(
 
     except HTTPException:
         raise
+    except ValueError as e:
+        message = str(e)
+        if "not found" in message.lower():
+            raise HTTPException(status_code=404, detail=message)
+        raise HTTPException(status_code=400, detail=message)
     except Exception as e:
         logger.error(f"Error downloading CSV for run {run_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to generate CSV: {str(e)}")

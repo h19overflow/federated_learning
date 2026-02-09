@@ -42,4 +42,4 @@ docker compose down -v
 
 ## GPU Support
 
-Requires NVIDIA Container Toolkit. Remove `deploy.resources.reservations` from docker-compose.yml for CPU-only mode.
+Default compose setup is CPU-first for portability. Add NVIDIA device reservations in `docker-compose.yml` only when running on GPU hosts with NVIDIA Container Toolkit.

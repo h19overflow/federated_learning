@@ -13,15 +13,25 @@ A production-ready hybrid learning system enabling hospitals to collaboratively 
 
 ---
 
-## 🎯 Why This System?
+## 🎤 Project Pitch
 
-| Challenge | Solution |
-|-----------|----------|
-| 🔒 **Data Privacy** | Federated learning keeps data at source—only model weights travel |
-| 🏥 **Multi-Site Collaboration** | Enable cross-hospital research without data centralization |
-| 📊 **Performance Comparison** | Side-by-side evaluation of centralized vs federated approaches |
-| 🤖 **AI-Powered Insights** | Built-in research assistant with RAG for clinical literature |
-| ⚡ **Real-Time Monitoring** | WebSocket-powered dashboard with live training metrics |
+1. **Pneumonia is silent, fast, and dangerous.**
+   It is a lung infection that can quickly reduce oxygen levels and become life-threatening, especially for older adults and children. Early detection is critical because every hour can influence outcomes.
+
+2. **Chest X-rays can reveal it early, but experts are not always available.**
+   Pneumonia signs are visible in X-ray images, yet radiologists are limited in number and unevenly distributed across regions, creating delays where speed matters most.
+
+3. **Computer vision models can scale expert-level screening.**
+   Deep vision models can learn pneumonia patterns from X-ray images and support clinicians with fast, consistent, and repeatable screening assistance.
+
+4. **The best medical data is locked behind strict privacy boundaries.**
+   High-quality hospital data is protected by regulations and governance frameworks such as HIPAA and WHO-aligned policies, making centralized data sharing difficult.
+
+5. **Federated learning with FedAvg solves the collaboration bottleneck.**
+   Each hospital trains locally, keeps patient records on-site, and shares only model updates. FedAvg securely aggregates these updates into a stronger global model without moving raw data.
+
+6. **This project delivers more than a model.**
+   It provides real-time analytics, an AI research chatbot, clinical inference workflows, and automated report generation in one unified platform for practical deployment and research.
 
 ---
 

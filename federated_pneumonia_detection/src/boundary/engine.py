@@ -32,6 +32,13 @@ def _get_settings_lazy():
     return _settings
 
 
+def _normalize_sqlalchemy_uri(uri: str) -> str:
+    """Normalize DB URI for SQLAlchemy driver compatibility."""
+    if uri.startswith("postgresql://"):
+        return uri.replace("postgresql://", "postgresql+psycopg://", 1)
+    return uri
+
+
 # Global engine instance - created once at module import
 _engine = None
 
@@ -52,8 +59,10 @@ def _get_engine():
         settings = _get_settings_lazy()
 
         # Create engine with connection pooling configuration
+        db_uri = _normalize_sqlalchemy_uri(settings.get_postgres_db_uri())
+
         _engine = create_engine(
-            settings.get_postgres_db_uri(),
+            db_uri,
             poolclass=QueuePool,
             pool_size=5,
             max_overflow=10,

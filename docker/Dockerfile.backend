@@ -36,8 +36,8 @@ RUN grep -v "^-e file:" requirements.txt > requirements-filtered.txt && \
         "torchaudio==2.10.0+cu128" \
         "torchvision==0.25.0+cu128" \
         --index-url https://download.pytorch.org/whl/cu128 && \
-    # Remove torch lines from requirements to avoid reinstall
-    grep -v "^torch" requirements-filtered.txt > requirements-no-torch.txt && \
+    # Remove torch and Windows-only lines from requirements to avoid reinstall/failures
+    grep -v "^torch" requirements-filtered.txt | grep -v "^pywin32==" | grep -v "^psycopg2==" > requirements-no-torch.txt && \
     # Install all other dependencies
     uv pip install -r requirements-no-torch.txt
 
