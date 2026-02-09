@@ -1,0 +1,1150 @@
+import React from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ExperimentConfiguration } from "@/types/experiment";
+import { MetadataDisplay } from "@/components/analytics";
+import { useResultsVisualization } from "@/hooks/useResultsVisualization";
+import api from "@/services/api";
+import LoadingState from "./LoadingState";
+import ErrorState from "./ErrorState";
+import ResultsHeader from "./ResultsHeader";
+import ResultsFooter from "./ResultsFooter";
+import ComparisonTab from "./tabs/ComparisonTab";
+import CentralizedTab from "./tabs/CentralizedTab";
+import MetricsTab from "./tabs/MetricsTab";
+import ChartsTab from "./tabs/ChartsTab";
+import ServerEvaluationTab from "./tabs/ServerEvaluationTab";
+
+interface ResultsVisualizationProps {
+  config: ExperimentConfiguration;
+  runId: number;
+  onReset: () => void;
+  isFederatedTraining?: boolean;
+  federatedRounds?: Array<{
+    round: number;
+    metrics: Record<string, number>;
+  }>;
+  federatedContext?: {
+    numRounds: number;
+    numClients: number;
+  };
+}
+
+/**
+ * ResultsVisualization Component
+ * Displays training results and metrics with charts and visualizations
+ * Redesigned with Clinical Clarity theme
+ */
+const ResultsVisualization = ({
+  config,
+  runId,
+  onReset,
+  isFederatedTraining = false,
+  federatedRounds = [],
+  federatedContext,
+}: ResultsVisualizationProps) => {
+  const [localFederatedData, setLocalFederatedData] = React.useState<{
+    isFederated: boolean;
+    rounds: Array<{ round: number; metrics: Record<string, number> }>;
+    context?: { numRounds: number; numClients: number };
+  }>({
+    isFederated: isFederatedTraining,
+    rounds: federatedRounds,
+    context: federatedContext,
+  });
+
+  React.useEffect(() => {
+    const fetchFederatedData = async () => {
+      if (federatedRounds.length > 0) return;
+      if (config.trainingMode === "federated") {
+        try {
+          const fedData = await api.results.getFederatedRounds(runId);
+          if (fedData.is_federated && fedData.rounds.length > 0) {
+            setLocalFederatedData({
+              isFederated: true,
+              rounds: fedData.rounds,
+              context: {
+                numRounds: fedData.num_rounds,
+                numClients: fedData.num_clients,
+              },
+            });
+          }
+        } catch (error) {
+          console.error(
+            "[ResultsVisualization] Error fetching federated data:",
+            error,
+          );
+        }
+      }
+    };
+    fetchFederatedData();
+  }, [runId, config.trainingMode, federatedRounds.length]);
+
+  const effectiveFederatedData = React.useMemo(() => {
+    if (federatedRounds.length > 0) {
+      return {
+        isFederated: true,
+        rounds: federatedRounds,
+        context: federatedContext,
+      };
+    }
+    return localFederatedData;
+  }, [federatedRounds, federatedContext, localFederatedData]);
+
+  const {
+    activeTab,
+    setActiveTab,
+    loading,
+    error,
+    centralizedResults,
+    federatedResults,
+    comparisonData,
+    activeResults,
+    showComparison,
+    trainingHistoryData,
+    confusionMatrix,
+    metricsChartData,
+    comparisonMetricsData,
+    centralizedMetricsData,
+    centralizedHistoryData,
+    centralizedConfusionMatrix,
+    federatedMetricsData,
+    federatedHistoryData,
+    federatedConfusionMatrix,
+    serverEvaluation,
+    serverEvaluationChartData,
+    serverEvaluationLatestMetrics,
+    serverEvaluationConfusionMatrix,
+    handleDownload,
+  } = useResultsVisualization({ config, runId });
+
+  // Loading state
+  if (loading) {
+    return <LoadingState />;
+  }
+
+  // Error state
+  if (error) {
+    return <ErrorState error={error} onReset={onReset} />;
+  }
+
+  return (
+    <div className="space-y-8" style={{ animation: "fadeIn 0.5s ease-out" }}>
+      <div className="w-full max-w-5xl mx-auto">
+        <div className="bg-white rounded-[2rem] border border-[hsl(210_15%_92%)] shadow-lg shadow-[hsl(172_40%_85%)]/20 overflow-hidden">
+          <ResultsHeader config={config} runId={runId} showComparison={showComparison} />
+
+          <div className="p-8">
+            {showComparison && comparisonData ? (
+              <Tabs
+                defaultValue="comparison"
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="space-y-6"
+              >
+                <TabsList className="grid grid-cols-4 w-full max-w-lg mx-auto bg-[hsl(168_20%_95%)] p-1 rounded-xl">
+                  <TabsTrigger
+                    value="comparison"
+                    className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[hsl(172_43%_20%)]"
+                  >
+                    Comparison
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="centralized"
+                    className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[hsl(172_43%_20%)]"
+                  >
+                    Centralized
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="federated"
+                    className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[hsl(172_43%_20%)]"
+                  >
+                    Federated
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="details"
+                    className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[hsl(172_43%_20%)]"
+                  >
+                    Details
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Comparison Tab Content */}
+                <TabsContent value="comparison" className="space-y-6">
+                  {/* Metrics Comparison Table */}
+                  <div className="bg-gradient-to-br from-[hsl(168_25%_98%)] to-[hsl(210_20%_97%)] rounded-2xl p-6 border border-[hsl(168_20%_90%)] shadow-sm">
+                    <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3 mb-5">
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-[hsl(172_40%_94%)] to-[hsl(210_40%_94%)]">
+                        <BarChart2 className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                      </div>
+                      <span>Best Validation Metrics Comparison</span>
+                      <span className="ml-auto text-xs font-normal text-[hsl(215_15%_50%)]">Head-to-head performance</span>
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent border-b-2 border-[hsl(168_20%_88%)]">
+                            <TableHead className="text-[hsl(215_15%_40%)] font-semibold">
+                              Metric
+                            </TableHead>
+                            <TableHead className="text-[hsl(215_15%_40%)] font-semibold text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-[hsl(172_63%_28%)]" />
+                                Centralized
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-[hsl(215_15%_40%)] font-semibold text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-[hsl(210_60%_50%)]" />
+                                Federated
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-[hsl(215_15%_40%)] font-semibold text-center">
+                              Difference
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {comparisonMetricsData.map((metric, idx) => {
+                            const diff = parseFloat(metric.difference);
+                            const isPositive = diff > 0;
+                            return (
+                              <TableRow
+                                key={metric.name}
+                                className="hover:bg-[hsl(168_25%_97%)] border-b border-[hsl(210_15%_92%)] transition-colors"
+                                style={{
+                                  animation: "slideInUp 0.4s ease-out forwards",
+                                  animationDelay: `${idx * 0.05}s`,
+                                  opacity: 0,
+                                }}
+                              >
+                                <TableCell className="font-semibold text-[hsl(172_43%_20%)]">
+                                  {metric.name}
+                                </TableCell>
+                                <TableCell className="font-mono text-[hsl(172_63%_28%)] text-center font-medium">
+                                  {(metric.centralized * 100).toFixed(1)}%
+                                </TableCell>
+                                <TableCell className="font-mono text-[hsl(210_60%_50%)] text-center font-medium">
+                                  {(metric.federated * 100).toFixed(1)}%
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg font-mono font-semibold text-sm ${
+                                      isPositive
+                                        ? "bg-[hsl(152_60%_95%)] text-[hsl(152_60%_35%)]"
+                                        : "bg-[hsl(0_60%_95%)] text-[hsl(0_72%_45%)]"
+                                    }`}
+                                  >
+                                    {isPositive ? "↑" : "↓"}
+                                    {isPositive ? "+" : ""}
+                                    {(diff * 100).toFixed(1)}%
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+
+                  {/* Comparison Bar Chart */}
+                  <div className="bg-gradient-to-br from-[hsl(168_25%_98%)] to-[hsl(210_20%_97%)] rounded-2xl p-6 border border-[hsl(168_20%_90%)] shadow-sm">
+                    <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3 mb-5">
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-[hsl(172_40%_94%)] to-[hsl(210_40%_94%)]">
+                        <BarChart3 className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                      </div>
+                      <span>Side-by-Side Performance</span>
+                      <span className="ml-auto text-xs font-normal text-[hsl(215_15%_50%)]">Visual comparison</span>
+                    </h3>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={comparisonMetricsData}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="hsl(210, 15%, 90%)"
+                          />
+                          <XAxis
+                            dataKey="name"
+                            tick={{ fill: "hsl(215, 15%, 45%)" }}
+                          />
+                          <YAxis
+                            domain={[0, 1]}
+                            tickFormatter={(tick) => `${tick * 100}%`}
+                            tick={{ fill: "hsl(215, 15%, 45%)" }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "white",
+                              border: "1px solid hsl(168, 20%, 90%)",
+                              borderRadius: "12px",
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                            }}
+                            formatter={(value: number) =>
+                              `${(value * 100).toFixed(1)}%`
+                            }
+                          />
+                          <Legend />
+                          <Bar
+                            name="Centralized"
+                            dataKey="centralized"
+                            fill={chartColors.centralized}
+                            radius={[4, 4, 0, 0]}
+                          />
+                          <Bar
+                            name="Federated"
+                            dataKey="federated"
+                            fill={chartColors.federated}
+                            radius={[4, 4, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Training Progress Comparison */}
+                  <div className="bg-gradient-to-br from-[hsl(168_25%_98%)] to-[hsl(210_20%_97%)] rounded-2xl p-6 border border-[hsl(168_20%_90%)] shadow-sm">
+                    <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3 mb-5">
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-[hsl(172_40%_94%)] to-[hsl(210_40%_94%)]">
+                        <ArrowLeftRight className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                      </div>
+                      <span>Training Progress Comparison</span>
+                      <span className="ml-auto text-xs font-normal text-[hsl(215_15%_50%)]">Epoch-by-epoch analysis</span>
+                    </h3>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="hsl(210, 15%, 90%)"
+                          />
+                          <XAxis
+                            dataKey="epoch"
+                            allowDuplicatedCategory={false}
+                            tick={{ fill: "hsl(215, 15%, 45%)" }}
+                          />
+                          <YAxis
+                            domain={[0.5, 1]}
+                            tickFormatter={(tick) =>
+                              `${(tick * 100).toFixed(0)}%`
+                            }
+                            tick={{ fill: "hsl(215, 15%, 45%)" }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "white",
+                              border: "1px solid hsl(168, 20%, 90%)",
+                              borderRadius: "12px",
+                            }}
+                            formatter={(value: number) =>
+                              `${(value * 100).toFixed(1)}%`
+                            }
+                          />
+                          <Legend />
+                          <Line
+                            data={centralizedHistoryData}
+                            type="monotone"
+                            dataKey="valAcc"
+                            name="Centralized"
+                            stroke={chartColors.centralized}
+                            strokeWidth={2}
+                            dot={{ r: 4 }}
+                          />
+                          <Line
+                            data={federatedHistoryData}
+                            type="monotone"
+                            dataKey="valAcc"
+                            name="Federated"
+                            stroke={chartColors.federated}
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            dot={{ r: 4 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Centralized Tab */}
+                <TabsContent value="centralized" className="space-y-6">
+                  {centralizedResults ? (
+                    <>
+                       <div className="bg-gradient-to-r from-[hsl(172_50%_96%)] to-[hsl(168_40%_95%)] rounded-xl p-5 border border-[hsl(172_40%_85%)] mb-6 shadow-sm">
+                         <div className="flex gap-3">
+                           <div className="p-2 rounded-lg bg-[hsl(172_40%_94%)] flex-shrink-0">
+                             <TrendingUp className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                           </div>
+                           <div>
+                             <p className="text-sm font-semibold text-[hsl(172_63%_25%)] mb-1">
+                               Best Validation Metrics — Centralized Training
+                             </p>
+                             <p className="text-sm text-[hsl(172_43%_30%)]">
+                               Peak validation performance achieved during centralized training across all epochs.
+                             </p>
+                           </div>
+                         </div>
+                       </div>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {centralizedMetricsData.map((metric, idx) => (
+                          <MetricCard
+                            key={metric.name}
+                            name={metric.name}
+                            value={metric.value}
+                            index={idx}
+                            total={centralizedMetricsData.length}
+                          />
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-[hsl(168_25%_98%)] rounded-2xl p-6 border border-[hsl(168_20%_92%)]">
+                          <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] mb-4">
+                            Performance Metrics
+                          </h3>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={centralizedMetricsData}>
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="hsl(210, 15%, 90%)"
+                                />
+                                <XAxis
+                                  dataKey="name"
+                                  tick={{
+                                    fill: "hsl(215, 15%, 45%)",
+                                    fontSize: 12,
+                                  }}
+                                />
+                                <YAxis
+                                  domain={[0, 1]}
+                                  tickFormatter={(tick) => `${tick * 100}%`}
+                                  tick={{ fill: "hsl(215, 15%, 45%)" }}
+                                />
+                                <Tooltip
+                                  contentStyle={{ borderRadius: "12px" }}
+                                  formatter={(value: number) =>
+                                    `${(value * 100).toFixed(1)}%`
+                                  }
+                                />
+                                <Bar
+                                  dataKey="value"
+                                  name="Score"
+                                  radius={[4, 4, 0, 0]}
+                                >
+                                  {centralizedMetricsData.map((_, index) => (
+                                    <Cell
+                                      key={`cell-${index}`}
+                                      fill={Object.values(chartColors)[index]}
+                                    />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                        {centralizedConfusionMatrix && (
+                          <ConfusionMatrixDisplay
+                            matrix={centralizedConfusionMatrix}
+                            title="Confusion Matrix"
+                          />
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-[hsl(215_15%_55%)]">
+                        No centralized results available
+                      </p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Federated Tab */}
+                <TabsContent value="federated" className="space-y-6">
+                  {federatedResults ? (
+                    <>
+                       <div className="bg-gradient-to-r from-[hsl(210_100%_97%)] to-[hsl(210_80%_96%)] rounded-xl p-5 border border-[hsl(210_60%_85%)] mb-6 shadow-sm">
+                         <div className="flex gap-3">
+                           <div className="p-2 rounded-lg bg-[hsl(210_60%_94%)] flex-shrink-0">
+                             <TrendingUp className="h-5 w-5 text-[hsl(210_60%_45%)]" />
+                           </div>
+                           <div>
+                             <p className="text-sm font-semibold text-[hsl(210_70%_30%)] mb-1">
+                               Final Round Metrics — Federated Learning
+                             </p>
+                             <p className="text-sm text-[hsl(210_50%_35%)]">
+                               Averaged client-side metrics from the final training round across all participating clients.
+                             </p>
+                           </div>
+                         </div>
+                       </div>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {federatedMetricsData.map((metric, idx) => (
+                          <MetricCard
+                            key={metric.name}
+                            name={metric.name}
+                            value={metric.value}
+                            index={idx}
+                            total={federatedMetricsData.length}
+                          />
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-[hsl(168_25%_98%)] rounded-2xl p-6 border border-[hsl(168_20%_92%)]">
+                          <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] mb-4">
+                            Performance Metrics
+                          </h3>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={federatedMetricsData}>
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="hsl(210, 15%, 90%)"
+                                />
+                                <XAxis
+                                  dataKey="name"
+                                  tick={{
+                                    fill: "hsl(215, 15%, 45%)",
+                                    fontSize: 12,
+                                  }}
+                                />
+                                <YAxis
+                                  domain={[0, 1]}
+                                  tickFormatter={(tick) => `${tick * 100}%`}
+                                  tick={{ fill: "hsl(215, 15%, 45%)" }}
+                                />
+                                <Tooltip
+                                  contentStyle={{ borderRadius: "12px" }}
+                                  formatter={(value: number) =>
+                                    `${(value * 100).toFixed(1)}%`
+                                  }
+                                />
+                                <Bar
+                                  dataKey="value"
+                                  name="Score"
+                                  radius={[4, 4, 0, 0]}
+                                >
+                                  {federatedMetricsData.map((_, index) => (
+                                    <Cell
+                                      key={`cell-${index}`}
+                                      fill={Object.values(chartColors)[index]}
+                                    />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                        {federatedConfusionMatrix && (
+                          <ConfusionMatrixDisplay
+                            matrix={federatedConfusionMatrix}
+                            title="Confusion Matrix"
+                          />
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-[hsl(215_15%_55%)]">
+                        No federated results available
+                      </p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Details Tab */}
+                <TabsContent value="details" className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {centralizedResults && (
+                      <MetadataDisplay
+                        metadata={centralizedResults.metadata}
+                        title="Centralized Experiment"
+                      />
+                    )}
+                    {federatedResults && (
+                      <MetadataDisplay
+                        metadata={federatedResults.metadata}
+                        title="Federated Experiment"
+                      />
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            ) : (
+              // Single mode results
+              <Tabs
+                defaultValue="metrics"
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="space-y-6"
+              >
+                <TabsList
+                  className={`grid w-full max-w-lg mx-auto bg-[hsl(168_20%_95%)] p-1 rounded-xl ${config.trainingMode === "federated" && serverEvaluation?.has_server_evaluation ? "grid-cols-4" : "grid-cols-3"}`}
+                >
+                  <TabsTrigger
+                    value="metrics"
+                    className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[hsl(172_43%_20%)]"
+                  >
+                    {config.trainingMode === "federated"
+                      ? "Final Metrics"
+                      : "Metrics"}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="charts"
+                    className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[hsl(172_43%_20%)]"
+                  >
+                    Progress
+                  </TabsTrigger>
+                  {serverEvaluation?.has_server_evaluation && (
+                    <TabsTrigger
+                      value="server-evaluation"
+                      className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[hsl(172_43%_20%)]"
+                    >
+                      Server Eval
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger
+                    value="metadata"
+                    className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[hsl(172_43%_20%)]"
+                  >
+                    Metadata
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Metrics Tab */}
+                <TabsContent value="metrics" className="space-y-6">
+                  {activeResults && (
+                    <>
+                       {config.trainingMode === "federated" && (
+                         <div className="bg-gradient-to-r from-[hsl(210_100%_97%)] to-[hsl(210_80%_96%)] rounded-xl p-5 border border-[hsl(210_60%_85%)] mb-6 shadow-sm">
+                           <div className="flex gap-3">
+                             <div className="p-2 rounded-lg bg-[hsl(210_60%_94%)] flex-shrink-0">
+                               <TrendingUp className="h-5 w-5 text-[hsl(210_60%_45%)]" />
+                             </div>
+                             <div>
+                               <p className="text-sm font-semibold text-[hsl(210_70%_30%)] mb-1">
+                                 Best Validation Metrics — Federated Learning
+                               </p>
+                               <p className="text-sm text-[hsl(210_50%_35%)]">
+                                 These are the highest validation metrics achieved across all training rounds. These represent the best performance of the client-side training throughout the entire federated learning process.
+                               </p>
+                             </div>
+                           </div>
+                         </div>
+                       )}
+                       {config.trainingMode === "centralized" && (
+                         <div className="bg-gradient-to-r from-[hsl(172_50%_96%)] to-[hsl(168_40%_95%)] rounded-xl p-5 border border-[hsl(172_40%_85%)] mb-6 shadow-sm">
+                           <div className="flex gap-3">
+                             <div className="p-2 rounded-lg bg-[hsl(172_40%_94%)] flex-shrink-0">
+                               <TrendingUp className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                             </div>
+                             <div>
+                               <p className="text-sm font-semibold text-[hsl(172_63%_25%)] mb-1">
+                                 Best Validation Metrics
+                               </p>
+                               <p className="text-sm text-[hsl(172_43%_30%)]">
+                                 These are the highest validation metrics achieved during training across all epochs. The model checkpoint with these metrics is saved for deployment.
+                               </p>
+                             </div>
+                           </div>
+                         </div>
+                       )}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {metricsChartData.map((metric, idx) => (
+                          <MetricCard
+                            key={metric.name}
+                            name={metric.name}
+                            value={metric.value}
+                            index={idx}
+                            total={metricsChartData.length}
+                          />
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="bg-gradient-to-br from-[hsl(168_25%_98%)] to-[hsl(210_20%_97%)] rounded-2xl p-6 border border-[hsl(168_20%_90%)] shadow-sm">
+                           <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3 mb-5">
+                             <div className="p-2.5 rounded-xl bg-gradient-to-br from-[hsl(172_40%_94%)] to-[hsl(210_40%_94%)]">
+                               <BarChart3 className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                             </div>
+                             Performance Metrics
+                           </h3>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={metricsChartData}>
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="hsl(210, 15%, 90%)"
+                                />
+                                <XAxis
+                                  dataKey="name"
+                                  tick={{
+                                    fill: "hsl(215, 15%, 45%)",
+                                    fontSize: 12,
+                                  }}
+                                />
+                                <YAxis
+                                  domain={[0, 1]}
+                                  tickFormatter={(tick) => `${tick * 100}%`}
+                                  tick={{ fill: "hsl(215, 15%, 45%)" }}
+                                />
+                                <Tooltip
+                                  contentStyle={{ borderRadius: "12px" }}
+                                  formatter={(value: number) =>
+                                    `${(value * 100).toFixed(1)}%`
+                                  }
+                                />
+                                <Bar
+                                  dataKey="value"
+                                  name="Score"
+                                  radius={[4, 4, 0, 0]}
+                                >
+                                  {metricsChartData.map((_, index) => (
+                                    <Cell
+                                      key={`cell-${index}`}
+                                      fill={Object.values(chartColors)[index]}
+                                    />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                        {confusionMatrix && (
+                          <ConfusionMatrixDisplay
+                            matrix={confusionMatrix}
+                            title="Confusion Matrix"
+                          />
+                        )}
+                      </div>
+                    </>
+                  )}
+                </TabsContent>
+
+                {/* Charts Tab */}
+                <TabsContent value="charts" className="space-y-6">
+                  {activeResults && (
+                    <>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="bg-gradient-to-br from-[hsl(168_25%_98%)] to-[hsl(210_20%_97%)] rounded-2xl p-6 border border-[hsl(168_20%_90%)] shadow-sm">
+                           <h3 className="text-md font-semibold text-[hsl(172_43%_15%)] mb-5 flex items-center gap-2">
+                             <div className="w-1 h-5 rounded-full bg-gradient-to-b from-[hsl(172_63%_28%)] to-[hsl(172_63%_35%)]" />
+                             Training & Validation Loss
+                           </h3>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={trainingHistoryData}>
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="hsl(210, 15%, 90%)"
+                                />
+                                <XAxis
+                                  dataKey="epoch"
+                                  tick={{ fill: "hsl(215, 15%, 45%)" }}
+                                />
+                                <YAxis tick={{ fill: "hsl(215, 15%, 45%)" }} />
+                                <Tooltip
+                                  contentStyle={{ borderRadius: "12px" }}
+                                />
+                                <Legend />
+                                <Line
+                                  type="monotone"
+                                  dataKey="trainLoss"
+                                  name="Train Loss"
+                                  stroke={chartColors.trainLoss}
+                                  strokeWidth={2}
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="valLoss"
+                                  name="Val Loss"
+                                  stroke={chartColors.valLoss}
+                                  strokeWidth={2}
+                                  strokeDasharray="5 5"
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                         <div className="bg-gradient-to-br from-[hsl(168_25%_98%)] to-[hsl(210_20%_97%)] rounded-2xl p-6 border border-[hsl(168_20%_90%)] shadow-sm">
+                           <h3 className="text-md font-semibold text-[hsl(172_43%_15%)] mb-5 flex items-center gap-2">
+                             <div className="w-1 h-5 rounded-full bg-gradient-to-b from-[hsl(168_40%_45%)] to-[hsl(168_40%_50%)]" />
+                             Training & Validation Accuracy
+                           </h3>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={trainingHistoryData}>
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="hsl(210, 15%, 90%)"
+                                />
+                                <XAxis
+                                  dataKey="epoch"
+                                  tick={{ fill: "hsl(215, 15%, 45%)" }}
+                                />
+                                <YAxis
+                                  domain={[0.5, 1]}
+                                  tickFormatter={(tick) =>
+                                    `${(tick * 100).toFixed(0)}%`
+                                  }
+                                  tick={{ fill: "hsl(215, 15%, 45%)" }}
+                                />
+                                <Tooltip
+                                  contentStyle={{ borderRadius: "12px" }}
+                                  formatter={(value: number) =>
+                                    `${(value * 100).toFixed(1)}%`
+                                  }
+                                />
+                                <Legend />
+                                <Line
+                                  type="monotone"
+                                  dataKey="trainAcc"
+                                  name="Train Acc"
+                                  stroke={chartColors.trainAcc}
+                                  strokeWidth={2}
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="valAcc"
+                                  name="Val Acc"
+                                  stroke={chartColors.valAcc}
+                                  strokeWidth={2}
+                                  strokeDasharray="5 5"
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </div>
+
+                       {/* All Metrics Over Time */}
+                       <div className="bg-gradient-to-br from-[hsl(168_25%_98%)] to-[hsl(210_20%_97%)] rounded-2xl p-6 border border-[hsl(168_20%_90%)] shadow-sm">
+                         <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3 mb-5">
+                           <div className="p-2.5 rounded-xl bg-gradient-to-br from-[hsl(172_40%_94%)] to-[hsl(210_40%_94%)]">
+                             <Activity className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                           </div>
+                           All Validation Metrics Over Time
+                         </h3>
+                        <div className="h-80">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={trainingHistoryData}>
+                              <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="hsl(210, 15%, 90%)"
+                              />
+                              <XAxis
+                                dataKey="epoch"
+                                tick={{ fill: "hsl(215, 15%, 45%)" }}
+                              />
+                              <YAxis
+                                domain={[0, 1]}
+                                tickFormatter={(tick) =>
+                                  `${(tick * 100).toFixed(0)}%`
+                                }
+                                tick={{ fill: "hsl(215, 15%, 45%)" }}
+                              />
+                              <Tooltip
+                                contentStyle={{ borderRadius: "12px" }}
+                                formatter={(value: number) =>
+                                  `${(value * 100).toFixed(2)}%`
+                                }
+                              />
+                              <Legend />
+                              <Line
+                                type="monotone"
+                                dataKey="valAcc"
+                                name="Accuracy"
+                                stroke={chartColors.valAcc}
+                                strokeWidth={2}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="valPrecision"
+                                name="Precision"
+                                stroke={chartColors.valPrecision}
+                                strokeWidth={2}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="valRecall"
+                                name="Recall"
+                                stroke={chartColors.valRecall}
+                                strokeWidth={2}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="valF1"
+                                name="F1 Score"
+                                stroke={chartColors.valF1}
+                                strokeWidth={2}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="valAuroc"
+                                name="AUC-ROC"
+                                stroke={chartColors.valAuroc}
+                                strokeWidth={2}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                       {/* Training History Table - Validation Metrics Only */}
+                       <div className="bg-gradient-to-br from-[hsl(168_25%_98%)] to-[hsl(210_20%_97%)] rounded-2xl p-6 border border-[hsl(168_20%_90%)] shadow-sm">
+                         <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3 mb-5">
+                           <div className="p-2.5 rounded-xl bg-gradient-to-br from-[hsl(172_40%_94%)] to-[hsl(210_40%_94%)]">
+                             <FileText className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                           </div>
+                           Validation Metrics History
+                         </h3>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="hover:bg-transparent">
+                                <TableHead className="text-[hsl(215_15%_45%)] font-semibold">
+                                  Epoch
+                                </TableHead>
+                                <TableHead className="text-[hsl(215_15%_45%)] font-semibold">
+                                  Val Accuracy
+                                </TableHead>
+                                <TableHead className="text-[hsl(215_15%_45%)] font-semibold">
+                                  Val AUC-ROC
+                                </TableHead>
+                                <TableHead className="text-[hsl(215_15%_45%)] font-semibold">
+                                  Val F1 Score
+                                </TableHead>
+                                <TableHead className="text-[hsl(215_15%_45%)] font-semibold">
+                                  Val Loss
+                                </TableHead>
+                                <TableHead className="text-[hsl(215_15%_45%)] font-semibold">
+                                  Val Precision
+                                </TableHead>
+                                <TableHead className="text-[hsl(215_15%_45%)] font-semibold">
+                                  Val Recall
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {trainingHistoryData.map((row) => (
+                                <TableRow
+                                  key={row.epoch}
+                                  className="hover:bg-[hsl(168_25%_97%)]"
+                                >
+                                  <TableCell className="font-medium text-[hsl(172_43%_20%)]">
+                                    {row.epoch}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-[hsl(172_63%_28%)]">
+                                    {row.valAcc ? (row.valAcc * 100).toFixed(2) + "%" : "N/A"}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-[hsl(210_60%_50%)]">
+                                    {row.valAuroc ? (row.valAuroc * 100).toFixed(2) + "%" : "N/A"}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-[hsl(172_50%_40%)]">
+                                    {row.valF1 ? (row.valF1 * 100).toFixed(2) + "%" : "N/A"}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-[hsl(0_72%_40%)]">
+                                    {row.valLoss ? row.valLoss.toFixed(4) : "N/A"}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-[hsl(168_40%_45%)]">
+                                    {row.valPrecision ? (row.valPrecision * 100).toFixed(2) + "%" : "N/A"}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-[hsl(35_65%_55%)]">
+                                    {row.valRecall ? (row.valRecall * 100).toFixed(2) + "%" : "N/A"}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </TabsContent>
+
+                {/* Server Evaluation Tab */}
+                {serverEvaluation?.has_server_evaluation && (
+                  <TabsContent value="server-evaluation" className="space-y-6">
+                    <div className="bg-[hsl(210_100%_97%)] rounded-xl p-4 border border-[hsl(210_60%_85%)] mb-6">
+                      <div className="flex gap-3">
+                        <HelpCircle className="h-5 w-5 text-[hsl(210_60%_45%)] flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-[hsl(210_70%_30%)] mb-1">
+                            Server Evaluation - Global Model Performance
+                          </p>
+                          <p className="text-sm text-[hsl(210_50%_35%)]">
+                            The aggregated global model is evaluated on a
+                            held-out centralized test set after each training
+                            round. This provides an objective measure of the
+                            global model's generalization performance
+                            independent of client-side variations.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {serverEvaluationLatestMetrics && (
+                      <>
+                        <div className="bg-[hsl(172_50%_96%)] rounded-xl p-4 border border-[hsl(172_40%_85%)] mb-4">
+                          <div className="flex gap-3">
+                            <TrendingUp className="h-5 w-5 text-[hsl(172_63%_35%)] flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-semibold text-[hsl(172_63%_25%)] mb-1">
+                                Latest Round - Global Model Performance
+                              </p>
+                              <p className="text-sm text-[hsl(172_43%_30%)]">
+                                Performance metrics of the aggregated global
+                                model from the most recent training round on the
+                                centralized test set.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                          {serverEvaluationLatestMetrics.map((metric, idx) => (
+                            <MetricCard
+                              key={metric.name}
+                              name={metric.name}
+                              value={metric.value}
+                              index={idx}
+                              total={serverEvaluationLatestMetrics.length}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <div className="bg-[hsl(168_25%_98%)] rounded-2xl p-6 border border-[hsl(168_20%_92%)]">
+                      <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] mb-4">
+                        Metrics Over Rounds
+                      </h3>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={serverEvaluationChartData}>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="hsl(210, 15%, 90%)"
+                            />
+                            <XAxis
+                              dataKey="round"
+                              tick={{ fill: "hsl(215, 15%, 45%)" }}
+                            />
+                            <YAxis
+                              domain={[0, 1]}
+                              tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                              tick={{ fill: "hsl(215, 15%, 45%)" }}
+                            />
+                            <Tooltip
+                              contentStyle={{ borderRadius: "12px" }}
+                              formatter={(value: number) =>
+                                `${(value * 100).toFixed(1)}%`
+                              }
+                            />
+                            <Legend />
+                            <Line
+                              type="monotone"
+                              dataKey="accuracy"
+                              name="Accuracy"
+                              stroke={chartColors.accuracy}
+                              strokeWidth={2}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="precision"
+                              name="Precision"
+                              stroke={chartColors.precision}
+                              strokeWidth={2}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="recall"
+                              name="Recall"
+                              stroke={chartColors.recall}
+                              strokeWidth={2}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="f1_score"
+                              name="F1 Score"
+                              stroke={chartColors.f1Score}
+                              strokeWidth={2}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="auroc"
+                              name="AUC-ROC"
+                              stroke={chartColors.auc}
+                              strokeWidth={2}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {serverEvaluationConfusionMatrix && (
+                      <>
+                        <ConfusionMatrixDisplay
+                          matrix={serverEvaluationConfusionMatrix}
+                          title="Confusion Matrix (Latest Round)"
+                        />
+                      </>
+                    )}
+                  </TabsContent>
+                )}
+
+                {/* Metadata Tab */}
+                <TabsContent value="metadata">
+                  {activeResults && (
+                    <MetadataDisplay
+                      metadata={activeResults.metadata}
+                      title="Experiment Metadata"
+                    />
+                  )}
+                </TabsContent>
+              </Tabs>
+            )}
+
+            {/* Download Section */}
+            <div className="mt-8 pt-6 border-t border-[hsl(168_20%_92%)]">
+              <h3 className="text-lg font-semibold text-[hsl(172_43%_15%)] flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-xl bg-[hsl(172_40%_94%)]">
+                  <Download className="h-5 w-5 text-[hsl(172_63%_35%)]" />
+                </div>
+                Download Results
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => handleDownload("csv")}
+                  className="rounded-xl border-[hsl(172_30%_80%)] text-[hsl(172_43%_25%)] hover:bg-[hsl(168_25%_94%)]"
+                >
+                  <FileText className="mr-2 h-4 w-4" /> Export Training Metrics
+                  (CSV)
+                </Button>
+              </div>
+              <p className="text-xs text-[hsl(215_15%_55%)] mt-2">
+                Download epoch-by-epoch training and validation metrics for
+                further analysis.
+              </p>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-8 py-6 border-t border-[hsl(210_15%_94%)] bg-[hsl(168_25%_99%)]">
+            <Button
+              onClick={onReset}
+              className="ml-auto flex bg-[hsl(172_63%_22%)] hover:bg-[hsl(172_63%_18%)] text-white text-base px-8 py-6 rounded-xl shadow-lg shadow-[hsl(172_63%_22%)]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[hsl(172_63%_22%)]/30 hover:-translate-y-0.5"
+            >
+              <Check className="mr-2 h-5 w-5" /> Start New Experiment
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ResultsVisualization;
