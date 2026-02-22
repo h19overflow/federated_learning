@@ -324,22 +324,16 @@ Every AI research assistant interaction is traced end-to-end: the full conversat
 
 ## AI Research Assistant
 
-Beyond training, the system includes a RAG-powered chat interface for clinical literature queries. Questions are routed to specialized agents, retrieved against a pgvector store of indexed papers, reranked with BM25 + semantic scoring, and answered with full source attribution.
+Beyond training, the system includes a RAG-powered chat interface for clinical literature queries. A single research assistant agent retrieves relevant papers from a pgvector store, reranks results with BM25 + semantic scoring, and generates answers with full source attribution — while maintaining session-scoped conversation memory.
 
 ```mermaid
 graph TB
     subgraph UserQuery["User Query"]
-        Query["Clinical Question"]
+        Query["Research Question"]
     end
 
-    subgraph AgentRouter["Agent Router"]
-        Router["Intent Classification"]
-
-        subgraph Agents["Specialized Agents"]
-            Research["Research Agent"]
-            Clinical["Clinical Agent"]
-            Explain["Explanation Agent"]
-        end
+    subgraph Assistant["Research Assistant Agent"]
+        Agent["AI Research Assistant"]
     end
 
     subgraph RAG["RAG Pipeline"]
@@ -358,19 +352,13 @@ graph TB
         Context["Session Context"]
     end
 
-    Query --> Router
-    Router --> Research
-    Router --> Clinical
-    Router --> Explain
-
-    Research --> Retriever
-    Clinical --> Retriever
-    Explain --> Retriever
+    Query --> Agent
+    Agent --> Retriever
 
     Retriever --> Reranker
     Reranker --> Generator
 
-    Research -.->|Literature Search| ArXiv
+    Agent -.->|Literature Search| ArXiv
     Retriever -.->|Embeddings| Embeddings
 
     Generator --> ChatHistory
@@ -379,7 +367,7 @@ graph TB
     Generator --> Response["AI Response"]
 
     style UserQuery fill:#E1F5FE,stroke:#0288D1,color:#000
-    style AgentRouter fill:#F3E5F5,stroke:#7B1FA2,color:#000
+    style Assistant fill:#F3E5F5,stroke:#7B1FA2,color:#000
     style RAG fill:#FFF8E1,stroke:#F57F17,color:#000
     style Tools fill:#E8F5E9,stroke:#2E7D32,color:#000
     style Memory fill:#FFF3E0,stroke:#E65100,color:#000
