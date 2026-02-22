@@ -12,7 +12,6 @@ wheels/
 
 # Dataset directories (contain large image files)
 Test/
-Training/
 !federated_pneumonia_detection/src/control/dl_model/utils/data/
 !Training_Sample_5pct/
 !Training_Sample_5pct/Images/
